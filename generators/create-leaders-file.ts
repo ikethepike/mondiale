@@ -1,49 +1,56 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
 import type { ISOCountryCode } from '../types/geography.types'
-import { captureImageCredit, fetchJson, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import { captureImageCredit, saveCommonsImage, wait } from './vendors/wikidata/commons'
+import { jsonParseLiteral } from './lib/emit'
 import type { LeaderProfile } from '../lib/leaders'
 
 /**
- * Pulls every country's CURRENT head of state (P35) and head of government
- * (P6) from Wikidata, with portraits from Wikimedia Commons. Countries are
- * matched by ISO 3166-1 alpha-2 (P297) so there is no name matching.
+ * Every country's head of state and head of government, from polity.
  *
- * Deliberately avoids the SPARQL query service (Blazegraph — flaky, 60s hard
- * timeouts under load) in favour of the plain Action/REST APIs:
- *   1. haswbstatement:P297 search (paginated) → every ISO-carrying entity
- *   2. wbgetentities props=claims (small batches) → ISO + current P35/P6
- *   3. wbgetentities labels (languagefallback!) + pageprops page_image_free
- *   4. Commons Special:FilePath → the images themselves (sequential — 429s)
+ * This replaces a fetch, not a join. The previous route walked Wikidata
+ * directly — paginated haswbstatement search for ISO-carrying entities, then
+ * P35/P6 claims, then labels, then PageImages — which is a second, parallel
+ * implementation of exactly what polity does, and it had none of polity's
+ * defences. Measured against polity on the day it was replaced, 32 of its
+ * names were wrong:
  *
- * The P35/P6 statements carry a P580 start-time qualifier at day precision,
- * so `sinceDate` needs no SPARQL round-trip — it is already in the claims
- * payload from step 2.
+ *   - MONTHS STALE. Thailand's Paetongtarn Shinawatra, Nepal's Dahal,
+ *     Kazakhstan's Smaiylov, Ukraine's Svyrydenko, Somalia's Roble (left in
+ *     2022). A country's P35/P6 is written when a leader arrives and rarely
+ *     closed when they go, and nothing here cross-checked it.
+ *   - VANDALISED. Tuvalu's prime minister read "Ben Do" and Eswatini's
+ *     "Edeupa Yerimin" — labels anyone can edit, where polity checks them
+ *     against the article title behind them.
+ *   - TRUNCATED. Qatar's emir read "Tamim bin Hamad Al".
  *
- * Portraits are saved as one dedicated file per country and role under
- * public/leaders/ — nothing is inlined into the data bundle. Existing files
- * are kept unless --force is passed OR the person behind that country+role
- * changed since the previous run (the file is keyed by country and role, so
- * a kept file after an election would show the predecessor's face).
+ * polity resolves the office item as well as the country item, judges a term
+ * against today's date, and refuses an office that deprecates its own history.
+ * None of that is worth reimplementing here.
+ *
+ * Portraits are still downloaded rather than hot-linked, for the same reason
+ * party logos are: polity points at Commons `Special:FilePath`, which costs
+ * three redirects and ~580ms cold, and a leader's face is shown mid-round.
  *
  *   bun run generate:leaders [--force]
  */
 
+const SOURCE = 'https://kodwerk-ab.github.io/polity/v1/polity.json'
 const OUTPUT_DIRECTORY = 'public/leaders'
 /** Portraits aren't zoomed, but 512px is soft on a HiDPI screen. */
 const PORTRAIT_WIDTH = 1024
 
 type LeaderRole = 'headOfState' | 'headOfGovernment'
-const LEADER_PROPERTIES: { [property in 'P35' | 'P6']: LeaderRole } = {
-  P35: 'headOfState',
-  P6: 'headOfGovernment',
+const ROLES: { readonly [key in LeaderRole]: 'head_of_state' | 'head_of_government' } = {
+  headOfState: 'head_of_state',
+  headOfGovernment: 'head_of_government',
 }
 
 interface LeaderEntry extends LeaderProfile {
   /**
-   * The day this term began (the country's P35/P6 statement's P580), when
-   * Wikidata records it to day precision. Used by the country generator to
-   * decide whether a CIA world-leaders page predates the current term.
+   * The day this term began (polity's `since`), when it is known to day
+   * precision. Used by the country generator to decide whether a CIA
+   * world-leaders page predates the current term.
    */
   sinceDate?: string
 }
@@ -52,381 +59,116 @@ export type LeaderMapping = {
   [isoCode in ISOCountryCode]?: { [role in LeaderRole]?: LeaderEntry }
 }
 
+/** Only the parts of polity this generator reads. */
+interface PolityOfficeHolder {
+  name: string
+  office?: { label?: string }
+  party?: { label?: string } | null
+  since?: string
+  born_year?: number
+  description?: string
+  portrait?: { file: string; license?: string; credit?: string; non_free?: boolean }
+  superseded?: boolean
+}
+interface PolityCountry {
+  head_of_state?: PolityOfficeHolder | null
+  head_of_government?: PolityOfficeHolder | null
+}
+interface PolityDataset {
+  generated_at?: string
+  schema_version?: string
+  countries: Record<string, PolityCountry>
+}
+
 const force = process.argv.includes('--force')
 const validCodes = new Set<string>(ISOCountryCodes)
 
-// `fetchJson`, `wait`, `fetchPageImages`, `saveCommonsImage` come from the
-// shared wikidata/commons module.
-const getJson = fetchJson
-
-// Transient fetch failures must never ERASE a country an earlier run got —
-// each run only ever adds or refreshes entries on top of the previous file
 let previousMapping: LeaderMapping = {}
 try {
   previousMapping = (await import('../data/leaders.gen')).LEADERS ?? {}
 } catch {
-  // First run — nothing to merge
+  // First run, or the file was deleted deliberately. Nothing to merge.
 }
 
-// --- 1. Every entity carrying an ISO code, in a handful of requests --------
-// Per-country searches (194 requests) reliably tripped the API's request
-// budget mid-run and whichever countries landed in the throttle window were
-// silently lost. One paginated search for ALL items with P297 needs ~6
-// requests; the claims fetch below carries the ISO codes to match them up.
-interface SearchResponse {
-  query?: { search?: { title: string }[] }
-  continue?: { sroffset: number }
+console.info(`Fetching ${SOURCE}`)
+const response = await fetch(SOURCE)
+if (!response.ok) throw new Error(`polity: HTTP ${response.status}`)
+const dataset = (await response.json()) as PolityDataset
+const countryCount = Object.keys(dataset.countries ?? {}).length
+if (countryCount < 150) {
+  throw new Error(`polity returned only ${countryCount} countries — refusing to overwrite`)
 }
+console.info(`  polity ${dataset.schema_version ?? '?'}, built ${dataset.generated_at?.slice(0, 10) ?? '?'}, ${countryCount} countries`)
 
-console.log('Listing every entity with an ISO 3166-1 alpha-2 code…')
-const entityIds: string[] = []
-let offset: number | undefined = 0
-while (offset !== undefined) {
-  const page: SearchResponse | undefined = await getJson<SearchResponse>(
-    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      'haswbstatement:P297'
-    )}&srnamespace=0&srlimit=50&sroffset=${offset}&format=json`
-  )
-  entityIds.push(...(page?.query?.search ?? []).map(hit => hit.title))
-  offset = page?.continue?.sroffset
-  process.stdout.write(`\r  ${entityIds.length} entities`)
-  await wait(200)
-}
-console.log(`\n${entityIds.length} P297 carriers found`)
-
-// --- 2. Country entities → current leader statements ------------------------
-interface Statement {
-  rank: 'preferred' | 'normal' | 'deprecated'
-  mainsnak?: { datavalue?: { value?: { id?: string; time?: string } } }
-  qualifiers?: { P582?: unknown[]; P580?: TimeSnak[] }
-}
-interface TimeSnak {
-  /** `precision` 11 = day, 10 = month, 9 = year. */
-  datavalue?: { value?: { time?: string; precision?: number } }
-}
-interface EntityResponse {
-  entities?: {
-    [id: string]: {
-      claims?: { [property: string]: Statement[] }
-      labels?: { en?: { value: string } }
-      descriptions?: { en?: { value: string } }
-    }
-  }
-}
-
-/** P297's value is the ISO string itself. */
-const isoCodeOf = (claims?: { [property: string]: Statement[] }): string | undefined => {
-  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak
-    ?.datavalue?.value
-  return typeof value === 'string' ? value : undefined
-}
-
-/**
- * The incumbent, plus the day their term began (P580).
- *
- * OPEN statements (no end-date P582) win over rank: a `preferred` statement
- * that has been superseded is still stale, and Wikidata leaves the old one
- * ranked up for months after a transition. Among the open statements, prefer
- * `preferred`, then the most recent start — Bulgaria carries two open P6s.
- *
- * `sinceDate` is what lets the country generator decide whether a CIA page
- * predates the current term. Year alone is not enough: Japan's page is
- * 2025-05-23 and Takaichi took office 2025-10-21 — same year, opposite verdict.
- */
-const currentHolder = (statements: Statement[] = []): { leaderId?: string; sinceDate?: string } => {
-  const usable = statements.filter(
-    statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
-  )
-  const startTime = (statement: Statement) => statement.qualifiers?.P580?.[0]
-  const startYear = (statement: Statement) =>
-    yearOf(startTime(statement)?.datavalue?.value?.time) ?? 0
-
-  const open = usable.filter(statement => !statement.qualifiers?.P582)
-  const ranked = [...open].sort((a, b) => startYear(b) - startYear(a))
-  const chosen =
-    open.find(statement => statement.rank === 'preferred') ??
-    ranked[0] ??
-    usable.find(statement => statement.rank === 'preferred')
-
-  return {
-    leaderId: chosen?.mainsnak?.datavalue?.value?.id,
-    sinceDate: chosen ? dateOf(startTime(chosen)) : undefined,
-  }
-}
-
-/** Wikidata times look like "+1955-11-11T00:00:00Z"; pull the leading year. */
-const yearOf = (time?: string): number | undefined => {
-  if (!time) return undefined
-  const match = /^[+-]?(\d{1,4})-/.exec(time)
-  const year = match ? Number(match[1]) : NaN
-  return Number.isFinite(year) && year > 0 ? year : undefined
-}
-
-/**
- * The full ISO date of a Wikidata time value, but only when it is day-precise
- * (precision 11). Coarser values ("2025", "May 2025") would compare wrong
- * against a CIA page date, so they are dropped rather than guessed at.
- */
-const dateOf = (snak?: TimeSnak): string | undefined => {
-  const value = snak?.datavalue?.value
-  if (!value?.time || value.precision !== 11) return undefined
-  const match = /^\+(\d{4}-\d{2}-\d{2})T/.exec(value.time)
-  return match?.[1]
-}
-
-/**
- * A single CURRENT value for a multi-value claim (e.g. party membership P102).
- * Leaders keep historical memberships that lack an end-date in the data too, so
- * "first live statement" grabs a defunct party (Putin/Lukashenka both surface
- * the Communist Party of the Soviet Union). Prefer a preferred-rank statement,
- * else the OPEN (no end-date P582) statement with the most recent start (P580),
- * else fall back to the newest-started of anything live.
- */
-const currentClaimId = (statements: Statement[] = []): string | undefined => {
-  const live = statements.filter(
-    statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
-  )
-  if (!live.length) return undefined
-  const startYear = (statement: Statement) =>
-    yearOf(statement.qualifiers?.P580?.[0]?.datavalue?.value?.time) ?? 0
-
-  const preferred = live.find(statement => statement.rank === 'preferred')
-  const open = live
-    .filter(statement => !statement.qualifiers?.P582)
-    .sort((a, b) => startYear(b) - startYear(a))[0]
-  const newest = [...live].sort((a, b) => startYear(b) - startYear(a))[0]
-
-  return (preferred ?? open ?? newest)?.mainsnak?.datavalue?.value?.id
-}
-
-/**
- * The person's CURRENT top office (P39). Politicians hold many positions and
- * several often lack an end-date (P582), so "first open statement" grabs junk
- * like a decades-old council seat. Prefer a preferred-rank statement; otherwise
- * the open position with the MOST RECENT start date (P580) — a sitting
- * president took office more recently than an old local role. Returns the
- * office Q-id + start year, so we can show "President of Ghana · since 2019".
- */
-const currentPosition = (
-  statements: Statement[] = []
-): { officeId?: string; sinceYear?: number } => {
-  const live = statements.filter(
-    statement => statement.rank !== 'deprecated' && statement.mainsnak?.datavalue?.value?.id
-  )
-  const startYear = (statement: Statement) =>
-    yearOf(statement.qualifiers?.P580?.[0]?.datavalue?.value?.time) ?? 0
-
-  // Most-recent open position. This can be a legislative SEAT (MP, Bundestag
-  // member) whose start date outranks the actual executive office — the office
-  // label can't be read here (it's a Q-id resolved later), so the CLIENT
-  // prefers the authoritative `description` line ("Prime Minister of X") over
-  // this office when they disagree (see lib/leaders.ts `leaderTitle`).
-  // Open statements first: a `preferred` rank left on a closed or superseded
-  // position outranks the office the person actually holds today.
-  const open = live
-    .filter(statement => !statement.qualifiers?.P582)
-    .sort((a, b) => startYear(b) - startYear(a))
-
-  const chosen =
-    open.find(statement => statement.rank === 'preferred') ??
-    open[0] ??
-    live.find(statement => statement.rank === 'preferred')
-  return {
-    officeId: chosen?.mainsnak?.datavalue?.value?.id,
-    sinceYear: yearOf(chosen?.qualifiers?.P580?.[0]?.datavalue?.value?.time),
-  }
-}
-
-console.log('Reading current officeholders…')
-const holders: {
-  isoCode: ISOCountryCode
-  role: LeaderRole
-  leaderId: string
-  sinceDate?: string
-}[] = []
-const seenCodes = new Set<string>()
-
-// Batched claims-only fetches: Special:EntityData dumps EVERY language and
-// sitelink — for items like the United States that's tens of megabytes and
-// it times out reliably. wbgetentities with props=claims is ~1% the size,
-// and P297 in the same payload tells us which country each entity is.
-for (let index = 0; index < entityIds.length; index += 10) {
-  const batch = entityIds.slice(index, index + 10)
-  const data = await getJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json`
-  )
-  for (const entity of Object.values(data?.entities ?? {})) {
-    const isoCode = isoCodeOf(entity.claims)
-    // Former countries and duplicates: first live claim per code wins
-    if (!isoCode || !validCodes.has(isoCode) || seenCodes.has(isoCode)) continue
-    seenCodes.add(isoCode)
-    for (const [property, role] of Object.entries(LEADER_PROPERTIES)) {
-      const { leaderId, sinceDate } = currentHolder(entity.claims?.[property])
-      if (leaderId) holders.push({ isoCode: isoCode as ISOCountryCode, role, leaderId, sinceDate })
-    }
-  }
-  process.stdout.write(`\r  ${Math.min(index + 10, entityIds.length)}/${entityIds.length}`)
-  await wait(200)
-}
-console.log(`\n${holders.length} officeholder statements found`)
-
-// --- 3. Leader entities → names, portraits, profile facts -------------------
-const leaderIds = [...new Set(holders.map(holder => holder.leaderId))]
-interface LeaderDetail {
-  name?: string
-  portraitFile?: string
-  description?: string
-  bornYear?: number
-  officeId?: string
-  partyId?: string
-  sinceYear?: number
-}
-const leaderDetails = new Map<string, LeaderDetail>()
-// Office (P39) and party (P102) resolve to Q-ids — collect them, then look up
-// their labels in one follow-up batch pass.
-const referencedIds = new Set<string>()
-
-interface PagePropsResponse {
-  query?: {
-    pages?: { [pageId: string]: { title?: string; pageprops?: { page_image_free?: string } } }
-  }
-}
-
-console.log(`Fetching ${leaderIds.length} leader entities…`)
-for (let index = 0; index < leaderIds.length; index += 40) {
-  const batch = leaderIds.slice(index, index + 40)
-
-  // labels + descriptions + the handful of profile claims (birth, office,
-  // party). languagefallback matters — some items keep their label under the
-  // multilingual 'mul' language with no plain 'en' entry at all (this is how
-  // the United States went missing: no en label on its president's item).
-  // We request only these props, not the full entity — a politician's whole
-  // claim set can run to megabytes, but this subset is small.
-  const data = await getJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels|descriptions|claims&languages=en&languagefallback=1&format=json`
-  )
-  for (const [id, entity] of Object.entries(data?.entities ?? {})) {
-    const position = currentPosition(entity.claims?.P39)
-    const partyId = currentClaimId(entity.claims?.P102)
-    if (position.officeId) referencedIds.add(position.officeId)
-    if (partyId) referencedIds.add(partyId)
-    leaderDetails.set(id, {
-      name: entity.labels?.en?.value,
-      description: entity.descriptions?.en?.value,
-      bornYear: yearOf(entity.claims?.P569?.[0]?.mainsnak?.datavalue?.value?.time),
-      officeId: position.officeId,
-      partyId,
-      sinceYear: position.sinceYear,
-    })
-  }
-
-  // Portraits: the PageImages prop is derived from P18 and costs bytes, not
-  // megabytes
-  const imageData = await getJson<PagePropsResponse>(
-    `https://www.wikidata.org/w/api.php?action=query&prop=pageprops&ppprop=page_image_free&titles=${batch.join('|')}&format=json`
-  )
-  for (const page of Object.values(imageData?.query?.pages ?? {})) {
-    if (!page.title || !page.pageprops?.page_image_free) continue
-    const details = leaderDetails.get(page.title)
-    if (details) details.portraitFile = page.pageprops.page_image_free
-  }
-
-  process.stdout.write(`\r  ${Math.min(index + 40, leaderIds.length)}/${leaderIds.length}`)
-  await wait(200)
-}
-console.log('')
-
-// --- 3b. Resolve office + party Q-ids to labels -----------------------------
-// Also read each entity's dissolution date (P576): a DEFUNCT party must never
-// be shown as a current leader's party (Putin/Lukashenka otherwise surface the
-// Communist Party of the Soviet Union, dissolved 1991).
-const labelById = new Map<string, string>()
-const dissolvedIds = new Set<string>()
-const idsToResolve = [...referencedIds]
-console.log(`Resolving ${idsToResolve.length} office/party labels…`)
-for (let index = 0; index < idsToResolve.length; index += 50) {
-  const batch = idsToResolve.slice(index, index + 50)
-  const data = await getJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels|claims&languages=en&languagefallback=1&format=json`
-  )
-  for (const [id, entity] of Object.entries(data?.entities ?? {})) {
-    if (entity.claims?.P576?.some(statement => statement.rank !== 'deprecated')) {
-      dissolvedIds.add(id)
-    }
-    const label = entity.labels?.en?.value
-    if (label && !/^Q\d+$/.test(label)) labelById.set(id, label)
-  }
-  process.stdout.write(`\r  ${Math.min(index + 50, idsToResolve.length)}/${idsToResolve.length}`)
-  await wait(200)
-}
-console.log('')
-
-// --- 4. Assemble the mapping + download portraits ---------------------------
 const mapping: LeaderMapping = {}
 const portraitQueue: { isoCode: ISOCountryCode; role: LeaderRole; file: string }[] = []
 
-for (const { isoCode, role, leaderId, sinceDate } of holders) {
-  const details = leaderDetails.get(leaderId)
-  // A bare Q-id is worse than nothing in a quiz
-  if (!details?.name || /^Q\d+$/.test(details.name)) continue
+for (const [iso, country] of Object.entries(dataset.countries)) {
+  if (!validCodes.has(iso)) continue
+  const isoCode = iso as ISOCountryCode
 
-  const entry: LeaderEntry = { name: details.name }
-  if (details.description) entry.description = details.description
-  if (details.bornYear) entry.bornYear = details.bornYear
-  if (details.sinceYear) entry.sinceYear = details.sinceYear
-  if (sinceDate) entry.sinceDate = sinceDate
-  const office = details.officeId ? labelById.get(details.officeId) : undefined
-  if (office) entry.office = office
-  // Skip a dissolved party (CPSU etc.) — better no party than a defunct one.
-  const party =
-    details.partyId && !dissolvedIds.has(details.partyId)
-      ? labelById.get(details.partyId)
-      : undefined
-  if (party) entry.party = party
+  for (const [role, field] of Object.entries(ROLES) as [LeaderRole, keyof PolityCountry][]) {
+    const holder = country[field]
+    if (!holder?.name) continue
 
-  mapping[isoCode] = { ...mapping[isoCode], [role]: entry }
-  if (details.portraitFile) {
-    portraitQueue.push({ isoCode, role, file: details.portraitFile })
+    // A `superseded` holder is one polity kept because the office exists and
+    // somebody holds it, while flagging that its own record disagrees. The
+    // NAME is the best available; the dates, party and portrait beside it
+    // belonged to the previous holder, so polity omits them and so do we.
+    const entry: LeaderEntry = { name: holder.name }
+    if (holder.description) entry.description = holder.description
+    if (holder.born_year) entry.bornYear = holder.born_year
+    if (holder.since) {
+      entry.sinceDate = holder.since
+      const year = Number(holder.since.slice(0, 4))
+      if (Number.isFinite(year)) entry.sinceYear = year
+    }
+    if (holder.office?.label) entry.office = holder.office.label
+    if (holder.party?.label) entry.party = holder.party.label
+
+    mapping[isoCode] = { ...mapping[isoCode], [role]: entry }
+    if (holder.portrait?.file) {
+      portraitQueue.push({ isoCode, role, file: holder.portrait.file })
+    }
   }
 }
 
-console.log(`Leaders for ${Object.keys(mapping).length} countries; downloading portraits…`)
+console.info(`Leaders for ${Object.keys(mapping).length} countries; downloading portraits…`)
 mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
 
-let done = 0
+let saved = 0
 let failed = 0
 
-// One at a time with a breather between requests — the thumbnail service
-// 429s anything resembling parallel load. saveCommonsImage handles the
-// keep-existing-unless-force, backoff, and content-type→extension logic.
+// One at a time with a breather between requests — the thumbnail service 429s
+// anything resembling parallel load.
 for (const { isoCode, role, file } of portraitQueue) {
-  const roleSlug = role === 'headOfState' ? 'state' : 'government'
-  const refresh = force || previousMapping[isoCode]?.[role]?.name !== mapping[isoCode]![role]!.name
-  const publicPath = await saveCommonsImage(
-    file,
-    `${OUTPUT_DIRECTORY}/${isoCode}-${roleSlug}`,
-    `/leaders/${isoCode}-${roleSlug}`,
-    { width: PORTRAIT_WIDTH, force: refresh }
-  )
-  if (!publicPath) {
-    console.warn(`  portrait failed for ${isoCode} ${role}`)
+  // BOTH arguments are whole paths, not a name and a directory: the first is
+  // where the file is written, the second is the URL it will be served at.
+  const slug = `${isoCode}-${role === 'headOfState' ? 'state' : 'government'}`
+  // The file is keyed by country and role, so a kept file after an election
+  // would show the predecessor's face. Re-download when the person changed.
+  const refresh = force || previousMapping[isoCode]?.[role]?.name !== mapping[isoCode]?.[role]?.name
+  const path = await saveCommonsImage(file, `${OUTPUT_DIRECTORY}/${slug}`, `/leaders/${slug}`, {
+    width: PORTRAIT_WIDTH,
+    force: refresh,
+  })
+  if (path) {
+    const entry = mapping[isoCode]?.[role]
+    if (entry) {
+      entry.image = path
+      Object.assign(entry, await captureImageCredit(file, previousMapping[isoCode]?.[role], refresh))
+    }
+    saved++
+  } else {
     failed++
-    continue
   }
-  mapping[isoCode]![role] = {
-    ...mapping[isoCode]![role]!,
-    image: publicPath,
-    ...(await captureImageCredit(file, previousMapping[isoCode]?.[role], refresh)),
-  }
-  done++
-  process.stdout.write(`\r  ${done + failed}/${portraitQueue.length} portraits`)
+  process.stdout.write(`\r  ${saved + failed}/${portraitQueue.length} portraits`)
   await wait(250)
 }
-console.log('')
+process.stdout.write('\n')
+console.info(`Portraits: ${saved} saved, ${failed} failed`)
 
-console.log(`Portraits: ${done} saved, ${failed} failed`)
-
-// Merge with the previous run: fresh data wins per role, gaps keep old data
+// Merge with the previous run: fresh data wins per role, gaps keep old data.
 for (const isoCode of ISOCountryCodes) {
   const merged = { ...previousMapping[isoCode], ...mapping[isoCode] }
   if (Object.keys(merged).length) mapping[isoCode] = merged
@@ -434,16 +176,14 @@ for (const isoCode of ISOCountryCodes) {
 
 writeFileSync(
   'data/leaders.gen.ts',
-  `
-      import type { LeaderMapping } from '../generators/create-leaders-file'
-      export const LEADERS: LeaderMapping = ${JSON.stringify(mapping)}
-    `
+  `// Generated by generators/create-leaders-file.ts — do not edit by hand.\n` +
+    `import type { LeaderMapping } from '../generators/create-leaders-file'\n\n` +
+    `export const LEADERS: LeaderMapping = ${jsonParseLiteral(mapping)}\n`
 )
-console.log(`Wrote data/leaders.gen.ts (${Object.keys(mapping).length} countries)`)
+console.info(`Wrote data/leaders.gen.ts (${Object.keys(mapping).length} countries)`)
 
-// Silence is how gaps sneak through — name every country that got nothing
+// Silence is how gaps sneak through — name every country that got nothing.
 const missing = ISOCountryCodes.filter(isoCode => !mapping[isoCode])
 if (missing.length) {
   console.warn(`NO LEADER DATA for ${missing.length} countries: ${missing.join(' ')}`)
-  console.warn('(transient fetch failures are the usual cause — rerun to fill the gaps)')
 }
