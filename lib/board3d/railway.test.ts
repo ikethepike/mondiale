@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Vector3 } from 'three'
 import { createTilePath } from './path'
 import { loopCrossesItself, pickRailwayLoop } from './railway'
 import { pickRiverPath, withRiverBed } from './river'
@@ -29,10 +30,25 @@ const worldFor = (seed: string, count = 65) => {
   return { loop, path, summit, sampler }
 }
 
+type World = ReturnType<typeof worldFor> & { loop: Vector3[] }
+
+/** A railway is deliberately rare — scan a seed family until enough boards
+ *  have dealt one, so the shape suites never pass vacuously. */
+const dealtWorlds = (prefix: string, want: number, scan = 240): World[] => {
+  const worlds: World[] = []
+  for (let index = 0; index < scan && worlds.length < want; index++) {
+    const world = worldFor(`${prefix}-${index}`)
+    if (world.loop) worlds.push(world as World)
+  }
+  expect(worlds.length).toBeGreaterThan(0)
+  return worlds
+}
+
 describe('pickRailwayLoop', () => {
   it('is deterministic per seed', () => {
-    const first = worldFor('railway-a').loop
-    const second = worldFor('railway-a').loop
+    const seed = 'railway-deal-20'
+    const first = worldFor(seed).loop
+    const second = worldFor(seed).loop
     expect(Boolean(first)).toBe(Boolean(second))
     if (first && second) {
       expect(first.length).toBe(second.length)
@@ -40,64 +56,52 @@ describe('pickRailwayLoop', () => {
     }
   })
 
-  it('deals a railway on some boards and declines on others', () => {
+  it('deals a railway on a few boards and declines the rest', () => {
     let dealt = 0
     let declined = 0
-    for (let index = 0; index < 40; index++) {
+    for (let index = 0; index < 100; index++) {
       const { loop } = worldFor(`railway-deal-${index}`)
       if (loop) dealt++
       else declined++
     }
-    expect(dealt).toBeGreaterThan(2)
-    expect(declined).toBeGreaterThan(10)
+    expect(dealt).toBeGreaterThan(1)
+    expect(declined).toBeGreaterThan(85)
   })
 
   it('keeps the loop clear of every track pass and inside the page', () => {
-    for (let index = 0; index < 40; index++) {
-      const { loop, path } = worldFor(`railway-clear-${index}`)
-      if (!loop) continue
+    for (const { loop, path } of dealtWorlds('railway-clear', 4)) {
       // Cut-and-fill smoothing may drift a hair inside the surveyed berth,
       // never into the shelf band itself.
       const clearance = path.spacing * 1.45
       for (const point of loop) {
-        expect(Math.hypot(point.x, point.z), `railway-clear-${index}`).toBeLessThanOrEqual(
-          EDGE_FADE_START
-        )
+        expect(Math.hypot(point.x, point.z)).toBeLessThanOrEqual(EDGE_FADE_START)
         for (const shelf of path.shelfPoints) {
           const distance = Math.hypot(shelf.x - point.x, shelf.z - point.z)
-          expect(distance, `railway-clear-${index}`).toBeGreaterThanOrEqual(clearance)
+          expect(distance).toBeGreaterThanOrEqual(clearance)
         }
       }
     }
   })
 
   it('closes a fat loop that never crosses itself', () => {
-    let seen = 0
-    for (let index = 0; index < 40 && seen < 6; index++) {
-      const { loop } = worldFor(`railway-shape-${index}`)
-      if (!loop) continue
-      seen++
+    for (const { loop } of dealtWorlds('railway-shape', 4)) {
       expect(loop.length).toBeGreaterThan(22)
-      expect(loopCrossesItself(loop), `railway-shape-${index}`).toBe(false)
+      expect(loopCrossesItself(loop)).toBe(false)
       let area = 0
       for (let corner = 0; corner < loop.length; corner++) {
         const here = loop[corner]
         const next = loop[(corner + 1) % loop.length]
         area += here.x * next.z - next.x * here.z
       }
-      expect(Math.abs(area) / 2, `railway-shape-${index}`).toBeGreaterThanOrEqual(350)
+      expect(Math.abs(area) / 2).toBeGreaterThanOrEqual(350)
     }
-    expect(seen).toBeGreaterThan(0)
   })
 
   it('hugs the rendered ground', () => {
-    for (let index = 0; index < 20; index++) {
-      const { loop, sampler } = worldFor(`railway-ground-${index}`)
-      if (!loop) continue
+    for (const { loop, sampler } of dealtWorlds('railway-ground', 2)) {
       for (const point of loop) {
         expect(point.y).toBeCloseTo(sampler(point.x, point.z) + 0.1, 6)
       }
-      return
     }
   })
 })

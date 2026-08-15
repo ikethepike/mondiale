@@ -31,10 +31,11 @@ import type { PondSite } from './water'
  * after track, pond, massif, river and scenery, never constraining them.
  */
 
-/** Most boards survey for a line, but siting only succeeds on ~a fifth of
- *  attempts (fat clear contours are scarce once track, water and massif have
- *  claimed their ground) — dealt boards land near one in six, a treat. */
-const RAILWAY_CHANCE = 0.75
+/** Under a third of boards even survey for a line, and siting succeeds on
+ *  only ~a quarter of attempts (fat clear contours are scarce once track,
+ *  water and massif have claimed their ground) — a dealt railway is a
+ *  once-in-a-dozen-boards event, special on purpose. */
+const RAILWAY_CHANCE = 0.3
 /** The grade band a line may be built in (fractions of MAX_ELEVATION). */
 const GRADE_MIN = MAX_ELEVATION * 0.32
 const GRADE_MAX = MAX_ELEVATION * 0.66
@@ -94,7 +95,13 @@ export const pickRailwayLoop = (
     }
     if (pond && Math.hypot(pond.center.x - x, pond.center.z - z) < pond.basinRadius + 3)
       return false
-    if (summit && Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing)
+    // ×1.05 matches the summit site's own clearance convention — shoulder
+    // peaks are sized against exactly that reach, so the line can never ride
+    // up a shoulder's foot.
+    if (
+      summit &&
+      Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing * 1.05
+    )
       return false
     if (river) {
       const gap = river.width + 2.5

@@ -226,8 +226,10 @@ export const buildFlora = (
       return false
     if (river && waterDistanceAt(x, z) < 1.2) return false
     if (railway) {
+      // 2.6 covers the worst case: a spot midway between two ~2.5-apart loop
+      // samples, a max-scale canopy (1.6), and the sleeper tips (0.5).
       for (const point of railway) {
-        if (Math.hypot(point.x - x, point.z - z) < 2.2) return false
+        if (Math.hypot(point.x - x, point.z - z) < 2.6) return false
       }
     }
     return true
