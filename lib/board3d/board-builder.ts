@@ -36,7 +36,7 @@ import { createNumberAtlas } from './atlas'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
-import { createTilePath, type TileTransform } from './path'
+import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
 import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
 import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
 
@@ -44,6 +44,7 @@ export interface BoardBuild {
   group: Group
   transforms: TileTransform[]
   spacing: number
+  archetype: TrackArchetype
   contourMaterial: ContourMaterial
   dispose(): void
 }
@@ -80,8 +81,10 @@ export const getBoardBuild = (
 // horizon so the world melts into the cream background.
 const TERRAIN_OVERHANG = 2.6
 
-/** Tile-disc proportions. */
-export const TILE_RADIUS_RATIO = 0.42
+/** Tile-disc proportions. The radius ratio lives in path.ts (the clearance
+ *  guard is defined in disc terms and path.ts must not import this module) —
+ *  re-exported here for the marker/test callers that always read it here. */
+export { TILE_RADIUS_RATIO }
 export const TILE_RIM_HEIGHT = 0.55
 export const TILE_TOP_INSET = 0.09
 
@@ -297,7 +300,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     })
   }
 
-  return { group, transforms, spacing, contourMaterial, dispose }
+  return { group, transforms, spacing, archetype: tilePath.archetype, contourMaterial, dispose }
 }
 
 export interface MarkerPart {

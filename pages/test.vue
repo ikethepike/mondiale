@@ -63,7 +63,9 @@ const mockPlayer = (id: string, name: string, color: string, position: number): 
   walkSeq: 1,
 })
 
-const seed = ref('topo-harness')
+// `?seed=` forces a board — the track archetype, terrain and pond all derive
+// from it, so one URL pins one board for screenshots and comparisons.
+const seed = ref(String(useRoute().query.seed ?? 'topo-harness'))
 const length = ref<GameLength>('medium')
 
 const tiles = generateTiles(length.value, seed.value)

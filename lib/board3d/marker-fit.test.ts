@@ -9,7 +9,7 @@ import {
   TILE_RIM_HEIGHT,
   TILE_TOP_LIFT,
 } from './board-builder'
-import { createTilePath } from './path'
+import { createTilePath, type TrackArchetype } from './path'
 import { createHeightSampler, withEdgeFalloff } from './terrain'
 import { individualChallengeAccessors } from '~~/types/challenges/individual-challenge.type'
 import type { Tile } from '~~/types/game.types'
@@ -40,12 +40,17 @@ const GATE_TYPES: MarkerType[] = [...individualChallengeAccessors]
 const LENGTHS = [40, 52, 65, 90]
 const SEEDS = ['alpha', 'bravo', 'charlie', 'delta']
 
-const pathFor = (seed: string, count: number) => {
+const pathFor = (seed: string, count: number, archetype?: TrackArchetype) => {
   const tiles: Tile[] = Array.from({ length: count }, (_, position) => ({
     position,
     type: 'normal' as const,
   }))
-  return createTilePath(seed, tiles, withEdgeFalloff(createHeightSampler(seed)))
+  return createTilePath(
+    seed,
+    tiles,
+    withEdgeFalloff(createHeightSampler(seed)),
+    archetype ? { archetype } : undefined
+  )
 }
 
 const boxOf = (type: MarkerType, spacing: number) => {
@@ -59,9 +64,12 @@ const boxOf = (type: MarkerType, spacing: number) => {
 
 describe('the local chord, not the average spacing', () => {
   it('runs well under spacing through the turns that matter', () => {
+    // Serpentine-specific: its row turns are the tight spots this documents.
+    // (An unforced deal can draw a spiral, whose uniform gentle curvature
+    // keeps every chord near spacing — a different, valid geometry.)
     for (const seed of SEEDS) {
       for (const count of LENGTHS) {
-        const { chords, spacing } = pathFor(seed, count)
+        const { chords, spacing } = pathFor(seed, count, 'serpentine')
         const ratios = chords.slice(0, -1).map(chord => chord / spacing)
         // A straight, gently-climbing segment can match the average (the 3D
         // chord even tops it by a hair). The TURNS are the point: the tightest
@@ -208,6 +216,52 @@ describe('a hurdle sits in the gap it was measured for', () => {
 
   it('leaves a marker that already fits at full size', () => {
     expect(markerFitFactor(markerPartsFor('flag', 10, undefined, 5), 1000, 1000)).toBe(1)
+  })
+})
+
+describe('every archetype keeps the hurdle invariants', () => {
+  // The suites above pin the serpentine (the default deal). The other track
+  // shapes must hold the same three placement invariants: the foot lands in
+  // open ground, nothing sprawls past a neighbour, nothing shrinks to a speck.
+  const OTHER_ARCHETYPES: TrackArchetype[] = ['spiral', 'horseshoe', 'ridge']
+
+  it('holds the foot, sprawl and speck invariants on every shape', () => {
+    for (const archetype of OTHER_ARCHETYPES) {
+      for (const seed of ['alpha', 'bravo']) {
+        for (const count of [40, 65, 90]) {
+          const { chords, transforms, spacing } = pathFor(seed, count, archetype)
+          const tileRadius = spacing * TILE_RADIUS_RATIO
+          const measured = GATE_TYPES.map(type => {
+            const box = boxOf(type, spacing)
+            return {
+              type,
+              parts: markerPartsFor(type, spacing, undefined, 5),
+              depth: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
+            }
+          })
+
+          for (let index = 1; index < count - 1; index++) {
+            const gap = markerGapFor(index, chords, tileRadius)
+            const { position, tangent } = transforms[index]
+            const anchor = position.clone().addScaledVector(tangent, tileRadius + gap / 2)
+            const label = `${archetype}/${seed}/${count} at ${index}`
+
+            const toOwnEdge = anchor.distanceTo(position) - tileRadius
+            const toNextEdge = anchor.distanceTo(transforms[index + 1].position) - tileRadius
+            expect(toOwnEdge, `${label} foot inside its own disc`).toBeGreaterThanOrEqual(-1e-6)
+            expect(toNextEdge, `${label} foot inside the next disc`).toBeGreaterThan(0)
+
+            for (const { type, parts, depth } of measured) {
+              const fit = markerFitFactor(parts, tileRadius, gap)
+              expect(depth * fit, `${label} ${type} sprawls`).toBeLessThanOrEqual(
+                gap / 2 + tileRadius + 1e-6
+              )
+              expect(fit, `${label} ${type} is a speck`).toBeGreaterThan(0.5)
+            }
+          }
+        }
+      }
+    }
   })
 })
 
