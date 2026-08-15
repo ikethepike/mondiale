@@ -219,6 +219,22 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     if (status.value) return
     if (currentMove.value?.challenge?._type === 'final-challenge') return
 
+    /**
+     * The verdict is about the gate ON SCREEN — the latched challenge — never
+     * the live head move.
+     *
+     * `currentMove` can go out from under a mounted gate: a forfeit empties
+     * `moves` (the gate cap's shape, a stale answer's), and a resync can land
+     * mid-question. Grading off it meant this function returned BEFORE the
+     * status flip, so the clock's own expiry (`giveUp`) and every typed guess
+     * became silent no-ops — the gate sat there reading 0, still accepting
+     * input, with nothing left to end it but the server's 90-second cap.
+     * The latched gate is also what the view is rendering, so it is the only
+     * thing the painted verdict can honestly be about.
+     */
+    const active = challenge.value
+    if (!active) return
+
     submittedISOCode.value = isoCode
     gameStore.map.highlighted.clear()
     void deliver({
@@ -226,11 +242,11 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
       isoCode,
       remainingFraction: options.remainingFraction,
       hintsUsed: options.hintsUsed,
-      gateTile: currentMove.value?.endTile.position,
+      // The latched gate's tile, not the head move's: they agree in the
+      // ordinary case, and where they don't the server SHOULD reject this
+      // answer on the echo check rather than judge it against another gate.
+      gateTile: latchedTile,
     })
-
-    const active = currentMove.value?.challenge
-    if (active?._type !== 'individual-challenge') return
 
     const correct = isCorrectIndividualAnswer(active, isoCode)
     if (options.reveal !== false) {
@@ -257,8 +273,11 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    * verified today, so this is the belt to that braces.
    */
   const giveUp = (hintsUsed?: number) => {
-    const active = currentMove.value?.challenge
-    if (active?._type !== 'individual-challenge') return
+    // The latched gate, for the same reason `submitAnswer` grades off it: a
+    // clock that expires against a vanished head move used to end the beat
+    // NOWHERE, which is the one thing a give-up path must never do.
+    const active = challenge.value
+    if (!active) return
     // Flagged BEFORE the submit: the verdict renders off the same tick, and a
     // filler token read back as a press is the bug this exists to stop.
     timedOut.value = true
@@ -379,12 +398,17 @@ export const useGateClock = (
 
   let timer: ReturnType<typeof setInterval> | undefined
   let disposed = false
+  /** Terminal: every `stop` call site is an answer or an expiry, so a clock
+   *  that has stopped must never re-arm — that is what lets the start watch
+   *  below keep retrying without ever running a spent gate's clock twice. */
+  let spent = false
   const stop = () => {
+    spent = true
     if (timer) clearInterval(timer)
     timer = undefined
   }
   const start = () => {
-    if (timer || disposed || status.value) return
+    if (timer || disposed || spent || status.value) return
     timer = setInterval(() => {
       secondsLeft.value--
       options.onTick?.(secondsLeft.value)
@@ -399,7 +423,18 @@ export const useGateClock = (
   })
 
   if (!options.manualStart) {
-    watch(showInterstitial, briefing => !briefing && start(), { immediate: true })
+    // Both signals, not just the briefing's close. `start` refuses while a
+    // verdict is still sitting on the store, and a watch that only ever fired
+    // on the briefing would then arm nothing at all — a timed gate with no
+    // clock has no expiry, and no expiry is a gate with no exit but the
+    // server's 90-second cap. The `spent` latch keeps the retry harmless.
+    watch(
+      [showInterstitial, status],
+      ([briefing, verdict]) => {
+        if (!briefing && !verdict) start()
+      },
+      { immediate: true }
+    )
   }
 
   return { secondsLeft, remainingFraction, elapsedFraction, start, stop }

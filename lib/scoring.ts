@@ -53,6 +53,12 @@ const GATE_POTS: Partial<Record<IndividualChallengeVariant, number>> = {
   rosetta: 4,
   atlas: 4,
   chronicle: 4,
+  // Scriptorium stakes deepest, for two reasons. Its ladder is THREE rungs,
+  // and at pot 4 rungs two and three both stake nothing — the graded ladder
+  // collapses back into the one-surrender shape the deep pots exist to undo.
+  // And it is the hardest typed gate in the set: no option table at any
+  // difficulty, and a script most players cannot read at all.
+  scriptorium: 5,
 }
 
 /** The full-pot leap for a gate variant. Both ends of the wire read the pot
@@ -93,10 +99,18 @@ export const gateLeapSteps = (
 /** Each bought point-mode hint bites this fraction of the pot. */
 export const HINT_BITE_FRACTION = 0.2
 
-/** Buyable hints unlock in waves: the opener a third of the clock in, the
- *  last resort at two thirds. */
+/**
+ * Buyable hints unlock in waves: the opener a third of the clock in, the
+ * second at two thirds, and — for a ladder long enough to need it — a last
+ * resort at four fifths.
+ *
+ * The last wave is deliberately NOT nine tenths. A rung that opens with two
+ * seconds left is decoration: the player still has to read it and type an
+ * answer, and a hint they cannot spend is the same dead end as no hint at all.
+ */
 export const HINT_UNLOCK_FIRST_ELAPSED = 1 / 3
 export const HINT_UNLOCK_SECOND_ELAPSED = 2 / 3
+export const HINT_UNLOCK_LAST_ELAPSED = 4 / 5
 
 /** The flat slice one bought hint takes off the pot. */
 export const hintBitePoints = (maximumPoints: number): number =>
