@@ -73,10 +73,19 @@
   // The cap keeps the promise the other way round — a genuinely tall footer
   // (an option grid, a photo dock) scrolls inside itself rather than eating
   // the whole column. 60% matches useFooterBerth's reservation ceiling.
+  //
+  // It bounds CONTENT, so the clearance band is excused from it. A footer is
+  // flush with the shell's bottom edge and lays its content out from its own
+  // top, so capping the box walks that content DOWNWARD by whatever it clipped
+  // — and the band it would clip first is the padding holding the console
+  // clear of the software keyboard. Charged against a flat 60%, a typed footer
+  // with the keyboard up (~260px of inset on a 667px phone) would have been
+  // capped into pushing the very input being typed into under the keyboard,
+  // with `overflow: visible` below leaving no way to scroll it back.
   > footer,
   .shell-footer {
     flex: none;
-    max-height: 60%;
+    max-height: calc(60% + var(--bottom-clearance));
     overflow-y: auto;
   }
 
