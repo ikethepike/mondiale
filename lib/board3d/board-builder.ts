@@ -25,7 +25,6 @@ import {
   RedFormat,
   RingGeometry,
   Shape,
-  ShapeGeometry,
   SphereGeometry,
   TorusGeometry,
   TubeGeometry,
@@ -47,7 +46,13 @@ import { type BoardBiome, pickBoardBiome } from './biomes'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
 import { LEDGE_SLAB_INSET, pickSummitSite, type SummitSite, withSummitMassif } from './summit'
-import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
+import {
+  BOARD_SIZE,
+  createHeightSampler,
+  type HeightSampler,
+  withEdgeFalloff,
+  withPathShelf,
+} from './terrain'
 import { buildPondMeshes, createWaterMaterial, pickPondSite, withPondBasin } from './water'
 import { buildFlora } from './flora'
 
@@ -444,7 +449,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // sits exactly on the rendered ground.
   const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler, riverPath)
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
-  if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing))
+  if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing, sampler))
 
   // The living layer: blade grass, biome props, gull flocks — all wind-swayed
   // in the vertex shader, all clear of the track, stilled by reduced motion.
@@ -1237,6 +1242,28 @@ const buildRiverMeshes = (
     meshes.push(new Mesh(falls, water))
   }
 
+  // The terminal pool: rivers end where the water stops dropping, and the
+  // mouth spreads into a foam-edged pool — a depth grid like the pond's,
+  // whose shoreline emerges wherever depth crosses zero.
+  const mouth = river.points[river.points.length - 1]
+  const POOL_REACH = river.width * 2.2
+  const pool = new PlaneGeometry(POOL_REACH * 2, POOL_REACH * 2, 18, 18)
+  pool.rotateX(-Math.PI / 2)
+  pool.translate(mouth.x, mouth.y, mouth.z)
+  const poolPositions = pool.attributes.position
+  const poolDepths = new Float32Array(poolPositions.count)
+  for (let index = 0; index < poolPositions.count; index++) {
+    const px = poolPositions.getX(index)
+    const pz = poolPositions.getZ(index)
+    // The pool basin: a shallow scoop blended off the mouth, carved into the
+    // DEPTH FIELD only (visual water over the existing ground carve).
+    const reach = Math.hypot(px - mouth.x, pz - mouth.z)
+    const scoop = Math.max(0, 1 - reach / POOL_REACH)
+    poolDepths[index] = Math.max(mouth.y - sampler(px, pz), 0) + scoop * 0.12 - 0.02
+  }
+  pool.setAttribute('aDepth', new BufferAttribute(poolDepths, 1))
+  meshes.push(new Mesh(pool, water))
+
   return meshes
 }
 
@@ -1273,33 +1300,52 @@ const buildHillCairn = (site: Vector3, spacing: number): Mesh[] => {
   return bucketsToMeshes(colorBuckets, outlines)
 }
 
-/** A flat compass-rose ink decal on quiet ground — pure cartography. North
- *  points at the top of the default seat (−z). Lifted a hair over the ground
- *  undulation; placed only on near-flat terrain so the lift stays invisible. */
-const buildCompassRose = (site: Vector3, spacing: number): Mesh => {
+/** A compass-rose ink decal DRAPED onto the ground — every vertex sits on
+ *  the sampled terrain plus a small lift, and the blades are segmented so no
+ *  triangle bridges a rise (a flat decal on only-mostly-flat ground clipped
+ *  into every swell it crossed). North points at the default seat's top. */
+const buildCompassRose = (site: Vector3, spacing: number, sampler: HeightSampler): Mesh => {
   const s = spacing * 0.62
   const geometries: BufferGeometry[] = []
 
-  geometries.push(new RingGeometry(0.82 * s, 0.9 * s, 40))
-  geometries.push(new RingGeometry(0.36 * s, 0.4 * s, 32))
+  geometries.push(new RingGeometry(0.82 * s, 0.9 * s, 64))
+  geometries.push(new RingGeometry(0.36 * s, 0.4 * s, 48))
 
+  // Segmented blades: a tapering strip of quads per point, so the drape can
+  // follow the ground along the blade's whole length.
   for (let index = 0; index < 8; index++) {
     const cardinal = index % 2 === 0
     const length = (cardinal ? 0.8 : 0.52) * s
     const width = (cardinal ? 0.11 : 0.07) * s
-    const point = new Shape()
-    point.moveTo(0, length)
-    point.lineTo(width, 0.12 * s)
-    point.lineTo(-width, 0.12 * s)
-    const blade = new ShapeGeometry(point)
+    const SEGMENTS = 5
+    const vertices: number[] = []
+    const indices: number[] = []
+    for (let step = 0; step <= SEGMENTS; step++) {
+      const t = step / SEGMENTS
+      const y = 0.12 * s + (length - 0.12 * s) * t
+      const w = width * (1 - t)
+      vertices.push(-w, y, 0, w, y, 0)
+      if (step > 0) {
+        const row = (step - 1) * 2
+        indices.push(row, row + 1, row + 2, row + 1, row + 3, row + 2)
+      }
+    }
+    const blade = new BufferGeometry()
+    blade.setIndex(indices)
+    blade.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
     blade.rotateZ((index * Math.PI) / 4)
     geometries.push(blade)
   }
 
-  const merged = mergeGeometries(geometries)
+  const merged = mergeGeometries(geometries.map(geometry => geometry.toNonIndexed()))
   geometries.forEach(geometry => geometry.dispose())
   merged.rotateX(-Math.PI / 2)
-  merged.translate(site.x, site.y + 0.32, site.z)
+  merged.translate(site.x, 0, site.z)
+  const positions = merged.attributes.position
+  for (let index = 0; index < positions.count; index++) {
+    positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + 0.16)
+  }
+  positions.needsUpdate = true
   return new Mesh(
     merged,
     new MeshBasicMaterial({

@@ -87,6 +87,7 @@ export const pickRiverPath = (
     const position = new Vector3(spring.x, 0, spring.z)
     const momentum = new Vector3()
 
+    const recentLevels: number[] = []
     for (let step = 0; step < MARCH_LIMIT; step++) {
       // Downhill gradient with momentum and a seeded meander wobble.
       const gradientX =
@@ -103,7 +104,15 @@ export const pickRiverPath = (
       position.z += Math.cos(heading) * MARCH_STEP
 
       if (!isOpen(position.x, position.z)) break
-      march.push(new Vector3(position.x, sampler(position.x, position.z), position.z))
+      const y = sampler(position.x, position.z)
+      march.push(new Vector3(position.x, y, position.z))
+
+      // Stagnation cut: in a flat basin the march just meanders in circles
+      // and the ribbon overlaps itself into polygon salad — when the water
+      // has stopped dropping, the river has ARRIVED. It ends in a pool.
+      recentLevels.push(y)
+      if (recentLevels.length > 7) recentLevels.shift()
+      if (recentLevels.length === 7 && recentLevels[0] - y < 0.18) break
     }
 
     const length = (march.length - 1) * MARCH_STEP
