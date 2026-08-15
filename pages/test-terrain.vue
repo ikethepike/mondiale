@@ -131,7 +131,7 @@ const BIOMES: Record<string, Biome> = {
     banding: 0.2,
     hachure: 0.32,
     stippleColor: '#a8c3b8',
-    stippleCount: 500,
+    stippleCount: 2000,
   },
   grassland: {
     valley: '#eef3e2',
@@ -157,7 +157,7 @@ const BIOMES: Record<string, Biome> = {
     banding: 0.16,
     hachure: 0.14,
     stippleColor: '#7fae6e',
-    stippleCount: 1500,
+    stippleCount: 4500,
   },
   desert: {
     valley: '#f7e9cf',
@@ -183,7 +183,7 @@ const BIOMES: Record<string, Biome> = {
     banding: 0.42,
     hachure: 0.28,
     stippleColor: '#9fc48b',
-    stippleCount: 240,
+    stippleCount: 480,
   },
   ice: {
     valley: '#f2f6f9',
@@ -209,7 +209,7 @@ const BIOMES: Record<string, Biome> = {
     banding: 0.28,
     hachure: 0.2,
     stippleColor: '#dcebf2',
-    stippleCount: 260,
+    stippleCount: 800,
   },
 }
 
@@ -568,7 +568,7 @@ const bladeMaterial = (root: Color, tip: Color, sway: number) =>
           sin(uTime * 1.3 + origin.x * 0.11 + origin.z * 0.07) +
           0.5 * sin(uTime * 2.1 + origin.x * 0.23 + aPhase) +
           0.3 * sin(uTime * 3.7 + aPhase * 2.0);
-        float bow = gust * uSway + 0.3 * sin(aPhase * 7.0);
+        float bow = gust * uSway + 0.12 * sin(aPhase * 7.0);
         p.x += bow * t * t;
         p.z += bow * 0.35 * t * t;
         vT = t;
@@ -1016,16 +1016,23 @@ const buildWorld = (name: string) => {
     const y = bedAt(x, z, height(x, z))
     if (y < LAKE.level + 0.2) continue
     const moisture = 1 - Math.min(1, waterDistanceAt(x, z) / 11)
-    if (prng() > 0.08 + Math.pow(moisture, 1.6) * 0.92) continue
+    // A field is a CARPET, not islands: high base coverage everywhere grass
+    // can grow, moisture only thickening it. The desert alone stays gated to
+    // its oasis.
+    const baseCoverage = name === 'desert' ? 0.05 : 0.45
+    if (prng() > baseCoverage + Math.pow(moisture, 1.3) * (1 - baseCoverage)) continue
     tuftSpots.push({ x, z, y })
   }
   if (tuftSpots.length) {
     // Each moist spot becomes a CLUMP of individual blades — patchy growth,
     // the way real meadows (and Elysium's) fill in.
-    const BLADES_PER_CLUMP = 9
+    const BLADES_PER_CLUMP = 6
     const bladeCount = tuftSpots.length * BLADES_PER_CLUMP
-    const root = new Color(preset.stippleColor).multiplyScalar(0.72)
-    const tip = new Color(preset.stippleColor).lerp(new Color(preset.lit), 0.45)
+    // Low contrast against the ground: the root sits near the lush terrain
+    // tone (blades EMERGE from the field), only the tips lift lighter. Dark
+    // wiry strokes on pale ground was the hair-on-skin read.
+    const root = new Color(preset.lush).lerp(new Color(preset.stippleColor), 0.5)
+    const tip = new Color(preset.stippleColor).lerp(new Color(preset.lit), 0.55)
     const blades = bladeMaterial(root, tip, prefersReducedMotion() ? 0 : 0.35)
     timeUniforms.push(blades.uniforms.uTime as { value: number })
     const bladeMesh = new InstancedMesh(bladeGeometry(), blades, bladeCount)
@@ -1036,15 +1043,16 @@ const buildWorld = (name: string) => {
     for (const spot of tuftSpots) {
       for (let sprout = 0; sprout < BLADES_PER_CLUMP; sprout++) {
         const angle = prng() * Math.PI * 2
-        const spread = Math.sqrt(prng()) * 1.1
+        const spread = Math.sqrt(prng()) * 1.9
         const x = spot.x + Math.sin(angle) * spread
         const z = spot.z + Math.cos(angle) * spread
         const y = bedAt(x, z, height(x, z))
         bladeQuaternion.setFromAxisAngle(up, prng() * Math.PI * 2)
+        // Short and broad-ish: turf, not wisps.
         matrix.compose(
-          new Vector3(x, y - 0.02, z),
+          new Vector3(x, y - 0.04, z),
           bladeQuaternion,
-          new Vector3(0.8 + prng() * 0.5, 0.45 + prng() * 0.75, 1)
+          new Vector3(1.0 + prng() * 0.5, 0.3 + prng() * 0.4, 1)
         )
         bladeMesh.setMatrixAt(blade, matrix)
         bladePhases[blade] = prng() * Math.PI * 2
