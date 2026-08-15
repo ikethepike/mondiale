@@ -1,28 +1,43 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import type { ISOCountryCode } from '../types/geography.types'
-import { LANDMARK_FACTS } from './data/landmark-facts'
-import { LANDMARK_SEEDS, type LandmarkKind } from './data/landmark-seeds'
-import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
-import {
-  captureImageCredit,
-  existingImagePath,
-  fetchImageDimensions,
-  fetchJson,
-  fetchPageImages,
-  resolveQidBySearch,
-  saveCommonsImage,
-  saveImageUrl,
-  wait,
-} from './vendors/wikidata/commons'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { pickMediaCredit, type MediaCredit } from '../lib/attribution'
+import type { LandmarkEntry, LandmarkMapping } from '../types/places.types'
+import { LANDMARK_FACTS } from './data/landmark-facts'
+import { LANDMARK_SEEDS } from './data/landmark-seeds'
+import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
+import { resolveQidBySearch, saveImageUrl } from './vendors/wikidata/commons'
 import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/unsplash/unsplash'
+import {
+  assignFameByCountry,
+  carryPreviousPlaces,
+  claimValue,
+  coordinatesOf,
+  entityId,
+  fetchCountryQidMap,
+  fetchJson,
+  fetchLabels,
+  fetchPageImages,
+  placeHasPhoto,
+  placeSitsInCountry,
+  PLACE_PHOTO_WIDTH,
+  savePlacePhoto,
+  slugify,
+  wait,
+  writePlacesFile,
+  type EntityResponse,
+} from './vendors/wikidata/places'
 
 /**
  * Pulls a photo for each curated world landmark (generators/data/landmark-seeds)
  * from Wikimedia Commons, for the Landmark Quiz "which country is this landmark
- * in?" gate. Each seed's Wikidata Q-id is resolved by name, disambiguated by
- * P17 (country) against the seed's ISO so we never grab a same-named item in
- * the wrong country. The P18-derived Commons image is then downloaded.
+ * in?" gate and the pin-the-landmark round. Each seed's Wikidata Q-id is
+ * resolved by name, disambiguated by P17 (country) against the seed's ISO so we
+ * never grab a same-named item in the wrong country. The P18-derived Commons
+ * image is then downloaded through the shared place pipeline in
+ * vendors/wikidata/places.ts, which the heritage sweep rides too.
+ *
+ * The seed file lists each country's icon first; that deliberate ordering is
+ * stamped onto every entry as an explicit `fame` tier, so the difficulty gate
+ * no longer depends on array order surviving every merge.
  *
  * Photos live one per landmark under public/landmarks/. Merges with the
  * previous run so a transient failure never erases a captured landmark.
@@ -31,43 +46,7 @@ import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/
  */
 
 const OUTPUT_DIRECTORY = 'public/landmarks'
-/** Landmarks render in ZoomableImage (MAX_SCALE 5), so they need real pixels.
- *  A source smaller than this is used as-is, never upscaled. */
-const LANDMARK_WIDTH = 2000
-
-/** Where a landmark actually is, in degrees (Wikidata P625). */
-export interface LandmarkCoordinates {
-  lat: number
-  lng: number
-}
-
-export interface LandmarkEntry extends MediaCredit {
-  name: string
-  country: ISOCountryCode
-  kind: LandmarkKind
-  image: string
-  /** City / region the landmark is in (from Wikidata P131) — a hard-mode
-   *  follow-up or an educational reveal after the answer. */
-  city?: string
-  /** Point location (P625), validated to fall in `country`. Powers the
-   *  pin-the-landmark round: the distance between a map click and this. */
-  coordinates?: LandmarkCoordinates
-  /** A line or two for the reveal, from generators/data/landmark-facts. */
-  description?: string
-}
-
-/** Reject images whose SOURCE is smaller than this — they look bad upscaled. */
-const MIN_IMAGE_WIDTH = 900
-/** Keyed by a slug of the landmark name. */
-export type LandmarkMapping = { [slug: string]: LandmarkEntry }
-
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+const PUBLIC_BASE = '/landmarks'
 
 const force = process.argv.includes('--force')
 
@@ -78,74 +57,18 @@ try {
   // First run — nothing to merge
 }
 
-/** Wikidata's `globecoordinate` datavalue (P625). */
-interface GlobeCoordinate {
-  latitude: number
-  longitude: number
-  precision?: number
-}
-
-interface Statement {
-  rank: 'preferred' | 'normal' | 'deprecated'
-  mainsnak?: { datavalue?: { value?: string | { id?: string } | GlobeCoordinate } }
-}
-interface EntityResponse {
-  entities?: { [id: string]: { claims?: { [property: string]: Statement[] } } }
-}
-
-type StatementValue = string | { id?: string } | GlobeCoordinate | undefined
-
-const isGlobeCoordinate = (value: StatementValue): value is GlobeCoordinate =>
-  typeof value === 'object' && value !== null && 'latitude' in value
-
-/** An `wikibase-entityid` datavalue — a reference to another Q-item. */
-const entityId = (value: StatementValue): string | undefined =>
-  typeof value === 'object' && value !== null && 'id' in value ? value.id : undefined
-
-const isoValue = (claims?: { [property: string]: Statement[] }): string | undefined => {
-  const value = claims?.P297?.find(statement => statement.rank !== 'deprecated')?.mainsnak
-    ?.datavalue?.value
-  return typeof value === 'string' ? value : undefined
-}
-
 // --- 1. Build an ISO → country Q-id map (for P17 disambiguation) -------------
-interface SearchResponse {
-  query?: { search?: { title: string }[] }
-  continue?: { sroffset: number }
-}
 console.log('Mapping ISO codes to country Q-ids…')
-const countryEntityIds: string[] = []
-let offset: number | undefined = 0
-while (offset !== undefined) {
-  const page: SearchResponse | undefined = await fetchJson<SearchResponse>(
-    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      'haswbstatement:P297'
-    )}&srnamespace=0&srlimit=50&sroffset=${offset}&format=json`
-  )
-  countryEntityIds.push(...(page?.query?.search ?? []).map(hit => hit.title))
-  offset = page?.continue?.sroffset
-  await wait(200)
-}
-
-const isoToQid = new Map<ISOCountryCode, string>()
-for (let index = 0; index < countryEntityIds.length; index += 20) {
-  const batch = countryEntityIds.slice(index, index + 20)
-  const data = await fetchJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json`
-  )
-  for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
-    const iso = isoValue(entity.claims)
-    if (iso && !isoToQid.has(iso as ISOCountryCode)) isoToQid.set(iso as ISOCountryCode, qid)
-  }
-  await wait(200)
-}
+const { isoToQid } = await fetchCountryQidMap()
 console.log(`  ${isoToQid.size} countries mapped`)
 
 // --- 2. Resolve each landmark's Q-id (country-disambiguated) ----------------
 console.log(`Resolving ${LANDMARK_SEEDS.length} landmark Q-ids…`)
+const seedHasImageOverride = (seed: (typeof LANDMARK_SEEDS)[number]) =>
+  !!(seed.imageUrl || seed.unsplashPhotoId || seed.unsplash || seed.commons)
+
 const resolved: { seed: (typeof LANDMARK_SEEDS)[number]; qid: string }[] = []
 for (const seed of LANDMARK_SEEDS) {
-  const hasOverride = !!(seed.imageUrl || seed.unsplashPhotoId || seed.unsplash || seed.commons)
   // A pinned qid is the answer; searching for it could only get it wrong.
   const qid =
     seed.qid ??
@@ -156,7 +79,7 @@ for (const seed of LANDMARK_SEEDS) {
   // overridden seed still belongs in the run even when its name doesn't
   // resolve — it just loses the `city` field.
   if (qid) resolved.push({ seed, qid })
-  else if (hasOverride) resolved.push({ seed, qid: '' })
+  else if (seedHasImageOverride(seed)) resolved.push({ seed, qid: '' })
   else console.warn(`  no Q-id for "${seed.name}" (${seed.country})`)
   await wait(150)
 }
@@ -165,7 +88,7 @@ for (const seed of LANDMARK_SEEDS) {
 console.log('Reading landmark locations (P131) and coordinates (P625)…')
 const locationQidOf = new Map<string, string>() // landmark qid → location qid
 const locationLabelQids = new Set<string>()
-const coordinateOf = new Map<string, LandmarkCoordinates>()
+const coordinateOf = new Map<string, { lat: number; lng: number }>()
 // Overridden seeds may carry an empty qid — never send those to the API.
 const landmarkQids = resolved.map(entry => entry.qid).filter(Boolean)
 for (let index = 0; index < landmarkQids.length; index += 30) {
@@ -174,60 +97,22 @@ for (let index = 0; index < landmarkQids.length; index += 30) {
     `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json`
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
-    const value = entity.claims?.P131?.find(
-      statement =>
-        statement.rank !== 'deprecated' && typeof statement.mainsnak?.datavalue?.value === 'object'
-    )?.mainsnak?.datavalue?.value
-    const locationQid = entityId(value)
+    const locationQid = entityId(claimValue(entity.claims, 'P131'))
     if (locationQid) {
       locationQidOf.set(qid, locationQid)
       locationLabelQids.add(locationQid)
     }
 
     // P625 rides along in this same response — free.
-    const point = entity.claims?.P625?.find(statement => statement.rank !== 'deprecated')?.mainsnak
-      ?.datavalue?.value
-    if (isGlobeCoordinate(point)) {
-      coordinateOf.set(qid, { lat: point.latitude, lng: point.longitude })
-    }
+    const point = coordinatesOf(entity.claims)
+    if (point) coordinateOf.set(qid, point)
   }
   await wait(200)
 }
 
-interface LabelResponse {
-  entities?: { [id: string]: { labels?: { en?: { value: string } } } }
-}
-const locationLabels = new Map<string, string>()
-const locationQidList = [...locationLabelQids]
-for (let index = 0; index < locationQidList.length; index += 50) {
-  const batch = locationQidList.slice(index, index + 50)
-  const data = await fetchJson<LabelResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels&languages=en&languagefallback=1&format=json`
-  )
-  for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
-    if (entity.labels?.en?.value) locationLabels.set(qid, entity.labels.en.value)
-  }
-  await wait(200)
-}
+const locationLabels = await fetchLabels([...locationLabelQids])
 
 // --- 4. Validate coordinates against the seed's country ----------------------
-/**
- * How far outside its country a landmark's point may sit before we disown it.
- *
- * `resolveQidBySearch` falls back to the first search hit when nothing matches
- * the seed's country (P17), so a name that doesn't exist on Wikidata resolves
- * to something else entirely — "Persepolis" lands on Persepolis F.C., the
- * football club. Coordinates catch that: the wrong entity is almost always in
- * the wrong hemisphere.
- *
- * The threshold is set from the real distribution. Genuine landmarks sit at
- * most ~36km outside their country's 10m polygon (islands, coastlines, and
- * points like the Statue of Liberty or Everest on a shared border). The
- * confirmed wrong-entity hits were 4,300km and 13,600km out. Nothing real
- * falls between, so 100km is a wide, unambiguous line.
- */
-const MAX_KM_OUTSIDE_COUNTRY = 100
-
 console.log('Validating coordinates against country polygons…')
 const shapes = await loadCountryShapes()
 let misplaced = 0
@@ -235,11 +120,9 @@ let misplaced = 0
 for (const entry of resolved) {
   const { seed, qid } = entry
   const point = coordinateOf.get(qid)
-  if (!point || !shapes.has(seed.country)) continue
-  if (shapes.contains(seed.country, point.lat, point.lng)) continue
-
-  const km = shapes.distanceToBorderKm(seed.country, point.lat, point.lng)
-  if (km <= MAX_KM_OUTSIDE_COUNTRY) continue
+  if (!point) continue
+  const verdict = placeSitsInCountry(shapes, seed.country, point)
+  if (verdict.inside) continue
 
   // Too far out to be coastline slop: resolveQidBySearch matched the wrong
   // item. That Q-id also supplies the photo and the city, so disown it whole
@@ -247,7 +130,7 @@ for (const entry of resolved) {
   // Blanking the qid leaves the seed alive only if it has an image override —
   // otherwise it's dropped, which is the right outcome for a bad match.
   console.warn(
-    `  ✗ "${seed.name}" (${seed.country}) sits ${Math.round(km)}km outside its country — wrong Wikidata item (${qid})`
+    `  ✗ "${seed.name}" (${seed.country}) sits ${Math.round(verdict.kmOutside)}km outside its country — wrong Wikidata item (${qid})`
   )
   coordinateOf.delete(qid)
   locationQidOf.delete(qid)
@@ -258,8 +141,7 @@ for (const entry of resolved) {
   // (Ecuador was shipping Shibam, Yemen). Existing files short-circuit the
   // download, so it would survive forever — delete it. A seed with an explicit
   // override owns its image and is left alone.
-  const overridden = !!(seed.imageUrl || seed.unsplashPhotoId || seed.unsplash || seed.commons)
-  if (overridden) continue
+  if (seedHasImageOverride(seed)) continue
   const stalePath = `${OUTPUT_DIRECTORY}/${slugify(seed.name)}.webp`
   if (existsSync(stalePath)) {
     rmSync(stalePath, { force: true })
@@ -271,8 +153,13 @@ console.log(`  ${coordinateOf.size} coordinates kept, ${misplaced} wrong-item ma
 // --- 5. Photos (viability-checked) + assemble --------------------------------
 // Recomputed: the validation pass above blanks the qid of any wrong-item match,
 // so those must not have a photo fetched for them.
-const photoQids = resolved.map(entry => entry.qid).filter(Boolean)
-const photoFiles = await fetchPageImages(photoQids)
+const photoFiles = await fetchPageImages(resolved.map(entry => entry.qid).filter(Boolean))
+
+// The seed file lists each country's icon first, and that order is the fame
+// signal — stamped here so nothing downstream has to preserve array order.
+const famed = assignFameByCountry(
+  resolved.map(({ seed, qid }) => ({ ...seed, qid, country: seed.country }))
+)
 
 mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
 const mapping: LandmarkMapping = {}
@@ -280,16 +167,13 @@ let done = 0
 let failed = 0
 let rejected = 0
 
-for (const { seed, qid } of resolved) {
+for (const seed of famed) {
+  const { qid } = seed
   const slug = slugify(seed.name)
   let publicPath: string | undefined
   // Landmarks are the one dataset that mixes photo sources, so each entry
   // records which one its file came from alongside the photographer.
   let media: MediaCredit | undefined
-  // The Commons file behind the shipped photo, when Commons is what won.
-  let commonsFile: string | undefined
-  // Set once we know which source the shipped file came from.
-  let credited = false
 
   // 1) Override: direct URL → Unsplash (preferred, when keyed) → explicit
   //    Commons filename. Overrides bypass the viability pass — they were
@@ -299,99 +183,82 @@ for (const { seed, qid } of resolved) {
     publicPath = await saveImageUrl(
       seed.imageUrl,
       `${OUTPUT_DIRECTORY}/${slug}`,
-      `/landmarks/${slug}`,
-      { width: LANDMARK_WIDTH, force }
+      `${PUBLIC_BASE}/${slug}`,
+      {
+        width: PLACE_PHOTO_WIDTH,
+        force,
+      }
     )
     // A hand-pinned URL names no author; keep whatever a past run captured
     // rather than crediting it to the Wikidata photo it replaced.
-    if (publicPath) {
-      credited = true
-      media = pickMediaCredit(previousMapping[slug])
-    }
+    if (publicPath) media = pickMediaCredit(previousMapping[slug])
   }
   if (!publicPath && seed.unsplashPhotoId && hasUnsplashKey()) {
     const photo = await saveUnsplashPhoto(
       seed.unsplashPhotoId,
       `${OUTPUT_DIRECTORY}/${slug}`,
-      `/landmarks/${slug}`,
-      LANDMARK_WIDTH,
+      `${PUBLIC_BASE}/${slug}`,
+      PLACE_PHOTO_WIDTH,
       force
     )
     if (photo) {
       const { image, ...credit } = photo
       publicPath = image
       media = credit
-      credited = true
     }
   }
   if (!publicPath && seed.unsplash && hasUnsplashKey()) {
     const photo = await saveUnsplashImage(
       seed.unsplash,
       `${OUTPUT_DIRECTORY}/${slug}`,
-      `/landmarks/${slug}`,
-      LANDMARK_WIDTH,
+      `${PUBLIC_BASE}/${slug}`,
+      PLACE_PHOTO_WIDTH,
       force
     )
     if (photo) {
       const { image, ...credit } = photo
       publicPath = image
       media = credit
-      credited = true
     }
   }
   if (!publicPath && seed.commons) {
-    publicPath = await saveCommonsImage(
-      seed.commons,
-      `${OUTPUT_DIRECTORY}/${slug}`,
-      `/landmarks/${slug}`,
-      { width: LANDMARK_WIDTH, force }
-    )
-    if (publicPath) {
-      commonsFile = seed.commons
-      credited = true
+    const photo = await savePlacePhoto({
+      file: seed.commons,
+      slug,
+      directory: OUTPUT_DIRECTORY,
+      publicBase: PUBLIC_BASE,
+      previous: previousMapping[slug],
+      force,
+    })
+    if (placeHasPhoto(photo)) {
+      publicPath = photo.image
+      media = photo.media
     }
   }
 
   // 2) Otherwise the Wikidata default photo, viability-checked.
   if (!publicPath) {
-    // Already on disk? Then skip the width lookup — it costs a Commons API call
-    // per landmark and only gates a download we're not going to make.
-    publicPath = force
-      ? undefined
-      : existingImagePath(`${OUTPUT_DIRECTORY}/${slug}`, `/landmarks/${slug}`)
-  }
-  if (!publicPath || !credited) {
-    const file = photoFiles.get(qid)
-    if (!file) {
-      if (!publicPath) {
-        console.warn(`  no photo for "${seed.name}"`)
-        failed++
-        continue
-      }
-      media = pickMediaCredit(previousMapping[slug])
-    } else if (publicPath) {
-      // The Wikidata photo is already on disk from an earlier run: no download,
-      // but the file is known, so it can still be credited.
-      commonsFile = file
-    } else {
-      // Reject a low-resolution source — it looks bad upscaled in a photo quiz.
-      const dimensions = await fetchImageDimensions(file)
-      if (dimensions && dimensions.width < MIN_IMAGE_WIDTH) {
-        console.warn(`  rejected "${seed.name}" — source only ${dimensions.width}px wide`)
-        rejected++
-        await wait(120)
-        continue
-      }
-      publicPath = await saveCommonsImage(
-        file,
-        `${OUTPUT_DIRECTORY}/${slug}`,
-        `/landmarks/${slug}`,
-        { width: LANDMARK_WIDTH, force }
-      )
-      if (publicPath) commonsFile = file
+    const photo = await savePlacePhoto({
+      file: photoFiles.get(qid),
+      slug,
+      directory: OUTPUT_DIRECTORY,
+      publicBase: PUBLIC_BASE,
+      previous: previousMapping[slug],
+      force,
+    })
+    if (photo.status === 'rejected') {
+      console.warn(`  rejected "${seed.name}" — source below the width floor`)
+      rejected++
+      continue
     }
+    if (!placeHasPhoto(photo)) {
+      console.warn(`  no photo for "${seed.name}"`)
+      failed++
+      continue
+    }
+    publicPath = photo.image
+    media = photo.media
   }
-
   if (!publicPath) {
     failed++
     continue
@@ -401,16 +268,13 @@ for (const { seed, qid } of resolved) {
   const city = locationQid ? locationLabels.get(locationQid) : undefined
   const coordinates = coordinateOf.get(qid)
   const description = LANDMARK_FACTS[slug]
-  if (commonsFile) {
-    const credit = await captureImageCredit(commonsFile, previousMapping[slug], force)
-    media = pickMediaCredit({ ...credit, imageSource: 'commons-media' })
-  }
 
   mapping[slug] = {
     name: seed.name,
     country: seed.country,
     kind: seed.kind,
     image: publicPath,
+    fame: seed.fame,
     ...(media ?? {}),
     ...(city ? { city } : {}),
     ...(coordinates ? { coordinates } : {}),
@@ -422,26 +286,17 @@ for (const { seed, qid } of resolved) {
 }
 console.log(`\nPhotos: ${done} saved, ${rejected} rejected (low-res), ${failed} failed`)
 
-// Merge with the previous run so a transient network failure doesn't erase a
-// captured landmark. Two guards: the slug must still be a seed (a renamed
-// landmark shouldn't linger), and its image must still be on disk — the
-// coordinate check above deletes the photo of a wrong-item match, and
-// resurrecting that entry would point the game at a file we just removed.
+// A resurrected entry must still be a seed — a renamed landmark shouldn't linger.
 const currentSlugs = new Set(LANDMARK_SEEDS.map(seed => slugify(seed.name)))
-for (const [slug, entry] of Object.entries(previousMapping)) {
-  if (mapping[slug] || !currentSlugs.has(slug)) continue
-  if (!existsSync(`public${entry.image}`)) {
-    console.warn(`  dropping "${entry.name}" — its image is gone`)
-    continue
-  }
-  mapping[slug] = entry
-}
+carryPreviousPlaces<LandmarkEntry>(mapping, previousMapping, {
+  stillInRoster: slug => currentSlugs.has(slug),
+})
 
-writeFileSync(
-  'data/landmarks.gen.ts',
-  `
-      import type { LandmarkMapping } from '../generators/create-landmarks-file'
-      export const LANDMARKS: LandmarkMapping = ${JSON.stringify(mapping)}
-    `
-)
-console.log(`Wrote data/landmarks.gen.ts (${Object.keys(mapping).length} landmarks)`)
+writePlacesFile({
+  path: 'data/landmarks.gen.ts',
+  generator: 'generators/create-landmarks-file.ts',
+  typeImport: '~~/types/places.types',
+  constant: 'LANDMARKS',
+  type: 'LandmarkMapping',
+  mapping,
+})

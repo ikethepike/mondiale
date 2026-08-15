@@ -5,7 +5,7 @@
       <strong class="name">{{ site.name }}</strong>
       <span class="place">
         {{ countryName(getCountry(site.country)) }}
-        <template v-if="site.kind"> · {{ KIND_LABELS[site.kind] }}</template>
+        <template v-if="site.designation"> · {{ DESIGNATION_LABELS[site.designation] }}</template>
         <template v-if="site.inscribedYear">
           · World Heritage since {{ site.inscribedYear }}</template
         >
@@ -25,14 +25,14 @@
 <script lang="ts" setup>
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
-import type { HeritageEntry } from '~~/generators/create-heritage-file'
+import type { HeritageEntry } from '~~/types/places.types'
 import { countryName, getCountry } from '~~/lib/country'
 
 defineProps<{ site: HeritageEntry }>()
 
 const sources = datasetAttribution('heritage')
 
-const KIND_LABELS: { [kind in NonNullable<HeritageEntry['kind']>]: string } = {
+const DESIGNATION_LABELS: { [key in NonNullable<HeritageEntry['designation']>]: string } = {
   cultural: 'Cultural site',
   natural: 'Natural site',
   mixed: 'Mixed cultural & natural site',

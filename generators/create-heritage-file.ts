@@ -1,28 +1,42 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { isValidISOCode, type ISOCountryCode } from '../types/geography.types'
+import type { ISOCountryCode } from '../types/geography.types'
+import type { HeritageDesignation, HeritageEntry, HeritageMapping } from '../types/places.types'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
-  captureImageCredit,
-  existingImagePath,
-  fetchImageDimensions,
+  assignFameByCountry,
+  carryPreviousPlaces,
+  claimValue,
+  coordinatesOf,
+  entityId,
+  fetchCountryQidMap,
   fetchJson,
+  fetchLabels,
   fetchPageImages,
-  saveCommonsImage,
+  paginatedSearch,
+  placeHasPhoto,
+  placeSitsInCountry,
+  ranked,
+  roundCoordinates,
+  savePlacePhoto,
+  slugify,
   wait,
-} from './vendors/wikidata/commons'
-import type { MediaCredit } from '../lib/attribution'
+  writePlacesFile,
+  type EntityResponse,
+} from './vendors/wikidata/places'
 
 /**
  * Every UNESCO World Heritage Site on Wikidata (haswbstatement:P1435=Q9259),
- * for the Heritage Hunt pin-drop round. Per site: country (P17),
- * coordinates (P625, validated against the country's polygons like the
- * landmarks generator), inscription year (the P1435 statement's P580
- * qualifier), a one-line English description, and a Commons photo.
+ * for the Heritage Hunt pin-drop round. Per site: country (P17), coordinates
+ * (P625), inscription year (the P1435 statement's P580 qualifier), a one-line
+ * English description, and a Commons photo — all of it assembled by the shared
+ * place pipeline in vendors/wikidata/places.ts, which the curated landmarks
+ * roster rides too.
  *
  * The full register is ~1,200 sites — more than the game needs and more
  * megabytes than the repo wants. Sites are ranked by Wikipedia sitelink count
- * (fame proxy: the Pyramids over a mining town) and capped per country.
+ * (the fame proxy: the Pyramids over a mining town), capped per country, and
+ * that ranking is then stamped onto each entry as an explicit `fame` tier.
  *
  * Merges with the previous run so a transient failure never erases a site.
  *
@@ -30,37 +44,9 @@ import type { MediaCredit } from '../lib/attribution'
  */
 
 const OUTPUT_DIRECTORY = 'public/heritage'
-/** Shown as a large prompt panel, never pixel-zoomed like landmarks. */
-const HERITAGE_WIDTH = 1400
-const MIN_IMAGE_WIDTH = 900
+const PUBLIC_BASE = '/heritage'
 const MAX_SITES_PER_COUNTRY = 4
-const MAX_KM_OUTSIDE_COUNTRY = 100
 const UNESCO_SITE_QID = 'Q9259'
-
-export interface HeritageEntry extends MediaCredit {
-  name: string
-  country: ISOCountryCode
-  image: string
-  /** Point location (P625) — the pin round measures distance to this. */
-  coordinates: { lat: number; lng: number }
-  /** Year the site entered the World Heritage list (P1435's P580 qualifier). */
-  inscribedYear?: number
-  /** UNESCO designation, from the criteria (P2614): (i)–(vi) cultural,
-   *  (vii)–(x) natural, both mixed. */
-  kind?: 'cultural' | 'natural' | 'mixed'
-  /** Wikidata's one-line English description, for the reveal. */
-  description?: string
-}
-
-export type HeritageMapping = { [slug: string]: HeritageEntry }
-
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
 
 const force = process.argv.includes('--force')
 
@@ -71,80 +57,10 @@ try {
   // First run — nothing to merge
 }
 
-interface GlobeCoordinate {
-  latitude: number
-  longitude: number
-}
-type StatementValue = string | { id?: string } | GlobeCoordinate | undefined
-interface Statement {
-  rank: 'preferred' | 'normal' | 'deprecated'
-  mainsnak?: { datavalue?: { value?: StatementValue } }
-  qualifiers?: { [property: string]: { datavalue?: { value?: { time?: string } } }[] }
-}
-interface Entity {
-  claims?: { [property: string]: Statement[] }
-  labels?: { en?: { value: string } }
-  descriptions?: { en?: { value: string } }
-  sitelinks?: { [site: string]: unknown }
-}
-interface EntityResponse {
-  entities?: { [id: string]: Entity }
-}
-
-const isGlobeCoordinate = (value: StatementValue): value is GlobeCoordinate =>
-  typeof value === 'object' && value !== null && 'latitude' in value
-
-const entityId = (value: StatementValue): string | undefined =>
-  typeof value === 'object' && value !== null && 'id' in value ? value.id : undefined
-
-/** Non-deprecated statements, preferred rank first. */
-const ranked = (statements: Statement[] = []): Statement[] =>
-  statements
-    .filter(statement => statement.rank !== 'deprecated')
-    .sort((a, b) => (a.rank === 'preferred' ? -1 : 0) - (b.rank === 'preferred' ? -1 : 0))
-
 // --- 1. Country Q-id → ISO map (P297) ----------------------------------------
-interface SearchResponse {
-  query?: { search?: { title: string }[] }
-  continue?: { sroffset: number }
-}
-
-const paginatedSearch = async (query: string): Promise<string[]> => {
-  const titles: string[] = []
-  let offset: number | undefined = 0
-  while (offset !== undefined) {
-    const page: SearchResponse | undefined = await fetchJson<SearchResponse>(
-      `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-        query
-      )}&srnamespace=0&srlimit=50&sroffset=${offset}&format=json`
-    )
-    titles.push(...(page?.query?.search ?? []).map(hit => hit.title))
-    offset = page?.continue?.sroffset
-    await wait(200)
-  }
-  return titles
-}
-
 console.log('Mapping country Q-ids to ISO codes…')
-const countryEntityIds = await paginatedSearch('haswbstatement:P297')
-const isoOfQid = new Map<string, ISOCountryCode>()
-for (let index = 0; index < countryEntityIds.length; index += 20) {
-  const batch = countryEntityIds.slice(index, index + 20)
-  const data = await fetchJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json`
-  )
-  for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
-    const value = ranked(entity.claims?.P297)[0]?.mainsnak?.datavalue?.value
-    // Wikidata knows more ISO codes than the game does (Greenland, Curaçao,
-    // Marshall Islands…) — anything outside the game's set never maps, so its
-    // sites are skipped rather than emitted with an untyped country.
-    if (isValidISOCode(value) && !isoOfQid.has(qid)) {
-      isoOfQid.set(qid, value)
-    }
-  }
-  await wait(200)
-}
-console.log(`  ${isoOfQid.size} countries mapped`)
+const { qidToIso } = await fetchCountryQidMap()
+console.log(`  ${qidToIso.size} countries mapped`)
 
 // --- 2. Every World Heritage Site, with claims + fame ------------------------
 console.log('Finding World Heritage Sites (P1435=Q9259)…')
@@ -158,9 +74,10 @@ interface Site {
   coordinates: { lat: number; lng: number }
   inscribedYear?: number
   description?: string
-  /** Criterion item Q-ids (P2614), resolved to a kind after the sweep. */
+  /** Criterion item Q-ids (P2614), resolved to a designation after the sweep. */
   criteria: string[]
-  fame: number
+  /** Wikipedia sitelink count — the ranking signal behind the fame tier. */
+  sitelinks: number
 }
 
 const sites: Site[] = []
@@ -172,11 +89,9 @@ for (let index = 0; index < siteQids.length; index += 20) {
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
     const name = entity.labels?.en?.value
-    const country = isoOfQid.get(
-      entityId(ranked(entity.claims?.P17)[0]?.mainsnak?.datavalue?.value) ?? ''
-    )
-    const point = ranked(entity.claims?.P625)[0]?.mainsnak?.datavalue?.value
-    if (!name || !country || !isGlobeCoordinate(point)) {
+    const country = qidToIso.get(entityId(claimValue(entity.claims, 'P17')) ?? '')
+    const point = coordinatesOf(entity.claims)
+    if (!name || !country || !point) {
       skipped++
       continue
     }
@@ -192,13 +107,13 @@ for (let index = 0; index < siteQids.length; index += 20) {
       qid,
       name,
       country,
-      coordinates: { lat: point.latitude, lng: point.longitude },
+      coordinates: point,
       ...(inscribedYear && Number.isFinite(inscribedYear) ? { inscribedYear } : {}),
       ...(entity.descriptions?.en?.value ? { description: entity.descriptions.en.value } : {}),
       criteria: ranked(entity.claims?.P2614)
         .map(statement => entityId(statement.mainsnak?.datavalue?.value))
         .filter((id): id is string => !!id),
-      fame: Object.keys(entity.sitelinks ?? {}).length,
+      sitelinks: Object.keys(entity.sitelinks ?? {}).length,
     })
   }
   process.stdout.write(`\r  ${Math.min(index + 20, siteQids.length)}/${siteQids.length} read`)
@@ -206,28 +121,18 @@ for (let index = 0; index < siteQids.length; index += 20) {
 }
 console.log(`\n  ${sites.length} usable (${skipped} without name/country/coords)`)
 
-// --- 2b. Designation kind from the criteria (P2614) ---------------------------
+// --- 2b. Designation from the criteria (P2614) --------------------------------
 // The ten criterion items carry their roman numeral in the label: (i)–(vi)
 // mark cultural value, (vii)–(x) natural; a site holding both is mixed.
 const CULTURAL_NUMERALS = new Set(['i', 'ii', 'iii', 'iv', 'v', 'vi'])
-const criterionQids = [...new Set(sites.flatMap(site => site.criteria))]
+const criterionLabels = await fetchLabels([...new Set(sites.flatMap(site => site.criteria))])
 const numeralOfCriterion = new Map<string, string>()
-interface LabelResponse {
-  entities?: { [id: string]: { labels?: { en?: { value: string } } } }
-}
-for (let index = 0; index < criterionQids.length; index += 50) {
-  const batch = criterionQids.slice(index, index + 50)
-  const data = await fetchJson<LabelResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=labels&languages=en&languagefallback=1&format=json`
-  )
-  for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
-    const numeral = entity.labels?.en?.value?.match(/\(([ivx]+)\)/i)?.[1]?.toLowerCase()
-    if (numeral) numeralOfCriterion.set(qid, numeral)
-  }
-  await wait(200)
+for (const [qid, label] of criterionLabels) {
+  const numeral = label.match(/\(([ivx]+)\)/i)?.[1]?.toLowerCase()
+  if (numeral) numeralOfCriterion.set(qid, numeral)
 }
 
-const kindOf = (site: Site): HeritageEntry['kind'] => {
+const designationOf = (site: Site): HeritageDesignation | undefined => {
   const numerals = site.criteria
     .map(qid => numeralOfCriterion.get(qid))
     .filter((numeral): numeral is string => !!numeral)
@@ -242,10 +147,7 @@ console.log('Validating coordinates against country polygons…')
 const shapes = await loadCountryShapes()
 const misplaced: Site[] = []
 const validated = sites.filter(site => {
-  if (!shapes.has(site.country)) return true
-  const { lat, lng } = site.coordinates
-  if (shapes.contains(site.country, lat, lng)) return true
-  if (shapes.distanceToBorderKm(site.country, lat, lng) <= MAX_KM_OUTSIDE_COUNTRY) return true
+  if (placeSitsInCountry(shapes, site.country, site.coordinates).inside) return true
   misplaced.push(site)
   return false
 })
@@ -257,10 +159,13 @@ for (const site of validated) {
   if (list) list.push(site)
   else byCountry.set(site.country, [site])
 }
-const chosen: Site[] = []
-for (const list of byCountry.values()) {
-  chosen.push(...list.sort((a, b) => b.fame - a.fame).slice(0, MAX_SITES_PER_COUNTRY))
-}
+// Sorted by sitelinks so the country's best-known site ranks first — which is
+// exactly what assignFameByCountry turns into `major`.
+const chosen = assignFameByCountry(
+  [...byCountry.values()].flatMap(list =>
+    [...list].sort((a, b) => b.sitelinks - a.sitelinks).slice(0, MAX_SITES_PER_COUNTRY)
+  )
+)
 console.log(`${chosen.length} sites after the top-${MAX_SITES_PER_COUNTRY}-per-country cap`)
 
 // --- 4. Photos + assemble ------------------------------------------------------
@@ -277,64 +182,42 @@ for (const site of chosen) {
   // Same-named sites in different countries keep distinct slugs.
   if (mapping[slug]) slug = `${slug}-${site.country.toLowerCase()}`
 
-  let publicPath = force
-    ? undefined
-    : existingImagePath(`${OUTPUT_DIRECTORY}/${slug}`, `/heritage/${slug}`)
-
-  // Resolved up front (no network — the batch lookup already ran) so a site
-  // whose photo is already on disk still gets its Commons credit.
-  const file = photoFiles.get(site.qid)
-
-  if (!publicPath) {
-    if (!file) {
-      missing++
-      continue
-    }
-    const dimensions = await fetchImageDimensions(file)
-    if (dimensions && dimensions.width < MIN_IMAGE_WIDTH) {
-      rejected++
-      await wait(120)
-      continue
-    }
-    publicPath = await saveCommonsImage(file, `${OUTPUT_DIRECTORY}/${slug}`, `/heritage/${slug}`, {
-      width: HERITAGE_WIDTH,
-      force,
-    })
-    await wait(250)
+  const photo = await savePlacePhoto({
+    file: photoFiles.get(site.qid),
+    slug,
+    directory: OUTPUT_DIRECTORY,
+    publicBase: PUBLIC_BASE,
+    previous: previousMapping[slug],
+    force,
+  })
+  if (photo.status === 'rejected') {
+    rejected++
+    continue
   }
-  if (!publicPath) {
+  if (!placeHasPhoto(photo)) {
     missing++
     continue
   }
 
-  const kind = kindOf(site)
+  const designation = designationOf(site)
   mapping[slug] = {
     name: site.name,
     country: site.country,
-    image: publicPath,
-    ...(await captureImageCredit(file, previousMapping[slug], force)),
-    coordinates: {
-      lat: Math.round(site.coordinates.lat * 10000) / 10000,
-      lng: Math.round(site.coordinates.lng * 10000) / 10000,
-    },
+    image: photo.image,
+    fame: site.fame,
+    ...photo.media,
+    coordinates: roundCoordinates(site.coordinates),
     ...(site.inscribedYear ? { inscribedYear: site.inscribedYear } : {}),
-    ...(kind ? { kind } : {}),
+    ...(designation ? { designation } : {}),
     ...(site.description ? { description: site.description } : {}),
   }
   done++
   process.stdout.write(`\r  ${done + rejected + missing}/${chosen.length} photos`)
+  if (photo.status === 'saved') await wait(250)
 }
 console.log(`\nPhotos: ${done} saved, ${rejected} rejected (low-res), ${missing} missing`)
 
-// Merge the previous run (transient-failure insurance), image-on-disk guarded.
-const chosenSlugs = new Set(Object.keys(mapping))
-let carried = 0
-for (const [slug, entry] of Object.entries(previousMapping)) {
-  if (chosenSlugs.has(slug)) continue
-  if (!existsSync(`public${entry.image}`)) continue
-  mapping[slug] = entry
-  carried++
-}
+const carried = carryPreviousPlaces<HeritageEntry>(mapping, previousMapping)
 if (carried) console.log(`Carried ${carried} sites from the previous run`)
 
 const report = [
@@ -342,10 +225,13 @@ const report = [
   ...[...byCountry.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([iso, list]) => {
-      const kept = list
-        .sort((a, b) => b.fame - a.fame)
+      const kept = [...list]
+        .sort((a, b) => b.sitelinks - a.sitelinks)
         .slice(0, MAX_SITES_PER_COUNTRY)
-        .map(site => `${site.name} (${site.fame})`)
+        .map(
+          (site, rank) =>
+            `${site.name} (${site.sitelinks}, ${['major', 'minor'][rank] ?? 'obscure'})`
+        )
       return `${iso}: ${kept.join(' · ')}${list.length > MAX_SITES_PER_COUNTRY ? `  [+${list.length - MAX_SITES_PER_COUNTRY} capped]` : ''}`
     }),
   '',
@@ -355,11 +241,11 @@ const report = [
 ].join('\n')
 writeFileSync(join(import.meta.dirname, 'data/heritage-report.txt'), report)
 
-writeFileSync(
-  'data/heritage.gen.ts',
-  `// Generated by generators/create-heritage-file.ts — do not edit by hand.
-import type { HeritageMapping } from '../generators/create-heritage-file'
-export const HERITAGE: HeritageMapping = ${JSON.stringify(mapping)}
-`
-)
-console.log(`Wrote data/heritage.gen.ts (${Object.keys(mapping).length} sites)`)
+writePlacesFile({
+  path: 'data/heritage.gen.ts',
+  generator: 'generators/create-heritage-file.ts',
+  typeImport: '~~/types/places.types',
+  constant: 'HERITAGE',
+  type: 'HeritageMapping',
+  mapping,
+})

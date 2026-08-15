@@ -1,4 +1,6 @@
+import type { Fame } from '../../types/fame.types'
 import type { ISOCountryCode } from '../../types/geography.types'
+import type { LandmarkKind } from '../../types/places.types'
 
 /**
  * Curated list of world-famous landmarks for the Landmark Quiz. A hand-picked
@@ -20,13 +22,25 @@ import type { ISOCountryCode } from '../../types/geography.types'
  *  - ancient:   ruins & pre-modern archaeological sites (Petra, Machu Picchu)
  *  - monument:  built icons — towers, bridges, statues, palaces, castles
  *  - urban:     districts, squares, whole old towns
+ *
+ * Declared in types/places.types.ts alongside the entry it lands on, so the
+ * game and the generator read one definition.
  */
-export type LandmarkKind = 'natural' | 'religious' | 'ancient' | 'monument' | 'urban'
+export type { LandmarkKind }
 
 export interface LandmarkSeed {
   name: string
   country: ISOCountryCode
   kind: LandmarkKind
+  /**
+   * Override the recognisability tier this landmark is dealt at.
+   *
+   * Omit it and the generator derives the tier from position within the
+   * country — first listed is the icon (`major`), second `minor`, the rest
+   * `obscure`. Set it where the ordering lies: a country whose second entry is
+   * genuinely pub-quiz canon, or a first entry that is only locally famous.
+   */
+  fame?: Fame
   /**
    * Pin the exact Wikidata item, e.g. `Q243`.
    *
@@ -158,7 +172,9 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     kind: 'natural',
     commons: 'Waterfalls Kravica 5, Bosnia and Herzegovina.jpg',
   },
-  { name: 'Stari Most', country: 'BA', kind: 'monument' },
+  // Bosnia's icon in every sense except seed order — Kravice Falls is listed
+  // first but never resolved a point, so it can't carry the pin round.
+  { name: 'Stari Most', country: 'BA', kind: 'monument', fame: 'major' },
   { name: 'Plitvice Lakes', country: 'HR', kind: 'natural' },
   {
     name: "Diocletian's Palace",
@@ -460,7 +476,9 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // Supplied URL is the same 800px file Wikidata already rejected; this one is 1600px.
   { name: 'Jeita Grotto', country: 'LB', kind: 'natural', commons: 'Jeita Grotto ITH041.jpg' },
   { name: 'Umayyad Mosque', country: 'SY', kind: 'religious' },
-  { name: 'Sheikh Lotfollah Mosque', country: 'IR', kind: 'religious' },
+  // Third-listed for Iran, but Persepolis above it has no point of its own
+  // (its Wikidata item is the football club), so this is the dealable second.
+  { name: 'Sheikh Lotfollah Mosque', country: 'IR', kind: 'religious', fame: 'minor' },
   { name: 'Gates of Hell Darvaza', country: 'TM', kind: 'natural' },
   { name: 'Gergeti Trinity Church', country: 'GE', kind: 'religious' },
   { name: 'Tatev Monastery', country: 'AM', kind: 'religious' },

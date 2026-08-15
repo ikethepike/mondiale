@@ -77,6 +77,7 @@ import type {
 } from '~~/types/challenges/traversal-challenge.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
+import { isFameDealable, type Fame } from '~~/types/fame.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import {
   CONFLICT_TYPE_LABELS,
@@ -506,8 +507,13 @@ const getHeritageHuntChallenge = ({
   if (!contenders.length) return undefined
 
   const playable = new Set(playableCountries(game))
+  // Gated on the site's own recognisability tier, the same way pin-landmark
+  // gates: easy deals a country's best-known site, not its fourth.
   const pool = shuffleArray(
-    Object.entries(HERITAGE).filter(([, site]) => playable.has(site.country))
+    famousPlaces(
+      Object.entries(HERITAGE).filter(([, site]) => playable.has(site.country)),
+      game.difficulty
+    )
   )
   // One site per country per round, for variety.
   const slugs: string[] = []
@@ -1432,54 +1438,49 @@ const getFlashpointChallenge = async (
 const PIN_PERFECT_KM = 150
 const PIN_ZERO_KM = 3000
 
-/** Below hard, only each country's icon landmarks deal and the taper is
- *  kinder: on easy the right country is a bullseye, and only a missed
+/** Below hard, only each country's icon landmarks deal (the fame gate) and the
+ *  taper is kinder: on easy the right country is a bullseye, and only a missed
  *  continent scores nothing. */
 export const PIN_LANDMARK_TIERS: {
   [difficulty in gameTypes.GameDifficulty]: {
-    landmarksPerCountry: number
     perfectDistanceKm: number
     zeroDistanceKm: number
   }
 } = {
-  easy: { landmarksPerCountry: 1, perfectDistanceKm: 300, zeroDistanceKm: 5000 },
-  normal: { landmarksPerCountry: 2, perfectDistanceKm: 200, zeroDistanceKm: 4000 },
-  hard: {
-    landmarksPerCountry: Infinity,
-    perfectDistanceKm: PIN_PERFECT_KM,
-    zeroDistanceKm: PIN_ZERO_KM,
-  },
+  easy: { perfectDistanceKm: 300, zeroDistanceKm: 5000 },
+  normal: { perfectDistanceKm: 200, zeroDistanceKm: 4000 },
+  hard: { perfectDistanceKm: PIN_PERFECT_KM, zeroDistanceKm: PIN_ZERO_KM },
 }
 
 /** Pools under this many candidates widen back to the whole pool. */
 const PIN_LANDMARK_MINIMUM_POOL = 8
 
-/** The seed file lists each country's icon first and the generator preserves
- *  that order, so "first N per country" is the fame tier (pinned by the
- *  characterization test against known icons). */
-export const pinLandmarkCandidates = <T extends { country: ISOCountryCode }>(
+/**
+ * The difficulty's slice of a place roster, by the recognisability tier the
+ * generator stamped on each entry (`major` icon → `minor` second → the rest).
+ *
+ * This used to count position within the country at deal time, which made the
+ * gate an implicit property of array order that the generator's resurrection
+ * merge could scramble. The tiers are the same ones every curated roster uses
+ * (`FAME_BY_DIFFICULTY`), so a difficulty means one thing across the game.
+ */
+export const famousPlaces = <T extends { fame: Fame }>(
   pool: [string, T][],
   difficulty: gameTypes.GameDifficulty
 ): [string, T][] => {
-  const cap = PIN_LANDMARK_TIERS[difficulty].landmarksPerCountry
-  const dealt = new Map<ISOCountryCode, number>()
-  const famous = pool.filter(([, landmark]) => {
-    const rank = dealt.get(landmark.country) ?? 0
-    dealt.set(landmark.country, rank + 1)
-    return rank < cap
-  })
+  const famous = pool.filter(([, place]) => isFameDealable(place.fame, difficulty))
   return famous.length >= PIN_LANDMARK_MINIMUM_POOL ? famous : pool
 }
 
 const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | undefined => {
   // Only landmarks whose coordinates survived the generator's country check;
-  // and only countries this variant actually deals. Kept in LANDMARKS order —
-  // insertion order is the fame signal pinLandmarkCandidates slices on.
+  // and only countries this variant actually deals. The recognisability gate is
+  // each entry's own `fame` tier, not its position in the map.
   const playable = new Set(playableCountries(game))
   const pool = Object.entries(LANDMARKS).filter(
     ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
   )
-  const picked = sample(pinLandmarkCandidates(pool, game.difficulty))
+  const picked = sample(famousPlaces(pool, game.difficulty))
   if (!picked) return undefined
 
   const tier = PIN_LANDMARK_TIERS[game.difficulty]

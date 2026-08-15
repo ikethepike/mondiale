@@ -24,8 +24,7 @@
 <script lang="ts" setup>
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
-import type { LandmarkEntry } from '~~/generators/create-landmarks-file'
-import type { LandmarkKind } from '~~/generators/data/landmark-seeds'
+import type { LandmarkEntry, LandmarkKind } from '~~/types/places.types'
 import { countryName } from '~~/lib/country'
 
 const KIND_COPY: { [kind in LandmarkKind]: string } = {
