@@ -28,8 +28,13 @@ export interface SummitSite {
   plateauRadius: number
   /** Contour lines fade into the snowcap wash above this world elevation. */
   snowlineY: number
-  /** World-space pawn anchors: one flank ledge per gauntlet stage (facing the
-   *  final tile, so the room watches the climb), then the summit. */
+  /** Bearing from the peak toward the final tile — the ascent gorge and the
+   *  climb ladder both run up this face. */
+  faceAngle: number
+  /** Seeded phases for the spur-and-gully crags (3-lobe, 5-lobe). */
+  cragPhases: [number, number]
+  /** World-space pawn anchors: one gorge ledge per gauntlet stage, then the
+   *  summit. */
   climbAnchors: Vector3[]
 }
 
@@ -61,11 +66,65 @@ export const LEDGE_SLAB_INSET = 0.14
  *  into the page is the aesthetic), but its center stays inside it. */
 const MAX_CENTER_DISTANCE = EDGE_FADE_START - 7
 
-const summitMask = (site: Pick<SummitSite, 'center' | 'radius' | 'plateauRadius'>, x: number, z: number): number => {
-  const distance = Math.hypot(x - site.center.x, z - site.center.z)
+/** How deep the 3-lobe spur/gully cut and the 5-lobe detail bite into the
+ *  flank radius (inward only — the footprint never exceeds `radius`, so the
+ *  site-pick clearance math is untouched). */
+const CRAG_PRIMARY = 0.1
+const CRAG_DETAIL = 0.05
+/** Flank profile exponent: >1 pulls the flanks concave under a sharp peak —
+ *  a mountain silhouette, not the dome the plain smoothstep gave. */
+const PEAK_SHARPNESS = 1.65
+/** The ascent gorge: how much of the flank height the notch removes, and its
+ *  angular half-width around `faceAngle`. */
+const GORGE_DEPTH = 0.5
+const GORGE_HALF_RAD = 0.42
+
+/**
+ * The massif's height mask in [0, 1] — THE single shape source: terrain
+ * displacement, ledge anchors and the snow band all read it, so sculpt and
+ * climb cannot drift. Radially: a plateau-topped concave peak whose radius
+ * crags with two seeded sine lobes (spurs and gullies wobble the contour
+ * rings). Angularly: a gorge notched up the face toward the final tile —
+ * the mortal's ascent runs between two ridge walls.
+ */
+const summitMask = (
+  site: Pick<SummitSite, 'center' | 'radius' | 'plateauRadius' | 'faceAngle' | 'cragPhases'>,
+  x: number,
+  z: number
+): number => {
+  const dx = x - site.center.x
+  const dz = z - site.center.z
+  const distance = Math.hypot(dx, dz)
   if (distance >= site.radius) return 0
+
+  const theta = Math.atan2(dx, dz)
+  const [phaseA, phaseB] = site.cragPhases
+  const cut =
+    CRAG_PRIMARY * (0.5 + 0.5 * Math.sin(3 * theta + phaseA)) +
+    CRAG_DETAIL * (0.5 + 0.5 * Math.sin(5 * theta + phaseB))
+  const craggedRadius = site.radius * (1 - cut)
+  if (distance >= craggedRadius) return 0
   if (distance <= site.plateauRadius) return 1
-  return smoothstep((site.radius - distance) / (site.radius - site.plateauRadius))
+
+  const profile = Math.pow(
+    smoothstep((craggedRadius - distance) / (craggedRadius - site.plateauRadius)),
+    PEAK_SHARPNESS
+  )
+
+  // The gorge cuts the outer flank on the approach bearing and heals toward
+  // the plateau, so the summit stays whole and the notch funnels upward.
+  const swing = Math.atan2(
+    Math.sin(theta - site.faceAngle),
+    Math.cos(theta - site.faceAngle)
+  )
+  const gorge = Math.exp(-((swing / GORGE_HALF_RAD) * (swing / GORGE_HALF_RAD)))
+  const outerness = smoothstep(
+    Math.min(
+      1,
+      Math.max(0, (distance - site.plateauRadius) / (craggedRadius - site.plateauRadius))
+    )
+  )
+  return profile * (1 - GORGE_DEPTH * gorge * outerness)
 }
 
 /**
@@ -86,6 +145,8 @@ export const pickSummitSite = (
 ): SummitSite | undefined => {
   const random = Alea(`${seed}:summit`)
   if (random() >= SUMMIT_CHANCE) return undefined
+  // Drawn before the bearing search so consumption is fixed per seed.
+  const cragPhases: [number, number] = [random() * 2 * Math.PI, random() * 2 * Math.PI]
 
   const { transforms, shelfPoints, spacing } = path
   const final = transforms[transforms.length - 1]
@@ -130,38 +191,39 @@ export const pickSummitSite = (
       height: SUMMIT_HEIGHT,
       plateauRadius: PLATEAU_RADIUS,
       snowlineY: baseY + SUMMIT_HEIGHT * SNOWLINE_FRACTION,
+      faceAngle: Math.atan2(final.position.x - center.x, final.position.z - center.z),
+      cragPhases,
       climbAnchors: [],
     }
-    site.climbAnchors = climbAnchorsFor(site, final.position, sampler, stages)
+    site.climbAnchors = climbAnchorsFor(site, sampler, stages)
     return site
   }
   return undefined
 }
 
-/** One ledge per gauntlet stage up the flank FACING the final tile, then the
- *  summit. Elevations come from the same math `withSummitMassif` renders, so
- *  carve and climb cannot drift; the ladder is forced non-decreasing so a
- *  cleared stage always reads as ground gained. */
+/** One ledge per gauntlet stage UP THE GORGE toward the summit — a gentle
+ *  zigzag inside the notch, the way a switchback trail climbs a gully.
+ *  Elevations come from the same mask `withSummitMassif` renders, so carve
+ *  and climb cannot drift; the ladder is forced non-decreasing so a cleared
+ *  stage always reads as ground gained. */
 const climbAnchorsFor = (
   site: SummitSite,
-  finalTile: Vector3,
   sampler: HeightSampler,
   stages: number
 ): Vector3[] => {
-  const faceAngle = Math.atan2(finalTile.x - site.center.x, finalTile.z - site.center.z)
   const flanks = Math.max(1, stages)
   const anchors: Vector3[] = []
   let floor = -Infinity
 
   for (let step = 0; step < flanks; step++) {
     const t = flanks === 1 ? 0.5 : step / (flanks - 1)
-    // Sweep across the near face while climbing from low flank to plateau rim.
-    const angle = faceAngle + (-0.55 + 1.1 * t)
-    const reach = site.radius * 0.82 + (site.plateauRadius * 1.15 - site.radius * 0.82) * t
-    const x = site.center.x + Math.sin(angle) * reach
-    const z = site.center.z + Math.cos(angle) * reach
+    // Zigzag within the gorge walls while climbing from mouth to plateau rim.
+    const zigzag = site.faceAngle + (step % 2 === 0 ? -0.13 : 0.13)
+    const reach = site.radius * 0.88 + (site.plateauRadius * 1.1 - site.radius * 0.88) * t
+    const x = site.center.x + Math.sin(zigzag) * reach
+    const z = site.center.z + Math.cos(zigzag) * reach
     const y = sampler(x, z) + site.height * summitMask(site, x, z)
-    // Base-noise bumps must never let a flank ledge out-climb the summit:
+    // Base-noise bumps must never let a gorge ledge out-climb the summit:
     // each stays under it by a margin that shrinks toward the top.
     const ceiling = site.center.y - 0.8 * (flanks - step)
     floor = Math.min(Math.max(floor + 0.6, y), ceiling)

@@ -97,7 +97,18 @@ export const createContourMaterial = (
       float lineMask(float value, float stepSize, float width) {
         float derivative = max(fwidth(value), 1e-5);
         float distance = abs(fract(value / stepSize - 0.5) - 0.5) * stepSize / derivative;
-        return 1.0 - smoothstep(width, width + 1.0, distance);
+        // AA band widened from +1.0 after Isaac's aliasing report: the line
+        // edge crumbled where the coarse terrain lattice interpolates the
+        // elevation across a whole pixel-scale ring period.
+        float mask = 1.0 - smoothstep(width, width + 1.8, distance);
+        // When contours pack tighter than the antialiasing can resolve (the
+        // far field at grazing camera angles), the smeared lines read as a
+        // grey wash over the cream — and that wash meeting the clean page at
+        // the plane's edge was the visible horizon seam. Fade lines away as
+        // ring period approaches pixel scale; majors (5x the step) naturally
+        // survive the longest, which is correct topo behavior.
+        float density = derivative / stepSize;
+        return mask * (1.0 - smoothstep(0.18, 0.5, density));
       }
 
       void main() {
@@ -137,6 +148,15 @@ export const createContourMaterial = (
         }
 
         gl_FragColor = vec4(color, 1.0);
+        // Colorspace conversion ONLY — deliberately no tonemapping chunk.
+        // Without the conversion, a custom ShaderMaterial outputs raw linear
+        // color and the terrain rendered a shade darker than the identical
+        // clear color behind it, drawing the plane's edge as a hard horizon
+        // seam. Tone mapping must stay OUT: the renderer tone-maps materials
+        // but never the clear color, so a tone-mapped terrain can never match
+        // the page — converted-but-unmapped output makes the far field
+        // EXACTLY the authored cream the canvas clears to.
+        #include <colorspace_fragment>
       }
     `,
   })

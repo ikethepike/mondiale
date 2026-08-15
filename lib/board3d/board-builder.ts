@@ -1055,12 +1055,15 @@ const buildHillCairn = (site: Vector3, spacing: number): Mesh[] => {
     parts.push({ geometry: faceted(drum), color: BOARD_COLORS.warmSand })
     stackY += height
   }
-  const pole = new CylinderGeometry(0.03 * s, 0.03 * s, 0.9 * s, 8)
-  pole.translate(0, (stackY + 0.45) * s, 0)
+  // A ball-finial pole, deliberately NOT a cross-arm: pole-plus-crossbar on
+  // a mound read as a roadside crucifix from board distance (Isaac spotted
+  // it immediately). The ball keeps the survey-marker story.
+  const pole = new CylinderGeometry(0.03 * s, 0.03 * s, 0.78 * s, 8)
+  pole.translate(0, (stackY + 0.39) * s, 0)
   parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
-  const arm = new BoxGeometry(0.3 * s, 0.05 * s, 0.05 * s)
-  arm.translate(0, (stackY + 0.72) * s, 0)
-  parts.push({ geometry: arm, color: BOARD_COLORS.darkBlue })
+  const finial = new SphereGeometry(0.085 * s, 10, 8)
+  finial.translate(0, (stackY + 0.82) * s, 0)
+  parts.push({ geometry: faceted(finial), color: BOARD_COLORS.darkBlue })
 
   const colorBuckets = new Map<string, BufferGeometry[]>()
   const outlines: BufferGeometry[] = []
