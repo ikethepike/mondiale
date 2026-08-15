@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  reachEnds,
   sharedBorderPair,
   boundaryDeviation,
   DRAW_COMPLETE_AT,
@@ -449,5 +450,38 @@ describe('sharedBorderPair', () => {
     // erasing it would take the country's entire border with it and put us
     // back on the amputation problem.
     expect(sharedBorderPair(square, [square])).toBeUndefined()
+  })
+})
+
+describe('reachEnds', () => {
+  const square: [number, number][] = [
+    [0, 0],
+    [10, 0],
+    [10, 10],
+    [0, 10],
+  ]
+
+  it('stretches a run one vertex past each end', () => {
+    // The middle two vertices; reaching adds the one before and the one after.
+    const extended = reachEnds([square[1]!, square[2]!], square)
+    expect(extended).toEqual([square[0], square[1], square[2], square[3]])
+  })
+
+  it('wraps around the ring', () => {
+    const extended = reachEnds([square[3]!, square[0]!], square)
+    expect(extended[0]).toEqual(square[2])
+    expect(extended[extended.length - 1]).toEqual(square[1])
+  })
+
+  it('matches by value, so a neighbour copy of the border extends too', () => {
+    // The neighbour draws the same border from its own ring: equal coordinates,
+    // different objects. Identity matching would silently leave it unextended.
+    const copy: [number, number][] = square.map(([x, y]) => [x, y])
+    expect(reachEnds([copy[1]!, copy[2]!], square)).toHaveLength(4)
+  })
+
+  it('leaves a run it cannot place alone', () => {
+    expect(reachEnds([[99, 99] as [number, number], [98, 98]], square)).toHaveLength(2)
+    expect(reachEnds([square[0]!], square)).toHaveLength(1)
   })
 })

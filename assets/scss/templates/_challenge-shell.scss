@@ -64,9 +64,28 @@
     overflow: hidden;
   }
 
+  // The footer is the floor, not a giver. `flex-shrink: 1` over an auto basis
+  // made it shrink IN PROPORTION with the stage the moment the column
+  // overflowed — so a stage that grows (stat detective deals a clue card every
+  // few seconds) squeezed the guess console a little further off the bottom
+  // edge with each one, and `min-height: 0` above let it go under. The stage
+  // yields all of it instead: it has `min-height: 0` and its own scroller.
+  // The cap keeps the promise the other way round — a genuinely tall footer
+  // (an option grid, a photo dock) scrolls inside itself rather than eating
+  // the whole column. 60% matches useFooterBerth's reservation ceiling.
+  //
+  // It bounds CONTENT, so the clearance band is excused from it. A footer is
+  // flush with the shell's bottom edge and lays its content out from its own
+  // top, so capping the box walks that content DOWNWARD by whatever it clipped
+  // — and the band it would clip first is the padding holding the console
+  // clear of the software keyboard. Charged against a flat 60%, a typed footer
+  // with the keyboard up (~260px of inset on a 667px phone) would have been
+  // capped into pushing the very input being typed into under the keyboard,
+  // with `overflow: visible` below leaving no way to scroll it back.
   > footer,
   .shell-footer {
-    flex-shrink: 1;
+    flex: none;
+    max-height: calc(60% + var(--bottom-clearance));
     overflow-y: auto;
   }
 

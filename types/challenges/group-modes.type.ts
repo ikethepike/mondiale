@@ -494,14 +494,14 @@ export interface NoMansLandChallenge {
  * scored on how close you land, not on naming the country.
  *
  * The challenge carries the slug, not the coordinates, and scoring happens
- * server-side from the slug. That isn't a secret (LANDMARKS is bundled into the
+ * server-side from the slug. That isn't a secret (PLACES is bundled into the
  * client anyway, so a determined player can always read the answer out of it —
  * as they could for every other mode's country). It's so the *score* is the
  * server's to decide, like hot-cold's, rather than a number the client reports.
  */
 export interface PinLandmarkChallenge {
   _type: 'pin-landmark-challenge'
-  /** Key into LANDMARKS — the *photo* is the prompt, so no name is sent. */
+  /** Key into PLACES — the *photo* is the prompt, so no name is sent. */
   slug: string
   /** Public path of the landmark photo. */
   image: string
@@ -648,7 +648,7 @@ export interface BorderChainTrap {
  */
 export interface HeritageHuntChallenge {
   _type: 'heritage-hunt-challenge'
-  /** Keys into HERITAGE, one per beat, in play order. */
+  /** Keys into PLACES (all with a `unesco` facet), one per beat, in play order. */
   slugs: string[]
   beatSeconds: number
   perfectDistanceKm: number
@@ -1059,6 +1059,19 @@ export interface TerraIncognitaChallenge {
   /** The countries the atlas loses, in the order it loses them. No two share
    *  a land border — see `pickVanishDeck` for why adjacency is disqualifying. */
   vanishings: ISOCountryCode[]
+  /**
+   * Each vanishing's absorber: the neighbour whose land it dissolves into,
+   * which is the border the map paints out. The round reads as one country
+   * expanding over another, so naming EITHER restores the hole.
+   *
+   * Stamped at the deal from `terraAbsorber` rather than re-derived, so the
+   * client, the server and the reveal can never disagree about who swallowed
+   * what — and so the answer cannot shift with the map's zoom tier.
+   *
+   * Optional only for rounds already in flight when this shipped: those grade
+   * on the vanished country's own name, exactly as they were dealt to.
+   */
+  absorbedBy?: Partial<Record<ISOCountryCode, ISOCountryCode>>
   /** Milliseconds between losses. Rides the challenge rather than being
    *  re-derived from the difficulty, so a game whose rules changed mid-round
    *  cannot re-time a world that is already falling. */

@@ -22,7 +22,7 @@ import sharp from 'sharp'
  * where the photo IS the evidence. It also produces a derivative work, so
  * check the source's licence before shipping the result.
  *
- * Never wired into generate:landmarks: run it, LOOK at the output, then point
+ * Never wired into generate:places: run it, LOOK at the output, then point
  * the seed at the file yourself. A generated image silently replacing a real
  * photograph should always require a human to say yes.
  */

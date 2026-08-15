@@ -46,7 +46,8 @@ const CHALLENGE_DETAILS: {
     },
     // Gini is theoretically 0–100 but real countries cluster ~24–59; a
     // 20–70 band keeps the plotted marker legible instead of bunched mid-track.
-    scale: { min: 20, max: 70 },
+    // High Gini is the bad end — the tone mirrors the usual ramp.
+    scale: { min: 20, max: 70, tone: 'inverted' },
   },
   'geography.area.land': {
     topic: 'geography',
@@ -438,7 +439,7 @@ const CHALLENGE_DETAILS: {
       least: 'fewest years at war',
     },
     // Bounded: 1946 through the current UCDP vintage (2024).
-    scale: { min: 0, max: 79 },
+    scale: { min: 0, max: 79, tone: 'inverted' },
   },
   'government.recentConflicts': {
     topic: 'general knowledge',
@@ -459,7 +460,7 @@ const CHALLENGE_DETAILS: {
       most: 'most democratic',
       least: 'least democratic',
     },
-    scale: { min: 0, max: 1 },
+    scale: { min: 0, max: 1, tone: 'positive' },
   },
   'government.corruptionIndex': {
     topic: 'general knowledge',
@@ -475,7 +476,7 @@ const CHALLENGE_DETAILS: {
     // The markers already run in score order (left = low score = most
     // corrupt, right = high score = least corrupt), so a plain 0–100 plot
     // of the raw CPI lands correctly — no inversion needed.
-    scale: { min: 0, max: 100 },
+    scale: { min: 0, max: 100, tone: 'positive' },
   },
   'government.humanDevelopmentIndex': {
     topic: 'general knowledge',
@@ -486,7 +487,7 @@ const CHALLENGE_DETAILS: {
       most: 'most developed',
       least: 'least developed',
     },
-    scale: { min: 0, max: 1 },
+    scale: { min: 0, max: 1, tone: 'positive' },
   },
   'government.happiness': {
     topic: 'general knowledge',
@@ -499,7 +500,7 @@ const CHALLENGE_DETAILS: {
     },
     // Cantril-ladder scores run roughly 1–8 in practice; a 0–10 band keeps the
     // plotted marker legible against the ladder's full theoretical range.
-    scale: { min: 0, max: 10 },
+    scale: { min: 0, max: 10, tone: 'positive' },
   },
   'economics.gdpTotal': {
     topic: 'economics',
@@ -652,7 +653,7 @@ const CHALLENGE_DETAILS: {
     },
     // Adult male means span ~160–184 cm; a full 0-based track would bury
     // every country at the top and make the decisiveness gap unreachable.
-    scale: { min: 155, max: 190 },
+    scale: { min: 155, max: 190, tone: 'neutral' },
   },
   'health.roadDeaths': {
     topic: 'health',
@@ -684,7 +685,7 @@ const CHALLENGE_DETAILS: {
       least: 'most at risk',
     },
     // The Red List Index is 0–1 but real countries sit ~0.4–1.
-    scale: { min: 0.4, max: 1 },
+    scale: { min: 0.4, max: 1, tone: 'positive' },
   },
   'environment.threatenedMammals': {
     topic: 'environment',
@@ -754,7 +755,7 @@ const CHALLENGE_DETAILS: {
       least: 'youngest',
     },
     // Shares run ~1–30%; a 0–100 track would bunch everyone at the bottom.
-    scale: { min: 0, max: 35 },
+    scale: { min: 0, max: 35, tone: 'neutral' },
   },
   'people.sexRatio': {
     topic: 'people',
