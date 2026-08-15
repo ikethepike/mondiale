@@ -42,6 +42,7 @@ import { gsap } from 'gsap'
 import {
   BufferAttribute,
   BufferGeometry,
+  CanvasTexture,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -54,11 +55,13 @@ import {
   LinearFilter,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   PlaneGeometry,
   RedFormat,
   ShaderMaterial,
   Vector3,
 } from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { createNoise2D } from 'simplex-noise'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { smoothstep } from '~~/lib/board3d/terrain'
@@ -93,6 +96,13 @@ interface Biome {
   trunkColor: string
   /** How many props the landscape carries — a desert is sparse BY nature. */
   foliageCount: number
+  /** Hypsometric banding: how strongly the stepped elevation tint prints. */
+  banding: number
+  /** Hachure strokes on mid-slopes — the old-map relief hand. */
+  hachure: number
+  /** Ground stipple: tiny tufts drawn to water (oasis grass, frost, reeds). */
+  stippleColor: string
+  stippleCount: number
 }
 
 const BIOMES: Record<string, Biome> = {
@@ -117,6 +127,10 @@ const BIOMES: Record<string, Biome> = {
     foliageColor: '#90bcb5',
     trunkColor: '#0d2f61',
     foliageCount: 115,
+    banding: 0.2,
+    hachure: 0.32,
+    stippleColor: '#a8c3b8',
+    stippleCount: 500,
   },
   grassland: {
     valley: '#eef3e2',
@@ -139,6 +153,10 @@ const BIOMES: Record<string, Biome> = {
     foliageColor: '#5c8a52',
     trunkColor: '#6b4f35',
     foliageCount: 130,
+    banding: 0.16,
+    hachure: 0.14,
+    stippleColor: '#7fae6e',
+    stippleCount: 1500,
   },
   desert: {
     valley: '#f7e9cf',
@@ -161,6 +179,10 @@ const BIOMES: Record<string, Biome> = {
     foliageColor: '#c98f5f',
     trunkColor: '#8a5a33',
     foliageCount: 38,
+    banding: 0.42,
+    hachure: 0.28,
+    stippleColor: '#9fc48b',
+    stippleCount: 240,
   },
   ice: {
     valley: '#f2f6f9',
@@ -183,6 +205,10 @@ const BIOMES: Record<string, Biome> = {
     foliageColor: '#cfe2ec',
     trunkColor: '#8fb4c6',
     foliageCount: 55,
+    banding: 0.28,
+    hachure: 0.2,
+    stippleColor: '#dcebf2',
+    stippleCount: 260,
   },
 }
 
@@ -291,6 +317,8 @@ const terrainMaterial = (preset: Biome, heightMap: DataTexture, heightHalf: numb
       uHeightMap: { value: heightMap },
       uHeightHalf: { value: heightHalf },
       uTime: { value: 0 },
+      uBanding: { value: preset.banding },
+      uHachure: { value: preset.hachure },
       uValley: { value: new Color(preset.valley) },
       uMid: { value: new Color(preset.mid) },
       uCrest: { value: new Color(preset.crest) },
@@ -342,6 +370,7 @@ const terrainMaterial = (preset: Biome, heightMap: DataTexture, heightHalf: numb
       uniform float uMaxH; uniform float uSnowline;
       uniform float uAtmoStart; uniform float uFadeStart; uniform float uFadeEnd;
       uniform sampler2D uHeightMap; uniform float uHeightHalf; uniform float uTime;
+      uniform float uBanding; uniform float uHachure;
       varying float vElevation; varying float vSlope; varying vec2 vXZ;
       varying vec2 vGradient; varying float vCurve; varying float vMoisture;
 
@@ -388,10 +417,28 @@ const terrainMaterial = (preset: Biome, heightMap: DataTexture, heightHalf: numb
         // trace is finer than the mesh, so the ink stops crumbling along
         // triangle edges.
         float hField = texture2D(uHeightMap, (vXZ + uHeightHalf) / (2.0 * uHeightHalf)).r;
+
+        // Hypsometric banding: the printed-atlas layer — a quantized tint per
+        // contour interval, laid gently over the smooth ramp.
+        float hQuant = (floor(hField / uStep) + 0.5) * uStep / uMaxH;
+        vec3 bandColor = mix(uValley, uCrest, clamp(hQuant * 0.7, 0.0, 1.0));
+        color = mix(color, bandColor, uBanding);
+
         float flatness = smoothstep(0.02, 0.06, vSlope);
         float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
         float snow = smoothstep(uSnowline, uSnowline + 1.4, vElevation);
         float strength = flatness * edgeFade * (1.0 - snow);
+        // Hachures: the old-map relief hand — short strokes running downslope,
+        // curving with the gradient, on mid-slopes where contours are sparse.
+        vec2 downslope = normalize(vGradient + vec2(1e-4));
+        float across = dot(vXZ, vec2(-downslope.y, downslope.x)) * 0.85;
+        float acrossWidth = fwidth(across);
+        float strokePhase = abs(fract(across) - 0.5) * 2.0;
+        float stroke = 1.0 - smoothstep(0.3, 0.3 + acrossWidth * 2.2, strokePhase);
+        stroke *= 1.0 - smoothstep(0.45, 1.1, acrossWidth);
+        float hachureBand = smoothstep(0.24, 0.42, vSlope) * (1.0 - smoothstep(0.85, 1.25, vSlope));
+        color = mix(color, uMajor, stroke * hachureBand * uHachure * edgeFade * (1.0 - snow));
+
         float minor = lineMask(hField, uStep, uLineWidth) * strength;
         float major = lineMask(hField, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
         color = mix(color, uMinor, minor * 0.9);
@@ -492,6 +539,7 @@ const trailMaterial = (preset: Biome) =>
 // Foliage: instanced, with a faint per-instance vertex sway.
 const foliageMaterial = (color: string, sway: number) =>
   new ShaderMaterial({
+    side: DoubleSide,
     uniforms: { uColor: { value: new Color(color) }, uTime: { value: 0 }, uSway: { value: sway } },
     vertexShader: /* glsl */ `
       attribute float aPhase;
@@ -809,6 +857,119 @@ const buildWorld = (name: string) => {
   if (preset.foliage !== 'trees') trunkMesh.count = 0
   group.add(canopyMesh, trunkMesh)
 
+  // --- Grass stipple: tiny crossed tufts drawn toward water ------------------
+  const waterDistanceAt = (x: number, z: number) => {
+    let distance = Math.max(0, Math.hypot(x - LAKE.x, z - LAKE.z) - LAKE.radius)
+    for (const point of river) {
+      const d = Math.hypot(point.x - x, point.z - z)
+      if (d < distance) distance = d
+    }
+    return distance
+  }
+
+  const tuftSpots: { x: number; z: number; y: number }[] = []
+  for (
+    let attempt = 0;
+    attempt < preset.stippleCount * 8 && tuftSpots.length < preset.stippleCount;
+    attempt++
+  ) {
+    const x = (prng() - 0.5) * SIZE * 0.95
+    const z = (prng() - 0.5) * SIZE * 0.95
+    if (massifAt(x, z) > 0.3) continue
+    const y = bedAt(x, z, height(x, z))
+    if (y < LAKE.level + 0.2) continue
+    const moisture = 1 - Math.min(1, waterDistanceAt(x, z) / 11)
+    if (prng() > 0.08 + Math.pow(moisture, 1.6) * 0.92) continue
+    tuftSpots.push({ x, z, y })
+  }
+  if (tuftSpots.length) {
+    const bladeA = new PlaneGeometry(0.34, 0.4)
+    bladeA.translate(0, 0.2, 0)
+    const bladeB = bladeA.clone()
+    bladeB.rotateY(Math.PI / 2)
+    const tuft = mergeGeometries([bladeA, bladeB])
+    bladeA.dispose()
+    bladeB.dispose()
+    const tuftMaterial = foliageMaterial(preset.stippleColor, prefersReducedMotion() ? 0 : 0.16)
+    timeUniforms.push(tuftMaterial.uniforms.uTime as { value: number })
+    const tuftMesh = new InstancedMesh(tuft, tuftMaterial, tuftSpots.length)
+    const tuftPhases = new Float32Array(tuftSpots.length)
+    tuftSpots.forEach((spot, index) => {
+      const scale = 0.7 + prng() * 0.8
+      matrix.makeScale(scale, scale, scale)
+      matrix.setPosition(spot.x, spot.y, spot.z)
+      tuftMesh.setMatrixAt(index, matrix)
+      tuftPhases[index] = prng() * Math.PI * 2
+    })
+    tuft.setAttribute('aPhase', new InstancedBufferAttribute(tuftPhases, 1))
+    group.add(tuftMesh)
+  }
+
+  // --- Contour elevation labels: numbers riding the major lines --------------
+  const majorStep = (MAX_H / 8) * 5
+  const labelLevels: number[] = []
+  for (let level = majorStep; level < MASSIF.height; level += majorStep) labelLevels.push(level)
+
+  const labelCanvas = document.createElement('canvas')
+  const CELL = 96
+  labelCanvas.width = CELL * labelLevels.length
+  labelCanvas.height = CELL
+  const context = labelCanvas.getContext('2d')
+  if (context) {
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.font = 'bold 44px Georgia, serif'
+    labelLevels.forEach((level, index) => {
+      const text = `${Math.round(level * 10)}`
+      // The halo is the page color, so the label visually BREAKS the line —
+      // the topo-map convention.
+      context.lineWidth = 12
+      context.strokeStyle = '#fffaf5'
+      context.strokeText(text, CELL * index + CELL / 2, CELL / 2)
+      context.fillStyle = preset.major
+      context.fillText(text, CELL * index + CELL / 2, CELL / 2)
+    })
+  }
+  const labelTexture = new CanvasTexture(labelCanvas)
+
+  const labelQuads: BufferGeometry[] = []
+  const placed: Vector3[] = []
+  for (let x = -78; x <= 78 && labelQuads.length < 14; x += 5) {
+    for (let z = -78; z <= 78; z += 5) {
+      const h = bedAt(x, z, height(x, z))
+      const levelIndex = labelLevels.findIndex(level => Math.abs(h - level) < 0.1)
+      if (levelIndex < 0) continue
+      const gradientX = (height(x + 1, z) - height(x - 1, z)) / 2
+      const gradientZ = (height(x, z + 1) - height(x, z - 1)) / 2
+      const gradient = Math.hypot(gradientX, gradientZ)
+      if (gradient < 0.05 || gradient > 0.5) continue
+      if (placed.some(point => Math.hypot(point.x - x, point.z - z) < 26)) continue
+
+      const quad = new PlaneGeometry(3.4, 1.7)
+      const uv = quad.attributes.uv
+      for (let corner = 0; corner < uv.count; corner++) {
+        uv.setX(corner, (levelIndex + uv.getX(corner)) / labelLevels.length)
+      }
+      quad.rotateX(-Math.PI / 2)
+      // Lie along the contour: the line's tangent is perpendicular to the
+      // gradient; flip so the text never reads upside down from the south.
+      let yaw = Math.atan2(-gradientZ, gradientX)
+      if (Math.cos(yaw) < 0) yaw += Math.PI
+      quad.rotateY(yaw)
+      quad.translate(x, h + 0.14, z)
+      labelQuads.push(quad)
+      placed.push(new Vector3(x, 0, z))
+    }
+  }
+  if (labelQuads.length) {
+    const labels = new Mesh(
+      mergeGeometries(labelQuads),
+      new MeshBasicMaterial({ map: labelTexture, transparent: true, depthWrite: false })
+    )
+    labelQuads.forEach(quad => quad.dispose())
+    group.add(labels)
+  }
+
   return group
 }
 
@@ -821,6 +982,7 @@ const disposeWorld = () => {
         const heightMap = (material as ShaderMaterial).uniforms?.uHeightMap?.value as
           DataTexture | undefined
         heightMap?.dispose()
+        if ('map' in material) (material as MeshBasicMaterial).map?.dispose()
         material.dispose()
       })
     }
