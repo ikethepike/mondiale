@@ -43,9 +43,10 @@ import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
 import { type BoardBiome, pickBoardBiome } from './biomes'
+import { buildRailway, pickRailwayLoop } from './railway'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
-import { LEDGE_SLAB_INSET, pickSummitSite, type SummitSite, withSummitMassif } from './summit'
+import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import {
   BOARD_SIZE,
   createHeightSampler,
@@ -66,9 +67,14 @@ export interface BoardBuild {
   /** Clocks of every animated landscape shader (wind, water, birds, clouds);
    *  TopoScene advances them while the stage is visible. */
   timeUniforms: { value: number }[]
+  /** Per-frame object animators (the railway's train) — driven by the same
+   *  ticker as the shader clocks, so everything pauses and stills together. */
+  animations: ((time: number) => void)[]
   /** The finale massif, when this board dealt one — TopoScene climbs its
    *  `climbAnchors` during the gauntlet. */
   summit?: SummitSite
+  /** The railway loop, when this board dealt one — the dev camera pin. */
+  railway?: Vector3[]
   contourMaterial: ContourMaterial
   dispose(): void
 }
@@ -451,6 +457,25 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
   if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing, sampler))
 
+  // A decorative railway for certain seeds: a closed contour loop with an
+  // old steam train rounding it. Picked LAST among the placements, so it is
+  // always the feature that yields — the ticker drives it via `animations`.
+  const animations: ((time: number) => void)[] = []
+  const railwayLoop = pickRailwayLoop(
+    seed,
+    tilePath,
+    pondSite,
+    summitSite,
+    riverPath,
+    scenery,
+    sampler
+  )
+  if (railwayLoop) {
+    const railway = buildRailway(railwayLoop, biome)
+    railway.meshes.forEach(mesh => group.add(mesh))
+    animations.push(railway.drive)
+  }
+
   // The living layer: blade grass, biome props, gull flocks — all wind-swayed
   // in the vertex shader, all clear of the track, stilled by reduced motion.
   buildFlora(
@@ -460,6 +485,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       pond: pondSite,
       summit: summitSite,
       river: riverPath,
+      railway: railwayLoop,
       sampler,
       waterDistanceAt,
       seed,
@@ -501,7 +527,9 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     archetype: tilePath.archetype,
     biome,
     timeUniforms,
+    animations,
     summit: summitSite,
+    railway: railwayLoop,
     contourMaterial,
     dispose,
   }

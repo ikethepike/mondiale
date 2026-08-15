@@ -189,6 +189,8 @@ export interface FloraOptions {
   pond?: PondSite
   summit?: SummitSite
   river?: RiverPath
+  /** The railway loop, when this board dealt one — props keep off the rails. */
+  railway?: Vector3[]
   /** The FINAL composed sampler — flora sits exactly on rendered ground. */
   sampler: HeightSampler
   /** Analytic distance to the nearest water (the moisture field's source). */
@@ -201,7 +203,8 @@ export const buildFlora = (
   options: FloraOptions,
   timeUniforms: { value: number }[]
 ): InstancedMesh[] => {
-  const { biome, path, pond, summit, river, sampler, waterDistanceAt, seed, phone } = options
+  const { biome, path, pond, summit, river, railway, sampler, waterDistanceAt, seed, phone } =
+    options
   const { shelfPoints, spacing } = path
   const prng = Alea(`${seed}:flora`)
   const still = prefersReducedMotion()
@@ -222,6 +225,11 @@ export const buildFlora = (
     if (summit && Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + 1)
       return false
     if (river && waterDistanceAt(x, z) < 1.2) return false
+    if (railway) {
+      for (const point of railway) {
+        if (Math.hypot(point.x - x, point.z - z) < 2.2) return false
+      }
+    }
     return true
   }
 

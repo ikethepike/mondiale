@@ -208,7 +208,7 @@ const knockPawn = (playerId: string) => {
  * identically, so the shot lives here once.
  */
 const punchInOn = (playerId: string, tile: TileTransform) => {
-  if (devFrameQuery === 'summit') return
+  if (devFramePinned) return
   boardCamera?.frameOn(pawns.get(playerId)?.position ?? tile.position, {
     tiles: ALERT_TILES,
     durationMs: GATE_PUNCH_MS,
@@ -628,20 +628,28 @@ const rebuild = () => {
   frameDevSubject()
 }
 
-// Dev harness: `?frame=summit` pins the entry shot on the finale massif.
-// Sculpt iteration was unverifiable through blind orbit choreography — a
-// named subject makes a screenshot loop deterministic. Inert without the
-// query, and a real gesture reclaims the camera as always. Declared before
-// the immediate rebuild watcher below, which calls it.
+// Dev harness: `?frame=summit` pins the entry shot on the finale massif,
+// `?frame=railway` on the railway loop. Sculpt iteration was unverifiable
+// through blind orbit choreography — a named subject makes a screenshot loop
+// deterministic. Inert without the query, and a real gesture reclaims the
+// camera as always. Declared before the immediate rebuild watcher below,
+// which calls it.
 const devFrameQuery = String(useRoute().query.frame ?? '')
+const devFramePinned = devFrameQuery === 'summit' || devFrameQuery === 'railway'
 const frameDevSubject = () => {
+  if (!devFramePinned || !boardCamera) return
   const summit = board.value?.summit
-  if (devFrameQuery !== 'summit' || !boardCamera || !summit) return
+  const railway = board.value?.railway
+  const subject =
+    devFrameQuery === 'summit'
+      ? summit?.center
+      : railway?.reduce((sum, point) => sum.add(point), new Vector3()).divideScalar(railway.length)
+  if (!subject) return
   // Claim the entry beat AND the pending announce, or the show-pass sweep
   // and the walk-announce frame each re-take the shot for the pawn.
   hasFramed = true
   framedAnnounce = announceTokenFor(props.game.players[cameraTargetId.value]) ?? framedAnnounce
-  boardCamera.frameOn(summit.center, { tiles: 7, commanding: true })
+  boardCamera.frameOn(subject, { tiles: devFrameQuery === 'summit' ? 7 : 9, commanding: true })
 }
 
 // Fingerprint the tile types: with seeded gate rhythm, same-length boards
@@ -732,8 +740,8 @@ const frameSubject = (options: FrameOptions) => {
  * resume re-frames inside the short resume lead.
  */
 const syncCameraFraming = () => {
-  // The dev summit pin owns the camera outright — no automatic beats.
-  if (devFrameQuery === 'summit') return false
+  // A dev frame pin owns the camera outright — no automatic beats.
+  if (devFramePinned) return false
   if (!props.active || !boardCamera) return false
 
   const subject = props.game.players[cameraTargetId.value]
@@ -1086,9 +1094,7 @@ watch([cameraRef, controlsRef, board], () => {
   // (When the dev summit frame is pinned, the tracker yields — it re-centers
   // the rig on the pawn every frame and would drag any frameOn straight back.)
   boardCamera.track(() =>
-    props.active && devFrameQuery !== 'summit'
-      ? pawns.get(cameraTargetId.value)?.position
-      : undefined
+    props.active && !devFramePinned ? pawns.get(cameraTargetId.value)?.position : undefined
   )
 
   // The rig can be built while the stage is still hidden (it is, every game —
@@ -1106,9 +1112,12 @@ watch([cameraRef, controlsRef, board], () => {
 // freezes the clock outright (sway amplitudes are also zeroed at build).
 const advanceLandscape = () => {
   if (!props.active || prefersReducedMotion()) return
-  const uniforms = board.value?.timeUniforms
-  if (!uniforms) return
-  for (const uniform of uniforms) uniform.value = gsap.ticker.time
+  const build = board.value
+  if (!build) return
+  for (const uniform of build.timeUniforms) uniform.value = gsap.ticker.time
+  // Object animators (the railway's train) ride the same clock, so the whole
+  // living layer pauses and stills together.
+  for (const animate of build.animations) animate(gsap.ticker.time)
 }
 gsap.ticker.add(advanceLandscape)
 

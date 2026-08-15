@@ -1299,7 +1299,9 @@ const buildWorld = (name: string) => {
       const next = railSamples[wrap(index + 1)]
       const previous = railSamples[wrap(index - 1)]
       const yaw = Math.atan2(next.x - previous.x, next.z - previous.z)
-      sleeperQuaternion.setFromAxisAngle(upAxis, yaw + Math.PI / 2)
+      // The box is long in X; yawing +Z onto the tangent leaves X ACROSS the
+      // rails — a sleeper, not a stringer.
+      sleeperQuaternion.setFromAxisAngle(upAxis, yaw)
       matrix.compose(
         new Vector3(point.x, point.y + 0.02, point.z),
         sleeperQuaternion,
