@@ -132,8 +132,8 @@ import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
 import { TRENDS } from '~~/lib/trends-data'
-import { HERITAGE } from '~~/data/heritage.gen'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
+import { heritagePlaces } from '~~/lib/places'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
@@ -815,8 +815,8 @@ interface Scenario {
   build: (variant?: Variant) => Game
 }
 
-const landmark = LANDMARKS['eiffel-tower']
-const heritageSlugs = Object.keys(HERITAGE)
+const landmark = PLACES['eiffel-tower']
+const heritageSlugs = heritagePlaces().map(([slug]) => slug)
 
 /** Signature trajectories, one card per shape — scales, delta chips and
  *  endpoint labels in a single screen. Data straight from data/trends.gen. */
@@ -1839,17 +1839,22 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'stat-detective-challenge',
-          country: 'BR',
+          country: 'IT',
+          // A full ladder, and one plotted stat of each ScaleTone: share65Plus
+          // (neutral), equality (inverted), democracyIndex (positive) — the
+          // clue pile that used to squeeze the console off the bottom edge.
           clues: [
             'people.population',
             'geography.area.total',
             'economics.gdpPerCapita',
             'government.corruptionIndex',
-            'environment.CO2Emissions',
+            'people.share65Plus',
+            'economics.equality',
+            'government.democracyIndex',
           ],
           secondsPerClue: 4,
-          region: 'South America',
-          photo: '/capitals/BR.webp',
+          region: 'Europe',
+          photo: '/capitals/IT.webp',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -4501,14 +4506,10 @@ $harness-bar-height: 3.4rem;
 
     // The scene inside is sized from --viewport-height, so shortening the
     // frame alone leaves it a bar's-worth too tall and its footer lands
-    // under the fold. Re-point the variable for the subtree instead.
-    //
-    // The `height` above then needs NO second subtraction: it already reads
-    // the re-pointed variable. Taking the bar off twice left the frame 34px
-    // shorter than the scene it clips, so the bottom band of every mode —
-    // a docked clock, a lock row, the last row of an option grid — was cut
-    // in the harness and nowhere else, which reads as a layout bug in the
-    // mode being reviewed.
+    // under the fold. Re-point the variable for the subtree instead — the
+    // `height` above reads it too, so the frame follows without a second
+    // subtraction (which clipped a bar's-worth off the console, making the
+    // harness lie about the very thing it exists to show).
     --viewport-height: calc(100dvh - #{$harness-bar-height});
   }
 }

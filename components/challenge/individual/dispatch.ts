@@ -7,7 +7,7 @@ import DuelReveal from '~/components/feedback/DuelReveal.vue'
 import ErrataReveal from '~/components/feedback/ErrataReveal.vue'
 import FarFlungReveal from '~/components/feedback/FarFlungReveal.vue'
 import FlagMeaningGateReveal from '~/components/feedback/FlagMeaningGateReveal.vue'
-import LandmarkReveal from '~/components/feedback/LandmarkReveal.vue'
+import PlaceReveal from '~/components/feedback/PlaceReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import RosettaReveal from '~/components/feedback/RosettaReveal.vue'
 import ScriptoriumReveal from '~/components/feedback/ScriptoriumReveal.vue'
@@ -33,7 +33,7 @@ import GateTrajectoryMatch from './GateTrajectoryMatch.vue'
 import GateTrendDuel from './GateTrendDuel.vue'
 import GateZoomOut from './GateZoomOut.vue'
 import { PAIR_COLORS } from './pair-colors'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
 import { accessorTopicLabel } from '~~/lib/challenges'
 import type {
   DuelOutcome,
@@ -114,10 +114,10 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
   },
   'landmark-quiz': {
     component: GatePhotoPick,
-    reveal: LandmarkReveal,
+    reveal: PlaceReveal,
     revealProps: ({ challenge }) => {
-      const landmark = challenge.landmarkSlug ? LANDMARKS[challenge.landmarkSlug] : undefined
-      return landmark ? { landmark } : {}
+      const place = challenge.landmarkSlug ? PLACES[challenge.landmarkSlug] : undefined
+      return place ? { place } : {}
     },
   },
   'odd-one-out': { component: GateOddOneOut },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { leaderHintFacts, partyLabel, titlecaseLeader } from './leaders'
+import { leaderHintFacts, partyLabel, politicalLeader, titlecaseLeader } from './leaders'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 describe('titlecaseLeader', () => {
   it('softens the factbook surname caps', () => {
@@ -87,5 +88,40 @@ describe('leaderHintFacts', () => {
     expect(leaderHintFacts({ name: 'Anna Example', party: 'Labour Party' }, 'GB')).toEqual([
       'Labour Party',
     ])
+  })
+})
+
+describe('politicalLeader', () => {
+  it('names the office that actually governs, not the grander title', () => {
+    // Each of these has a president or monarch AND a prime minister, and the
+    // one who governs differs in every case. Before `executivePower` was
+    // consulted these were decided by matching the factbook's phrasing and
+    // falling back to title regexes, which got all seven wrong.
+    const governs: [string, string][] = [
+      ['EG', 'Abdel Fattah el-Sisi'], // president governs; Madbouly is his PM
+      ['MY', 'Anwar Ibrahim'], // the Agong is ceremonial
+      ['PT', 'Luís Montenegro'], // premier-led semi-presidential republic
+      ['LI', 'Brigitte Haas'], // the Prince is head of state, not government
+      ['SZ', 'Mswati III'], // absolute monarch over a prime minister
+      ['TG', 'Faure Essozimna Gnassingbé'], // holds the premiership post-2024
+      ['SL', 'Julius Maada Bio'], // executive president; Sengeh is his chief minister
+    ]
+    for (const [isoCode, name] of governs) {
+      expect(politicalLeader(isoCode as ISOCountryCode)?.name, isoCode).toBe(name)
+    }
+  })
+
+  it('still answers for a collective executive', () => {
+    // Switzerland's Federal Council governs as a body, so `executivePower` is
+    // `collective` and names nobody. Returning undefined would drop the
+    // country from every mode that shows a leader.
+    expect(politicalLeader('CH' as ISOCountryCode)).toBeTruthy()
+  })
+
+  it('never returns a leader without a portrait when one is required', () => {
+    for (const isoCode of ['DE', 'FR', 'BR', 'JP'] as ISOCountryCode[]) {
+      const leader = politicalLeader(isoCode, { requireImage: true })
+      if (leader) expect(leader.image, isoCode).toBeTruthy()
+    }
   })
 })

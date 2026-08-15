@@ -85,13 +85,19 @@ export interface RegionChallenge {
   country: ISOCountryCode
 }
 
+/**
+ * Stats an extreme question may ask for. A stat only qualifies when both ends
+ * of its ranking are a real, answerable fact: alcohol consumption is not
+ * (four countries share a rounded 0.0 at the bottom and the dry states a
+ * player would reason toward — the Holy See among them — carry no figure at
+ * all), so it stays a ranking/group stat only.
+ */
 export type MinMaxAccessorKeys = Extract<
   GroupChallengeAccessorId,
   | 'economics.gdpPerCapita'
   | 'economics.militarySpending'
   | 'gender.womenInParliament'
   | 'people.population'
-  | 'health.alcoholConsumption'
   | 'humanRights.refugees'
   | 'health.obesity'
   | 'government.happiness'

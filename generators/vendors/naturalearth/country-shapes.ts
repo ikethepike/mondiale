@@ -4,7 +4,7 @@ import type { Feature, FeatureCollection } from 'geojson'
 
 /**
  * Country polygons in lat/lng, for asking "does this point lie in that
- * country?". Backs the coordinate sanity-check in create-landmarks-file.
+ * country?". Backs the coordinate sanity-check in create-places-file.
  *
  * This deliberately does NOT reuse create-map's unit filter. That generator
  * drops far-flung territories (French Polynesia, Puerto Rico, Gibraltar…)

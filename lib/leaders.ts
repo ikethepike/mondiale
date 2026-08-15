@@ -76,12 +76,26 @@ export const leaderNamesOverlap = (a?: string, b?: string): boolean => {
  * The POLITICAL leader to surface for a country — never a ceremonial
  * figurehead by accident, and the ONE selector, so the quiz dealer and the
  * reveal can't disagree. Selection order:
- *  1. The role whose name matches the factbook's `government.leader`
+ *  1. `executivePower` — polity's answer to exactly this question, decided
+ *     from each country's own constitutional description rather than guessed
+ *     from a title. Measured across 192 countries it agrees with the rules
+ *     below on 173 and is right on 16 of the 19 disagreements: Egypt's
+ *     el-Sisi, Malaysia's Anwar, Portugal's Montenegro, Liechtenstein's Haas,
+ *     Eswatini's Mswati III, Togo's Gnassingbé and Sierra Leone's Bio were all
+ *     being passed over for someone who does not govern.
+ *  2. The role whose name matches the factbook's `government.leader`
  *     (fuzzy — transliterations drift between sources).
- *  2. The role the factbook's TITLE names ("Prime Minister…" → government,
+ *  3. The role the factbook's TITLE names ("Prime Minister…" → government,
  *     "President/King…" → state).
- *  3. Head of government — the political office by construction; defaulting
+ *  4. Head of government — the political office by construction; defaulting
  *     to head of state was how Thailand dealt its king.
+ *
+ * Rules 2-4 stay because they answer for countries polity omits, and because
+ * `executivePower` names an OFFICE that may be empty: Sierra Leone's executive
+ * is its president and polity records no head of government at all, so a rule
+ * that only read the field would return nothing. Where the office it names has
+ * no eligible holder, the older chain still decides.
+ *
  * `requireImage` narrows the pick to roles with a portrait (the quiz needs a
  * face); reveals leave it off and fall back to the name.
  */
@@ -96,6 +110,18 @@ export const politicalLeader = (
   const state = eligible(entry.headOfState)
   const government = eligible(entry.headOfGovernment)
   if (!state && !government) return undefined
+
+  // polity decided this from the country's own constitutional description, so
+  // it is asked first. `collective` names no single person — Switzerland's
+  // Federal Council governs as a body — and falls through to the rules below,
+  // which pick somebody displayable rather than nobody.
+  const byPower =
+    entry.executivePower === 'head_of_state'
+      ? state
+      : entry.executivePower === 'head_of_government'
+        ? government
+        : undefined
+  if (byPower) return byPower
 
   const factbookLeader = COUNTRIES[isoCode]?.government?.leader ?? ''
 
