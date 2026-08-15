@@ -438,7 +438,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
   if (summitSite) {
     buildSummitCairn(summitSite, spacing).forEach(mesh => group.add(mesh))
-    buildClimbPlatforms(summitSite, spacing).forEach(mesh => group.add(mesh))
+    buildClimbPlatforms(summitSite, spacing, sampler).forEach(mesh => group.add(mesh))
   }
 
   if (riverPath)
@@ -1132,7 +1132,7 @@ const buildSummitCairn = (site: SummitSite, spacing: number): Mesh[] => {
  * flank — the ascent reads as built, bolted to the mountain. Each platform
  * yaws to face radially out, so the braces always anchor into the slope.
  */
-const buildClimbPlatforms = (site: SummitSite, spacing: number): Mesh[] => {
+const buildClimbPlatforms = (site: SummitSite, spacing: number, sampler: HeightSampler): Mesh[] => {
   const colorBuckets = new Map<string, BufferGeometry[]>()
   const outlines: BufferGeometry[] = []
   const matrix = new Matrix4()
@@ -1140,37 +1140,58 @@ const buildClimbPlatforms = (site: SummitSite, spacing: number): Mesh[] => {
   const up = new Vector3(0, 1, 0)
 
   for (const anchor of site.climbAnchors.slice(0, -1)) {
-    // Local +z points radially OUT of the mountain; braces run down-inward.
-    quaternion.setFromAxisAngle(up, Math.atan2(anchor.x - site.center.x, anchor.z - site.center.z))
+    // Local +z points radially OUT of the mountain.
+    const outward = Math.atan2(anchor.x - site.center.x, anchor.z - site.center.z)
+    quaternion.setFromAxisAngle(up, outward)
     matrix.compose(new Vector3(anchor.x, anchor.y, anchor.z), quaternion, new Vector3(1, 1, 1))
 
-    // A SHELF facing out: wider across than deep, its outer half projecting
-    // over the downslope, the carved scarp closing the triangle behind it.
-    const shelfWidth = spacing * 0.66
-    const shelfDepth = spacing * 0.52
+    // Earn the treatment: probe the ground just beyond the bench's flat
+    // core. A real drop means this stage JUTS — it gets the bracket-shelf
+    // works. A stage seated in the slope reads as a plain board tile
+    // instead; struts on solid ground looked like scaffolding a floor.
+    const probeReach = 0.46 * spacing + 1.2
+    const probeX = anchor.x + Math.sin(outward) * probeReach
+    const probeZ = anchor.z + Math.cos(outward) * probeReach
+    const juts = anchor.y - sampler(probeX, probeZ) > 1.3
+
     const parts: MarkerPart[] = []
-    const deck = new BoxGeometry(shelfWidth, LEDGE_SLAB_INSET + 0.06, shelfDepth)
-    deck.translate(0, -(LEDGE_SLAB_INSET + 0.06) / 2, 0)
-    parts.push({ geometry: deck, color: BOARD_COLORS.warmSand })
+    if (juts) {
+      // A SHELF facing out: wider across than deep, outer half projecting,
+      // the carved scarp closing the triangle behind it.
+      const shelfWidth = spacing * 0.66
+      const shelfDepth = spacing * 0.52
+      const deck = new BoxGeometry(shelfWidth, LEDGE_SLAB_INSET + 0.06, shelfDepth)
+      deck.translate(0, -(LEDGE_SLAB_INSET + 0.06) / 2, 0)
+      parts.push({ geometry: deck, color: BOARD_COLORS.warmSand })
 
-    // The bearer ties the strut tops along the outer lip...
-    const bearer = new BoxGeometry(shelfWidth * 0.92, 0.09 * spacing, 0.09 * spacing)
-    bearer.translate(0, -LEDGE_SLAB_INSET - 0.08 * spacing, shelfDepth * 0.36)
-    parts.push({ geometry: bearer, color: BOARD_COLORS.darkBlue })
+      // The bearer ties the strut tops along the outer lip...
+      const bearer = new BoxGeometry(shelfWidth * 0.92, 0.09 * spacing, 0.09 * spacing)
+      bearer.translate(0, -LEDGE_SLAB_INSET - 0.08 * spacing, shelfDepth * 0.36)
+      parts.push({ geometry: bearer, color: BOARD_COLORS.darkBlue })
 
-    // ...and two struts at a TRUE 45° feed from the flank up into it — the
-    // bracket-shelf triangle: shelf, wall, hypotenuse.
-    const strutLength = spacing * 0.95
-    const halfReach = (strutLength / 2) * Math.SQRT1_2
-    for (const side of [-1, 1]) {
-      const strut = new BoxGeometry(0.08 * spacing, 0.08 * spacing, strutLength)
-      strut.rotateX(-Math.PI / 4)
-      strut.translate(
-        side * shelfWidth * 0.3,
-        -LEDGE_SLAB_INSET - 0.04 - halfReach,
-        shelfDepth * 0.36 - halfReach
-      )
-      parts.push({ geometry: strut, color: BOARD_COLORS.darkBlue })
+      // ...and two struts at a TRUE 45° feed from the flank up into it —
+      // the bracket-shelf triangle: shelf, wall, hypotenuse.
+      const strutLength = spacing * 0.95
+      const halfReach = (strutLength / 2) * Math.SQRT1_2
+      for (const side of [-1, 1]) {
+        const strut = new BoxGeometry(0.08 * spacing, 0.08 * spacing, strutLength)
+        strut.rotateX(-Math.PI / 4)
+        strut.translate(
+          side * shelfWidth * 0.3,
+          -LEDGE_SLAB_INSET - 0.04 - halfReach,
+          shelfDepth * 0.36 - halfReach
+        )
+        parts.push({ geometry: strut, color: BOARD_COLORS.darkBlue })
+      }
+    } else {
+      // Seated stage: a board tile — ink rim, sand top a hair proud, the
+      // track discs' own language at climb scale.
+      const rim = new CylinderGeometry(0.3 * spacing, 0.3 * spacing, 0.5, 24)
+      rim.translate(0, -0.28, 0)
+      parts.push({ geometry: rim, color: BOARD_COLORS.ink })
+      const top = new CylinderGeometry(0.27 * spacing, 0.27 * spacing, 0.5, 24)
+      top.translate(0, -0.25, 0)
+      parts.push({ geometry: top, color: BOARD_COLORS.warmSand, outline: false })
     }
 
     bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)

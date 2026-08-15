@@ -27,6 +27,7 @@
     <!-- Final-gauntlet climb: drive P1 up the mountain marker stage by stage. -->
     <nav class="controls gauntlet-controls">
       <button @click="startGauntlet">Start gauntlet P1</button>
+      <button @click="climbMassif">Climb massif P1</button>
       <button @click="clearStage">Clear stage</button>
       <button @click="missStage">Miss stage</button>
     </nav>
@@ -217,6 +218,28 @@ const clearStage = () => {
     player.completedAtRound = ++winCount
   }
 }
+
+/** The whole ascent on one button: start the gauntlet, then clear a stage
+ *  every beat so the pawn visibly hops shelf to shelf up the massif to the
+ *  summit. Re-clicking mid-climb restarts from the arch. */
+let climbTimer: ReturnType<typeof setInterval> | undefined
+const climbMassif = () => {
+  if (climbTimer) clearInterval(climbTimer)
+  const player = mockGame.players['mock-player-1']
+  player.phase = 'moving'
+  player.moves = []
+  startGauntlet()
+  climbTimer = setInterval(() => {
+    clearStage()
+    if (!liveGauntlet()) {
+      clearInterval(climbTimer)
+      climbTimer = undefined
+    }
+  }, 1600)
+}
+onUnmounted(() => {
+  if (climbTimer) clearInterval(climbTimer)
+})
 
 /** A miss burns a life; out of lives wipes the moves — the knockout descent. */
 const missStage = () => {
