@@ -320,7 +320,7 @@ Every reveal in the repo answers _one_ of three questions, and each has a settle
 | ------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | **Was I right?** (one seat, one answer)           | `ChallengeResult` — one card: verdict head, hairline, fact body, stamp        | every buzz and pick round                                                              |
 | **What was the full answer?** (one seat vs truth) | `AnswerLedger` — truth rows each carrying Found/Missed, strays below the rule | the blitz family, mother tongue, empire                                                |
-| **What happened at the table?**                   | a bespoke grid, ranked take strip on top                                      | `UniqueRevealGrid`, `ChainReveal`, `ManhuntReveal`, `TimelineReveal`, `HeritageReveal` |
+| **What happened at the table?**                   | a bespoke grid, ranked take strip on top                                      | `UniqueRevealGrid`, `ChainReveal`, `ManhuntReveal`, `TimelineReveal`, `PlaceReveal` |
 
 The table-level cards converge on the same grammar: a **take strip** of ranked pawns with their
 banked points, then the **evidence** — the collision grid, the closed doors, the trail, the

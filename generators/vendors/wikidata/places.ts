@@ -29,14 +29,14 @@ export { fetchJson, fetchPageImages, wait } from './commons'
 
 // --- Wikidata statement plumbing ---------------------------------------------
 
-export interface GlobeCoordinate {
+interface GlobeCoordinate {
   latitude: number
   longitude: number
   precision?: number
 }
 
 /** Wikidata's `time` datavalue, e.g. `+1889-01-01T00:00:00Z`. */
-export interface TimeValue {
+interface TimeValue {
   time?: string
 }
 
@@ -72,14 +72,14 @@ export interface EntityResponse {
   entities?: { [id: string]: Entity }
 }
 
-export interface LabelResponse {
+interface LabelResponse {
   entities?: { [id: string]: { labels?: { en?: { value: string } } } }
 }
 
-export const isGlobeCoordinate = (value: StatementValue): value is GlobeCoordinate =>
+const isGlobeCoordinate = (value: StatementValue): value is GlobeCoordinate =>
   typeof value === 'object' && value !== null && 'latitude' in value
 
-export const isTimeValue = (value: StatementValue): value is TimeValue =>
+const isTimeValue = (value: StatementValue): value is TimeValue =>
   typeof value === 'object' && value !== null && 'time' in value
 
 /** An `wikibase-entityid` datavalue — a reference to another Q-item. */
@@ -221,7 +221,7 @@ export const PLACE_PUBLIC_BASE = '/landmarks'
 export const PLACE_PHOTO_WIDTH = 2000
 
 /** Reject images whose SOURCE is smaller than this — they look bad upscaled. */
-export const MIN_PLACE_IMAGE_WIDTH = 900
+const MIN_PLACE_IMAGE_WIDTH = 900
 
 /**
  * How far outside its country a place's point may sit before we disown it.
@@ -234,7 +234,7 @@ export const MIN_PLACE_IMAGE_WIDTH = 900
  * Liberty or Everest on a shared border), while confirmed wrong-entity hits
  * were 4,300km and 13,600km out. Nothing real falls between.
  */
-export const MAX_KM_OUTSIDE_COUNTRY = 100
+const MAX_KM_OUTSIDE_COUNTRY = 100
 
 /** Is this point close enough to `country` to believe the match? Returns the
  *  overshoot in km when it is not, for the caller's warning. */
@@ -332,8 +332,8 @@ export const savePlacePhoto = async ({
  * tier the game gates on, so the ranking stops being an implicit property of
  * array order that any merge step could quietly scramble.
  */
-export const FAME_BY_COUNTRY_RANK: readonly Fame[] = ['major', 'minor']
-export const fameForCountryRank = (rank: number): Fame => FAME_BY_COUNTRY_RANK[rank] ?? 'obscure'
+const FAME_BY_COUNTRY_RANK: readonly Fame[] = ['major', 'minor']
+const fameForCountryRank = (rank: number): Fame => FAME_BY_COUNTRY_RANK[rank] ?? 'obscure'
 
 /**
  * Stamp `fame` onto each item from its rank within its own country. An item

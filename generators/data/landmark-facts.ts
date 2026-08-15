@@ -12,7 +12,7 @@
  * "the world's largest Buddhist temple" earns its place, "a 9th-century
  * Mahayana Buddhist temple in Central Java" does not.
  *
- * Keyed by the landmark's slug (see `slugify` in create-landmarks-file). A
+ * Keyed by the place's slug (see `slugify` in vendors/wikidata/places). A
  * missing key is fine — the reveal simply shows no description.
  */
 export const LANDMARK_FACTS: Record<string, string> = {

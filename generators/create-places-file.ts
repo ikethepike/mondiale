@@ -408,9 +408,10 @@ for (const site of heritageRoster) {
       ? {
           ...facet,
           ...draft.unesco,
-          fame: FAME_TIERS.indexOf(facet.fame) < FAME_TIERS.indexOf(draft.unesco.fame)
-            ? facet.fame
-            : draft.unesco.fame,
+          fame:
+            FAME_TIERS.indexOf(facet.fame) < FAME_TIERS.indexOf(draft.unesco.fame)
+              ? facet.fame
+              : draft.unesco.fame,
           criteria: draft.unesco.criteria ?? facet.criteria,
           inscribedYear: draft.unesco.inscribedYear ?? facet.inscribedYear,
           designation: draft.unesco.designation ?? facet.designation,
@@ -571,27 +572,6 @@ const carried = carryPreviousPlaces(mapping, previousMapping, {
 })
 if (carried) console.log(`Carried ${carried} places from the previous run`)
 
-const report = [
-  `Heritage sites kept per country (cap ${MAX_SITES_PER_COUNTRY}):`,
-  ...[...byCountry.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([iso, list]) => {
-      const kept = [...list]
-        .sort((a, b) => b.sitelinks - a.sitelinks)
-        .slice(0, MAX_SITES_PER_COUNTRY)
-        .map(
-          (site, rank) =>
-            `${site.name} (${site.sitelinks}, ${['major', 'minor'][rank] ?? 'obscure'})`
-        )
-      return `${iso}: ${kept.join(' · ')}${list.length > MAX_SITES_PER_COUNTRY ? `  [+${list.length - MAX_SITES_PER_COUNTRY} capped]` : ''}`
-    }),
-  '',
-  `Misplaced (dropped — wrong-country coords) (${misplacedSites.length}):`,
-  ...misplacedSites.map(site => `  ${site.name} (${site.country}) ${site.qid}`),
-  '',
-].join('\n')
-writeFileSync(join(import.meta.dirname, 'data/heritage-report.txt'), report)
-
 // Two places in one country pinned within metres of each other are either a
 // missing alias or a deliberately nested subject (the Kaaba sits 6m from
 // Masjid al-Haram). Neither is decidable here, so report and let a human rule.
@@ -610,10 +590,37 @@ for (let a = 0; a < pinned.length; a++) {
 }
 if (coincident.length) {
   console.log(
-    `\n${coincident.length} pairs pinned within ${PLACE_COINCIDENCE_METRES}m — add an alias if any name ONE place twice:`
+    `\n${coincident.length} pairs pinned within ${PLACE_COINCIDENCE_METRES}m — add an alias if any name ONE place twice (see the report)`
   )
-  console.log(coincident.sort().join('\n'))
 }
+
+const report = [
+  `Heritage sites kept per country (cap ${MAX_SITES_PER_COUNTRY}):`,
+  ...[...byCountry.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([iso, list]) => {
+      const kept = [...list]
+        .sort((a, b) => b.sitelinks - a.sitelinks)
+        .slice(0, MAX_SITES_PER_COUNTRY)
+        .map(
+          (site, rank) =>
+            `${site.name} (${site.sitelinks}, ${['major', 'minor'][rank] ?? 'obscure'})`
+        )
+      return `${iso}: ${kept.join(' · ')}${list.length > MAX_SITES_PER_COUNTRY ? `  [+${list.length - MAX_SITES_PER_COUNTRY} capped]` : ''}`
+    }),
+  '',
+  `Misplaced (dropped — wrong-country coords) (${misplacedSites.length}):`,
+  ...misplacedSites.map(site => `  ${site.name} (${site.country}) ${site.qid}`),
+  '',
+  // Durable, not just scrollback: this is the list a human has to rule on,
+  // deciding which pairs name ONE place twice (alias it) and which are
+  // deliberately nested subjects the game deals separately.
+  `Pinned within ${PLACE_COINCIDENCE_METRES}m of another place (${coincident.length}) —`,
+  `alias in generators/data/place-aliases.ts if they are the same subject:`,
+  ...coincident.sort(),
+  '',
+].join('\n')
+writeFileSync(join(import.meta.dirname, 'data/places-report.txt'), report)
 
 writePlacesFile({
   path: 'data/places.gen.ts',
