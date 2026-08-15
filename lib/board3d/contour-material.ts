@@ -85,7 +85,9 @@ export const createContourMaterial = (rippleRadius: number): ContourMaterial => 
         // Fade lines out only on genuinely flat ground (the path shelf).
         // World-space slope keeps line strength constant along a contour —
         // screen-space derivatives vary with zoom/angle and looked patchy.
-        float flatness = smoothstep(0.012, 0.045, vSlope);
+        // The band's lower edge also culls contour micro-islands: tiny closed
+        // loops circling near-flat bumps that read as specks on the page.
+        float flatness = smoothstep(0.02, 0.06, vSlope);
         // Contours dissolve toward the horizon instead of ending at a hard edge
         float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
         float strength = flatness * edgeFade;

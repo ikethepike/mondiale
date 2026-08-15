@@ -1,106 +1,58 @@
+import { Timer } from 'three'
+
 /**
- * Silences a listener leak in three's `Timer`, surfaced by TresJS.
+ * Fixes a listener leak in three's `Timer`, surfaced by TresJS.
  *
  * `Timer.connect(document)` binds a FRESH `visibilitychange` handler and adds
- * it, without removing any handler it already installed. `Timer.disconnect()`
- * removes only the newest one and then sets the timer's `_document` to null.
- * So a timer that was connected twice leaves an orphaned handler behind that
- * still dereferences `this._document.hidden` — and throws
+ * it, overwriting `_pageVisibilityHandler` without removing the handler it
+ * already installed. `Timer.disconnect()` removes only the newest one and then
+ * sets the timer's `_document` to null. So a timer that was connected twice
+ * leaves an orphaned handler behind that still dereferences
+ * `this._document.hidden` — and throws
  * `TypeError: Cannot read properties of null (reading 'hidden')` on the next
  * tab switch or page teardown.
  *
  * TresJS connects the timer twice on every canvas: once when its renderer
  * signals ready (`readyEventHook` → `loop.start()`) and once through the
  * `useLoop()` control our render-loop gate drives. Both are inside the
- * library, so there is no call-site of ours to correct — and with no patch
- * tooling in this repo, the fix has to live in code we own.
+ * library, so there is no call-site of ours to correct — but the `Timer`
+ * class itself is importable (and deduped, so TresJS's `new THREE.Timer()`
+ * is this same class), which lets the fix live at the source: `connect`
+ * disconnects first, turning the leak into a reconnect. `disconnect()` is
+ * null-safe by construction, so the extra call on a fresh timer is a no-op.
  *
- * Rather than reach into either library's internals, we wrap
- * `document.addEventListener` for the one event involved and make the
- * offending handlers non-throwing. Everything else passes straight through.
- *
- * The error is thrown from a listener, so it never broke a frame — but it
- * fires on every tab switch, and an exception the console reports on a healthy
- * board is noise that hides the next real one.
+ * An earlier version of this guard wrapped `document.addEventListener` and
+ * matched the offending handler by `listener.name` — which minification
+ * renames, so the guard silently matched nothing in production builds. The
+ * prototype patch has no names to lose.
  */
 
-const GUARDED = Symbol('tres-timer-visibility-guard')
+const GUARDED = Symbol('tres-timer-connect-guard')
 
-type GuardedDocument = Document & { [GUARDED]?: boolean }
+type GuardedTimer = typeof Timer & { [GUARDED]?: () => void }
 
 /**
  * Idempotent: the board can mount, unmount and remount for the whole game
- * (context loss, chunk failure), and the guard must not stack wrappers.
+ * (context loss, chunk failure), and the guard must not stack patches — a
+ * second install returns the first's uninstaller.
  */
-export const installTimerVisibilityGuard = (target: Document = document): (() => void) => {
-  const doc = target as GuardedDocument
-  if (doc[GUARDED]) return () => {}
-  doc[GUARDED] = true
+export const installTimerVisibilityGuard = (timerClass: typeof Timer = Timer): (() => void) => {
+  const patched = timerClass as GuardedTimer
+  const existing = patched[GUARDED]
+  if (existing) return existing
 
-  const originalAdd = doc.addEventListener.bind(doc)
-  const originalRemove = doc.removeEventListener.bind(doc)
-
-  // The library removes a handler by the reference it passed in, so the
-  // wrapper has to be findable from that original. Without this the guard
-  // would turn a leaked listener into a permanent one — strictly worse than
-  // the bug it fixes.
-  const wrappers = new WeakMap<EventListener, EventListener>()
-
-  const shouldGuard = (
-    type: string,
-    listener: EventListenerOrEventListenerObject | null
-  ): listener is EventListener =>
-    type === 'visibilitychange' &&
-    typeof listener === 'function' &&
-    // Only three's Timer handler reads a field the library nulls out from
-    // under it. Everything else passes through untouched.
-    //
-    // `connect()` installs it as `handleVisibilityChange.bind(this)`, and a
-    // bound function is named "bound handleVisibilityChange" — matching the
-    // bare name alone would never fire.
-    /(^|\s)handleVisibilityChange$/.test(listener.name)
-
-  doc.addEventListener = function guardedAddEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject | null,
-    options?: boolean | AddEventListenerOptions
+  const originalConnect = timerClass.prototype.connect
+  timerClass.prototype.connect = function guardedConnect(
+    ...args: Parameters<Timer['connect']>
   ) {
-    if (!shouldGuard(type, listener)) {
-      return originalAdd(type, listener as unknown as EventListener, options)
-    }
-
-    const existing = wrappers.get(listener)
-    if (existing) return originalAdd(type, existing, options)
-
-    const guarded: EventListener = event => {
-      try {
-        return listener.call(doc, event)
-      } catch (error) {
-        // A disconnected timer's orphan. Nothing to reset, nothing to log.
-        if (error instanceof TypeError) return
-        throw error
-      }
-    }
-
-    wrappers.set(listener, guarded)
-    return originalAdd(type, guarded, options)
-  } as Document['addEventListener']
-
-  doc.removeEventListener = function guardedRemoveEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject | null,
-    options?: boolean | EventListenerOptions
-  ) {
-    if (shouldGuard(type, listener)) {
-      const guarded = wrappers.get(listener)
-      if (guarded) return originalRemove(type, guarded, options)
-    }
-    return originalRemove(type, listener as unknown as EventListener, options)
-  } as Document['removeEventListener']
-
-  return () => {
-    doc.addEventListener = originalAdd
-    doc.removeEventListener = originalRemove
-    doc[GUARDED] = undefined
+    this.disconnect()
+    return originalConnect.apply(this, args)
   }
+
+  const uninstall = () => {
+    timerClass.prototype.connect = originalConnect
+    patched[GUARDED] = undefined
+  }
+  patched[GUARDED] = uninstall
+  return uninstall
 }

@@ -23,9 +23,10 @@ export interface TilePathResult {
    * previous, so it is index-aligned with `transforms`).
    *
    * On a curve the CHORD between neighbours is always shorter than the arc
-   * length `spacing` averages — measured at 0.84–0.92 × spacing, tightest
-   * through turns. Anything reasoning about the gap between two tiles (marker
-   * clearance, above all) must use this, not `spacing`.
+   * length `spacing` averages — measured minima of 0.84–0.94 × spacing across
+   * the dealt lengths, tightest through turns. Anything reasoning about the
+   * gap between two tiles (marker clearance, above all) must use this, not
+   * `spacing`.
    */
   chords: number[]
 }

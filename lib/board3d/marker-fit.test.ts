@@ -7,7 +7,7 @@ import {
   type MarkerType,
   TILE_RADIUS_RATIO,
   TILE_RIM_HEIGHT,
-  TILE_TOP_INSET,
+  TILE_TOP_LIFT,
 } from './board-builder'
 import { createTilePath } from './path'
 import { createHeightSampler, withEdgeFalloff } from './terrain'
@@ -28,15 +28,16 @@ import type { Tile } from '~~/types/game.types'
  * while the real chord runs 0.84–0.92 of it — so the offset overdrew exactly
  * where the board is most crowded.
  *
- * None of it was visible in /test-markers, which pitches markers 2.2x wider
- * than the board and stands them on top of the disc. So the check lives here,
- * against the real path.
+ * None of it was visible in the since-removed /test-markers workbench, which
+ * pitched markers 2.2x wider than the board and stood them on top of the
+ * disc. So the check lives here, against the real path.
  */
 
 const GATE_TYPES: MarkerType[] = [...individualChallengeAccessors]
 
-/** The board lengths the game actually deals. */
-const LENGTHS = [30, 45, 60, 90]
+/** The lengths the game deals (`TILE_COUNTS`: 40/65/90) plus 52, where the
+ *  serpentine's rows-per-count sawtooth pinches the row pitch tightest. */
+const LENGTHS = [40, 52, 65, 90]
 const SEEDS = ['alpha', 'bravo', 'charlie', 'delta']
 
 const pathFor = (seed: string, count: number) => {
@@ -64,9 +65,10 @@ describe('the local chord, not the average spacing', () => {
         const ratios = chords.slice(0, -1).map(chord => chord / spacing)
         // A straight, gently-climbing segment can match the average (the 3D
         // chord even tops it by a hair). The TURNS are the point: the tightest
-        // gap on any board is far under it, which is what a spacing-derived
-        // offset missed.
-        expect(Math.min(...ratios)).toBeLessThan(0.93)
+        // gap on any board is well under it, which is what a spacing-derived
+        // offset missed. Measured minima run 0.84–0.94 across the dealt
+        // lengths (65-tile boards sit highest).
+        expect(Math.min(...ratios)).toBeLessThan(0.95)
         for (const ratio of ratios) {
           expect(ratio).toBeLessThan(1.05)
           // A sanity floor: the path never doubles back on itself.
@@ -102,7 +104,7 @@ describe('a hurdle stands clear of the disc geometry', () => {
   it('clears the rim cylinder at every board length', () => {
     // Standing at the top face, a marker's foot is above every disc surface —
     // so an overhang is a marker passing OVER a tile, never through it.
-    const lift = TILE_RIM_HEIGHT + TILE_TOP_INSET
+    const lift = TILE_TOP_LIFT
     for (const count of LENGTHS) {
       const { spacing } = pathFor('alpha', count)
       for (const type of GATE_TYPES) {

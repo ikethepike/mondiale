@@ -42,6 +42,9 @@ import {
   disposePawn,
   finalClimbAnchor,
   getBoardBuild,
+  HIGHLIGHT_RING_LIFT,
+  PATH_MARKER_LIFT,
+  TILE_RADIUS_RATIO,
 } from '~~/lib/board3d/board-builder'
 import { spawnCheerSprite } from '~~/lib/board3d/cheer-sprite'
 import { BOARD_COLORS } from '~~/lib/board3d/colors'
@@ -308,7 +311,7 @@ const syncHighlight = () => {
   if (!build || !own) return
 
   if (!highlightRing) {
-    const radius = build.spacing * 0.42
+    const radius = build.spacing * TILE_RADIUS_RATIO
     highlightRing = new Mesh(
       new RingGeometry(radius * 0.98, radius * 1.16, 32),
       new MeshBasicMaterial({
@@ -333,10 +336,13 @@ const syncHighlight = () => {
     }
   }
 
-  // 0.68 floats clear of the tile's top face (+0.64) and under the number
-  // labels (+0.71) — coplanar overlays z-fight into flickering speckles
   const tile = tileFor(displayPositionFor(own))
-  if (tile) highlightRing.position.set(tile.position.x, tile.position.y + 0.68, tile.position.z)
+  if (tile)
+    highlightRing.position.set(
+      tile.position.x,
+      tile.position.y + HIGHLIGHT_RING_LIFT,
+      tile.position.z
+    )
 }
 
 const syncPathPreview = () => {
@@ -354,7 +360,7 @@ const syncPathPreview = () => {
     if (index <= walked || index > target) retirePathMarker(index, true)
   }
 
-  const radius = build.spacing * 0.42
+  const radius = build.spacing * TILE_RADIUS_RATIO
   for (let index = walked + 1; index <= target; index++) {
     if (pathMarkers.has(index)) continue
     const tile = tileFor(index)
@@ -362,7 +368,7 @@ const syncPathPreview = () => {
 
     const marker = acquirePathMarker(radius)
     marker.material.color.set(gates.has(index) ? BOARD_COLORS.hiorAnge : BOARD_COLORS.warmSand)
-    marker.position.set(tile.position.x, tile.position.y + 0.75, tile.position.z)
+    marker.position.set(tile.position.x, tile.position.y + PATH_MARKER_LIFT, tile.position.z)
     pathMarkers.set(index, marker)
     build.group.add(marker)
   }

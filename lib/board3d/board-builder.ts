@@ -80,10 +80,21 @@ export const getBoardBuild = (
 // horizon so the world melts into the cream background.
 const TERRAIN_OVERHANG = 2.6
 
-/** Tile-disc proportions — shared with the /test-markers mock discs. */
+/** Tile-disc proportions. */
 export const TILE_RADIUS_RATIO = 0.42
 export const TILE_RIM_HEIGHT = 0.55
 export const TILE_TOP_INSET = 0.09
+
+/**
+ * The overlay ladder: y-lifts above a tile's ground point for everything that
+ * floats over a disc. Coplanar overlays z-fight into flickering speckles, so
+ * every rung keeps clear air to its neighbours — a new overlay takes a new
+ * rung here, never an inline literal.
+ */
+export const TILE_TOP_LIFT = TILE_RIM_HEIGHT + TILE_TOP_INSET // the disc's top face
+export const HIGHLIGHT_RING_LIFT = 0.68
+export const NUMBER_LABEL_LIFT = 0.71
+export const PATH_MARKER_LIFT = 0.75
 
 /**
  * Assemble the full static board: shelved contour terrain, the serpentine
@@ -249,7 +260,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
         uv.setXY(corner, u + uv.getX(corner) * width, v + uv.getY(corner) * height)
       }
       quad.rotateX(-Math.PI / 2)
-      quad.translate(position.x, position.y + rimHeight + 0.16, position.z)
+      quad.translate(position.x, position.y + NUMBER_LABEL_LIFT, position.z)
       return quad
     })
 
@@ -767,11 +778,11 @@ export const finalClimbAnchor = (
 }
 
 /** Candidate sculpts under review — the FIRST entry of each set is the
- *  production default; /test-markers flips between them live. Once a winner
- *  is picked it gets baked into its `markerPartsFor` case and its set leaves
- *  this map (picked 2026-08: lexicon plume, waving flag, capital skyline,
- *  landmarks camera, currency coin). `final` leads with the mountain so the
- *  gauntlet climb is live — see finalClimbAnchor. */
+ *  production default. Once a winner is picked it gets baked into its
+ *  `markerPartsFor` case and its set leaves this map (picked 2026-08: lexicon
+ *  plume, waving flag, capital skyline, landmarks camera, currency coin). The
+ *  /test-markers workbench that flipped between variants live is gone, so
+ *  `markerPartsFor`'s variant param currently has no live consumer. */
 export const MARKER_VARIANTS = {
   // Checker-gate ships; the mountain stays as the lab alternate carrying the
   // dormant gauntlet-climb feature (finalClimbAnchor only activates when the
@@ -923,7 +934,7 @@ const buildChallengeMarkers = (
     //
     // It sits in the gap between this disc and the next, and that gap is the
     // whole budget. It used to be reasoned from `spacing` — the curve's
-    // AVERAGE arc length — but the real chord runs 0.84–0.92 of it, leaving
+    // AVERAGE arc length — but the real chord runs 0.84–0.94 of it, leaving
     // 0.4–2.2 world units where the old `tileRadius * 1.05` assumed far more:
     // the hourglass overhung the NEXT disc by ~3 units and reached back inside
     // its own. Centring the marker in the measured gap and scaling it to fit
@@ -942,7 +953,7 @@ const buildChallengeMarkers = (
     // buried every base part 0.55–0.64 BELOW the disc's top face — inside the
     // rim cylinder. The gap floor is terrain, not disc, so a hurdle stands at
     // the same height as the tops it bars: level with the disc's top face.
-    anchor.y += TILE_RIM_HEIGHT + TILE_TOP_INSET
+    anchor.y += TILE_TOP_LIFT
     quaternion.setFromAxisAngle(up, Math.atan2(tangent.x, tangent.z))
     matrix.compose(anchor, quaternion, new Vector3(fit, fit, fit))
 
