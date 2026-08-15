@@ -121,7 +121,13 @@ for (const [iso, country] of Object.entries(dataset.countries)) {
   if (!validCodes.has(iso)) continue
   const isoCode = iso as ISOCountryCode
 
-  for (const [role, field] of Object.entries(ROLES) as [LeaderRole, keyof PolityCountry][]) {
+  // Named explicitly rather than as `keyof PolityCountry`: the country also
+  // carries `executive_power`, which is a string, so the wider key type made
+  // `holder` a union of the office holder and that string.
+  for (const [role, field] of Object.entries(ROLES) as [
+    LeaderRole,
+    'head_of_state' | 'head_of_government',
+  ][]) {
     const holder = country[field]
     if (!holder?.name) continue
 
