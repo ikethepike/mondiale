@@ -5,7 +5,7 @@
       tone="info"
       :kicker="`Round ${currentRound?.number ?? 1} — Tongues`"
       title="What language is this?"
-      :stakes="`Someone speaks for ${challenge.durationSeconds} seconds. Name ANY country ${motherTongueScope(challenge)} where that language is official — there is more than one right answer. Buzz early for more points.`"
+      :stakes="`Someone speaks for ${challenge.durationSeconds} seconds. Name ANY country ${motherTongueScope(challenge)} where that language is spoken — there is more than one right answer. Buzz early for more points.`"
       @done="onInterstitialDone"
     />
 
@@ -43,7 +43,7 @@
           Spoken in {{ challenge.region }}
         </li>
         <li v-if="unlocked.swatches && challenge.speakerCount" key="count" class="hint-chip">
-          Official in {{ challenge.speakerCount }}
+          Spoken in {{ challenge.speakerCount }}
           {{ challenge.speakerCount === 1 ? 'country' : 'countries' }}
         </li>
         <!-- Seeing the language written is the strongest hint short of naming
@@ -133,13 +133,13 @@ const {
   // here would drift the moment the answer set grows a qualifier.
   isCorrect: (active, isoCode) => speaksTongue(active, isoCode),
   maximumPoints: active => active.maximumPoints,
-  lockoutHint: name => `${name} doesn't have it as an official language`,
+  lockoutHint: name => `${name} doesn't speak it`,
   // A speaker standing off the board is right about the world and wrong only
   // about this round: it must not spend a lockout, and must not be broadcast
   // to the room as a miss.
   reject: (active, isoCode) =>
     speaksButOffBoard(active, isoCode)
-      ? `${countryName(getCountry(isoCode))} does have it — but this round is ${motherTongueScope(active)}`
+      ? `${countryName(getCountry(isoCode))} does speak it — but this round is ${motherTongueScope(active)}`
       : undefined,
   onLockoutEnd: () => guessInput.value?.focus(),
   onResolve: () => {

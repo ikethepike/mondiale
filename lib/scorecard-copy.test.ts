@@ -119,16 +119,16 @@ describe('scorecardLabels', () => {
       maximumPoints: 3,
     } as unknown as RoundChallenge
     expect(scorecardLabels({ kind: 'mother-tongue', challenge }).correct).toBe(
-      "Where It's Official in Europe"
+      "Where It's Spoken in Europe"
     )
     // A world board keeps the unscoped wording…
     const { scope: _scope, ...world } = challenge as unknown as Record<string, unknown>
     expect(
       scorecardLabels({ kind: 'mother-tongue', challenge: world as unknown as RoundChallenge })
         .correct
-    ).toBe("Everywhere It's Official")
+    ).toBe("Everywhere It's Spoken")
     // …and so does a caller that hands over no challenge at all.
-    expect(scorecardLabels({ kind: 'mother-tongue' }).correct).toBe("Everywhere It's Official")
+    expect(scorecardLabels({ kind: 'mother-tongue' }).correct).toBe("Everywhere It's Spoken")
   })
 })
 

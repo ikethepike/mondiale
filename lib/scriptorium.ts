@@ -1,6 +1,7 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { isValidISOCode } from '~~/types/geography.types'
+import { speaksLanguage } from './language-rounds'
 import {
   HINT_UNLOCK_FIRST_ELAPSED,
   HINT_UNLOCK_LAST_ELAPSED,
@@ -34,8 +35,9 @@ export interface ScriptoriumEntry {
 /**
  * Languages whose writing alone narrows the world: a resolvable written
  * sample, a script that is not the Latin alphabet, and at least one country
- * that lists the language as official. Pruned by lib/scriptorium.test.ts —
- * every entry must resolve a sample and a non-empty answer set.
+ * that speaks the language — officially, bar Kyrgyz, whose officiality the
+ * Factbook parse doesn't record (pinned in lib/scriptorium.test.ts, which also
+ * prunes: every entry must resolve a sample and a non-empty answer set).
  */
 export const SCRIPTORIUM_POOL: ScriptoriumEntry[] = [
   { language: 'Arabic', script: 'Arabic script', code: 'ar' },
@@ -83,14 +85,18 @@ export const scriptoriumRtl = (language: string): boolean => {
 }
 
 /**
- * Every country where the language is official — the verdict's answer set.
+ * Every country that speaks the language — the verdict's answer set, resolved
+ * through the language rounds' own predicate so the gate and Mother Tongue can
+ * never disagree about who speaks what. (It read the spoken list alone, under
+ * a comment claiming officiality; the two happen to agree across this pool
+ * today, and `scriptorium.test.ts` pins that they keep agreeing.)
  * Deliberately unfiltered by playability: like the shared-currency carve-out,
  * a right answer is a right answer even off the current board.
  */
 export const scriptoriumAnswers = (language: string): ISOCountryCode[] =>
   Object.keys(COUNTRIES)
     .filter(isValidISOCode)
-    .filter(isoCode => COUNTRIES[isoCode].languages?.includes(language))
+    .filter(isoCode => speaksLanguage(isoCode, language))
 
 /**
  * The hint ladder, strongest rung LAST — the order is the descent, and the

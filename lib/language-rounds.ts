@@ -12,6 +12,8 @@
  * here together because they ask the SAME question of the same data and got
  * different answers for a while: Mother Tongue graded official languages while
  * Tongues graded spoken ones, under copy that promised "official" in both.
+ * Both now deal and grade `boardSpeakers`, so the two rounds can only ever
+ * mean the same thing by "speaks".
  */
 import { COUNTRIES } from '~~/data/countries.gen'
 import type {
@@ -24,6 +26,42 @@ import { REGION_LABELS } from './variant'
 /** Either language round: both name a language and carry a board-scoped set. */
 type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language' | 'scope'> & {
   countries: ISOCountryCode[]
+}
+
+/**
+ * Every language a country speaks — the UNION of the two language fields, and
+ * the one derivation everything else here is built from.
+ *
+ * Neither field alone is the answer: officiality misses Kazakhstan's and
+ * Uzbekistan's Russian and every other language the Factbook files as spoken
+ * rather than official (naming one used to cost a point for knowing the
+ * world), and the spoken list misses Burundi's English and Slovenia's coastal
+ * Italian, which never reach it.
+ */
+export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
+  const country = COUNTRIES[isoCode]
+  return new Set([...(country?.officialLanguages ?? []), ...(country?.languages ?? [])])
+}
+
+/** Does this country speak the language at all? The rounds ask "Who speaks
+ *  Russian?", so this is the whole question they grade. */
+export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean =>
+  spokenLanguages(isoCode).has(language)
+
+/**
+ * The board's languages, each with the countries standing on it that speak
+ * them — the ONE index both dealers deal from. A round's answer set, the copy
+ * that counts it and the off-board veto all resolve through `spokenLanguages`,
+ * so a country can never be dealt by one rule and graded by another.
+ */
+export const boardSpeakers = (pool: readonly ISOCountryCode[]): Map<string, ISOCountryCode[]> => {
+  const speakers = new Map<string, ISOCountryCode[]>()
+  for (const isoCode of pool) {
+    for (const language of spokenLanguages(isoCode)) {
+      speakers.set(language, [...(speakers.get(language) ?? []), isoCode])
+    }
+  }
+  return speakers
 }
 
 /**
@@ -53,24 +91,24 @@ export const motherTongueStakes = (
   // Only a regional board needs its bounds spelled out — on a world board the
   // count already means every country there is.
   const where = challenge.scope ? ` ${motherTongueScope(challenge)}` : ''
-  return `${challenge.countries.length} countries${where} have ${challenge.language} as an official language — name as many as you can in ${challenge.durationSeconds} seconds. Wrong guesses cost points.`
+  return `${challenge.countries.length} countries${where} speak ${challenge.language} — name as many as you can in ${challenge.durationSeconds} seconds. Wrong guesses cost points.`
 }
 
 /**
  * Tongue Buzz's sub-line: what counts as a right answer, bounded by the board.
- * "Any country with it as an official language counts" is a promise the round
- * can only keep on a world board.
+ * "Any country where it's spoken counts" is a promise the round can only keep
+ * on a world board.
  */
 export const tongueBuzzRule = (challenge: Pick<LanguageRound, 'scope'>): string =>
   challenge.scope
-    ? `Any country ${motherTongueScope(challenge)} with it as an official language counts`
-    : 'Any country with it as an official language counts'
+    ? `Any country ${motherTongueScope(challenge)} where it's spoken counts`
+    : "Any country where it's spoken counts"
 
-/** Tongue Buzz's reveal line: "Official in 5 countries in Europe". */
+/** Tongue Buzz's reveal line: "Spoken in 5 countries in Europe". */
 export const tongueBuzzTally = (challenge: Pick<LanguageRound, 'scope' | 'countries'>): string => {
   const count = challenge.countries.length
   const where = challenge.scope ? ` ${motherTongueScope(challenge)}` : ''
-  return `Official in ${count} ${count === 1 ? 'country' : 'countries'}${where}`
+  return `Spoken in ${count} ${count === 1 ? 'country' : 'countries'}${where}`
 }
 
 /**
@@ -88,12 +126,7 @@ export const speaksButOffBoard = (
 ): boolean => {
   if (!challenge?.scope) return false
   if (challenge.countries.includes(isoCode)) return false
-  const country = COUNTRIES[isoCode]
-  // Generous on purpose, and deliberately wider than the set the round DEALS:
-  // the dealer is strict about officiality, but a player who names a country
-  // that speaks the language in any sense has not earned a penalty.
-  return (
-    (country?.officialLanguages ?? []).includes(challenge.language) ||
-    (country?.languages ?? []).includes(challenge.language)
-  )
+  // The same predicate the board was dealt with, so the veto is exactly "this
+  // speaker is standing somewhere else" — never a second opinion on who speaks.
+  return speaksLanguage(isoCode, challenge.language)
 }

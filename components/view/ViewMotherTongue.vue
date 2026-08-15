@@ -17,7 +17,7 @@
     </ChallengePrompt>
 
     <footer ref="consoleFooter" class="suggest-berth">
-      <TransitionGroup tag="ol" name="chain" class="country-chip-list">
+      <TransitionGroup ref="trail" tag="ol" name="chain" class="country-chip-list rail">
         <CountryChip
           v-for="isoCode in guesses"
           :key="isoCode"
@@ -56,6 +56,7 @@ import {
   motherTongueStakes,
   speaksButOffBoard,
 } from '~~/lib/language-rounds'
+import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -104,6 +105,9 @@ const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
+
+// The caught names ride the phone's one-row rail — it follows the newest.
+const { trail } = useChipTrail(() => guesses.value.length)
 </script>
 <!-- Chips, list layout and the chain landing all come from shared templates. -->
 <style lang="scss" scoped>
