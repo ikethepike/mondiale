@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PLACES } from '~~/data/places.gen'
 import { getRoundChallenge, PIN_LANDMARK_TIERS } from '~~/lib/challenges'
+import { haversineKm } from '~~/lib/geo'
 import {
   curatedPlaces,
   dealableHeritage,
@@ -157,14 +158,12 @@ describe('PLACES', () => {
     const shared = Object.values(PLACES).filter(place => place.curated && place.unesco)
     expect(shared.filter(place => place.description && place.summary).length).toBe(shared.length)
 
-    // Coverage can only improve: the curated pass never used to ask Wikidata
-    // for a description at all, so the handful still silent are places neither
-    // the facts file nor the register wrote up. Seven today, and the next
-    // generator run fetches summaries for the curated roster too.
-    const withText = Object.values(PLACES).filter(
-      place => place.description ?? place.summary
-    ).length
-    expect(withText).toBeGreaterThanOrEqual(726)
+    // Counted as a GAP, not a floor, so it survives the roster legitimately
+    // shrinking: the silent ones are places neither the facts file nor the
+    // register wrote up. Seven today, and the next generator run fetches
+    // summaries for the curated roster too.
+    const silent = Object.values(PLACES).filter(place => !(place.description ?? place.summary))
+    expect(silent.length).toBeLessThanOrEqual(7)
   })
 
   it('prefers the register point where the two sources disagree', () => {
@@ -233,6 +232,30 @@ describe('PLACES', () => {
     for (const file of readdirSync('public/landmarks')) {
       expect(referenced.has(file), `${file} is on disk but no place points at it`).toBe(true)
     }
+  })
+
+  it('never holds one subject as two places', () => {
+    // Slug matching only catches subjects the two selections spell the same.
+    // They frequently do not — the curated seed says "Sagrada Familia", the
+    // register says "Basilica and Expiatory Church of the Holy Family" — so
+    // this checks by position instead, which is what found the other fourteen.
+    // Pairs below the threshold are legitimately NESTED subjects the game deals
+    // separately (the Kaaba sits 6m from Masjid al-Haram); a NEW one appearing
+    // here means a missing entry in generators/data/place-aliases.ts.
+    const KNOWN_NESTED = 23
+    const pinned = Object.entries(PLACES).filter(([, place]) => place.coordinates)
+    const pairs: string[] = []
+    for (let a = 0; a < pinned.length; a++) {
+      for (let b = a + 1; b < pinned.length; b++) {
+        const [slugA, one] = pinned[a]!
+        const [slugB, other] = pinned[b]!
+        if (one.country !== other.country) continue
+        if (haversineKm(one.coordinates!, other.coordinates!) * 1000 < 500) {
+          pairs.push(`${slugA} ~ ${slugB}`)
+        }
+      }
+    }
+    expect(pairs.length, pairs.join(', ')).toBeLessThanOrEqual(KNOWN_NESTED)
   })
 
   it('never ships the same photo twice', () => {

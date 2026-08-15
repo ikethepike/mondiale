@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pickMediaCredit, type MediaCredit } from '../lib/attribution'
+import { FAME_TIERS } from '../types/fame.types'
 import type { ISOCountryCode } from '../types/geography.types'
 import type {
   CuratedFacet,
@@ -10,7 +11,9 @@ import type {
   UnescoFacet,
 } from '../types/places.types'
 import { LANDMARK_FACTS } from './data/landmark-facts'
+import { PLACE_ALIASES, PLACE_COINCIDENCE_METRES } from './data/place-aliases'
 import { LANDMARK_SEEDS } from './data/landmark-seeds'
+import { haversineKm } from '../lib/geo'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import { resolveQidBySearch, saveImageUrl } from './vendors/wikidata/commons'
 import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/unsplash/unsplash'
@@ -147,6 +150,13 @@ let misplacedSeeds = 0
 
 for (const entry of seeds) {
   const { seed, qid } = entry
+  // A seed whose item points somewhere else inside its own country — the guard
+  // below can only see the ones that cross a border. Ships as a photo, not a
+  // pin, until someone pins the right qid.
+  if (seed.noCoordinates) {
+    coordinateOf.delete(qid)
+    continue
+  }
   const point = coordinateOf.get(qid)
   if (!point) continue
   const verdict = placeSitsInCountry(shapes, seed.country, point)
@@ -367,7 +377,10 @@ for (const entry of curatedRoster) {
 
 let sharedSubjects = 0
 for (const site of heritageRoster) {
-  let slug = slugify(site.name)
+  // The register's title often names a place the curated roster already holds
+  // under its common name — fold those in rather than shipping the subject
+  // twice (see data/place-aliases.ts).
+  let slug = PLACE_ALIASES[slugify(site.name)] ?? slugify(site.name)
   const existing = drafts.get(slug)
   // A slug already taken by a place in ANOTHER country is a different subject
   // that happens to share a name — give the site its own.
@@ -388,7 +401,22 @@ for (const site of heritageRoster) {
     // Same subject, both rosters — so take the union, not a winner. The curated
     // identity leads (its name and prose were chosen by hand) and everything
     // the register knows is folded in beside it rather than discarded.
-    draft.unesco = facet
+    // Two register items can alias onto one place (Quito and its historic
+    // centre). Keep the better-known standing rather than whichever the
+    // sitelink sort happened to reach last, and union the rest.
+    draft.unesco = draft.unesco
+      ? {
+          ...facet,
+          ...draft.unesco,
+          fame: FAME_TIERS.indexOf(facet.fame) < FAME_TIERS.indexOf(draft.unesco.fame)
+            ? facet.fame
+            : draft.unesco.fame,
+          criteria: draft.unesco.criteria ?? facet.criteria,
+          inscribedYear: draft.unesco.inscribedYear ?? facet.inscribedYear,
+          designation: draft.unesco.designation ?? facet.designation,
+        }
+      : facet
+    if (site.name !== draft.name) draft.alsoKnownAs.add(site.name)
     draft.summary ??= site.description
     draft.city ??= city
     draft.inception ??= site.inception
@@ -563,6 +591,29 @@ const report = [
   '',
 ].join('\n')
 writeFileSync(join(import.meta.dirname, 'data/heritage-report.txt'), report)
+
+// Two places in one country pinned within metres of each other are either a
+// missing alias or a deliberately nested subject (the Kaaba sits 6m from
+// Masjid al-Haram). Neither is decidable here, so report and let a human rule.
+const pinned = Object.entries(mapping).filter(([, place]) => place.coordinates)
+const coincident: string[] = []
+for (let a = 0; a < pinned.length; a++) {
+  for (let b = a + 1; b < pinned.length; b++) {
+    const [slugA, one] = pinned[a]!
+    const [slugB, other] = pinned[b]!
+    if (one.country !== other.country) continue
+    const metres = haversineKm(one.coordinates!, other.coordinates!) * 1000
+    if (metres < PLACE_COINCIDENCE_METRES) {
+      coincident.push(`  ${Math.round(metres)}m  ${slugA} ~ ${slugB} (${one.country})`)
+    }
+  }
+}
+if (coincident.length) {
+  console.log(
+    `\n${coincident.length} pairs pinned within ${PLACE_COINCIDENCE_METRES}m — add an alias if any name ONE place twice:`
+  )
+  console.log(coincident.sort().join('\n'))
+}
 
 writePlacesFile({
   path: 'data/places.gen.ts',

@@ -42,6 +42,16 @@ export interface LandmarkSeed {
    */
   fame?: Fame
   /**
+   * Ship this seed as a photo only, never as a pin answer.
+   *
+   * For a seed whose Wikidata item carries a point that belongs somewhere else
+   * INSIDE the same country — the polygon guard only catches the ones that
+   * cross a border, so a wrong item in the right country sails through. The
+   * proper fix is pinning the right `qid` below; this is the honest stopgap
+   * until someone does, because a wrong pin answer is worse than no round.
+   */
+  noCoordinates?: true
+  /**
    * Pin the exact Wikidata item, e.g. `Q243`.
    *
    * The generator otherwise resolves the Q-id by searching the name, and that
@@ -669,7 +679,10 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // 384px wide, so Matobo Hills carries ZW.
   { name: 'Matobo Hills', country: 'ZW', kind: 'natural' },
   { name: 'Mount Cameroon', country: 'CM', kind: 'natural' },
-  { name: 'Ennedi Massif', country: 'TD', kind: 'natural' },
+  // Its item resolves to a point inside the Lakes of Ounianga, ~250km west of
+  // the massif and still in Chad, so the polygon guard cannot see it. Pin the
+  // right qid to restore the pin round.
+  { name: 'Ennedi Massif', country: 'TD', kind: 'natural', noCoordinates: true },
   // Dahlak/Bijagós resolve to satellite imagery on Wikidata — use the ports.
   { name: 'Massawa', country: 'ER', kind: 'urban' },
   { name: 'Lake Assal', country: 'DJ', kind: 'natural', commons: 'Lake Assal 1-Djibouti.jpg' },
