@@ -4164,10 +4164,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Flag Palette', ['flag-palette']],
   ['Composition', ['composition']],
   ['Water', ['water-', 'name-that-water']],
-  [
-    'Mother Tongue',
-    ['mother-tongue', 'mother-tongue-regional', 'mother-tongue-regional-reveal'],
-  ],
+  ['Mother Tongue', ['mother-tongue', 'mother-tongue-regional', 'mother-tongue-regional-reveal']],
   ['Neighbour Blitz', ['neighbour-']],
   ['Map & Sketch', ['pin-landmark', 'no-mans-land', 'hot-cold', 'silhouette', 'sketch']],
   ['Audio Buzz', ['anthem-', 'tongue-']],

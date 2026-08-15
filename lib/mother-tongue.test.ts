@@ -132,9 +132,7 @@ describe('off-board veto', () => {
       for (const [language, countries] of onBoard) {
         if (countries.length < 3 || countries.length > 12) continue
         const challenge = challengeOf(language, countries, variant)
-        vetoed += ISOCountryCodes.filter(isoCode =>
-          speaksButOffBoard(challenge, isoCode)
-        ).length
+        vetoed += ISOCountryCodes.filter(isoCode => speaksButOffBoard(challenge, isoCode)).length
       }
       expect(vetoed, variant).toBeGreaterThan(0)
     }
