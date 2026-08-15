@@ -1280,6 +1280,18 @@ const promptSources = computed(() => datasetAttribution('parties'))
   pointer-events: auto;
 }
 
+// The shell caps a footer at `60% + clearance` so a tall one cannot eat the
+// stage — written for a footer that is a FLEX CHILD of the shell, where the
+// percentage resolves against the whole column. This one is a GRID ROW of the
+// beat, so it resolves against the row's own `auto` height instead: the cap
+// became 60% of the lock row itself, and the button hung 18px below its own
+// scrollport, reachable only by scrolling a 44px strip. Nothing is lost by
+// lifting it — the beat's `minmax(0, 1fr)` panel is what yields here, and the
+// footer's row is `auto` by construction.
+.sides-footer {
+  max-height: none;
+}
+
 // Chrome, not a control strip. The shell's footer padding is sized for buttons
 // and typed consoles; a display-only dial does not need that band, and on a
 // short phone every row of it comes straight out of the beat above (beat 2 was
