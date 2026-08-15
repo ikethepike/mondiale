@@ -320,7 +320,9 @@ const pick = (option: SuggestOption) => {
   // vanish with no feedback at all.
   const pool = optionsByCategory.value[category] ?? []
   if (!pool.some(entry => entry.id === option.id)) {
-    announce({ hint: `That answer isn't on the ${categoryLabel.value} list`, tone: 'alert' })
+    // Neutral: a pick that landed on the wrong register costs nothing, and
+    // the player hasn't answered wrong — they've answered elsewhere.
+    announce({ hint: `That answer isn't on the ${categoryLabel.value} list` })
     return
   }
 

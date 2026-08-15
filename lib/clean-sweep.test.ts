@@ -4,6 +4,7 @@ import {
   SWEEP_SETS,
   SWEEP_TUNING,
   sweepBoardFor,
+  sweepOffBoardFor,
   sweepClaimFraction,
   sweepClaimedBy,
   sweepCloserId,
@@ -320,5 +321,53 @@ describe('scoring the round', () => {
       ['ada', 'ben']
     )
     expect(sweepScoresFromClaims(swept)).toEqual(sweepScoresFromClaims(swept))
+  })
+})
+
+describe('sweepOffBoardFor', () => {
+  const rules = (variant: GameVariant, difficulty: GameDifficulty = 'normal') =>
+    ({ variant, difficulty }) as GameRules
+
+  it('names the members the band trimmed away', () => {
+    // "Name every member of NATO" deals 30 of 32 on a hard world board —
+    // the United States and the United Kingdom fall off the alphabetical tail.
+    const band = sweepSlotBand('hard', 2)
+    const dealt = sweepBoardFor('nato', rules('world', 'hard'), band)!
+    const off = sweepOffBoardFor('nato', rules('world', 'hard'), dealt)
+    expect(off.length).toBeGreaterThan(0)
+    for (const isoCode of off) expect(dealt).not.toContain(isoCode)
+    // Every name it yields is a real member — never a stray.
+    const everywhere = SWEEP_SETS.nato!.members({
+      variant: 'world',
+      difficulty: 'hard',
+      includeMicroNations: true,
+    } as GameRules)
+    for (const isoCode of off) expect(everywhere).toContain(isoCode)
+  })
+
+  it('names the members a continental board leaves out', () => {
+    const band = sweepSlotBand('normal', 2)
+    const dealt = sweepBoardFor('nato', rules('europe'), band)
+    if (!dealt) return
+    const off = sweepOffBoardFor('nato', rules('europe'), dealt)
+    // The United States and Canada are NATO members standing off a Europe board.
+    expect(off).toContain('US')
+    expect(off).toContain('CA')
+  })
+
+  it('never calls a dealt member off-board', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
+      for (const variant of ['world', 'europe', 'asia'] as GameVariant[]) {
+        const band = sweepSlotBand(difficulty, 2)
+        for (const setId of Object.keys(SWEEP_SETS)) {
+          const dealt = sweepBoardFor(setId, rules(variant, difficulty), band)
+          if (!dealt) continue
+          const off = sweepOffBoardFor(setId, rules(variant, difficulty), dealt)
+          for (const isoCode of dealt) {
+            expect(off, `${difficulty}/${variant}/${setId}`).not.toContain(isoCode)
+          }
+        }
+      }
+    }
   })
 })

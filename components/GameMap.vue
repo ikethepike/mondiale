@@ -127,14 +127,19 @@
               <path v-for="(land, index) in shape.land" :key="index" :d="land" />
             </clipPath>
           </defs>
-          <path
-            v-for="shape in erasedShapes"
-            :key="`erased-${shape.code}`"
-            class="atlas-erased"
-            pathLength="1"
-            :clip-path="`url(#atlas-land-${shape.code})`"
-            :d="shape.d"
-          />
+          <!-- One element per side of the border, each with its own
+               pathLength, so the two copies wipe in step instead of one after
+               the other. -->
+          <template v-for="shape in erasedShapes" :key="`erased-${shape.code}`">
+            <path
+              v-for="(side, index) in shape.sides"
+              :key="`erased-${shape.code}-${index}`"
+              class="atlas-erased"
+              pathLength="1"
+              :clip-path="`url(#atlas-land-${shape.code})`"
+              :d="side"
+            />
+          </template>
           <!-- The re-ink: the restored country draws its own outline back on. -->
           <path
             v-for="shape in restoringShapes"
@@ -247,7 +252,13 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
-import { largestRing, parsePolygons, poleOfInaccessibility, sharedBorderPair } from '~~/lib/outline'
+import {
+  largestRing,
+  parsePolygons,
+  poleOfInaccessibility,
+  reachEnds,
+  sharedBorderPair,
+} from '~~/lib/outline'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import {
@@ -544,10 +555,10 @@ const livePath = (code: string): string | undefined =>
 const erasedShapes = computed(() => {
   void hdRevision.value
   return props.vanished.flatMap(code => {
-    const d = vanishPath(code)
-    if (!d) return []
+    const sides = vanishPath(code)
+    if (!sides.length) return []
     const land = [livePath(code), ...(BORDERS[code] ?? []).map(neighbour => livePath(neighbour))]
-    return [{ code, d, land: land.filter((path): path is string => !!path) }]
+    return [{ code, sides, land: land.filter((path): path is string => !!path) }]
   })
 })
 
@@ -556,8 +567,8 @@ const erasedShapes = computed(() => {
  * and tier — the vanished set repaints on every clock tick, and the geometry
  * cannot change without the tier changing.
  */
-const vanishCache = new Map<string, string>()
-const vanishPath = (code: ISOCountryCode): string => {
+const vanishCache = new Map<string, string[]>()
+const vanishPath = (code: ISOCountryCode): string[] => {
   const tier = hdApplied.has(code) && hdPaths ? 'hd' : 'sd'
   const key = `${code}:${tier}`
   const cached = vanishCache.get(key)
@@ -565,20 +576,29 @@ const vanishPath = (code: ISOCountryCode): string => {
 
   const own = livePath(code)
   const ring = own ? largestRing(own) : undefined
-  const pair = ring
-    ? sharedBorderPair(
-        ring,
-        (BORDERS[code] ?? []).flatMap(neighbour => {
-          const path = livePath(neighbour)
-          return path ? [parsePolygons(path).flat()] : []
-        })
+  const neighbourRings = (BORDERS[code] ?? []).flatMap(neighbour => {
+    const path = livePath(neighbour)
+    return path ? [parsePolygons(path).flat()] : []
+  })
+  const pair = ring ? sharedBorderPair(ring, neighbourRings) : undefined
+  // Each side is stretched along the ring it belongs to — the neighbour's copy
+  // runs on the neighbour's outline, so extending it needs that ring, not ours.
+  const theirRing = pair?.theirs.length
+    ? neighbourRings.find(candidate =>
+        candidate.some(point => point[0] === pair.theirs[0]![0] && point[1] === pair.theirs[0]![1])
       )
     : undefined
 
-  // Both sides as one path: the border is drawn twice, once by each country,
-  // and the two copies diverge by a fraction of a unit. Each is covered along
-  // its OWN line, so a modest brush suffices — a single brush wide enough to
-  // span the divergence would eat a sliver neighbour alive.
+  // The border is drawn twice, once by each country, and the two copies diverge
+  // by a fraction of a unit. Each is covered along its OWN line, so a modest
+  // brush suffices — a single brush wide enough to span the divergence would
+  // eat a sliver neighbour alive.
+  //
+  // TWO paths, not one concatenated `d`: `pathLength="1"` normalises a whole
+  // element, so with both sides in one path the wipe finished this country's
+  // copy before it started the neighbour's — leaving the border erased on one
+  // side and fully inked on the other for half the melt, which is the seam.
+  // Separate elements sweep together.
   const subpath = (run: [number, number][]) =>
     run.length
       ? `M${run[0]![0]} ${run[0]![1]}` +
@@ -587,7 +607,13 @@ const vanishPath = (code: ISOCountryCode): string => {
           .map(([x, y]) => `L${x} ${y}`)
           .join('')
       : ''
-  const d = pair ? subpath(pair.own) + subpath(pair.theirs) : ''
+  const d =
+    pair && ring
+      ? [
+          subpath(reachEnds(pair.own, ring)),
+          subpath(theirRing ? reachEnds(pair.theirs, theirRing) : pair.theirs),
+        ].filter(Boolean)
+      : []
   vanishCache.set(key, d)
   return d
 }
@@ -2797,9 +2823,17 @@ path[id] {
   pointer-events: none;
   stroke: var(--map-land-solid);
   // Butt, never round: the run ENDS at a tripoint where two borders carry on,
-  // and a round cap would reach past it and nick the ink of both.
+  // and a round cap would reach past it and nick the ink of both. The run is
+  // stretched one vertex past each end instead (`reachEnds`), so the cap lands
+  // ON the junction rather than short of it.
   stroke-linecap: butt;
   stroke-linejoin: round;
+  // 3px and no wider. Unlike a country path this element gets no inline
+  // --stroke-base, so the footprint cap never applies to it — the width here is
+  // the width everywhere. Five countries are already narrower than this brush
+  // in map units (Holy See 0.01, Monaco 0.29, Liechtenstein 0.52, San Marino
+  // 0.53, Andorra 1.14), so widening it to close a seam would rub them off the
+  // map whenever a neighbour vanishes.
   stroke-width: calc(3px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
   stroke-dasharray: 1;
   stroke-dashoffset: 1;

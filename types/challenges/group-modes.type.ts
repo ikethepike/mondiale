@@ -89,6 +89,11 @@ export interface TongueBuzzChallenge {
   /** The answers: playable countries with this as an official language.
    *  English is official in 55 of them, so the answer is a set by design. */
   countries: ISOCountryCode[]
+  /** The board the answer set was scoped to — absent on world boards. A buzz
+   *  from off the board is right about the world and wrong only about this
+   *  round, so it must not draw a lockout. Same contract as
+   *  `MotherTongueChallenge.scope`. */
+  scope?: Exclude<GameVariant, 'world'>
   durationSeconds: number
   maximumPoints: number
   /** The region one speaker country sits in. Unlocks on the clock at every
@@ -994,6 +999,16 @@ export interface CleanSweepChallenge {
   /** The board, pinned at the deal so a data regeneration mid-game can't move
    *  the answers under a live round. */
   members: ISOCountryCode[]
+  /**
+   * Genuine members of the set that this board does NOT ask for: cut by the
+   * continental variant, benched as micro-nations, or trimmed by the band's
+   * ceiling. Pinned at the deal beside `members` for the same reason.
+   *
+   * The prompt says "name every member", so naming one of these is knowing the
+   * answer, not missing it — the server refuses the claim without benching and
+   * the view says why. Empty on a board that asks for the whole set.
+   */
+  offBoard?: ISOCountryCode[]
   durationSeconds: number
   maximumPoints: number
   state: CleanSweepState
@@ -1044,6 +1059,19 @@ export interface TerraIncognitaChallenge {
   /** The countries the atlas loses, in the order it loses them. No two share
    *  a land border — see `pickVanishDeck` for why adjacency is disqualifying. */
   vanishings: ISOCountryCode[]
+  /**
+   * Each vanishing's absorber: the neighbour whose land it dissolves into,
+   * which is the border the map paints out. The round reads as one country
+   * expanding over another, so naming EITHER restores the hole.
+   *
+   * Stamped at the deal from `terraAbsorber` rather than re-derived, so the
+   * client, the server and the reveal can never disagree about who swallowed
+   * what — and so the answer cannot shift with the map's zoom tier.
+   *
+   * Optional only for rounds already in flight when this shipped: those grade
+   * on the vanished country's own name, exactly as they were dealt to.
+   */
+  absorbedBy?: Partial<Record<ISOCountryCode, ISOCountryCode>>
   /** Milliseconds between losses. Rides the challenge rather than being
    *  re-derived from the difficulty, so a game whose rules changed mid-round
    *  cannot re-time a world that is already falling. */

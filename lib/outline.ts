@@ -738,6 +738,34 @@ export const scoreSketch = (
  * the border would take the entire outline with it and land straight back on
  * the amputation problem.
  */
+/**
+ * A border run stretched one vertex past each end, along the ring it came from.
+ *
+ * `sharedBoundary` returns exactly the shared vertices, and a stroke drawn over
+ * them stops ON the tripoint rather than through it — with `butt` caps (the
+ * only safe cap here, since a round one would reach past the junction and nick
+ * the two borders that carry on) that leaves a nub of the old line at each end.
+ * Reaching one vertex further covers the junction while still ending inside the
+ * neighbour's own border, which the over-paint is allowed to cover anyway.
+ *
+ * `unsharedRuns` does the same thing from the other side, for the same reason.
+ * Wraps, since a run can straddle the ring's start.
+ */
+export const reachEnds = (run: OutlinePoint[], ring: OutlinePoint[]): OutlinePoint[] => {
+  if (run.length < 2 || ring.length < 3) return run
+  // By VALUE, not identity: the neighbour's copy of a border is extended along
+  // the neighbour's own ring, and those points are different objects carrying
+  // the same coordinates.
+  const at = (point: OutlinePoint) =>
+    ring.findIndex(other => other[0] === point[0] && other[1] === point[1])
+  const first = at(run[0]!)
+  const last = at(run[run.length - 1]!)
+  if (first < 0 || last < 0) return run
+  const before = ring[(first - 1 + ring.length) % ring.length]!
+  const after = ring[(last + 1) % ring.length]!
+  return [before, ...run, after]
+}
+
 export const sharedBorderPair = (
   ring: OutlinePoint[],
   neighbours: OutlinePoint[][]

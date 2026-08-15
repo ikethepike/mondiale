@@ -3,11 +3,13 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import {
+  tongueBuzzRule,
+  tongueBuzzTally,
   motherTongueQuestion,
   motherTongueScope,
   motherTongueStakes,
   speaksButOffBoard,
-} from '~~/lib/mother-tongue'
+} from '~~/lib/language-rounds'
 import { countryInVariant } from '~~/lib/variant'
 import { isChallengeOfType } from '~~/lib/rounds'
 import type { MotherTongueChallenge } from '~~/types/challenges/group-modes.type'
@@ -159,5 +161,55 @@ describe('the dealt round', () => {
         )
       }
     }
+  })
+})
+
+describe('tongue buzz', () => {
+  afterEach(() => {
+    delete process.env.FORCE_ROUND_TYPE
+  })
+
+  it('deals only countries where the language is genuinely official', async () => {
+    // The round's own prompt says "where that language is official". It used to
+    // grade the SPOKEN list, so it rejected Burundi for English (official
+    // there) and accepted Kazakhstan for Russian (not official there).
+    process.env.FORCE_ROUND_TYPE = 'tongue-buzz'
+    for (const variant of [...REGIONAL, 'world' as const]) {
+      const challenge = await getRoundChallenge({ game: rules(variant) })
+      if (!isChallengeOfType(challenge, 'tongue-buzz-challenge')) continue
+      expect(challenge.scope, variant).toBe(variant === 'world' ? undefined : variant)
+      for (const isoCode of challenge.countries) {
+        expect(COUNTRIES[isoCode]?.officialLanguages ?? [], `${variant}/${isoCode}`).toContain(
+          challenge.language
+        )
+      }
+      // The veto can never swallow one of its own answers.
+      for (const isoCode of challenge.countries) {
+        expect(speaksButOffBoard(challenge, isoCode), `${variant}/${isoCode}`).toBe(false)
+      }
+    }
+  })
+
+  it('credits an off-board speaker instead of locking them out', () => {
+    // A Europe board dealing French: buzzing Senegal is right about the world.
+    const challenge = {
+      language: 'French',
+      countries: ['FR', 'BE', 'LU', 'MC', 'CH'] as ISOCountryCode[],
+      scope: 'europe' as const,
+    }
+    expect(speaksButOffBoard(challenge, 'SN')).toBe(true)
+    expect(speaksButOffBoard(challenge, 'FR')).toBe(false)
+    expect(tongueBuzzRule(challenge)).toContain('in Europe')
+    expect(tongueBuzzTally(challenge)).toBe('Official in 5 countries in Europe')
+  })
+
+  it('leaves a world board unscoped', () => {
+    const challenge = {
+      language: 'German',
+      scope: undefined,
+      countries: ['DE', 'AT', 'CH'] as ISOCountryCode[],
+    }
+    expect(tongueBuzzRule(challenge)).toBe('Any country with it as an official language counts')
+    expect(tongueBuzzTally(challenge)).toBe('Official in 3 countries')
   })
 })

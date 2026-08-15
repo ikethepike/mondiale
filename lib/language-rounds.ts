@@ -1,24 +1,37 @@
 /**
- * Mother Tongue's board scope — the one place the round works out which
- * board it is asking about, and what that means for a guess.
+ * The board scope of the two language rounds — the one place they work out
+ * which board they are asking about, and what that means for a guess.
  *
  * A regional board deals only the speakers standing on it, so "Who speaks
  * French?" on a Europe board means five countries, not thirty. The dealer
  * stamps that scope onto the challenge; everything a player reads (the
  * interstitial, the prompt, the scorecard) and the off-board veto resolve it
  * through here, so the question asked and the recap printed can never drift.
+ *
+ * Mother Tongue (type the whole set) and Tongue Buzz (buzz any one of it) sit
+ * here together because they ask the SAME question of the same data and got
+ * different answers for a while: Mother Tongue graded official languages while
+ * Tongues graded spoken ones, under copy that promised "official" in both.
  */
 import { COUNTRIES } from '~~/data/countries.gen'
-import type { MotherTongueChallenge } from '~~/types/challenges/group-modes.type'
+import type {
+  MotherTongueChallenge,
+  TongueBuzzChallenge,
+} from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { REGION_LABELS } from './variant'
+
+/** Either language round: both name a language and carry a board-scoped set. */
+type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language' | 'scope'> & {
+  countries: ISOCountryCode[]
+}
 
 /**
  * The board in words, ready to follow a question: "in Europe", "in the world".
  * `REGION_LABELS` carries its own article where one is needed ("the Middle
  * East"), so the phrase takes a bare `in`.
  */
-export const motherTongueScope = (challenge: Pick<MotherTongueChallenge, 'scope'>): string =>
+export const motherTongueScope = (challenge: Pick<LanguageRound, 'scope'>): string =>
   challenge.scope ? `in ${REGION_LABELS[challenge.scope]}` : 'in the world'
 
 /**
@@ -44,6 +57,23 @@ export const motherTongueStakes = (
 }
 
 /**
+ * Tongue Buzz's sub-line: what counts as a right answer, bounded by the board.
+ * "Any country with it as an official language counts" is a promise the round
+ * can only keep on a world board.
+ */
+export const tongueBuzzRule = (challenge: Pick<LanguageRound, 'scope'>): string =>
+  challenge.scope
+    ? `Any country ${motherTongueScope(challenge)} with it as an official language counts`
+    : 'Any country with it as an official language counts'
+
+/** Tongue Buzz's reveal line: "Official in 5 countries in Europe". */
+export const tongueBuzzTally = (challenge: Pick<LanguageRound, 'scope' | 'countries'>): string => {
+  const count = challenge.countries.length
+  const where = challenge.scope ? ` ${motherTongueScope(challenge)}` : ''
+  return `Official in ${count} ${count === 1 ? 'country' : 'countries'}${where}`
+}
+
+/**
  * Does this country speak the language but stand off the board?
  *
  * Such a guess is RIGHT about the world and wrong only about the round, so it
@@ -53,7 +83,7 @@ export const motherTongueStakes = (
  * leaks nothing, since the board has been fixed and visible all game.
  */
 export const speaksButOffBoard = (
-  challenge: Pick<MotherTongueChallenge, 'language' | 'scope' | 'countries'> | undefined,
+  challenge: LanguageRound | undefined,
   isoCode: ISOCountryCode
 ): boolean => {
   if (!challenge?.scope) return false

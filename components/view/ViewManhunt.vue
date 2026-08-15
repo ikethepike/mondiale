@@ -238,6 +238,7 @@ import {
   legalManhuntMoves,
   MANHUNT_SUBPOENA_TOPICS,
   MANHUNT_TAUNTS,
+  pursuitNeighboursOf,
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -514,7 +515,17 @@ const onMapClick = (event: Event) => {
   if (isDespot.value && state.value.beat === 'move') {
     const { ground, sea } = legalMoves.value
     if (!ground.includes(isoCode) && !sea.includes(isoCode)) {
-      return announce({ hint: `You can't reach ${countryName(getCountry(isoCode))} from here` })
+      // A real neighbour the board doesn't play is not out of reach — it isn't
+      // here at all. Border Chain draws the same distinction ('off-board' vs
+      // 'walked'), and saying "you can't reach Syria" from Turkey is false.
+      const connected = despotAt.value
+        ? pursuitNeighboursOf(despotAt.value).includes(isoCode)
+        : false
+      return announce({
+        hint: connected
+          ? `${countryName(getCountry(isoCode))} is off this board`
+          : `You can't reach ${countryName(getCountry(isoCode))} from here`,
+      })
     }
     pending.value = true
     update({ event: 'submit-manhunt-move', isoCode, turn: state.value.turn })

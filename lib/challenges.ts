@@ -11,7 +11,13 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { WaterFeature } from '~~/data/water.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { currencyNamesASpender } from '~~/lib/currency'
-import { SWEEP_TUNING, sweepBoardFor, sweepSlotBand, viableSweepSets } from '~~/lib/clean-sweep'
+import {
+  SWEEP_TUNING,
+  sweepBoardFor,
+  sweepOffBoardFor,
+  sweepSlotBand,
+  viableSweepSets,
+} from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
@@ -75,6 +81,7 @@ import type {
   RoundChallengeKind,
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
+import type { ScaleTone } from '~~/types/challenge.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
@@ -115,6 +122,7 @@ import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } fro
 import { pickStarChart, starChartInitials, starChartSeconds } from './star-chart'
 import {
   pickVanishDeck,
+  terraAbsorber,
   terraCollapseThreshold,
   terraSeconds,
   TERRA_CADENCE_MS,
@@ -395,10 +403,15 @@ const getCleanSweepChallenge = ({
   const members = sweepBoardFor(setId, game, band)
   if (!members) return undefined
 
+  // Members this board doesn't ask for — a claim on one is refused, never
+  // benched: the prompt says "every member" and they really are members.
+  const offBoard = sweepOffBoardFor(setId, game, members)
+
   return {
     _type: 'clean-sweep-challenge',
     setId,
     members,
+    ...(offBoard.length ? { offBoard } : {}),
     durationSeconds: SWEEP_TUNING[game.difficulty].durationSeconds,
     maximumPoints: maximumRoundPoints(game),
     state: {
@@ -634,9 +647,13 @@ const getTongueBuzzChallenge = ({
   game: gameTypes.Game
 }): TongueBuzzChallenge | undefined => {
   const pool = playableCountries(game)
+  // OFFICIAL languages, like Mother Tongue: this round's own prompt says "where
+  // that language is official", so the set it grades has to mean it. Reading
+  // the spoken list both rejected countries where it IS official (Burundi for
+  // English, Rwanda for Swahili) and accepted ones where it isn't.
   const speakers = new Map<string, ISOCountryCode[]>()
   for (const isoCode of pool) {
-    for (const language of COUNTRIES[isoCode].languages ?? []) {
+    for (const language of COUNTRIES[isoCode].officialLanguages ?? []) {
       if (!TONGUES[language]) continue
       speakers.set(language, [...(speakers.get(language) ?? []), isoCode])
     }
@@ -658,6 +675,7 @@ const getTongueBuzzChallenge = ({
     language,
     clips,
     countries,
+    ...(game.variant !== 'world' ? { scope: game.variant } : {}),
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
     // Every difficulty unlocks these as the clip runs, matching the anthem
@@ -1177,6 +1195,14 @@ const getTerraIncognitaChallenge = (game: gameTypes.Game): TerraIncognitaChallen
   return {
     _type: 'terra-incognita-challenge',
     vanishings,
+    // Who swallows each loss, resolved once here: naming the expander restores
+    // the hole just as naming the country that went does.
+    absorbedBy: Object.fromEntries(
+      vanishings.flatMap(isoCode => {
+        const absorber = terraAbsorber(isoCode)
+        return absorber ? [[isoCode, absorber] as const] : []
+      })
+    ),
     cadenceMs,
     collapseThreshold: terraCollapseThreshold(vanishings.length, game.difficulty),
     durationSeconds: terraSeconds(vanishings.length, cadenceMs),
@@ -3777,6 +3803,7 @@ export interface ScalePlotProps {
   min: number
   max: number
   invert?: boolean
+  tone: ScaleTone
   leastLabel: string
   mostLabel: string
 }
@@ -3792,12 +3819,14 @@ export const getScaleProps = (
   if (amount === undefined) return undefined
   const details = getChallengeDetails(accessorId)
   if (!details?.scale || !details.markers) return undefined
-  const { min, max, invert } = details.scale
+  const { min, max, invert, tone } = details.scale
   return {
     amount,
     min,
     max,
     invert,
+    // A stat that never declared a verdict doesn't get one painted on it.
+    tone: tone ?? 'neutral',
     leastLabel: details.markers.least,
     mostLabel: details.markers.most,
   }

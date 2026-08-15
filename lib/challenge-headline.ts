@@ -5,7 +5,7 @@ import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { SWEEP_SETS, sweepUnclaimed } from '~~/lib/clean-sweep'
 import { countryName } from '~~/lib/country'
-import { motherTongueScope } from '~~/lib/mother-tongue'
+import { motherTongueScope } from '~~/lib/language-rounds'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { starChartStars } from '~~/lib/star-chart'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
@@ -43,7 +43,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
         : ''
     case 'tongue-buzz':
       return '_type' in challenge && challenge._type === 'tongue-buzz-challenge'
-        ? `That was ${challenge.language} — official in ${challenge.countries.length} countries`
+        ? `That was ${challenge.language} — official in ${challenge.countries.length} countries${challenge.scope ? ` ${motherTongueScope(challenge)}` : ''}`
         : ''
     case 'hot-cold':
       return '_type' in challenge && challenge._type === 'hot-cold-challenge'

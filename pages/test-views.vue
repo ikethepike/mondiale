@@ -942,8 +942,18 @@ const TONGUE_RUNGS: {
     countries: ISOCountryCode[]
     /** Hindi has no anthem sung in it (India's is Bengali), so it seeds. */
     seeded?: boolean
+    /** Regional boards scope the answer set — and the copy that describes it. */
+    scope?: 'europe'
   }
 } = {
+  // A Europe board asking for French: buzzing Senegal is right about the world
+  // and off this board, so it must bounce free rather than lock the buzzer out.
+  'french-europe': {
+    language: 'French',
+    clipCodes: ['fr-0'],
+    countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
+    scope: 'europe',
+  },
   swahili: {
     language: 'Swahili',
     clipCodes: ['sw-0', 'sw-1', 'sw-2'],
@@ -1829,17 +1839,22 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'stat-detective-challenge',
-          country: 'BR',
+          country: 'IT',
+          // A full ladder, and one plotted stat of each ScaleTone: share65Plus
+          // (neutral), equality (inverted), democracyIndex (positive) — the
+          // clue pile that used to squeeze the console off the bottom edge.
           clues: [
             'people.population',
             'geography.area.total',
             'economics.gdpPerCapita',
             'government.corruptionIndex',
-            'environment.CO2Emissions',
+            'people.share65Plus',
+            'economics.equality',
+            'government.democracyIndex',
           ],
           secondsPerClue: 4,
-          region: 'South America',
-          photo: '/capitals/BR.webp',
+          region: 'Europe',
+          photo: '/capitals/IT.webp',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -1958,8 +1973,10 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'neighbour-blitz-challenge',
-          country: 'DE',
-          neighbours: ['DK', 'NL', 'BE', 'LU', 'FR', 'CH', 'AT', 'CZ', 'PL'],
+          // Italy on a normal board: San Marino and the Holy See really border
+          // it but are benched out of the key, so naming them must bounce free.
+          country: 'IT',
+          neighbours: ['FR', 'CH', 'AT', 'SI'],
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -2108,6 +2125,7 @@ const scenarios: Scenario[] = [
     // (borrow the speaker country's anthem lines), a seeded sample, and the
     // degenerate one-clip sequence.
     variants: [
+      { id: 'french-europe', label: 'French on a Europe board — off-board buzz bounces' },
       { id: 'swahili', label: 'Swahili — three voices, four speakers' },
       { id: 'ukrainian', label: 'Ukrainian — borrowed anthem wall, Cyrillic' },
       { id: 'hindi', label: 'Hindi — seeded sample, one clip' },
@@ -2123,6 +2141,7 @@ const scenarios: Scenario[] = [
             m4a: `/tongues/${code}.m4a`,
           })),
           countries: rung.countries,
+          ...(rung.scope ? { scope: rung.scope } : {}),
           durationSeconds: 20,
           region: REGION_LABELS[getCountry(rung.countries[0]!).region],
           speakerCount: rung.countries.length,
@@ -4483,12 +4502,14 @@ $harness-bar-height: 3.4rem;
   // hiding the very question the round is asking. Start the scene below it
   // instead — the bar can't move to the bottom, where the guess console lives.
   @media screen and (max-width: $phone) {
-    height: calc(var(--viewport-height) - #{$harness-bar-height});
     margin-top: $harness-bar-height;
 
     // The scene inside is sized from --viewport-height, so shortening the
     // frame alone leaves it a bar's-worth too tall and its footer lands
-    // under the fold. Re-point the variable for the subtree instead.
+    // under the fold. Re-point the variable for the subtree instead — the
+    // `height` above reads it too, so the frame follows without a second
+    // subtraction (which clipped a bar's-worth off the console, making the
+    // harness lie about the very thing it exists to show).
     --viewport-height: calc(100dvh - #{$harness-bar-height});
   }
 }

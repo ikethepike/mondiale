@@ -244,6 +244,27 @@ export const sweepBoardFor = (
   return members.slice(0, band.maximum)
 }
 
+/**
+ * The set's real members that this board does NOT ask for — cut by the variant,
+ * benched as micro-nations, or trimmed past the band's ceiling.
+ *
+ * The prompt says "name every member of NATO" while the board may hold thirty
+ * of thirty-two, so naming the United States is knowing the answer rather than
+ * missing it. The round refuses those claims without the bench that a stray
+ * earns. Resolved against the WORLD roster, so it catches every axis of the
+ * narrowing at once.
+ */
+export const sweepOffBoardFor = (
+  setId: string,
+  rules: GameRules,
+  dealt: readonly ISOCountryCode[]
+): ISOCountryCode[] => {
+  const spec = SWEEP_SETS[setId]
+  if (!spec) return []
+  const everywhere = spec.members({ ...rules, variant: 'world', includeMicroNations: true })
+  return everywhere.filter(isoCode => !dealt.includes(isoCode))
+}
+
 /** Every set that can field a board at this table, in register order. */
 export const viableSweepSets = (
   rules: GameRules,

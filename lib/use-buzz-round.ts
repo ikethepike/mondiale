@@ -44,6 +44,19 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     maximumPoints: (challenge: Extract<TypedRoundChallenge, { _type: T }>) => number
     /** Copy for a wrong buzz; the country is already named for the guesser. */
     lockoutHint: (guessName: string) => string
+    /**
+     * Pre-buzz veto: return a hint to refuse the guess WITHOUT a lockout.
+     *
+     * For a buzz that is right about the world and wrong only about this round
+     * — a country off the board whose answer set was scoped to it. A lockout
+     * costs 15% of a 20-second clock and broadcasts a named miss to the room,
+     * so charging one for a correct answer is the harshest version of the
+     * mistake `reject` exists to prevent.
+     */
+    reject?: (
+      challenge: Extract<TypedRoundChallenge, { _type: T }>,
+      guess: ISOCountryCode
+    ) => string | undefined
     /** Runs once the round resolves, before the reveal hold. */
     onResolve?: (guess: ISOCountryCode | undefined) => void
     /** Runs when a lockout expires, after the DOM patch that re-enables the
@@ -148,6 +161,14 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   const guess = (isoCode: ISOCountryCode, guessName: string): 'correct' | 'wrong' | 'ignored' => {
     const active = challenge.value
     if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) {
+      return 'ignored'
+    }
+
+    // Before the verdict: a guess the round refuses to judge at all. It spends
+    // no lockout and tells the room nothing — the buzzer keeps their clock.
+    const veto = options.reject?.(active, isoCode)
+    if (veto) {
+      announce({ hint: veto })
       return 'ignored'
     }
 

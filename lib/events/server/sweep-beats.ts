@@ -146,6 +146,11 @@ export const applySweepClaim = async (
 
   const server = useServerSideEvents(ctx)
 
+  // A genuine member this board doesn't ask for (cut by the variant, the
+  // micro-nation gate, or the band's ceiling) is knowledge, not a stray: the
+  // prompt says "every member" and they really are one. Refused, never benched.
+  if (challenge.offBoard?.includes(isoCode)) return
+
   if (!challenge.members.includes(isoCode)) {
     // The bench is the mode's whole penalty — a stamp the view counts down.
     state.benched[playerId] = now + SWEEP_LOCKOUT_MS
