@@ -234,6 +234,38 @@ describe('PLACES', () => {
     }
   })
 
+  it('reaches the reveal with every fact both selections contributed', () => {
+    // Merging LandmarkReveal and HeritageReveal into one component silently
+    // dropped `designation` — the reveal stopped saying whether a site was
+    // cultural or natural. This renders the same summary line the component
+    // builds, so a field going dark fails here instead of shipping.
+    const standingOf = (place: (typeof PLACES)[string]) => {
+      const parts: string[] = []
+      if (place.curated) parts.push(place.curated.kind)
+      if (place.unesco) {
+        parts.push(
+          `${place.unesco.designation ?? ''} World Heritage${place.unesco.inscribedYear ? ` since ${place.unesco.inscribedYear}` : ''}`
+        )
+      }
+      if (place.inception) parts.push(String(place.inception))
+      return parts.join(' · ')
+    }
+
+    // A place on both rosters says both things, which neither split component
+    // could do.
+    const haLong = PLACES['ha-long-bay']!
+    expect(standingOf(haLong)).toContain(haLong.curated!.kind)
+    expect(standingOf(haLong)).toContain('World Heritage')
+
+    // Every designation the data holds is one the reveal can render.
+    const designations = new Set(
+      Object.values(PLACES)
+        .map(place => place.unesco?.designation)
+        .filter(Boolean)
+    )
+    expect([...designations].sort()).toEqual(['cultural', 'mixed', 'natural'])
+  })
+
   it('never holds one subject as two places', () => {
     // Slug matching only catches subjects the two selections spell the same.
     // They frequently do not — the curated seed says "Sagrada Familia", the

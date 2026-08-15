@@ -11,6 +11,7 @@
       </span>
     </span>
     <span v-if="prose" class="description">{{ capitalize(prose) }}</span>
+    <span v-if="!compact && criteria" class="criteria">Inscribed under {{ criteria }}</span>
     <span class="credit-row">
       <SourceInfo :attributions="sources" label="Sources" :item-credit="mediaCreditLine(place)" />
       <span class="credit">{{ sources[0].credit }}</span>
@@ -22,7 +23,7 @@ import { computed } from 'vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
-import type { LandmarkKind, PlaceEntry } from '~~/types/places.types'
+import type { HeritageDesignation, LandmarkKind, PlaceEntry } from '~~/types/places.types'
 
 const props = defineProps<{ place: PlaceEntry; compact?: boolean }>()
 
@@ -32,6 +33,14 @@ const KIND_COPY: { [kind in LandmarkKind]: string } = {
   ancient: 'An ancient site',
   monument: 'A built monument',
   urban: 'A city landmark',
+}
+
+/** UNESCO's own reading of the site — a different axis from `LandmarkKind`,
+ *  which is why the two never shared a field name. */
+const DESIGNATION_COPY: { [key in HeritageDesignation]: string } = {
+  cultural: 'cultural',
+  natural: 'natural',
+  mixed: 'mixed cultural and natural',
 }
 
 /**
@@ -44,15 +53,21 @@ const standing = computed(() => {
   const parts: string[] = []
   if (curated) parts.push(KIND_COPY[curated.kind])
   if (unesco) {
-    parts.push(
-      unesco.inscribedYear
-        ? `World Heritage since ${unesco.inscribedYear}`
-        : 'A World Heritage Site'
-    )
+    const designation = unesco.designation ? `${DESIGNATION_COPY[unesco.designation]} ` : ''
+    const since = unesco.inscribedYear ? ` since ${unesco.inscribedYear}` : ''
+    parts.push(`A ${designation}World Heritage Site${since}`)
   }
   if (inception) parts.push(inception < 0 ? `From ${Math.abs(inception)} BC` : `From ${inception}`)
   return parts.join(' · ')
 })
+
+/** The raw criteria behind the designation, e.g. "(i)(iv)". Full reveal only —
+ *  the per-beat one has no room for it. */
+const criteria = computed(() =>
+  props.place.unesco?.criteria?.length
+    ? props.place.unesco.criteria.map(numeral => `(${numeral})`).join('')
+    : undefined
+)
 
 /** The hand-written prose where we have it, else Wikidata's one-liner — a
  *  place the curated roster never wrote up carries only the latter. */
@@ -106,6 +121,13 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
   display: block;
   text-align: left;
   text-wrap: pretty;
+}
+
+.criteria {
+  opacity: 0.7;
+  display: block;
+  text-align: left;
+  font-size: 1.2rem;
 }
 
 // The per-beat reveal stands in a tighter box than the end-of-round one.
