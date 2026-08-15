@@ -16,8 +16,7 @@ import {
   type RoundChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
 import { EVENTS } from '~~/data/events.gen'
-import { HERITAGE } from '~~/data/heritage.gen'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { curatedPlaces, heritagePlaces } from '~~/lib/places'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import type { Player, PlayerPhase } from '~~/types/player.type'
 
@@ -238,8 +237,8 @@ const assertNoDangle = (label: string, story: SpectateStory) => {
   }
 }
 
-const heritageSlug = Object.keys(HERITAGE)[0]
-const landmarkSlug = Object.keys(LANDMARKS)[0]
+const heritageSlug = heritagePlaces()[0][0]
+const landmarkSlug = curatedPlaces()[0][0]
 const eventSlugs = Object.keys(EVENTS).slice(0, 3)
 const territoryId = Object.keys(RECOGNITION_TERRITORIES)[0]
 

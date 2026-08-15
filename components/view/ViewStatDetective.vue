@@ -12,9 +12,13 @@
     <ChallengePrompt :hint="hint" :hint-tone="hintTone">
       <template v-if="!resolved">
         <h1 class="map-caption">Which country is this?</h1>
-        <span class="map-caption sub">Clue {{ revealedCount }} of {{ totalClues }}</span>
-        <span v-if="challenge.region" class="map-caption region-hint">
-          Region: {{ challenge.region }}
+        <!-- Clue count and region share one row: stacked, three pills of
+             header ate the room the clue ladder needs on a phone. -->
+        <span class="clue-meta">
+          <span class="map-caption sub">Clue {{ revealedCount }} of {{ totalClues }}</span>
+          <span v-if="challenge.region" class="map-caption region-hint">
+            {{ challenge.region }}
+          </span>
         </span>
       </template>
       <template v-else>
@@ -155,7 +159,7 @@ const revealedClues = computed(() => {
  *  so the ⓘ names both registries honestly. */
 const photoSources = dedupeAttributions([
   ...datasetAttribution('capitals'),
-  ...datasetAttribution('landmarks'),
+  ...datasetAttribution('places'),
 ])
 
 // The photo lands as one extra clue after every stat has shown.
@@ -273,7 +277,15 @@ const onGuess = (country: Country) => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
-header .region-hint {
+.clue-meta {
+  gap: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.clue-meta .region-hint {
   padding: 0.4rem 1.4rem;
   color: var(--soft-blue);
   font-weight: 600;
@@ -287,8 +299,9 @@ header .region-hint {
   margin: 0 0 0.6rem;
 }
 
+// The shell owns the column's flex contract (it outranks a scoped `flex:`
+// here); the stage declares only the scroller it wants to keep.
 .clue-stage {
-  flex: 1;
   display: flex;
   min-height: 0;
   overflow-y: auto;

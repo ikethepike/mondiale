@@ -227,7 +227,6 @@ const minMaxAccessors: MinMaxAccessorKeys[] = [
   'economics.militarySpending',
   'gender.womenInParliament',
   'people.population',
-  'health.alcoholConsumption',
   'humanRights.refugees',
   'health.obesity',
   'government.happiness',
@@ -1368,8 +1367,8 @@ const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
  * The single verdict for a final-challenge answer, shared by the server
  * handler and the client's result beat. Property questions ("speaks X",
  * "exports Y") accept ANY qualifying country, and the min/max extremes accept
- * exact value ties — several countries can share the dealt extreme (five tie
- * on the lowest alcohol consumption, seven on the smallest refugee count), so
+ * exact value ties — several countries can share the dealt extreme (seven tie
+ * on the smallest refugee count), so
  * the one that happened to sort first must not be the only right answer.
  * Throws on an answer whose shape doesn't match the question — that's a
  * client bug, and the caller must not consume a life (or a question) for it.
@@ -1627,7 +1626,6 @@ export const FINAL_STAT_LABELS: { [accessor in MinMaxAccessorKeys]: string } = {
   'economics.militarySpending': 'Military spending',
   'gender.womenInParliament': 'Women in parliament',
   'people.population': 'Population',
-  'health.alcoholConsumption': 'Alcohol consumption',
   'humanRights.refugees': 'Refugees hosted',
   'health.obesity': 'Obesity rate',
   'government.happiness': 'Happiness score',
@@ -1653,10 +1651,6 @@ const finalChallengeMinMaxQuestion: {
   'gender.womenInParliament': {
     max: 'Select the country with the highest proportion of women in parliament',
     min: 'Select the country with the lowest proportion of women in parliament',
-  },
-  'health.alcoholConsumption': {
-    max: 'Select the country with the highest alcohol consumption',
-    min: 'Select the country with the lowest alcohol consumption',
   },
   'health.obesity': {
     max: 'Select the country with the highest incidence of obesity',

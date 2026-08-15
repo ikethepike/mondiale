@@ -16,7 +16,7 @@ import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
-import { terraAnswers } from '~~/lib/terra-incognita'
+import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp01 } from '~~/lib/number'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData } from '~~/types/events.types'
@@ -77,9 +77,15 @@ export const gradeGroupAnswer = async ({
   }
 
   /** Blitz modes: name as many of the answer set as the clock allows. */
-  const blitzOn = (challenge: { countries: ISOCountryCode[]; maximumPoints: number }) => {
-    answer = { submitted: submission.ranking, correct: challenge.countries }
-    scoring = blitzScore(challenge.countries, submission.ranking, challenge.maximumPoints)
+  const blitzOn = (
+    challenge: { countries: ISOCountryCode[]; maximumPoints: number },
+    /** What the guesses actually claimed, where a mode accepts more than one
+     *  name per answer (Terra Incognita's absorbers). Defaults to the raw
+     *  submission, which is every other blitz mode. */
+    claimed: ISOCountryCode[] = submission.ranking
+  ) => {
+    answer = { submitted: claimed, correct: challenge.countries }
+    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints)
   }
 
   switch (kind) {
@@ -193,10 +199,17 @@ export const gradeGroupAnswer = async ({
       // same answer set the player watched disappear, and a collapsed world
       // scores exactly the restorations it banked before it fell.
       const challenge = expectChallengeType(roundChallenge, 'terra-incognita-challenge')
-      blitzOn({
-        countries: terraAnswers(challenge),
-        maximumPoints: challenge.maximumPoints,
-      })
+      // Either name restores a hole — the country that went, or the land that
+      // swallowed it. Resolved HERE rather than trusted from the submission:
+      // the client sends what it thinks it claimed, and the server re-derives
+      // it from the challenge so a hand-rolled payload cannot invent one.
+      // Aliasing the guesses (not widening the answer set) keeps the pot
+      // divided by the deck, so accepting a second name costs nobody points.
+      const restored = terraRestoredHoles(challenge, submission.ranking)
+      blitzOn(
+        { countries: terraAnswers(challenge), maximumPoints: challenge.maximumPoints },
+        restored
+      )
       break
     }
     case 'flashpoint': {

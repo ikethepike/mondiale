@@ -1,6 +1,6 @@
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { SWEEP_SETS, sweepUnclaimed } from '~~/lib/clean-sweep'
@@ -118,7 +118,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
     }
     case 'pin-landmark':
       return '_type' in challenge && challenge._type === 'pin-landmark-challenge'
-        ? `The landmark was ${LANDMARKS[challenge.slug]?.name ?? 'a mystery'}`
+        ? `The landmark was ${PLACES[challenge.slug]?.name ?? 'a mystery'}`
         : ''
     case 'empire': {
       if (!('_type' in challenge) || challenge._type !== 'empire-challenge') return ''

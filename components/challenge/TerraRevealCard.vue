@@ -115,10 +115,17 @@ const restorersOf = (isoCode: ISOCountryCode) =>
 const seatCount = computed(() => Object.keys(props.answers).length)
 const isViewer = computed(() => props.playerId === props.viewerId)
 
-/** The neighbours it melted into — the wash that swallowed it, which is also
- *  the most useful thing anyone can be told about where a country sits. */
+/**
+ * The neighbours it melted into — the wash that swallowed it, which is also
+ * the most useful thing anyone can be told about where a country sits.
+ *
+ * The absorber leads: it is the border the map actually painted out, and the
+ * name that also answered for this hole. The rest follow as context.
+ */
 const neighbourLine = (isoCode: ISOCountryCode): string => {
-  const names = (BORDERS[isoCode] ?? []).slice(0, 3).map(countryName)
+  const absorber = props.challenge.absorbedBy?.[isoCode]
+  const rest = (BORDERS[isoCode] ?? []).filter(neighbour => neighbour !== absorber)
+  const names = [...(absorber ? [absorber] : []), ...rest].slice(0, 3).map(countryName)
   if (names.length < 2) return names[0] ?? ''
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }

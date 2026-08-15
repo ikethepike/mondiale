@@ -1,10 +1,11 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
+import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import { weightedPick } from '~~/lib/arrays'
 import { playableCountries } from '~~/lib/game-rules'
 import { countryLatLng, haversineKm, isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
+import { largestRing, parsePolygons, sharedBoundary } from '~~/lib/outline'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -155,6 +156,57 @@ export const terraVanishedBy = (
 export const terraAnswers = (challenge: TerraIncognitaChallenge): ISOCountryCode[] =>
   challenge.vanishings
 
+/**
+ * The hole a single guess restores, given the holes already restored: the
+ * country itself if it is one of the losses, otherwise the first still-open
+ * loss it swallowed. Undefined when the guess restores nothing.
+ *
+ * `open` is the set of losses still unrestored, so a guess can only ever claim
+ * one — a country that absorbed two of them (Germany over both Austria and
+ * Denmark, which happens in about a fifth of decks) restores the earlier one
+ * on the first naming, and the answer to the second is its own name.
+ */
+export const terraRestoredBy = (
+  challenge: Pick<TerraIncognitaChallenge, 'vanishings' | 'absorbedBy'>,
+  guess: ISOCountryCode,
+  open: ReadonlySet<ISOCountryCode>
+): ISOCountryCode | undefined => {
+  if (open.has(guess)) return guess
+  // A round dealt before absorbers existed carries no map, and grades exactly
+  // as it always did: the country's own name and nothing else.
+  const absorbedBy = challenge.absorbedBy ?? {}
+  return challenge.vanishings.find(isoCode => open.has(isoCode) && absorbedBy[isoCode] === guess)
+}
+
+/**
+ * A guess list resolved to the holes it restored, in order — the ONE mapping
+ * both ends grade through, so "name either country" means the same thing on
+ * the client's ticker and in the server's score.
+ *
+ * Anything that restores nothing is passed through untouched, so a genuine
+ * stray still reaches `blitzScore` as a stray and still costs. A guess that
+ * restores a hole somebody already claimed resolves to nothing too, which is
+ * what keeps naming one absorber twice from paying twice.
+ *
+ * `within` narrows the losses in play: the view passes only what has actually
+ * vanished (a hole the clock has not opened yet cannot be restored, and
+ * accepting its absorber early would leak that it is coming), the server
+ * passes the whole deck.
+ */
+export const terraRestoredHoles = (
+  challenge: Pick<TerraIncognitaChallenge, 'vanishings' | 'absorbedBy'>,
+  guesses: readonly ISOCountryCode[],
+  within: readonly ISOCountryCode[] = challenge.vanishings
+): ISOCountryCode[] => {
+  const open = new Set(within)
+  return guesses.map(guess => {
+    const hole = terraRestoredBy(challenge, guess, open)
+    if (!hole) return guess
+    open.delete(hole)
+    return hole
+  })
+}
+
 // --- The deck ------------------------------------------------------------------
 
 /**
@@ -214,10 +266,66 @@ const MINIMUM_WINDOW = 12
  * still sitting there in plain sight. They are not hard questions, they are
  * broken ones.
  */
+/**
+ * The country a vanishing one dissolves INTO — the neighbour it shares its
+ * longest border with, which is the border the map paints out.
+ *
+ * The mode's fiction is one country expanding over another, so this names the
+ * expander. `GameMap`'s `vanishPath` picks the same neighbour to erase, but
+ * throws the identity away (it hands `sharedBorderPair` bare point arrays and
+ * gets back runs, no code), so the answer has to be resolved here instead.
+ *
+ * Pinned to SD `MAP_PATHS` on purpose. The map swaps to HD geometry as the
+ * camera zooms, and two neighbours with near-equal borders could change places
+ * between tiers — an accepted answer that depends on how far a player has
+ * zoomed would be indefensible. The deal stamps this once and both ends read
+ * the stamp.
+ *
+ * Undefined where the geometry offers no partial border to give up: an enclave
+ * whose host wraps the whole ring (Lesotho), or a country whose only neighbour
+ * never meets its mainland ring (the United Kingdom). Those cannot visibly
+ * vanish either — see `terraField`, which drops them for the same reason.
+ */
+const absorberCache = new Map<ISOCountryCode, ISOCountryCode | undefined>()
+
+export const terraAbsorber = (isoCode: ISOCountryCode): ISOCountryCode | undefined => {
+  // Memoised: this parses every neighbour's polygons, and `terraField` asks it
+  // once per country on every deal. The answer is a property of the frozen map
+  // geometry, so it can never change within a process.
+  if (absorberCache.has(isoCode)) return absorberCache.get(isoCode)
+  const resolved = resolveAbsorber(isoCode)
+  absorberCache.set(isoCode, resolved)
+  return resolved
+}
+
+const resolveAbsorber = (isoCode: ISOCountryCode): ISOCountryCode | undefined => {
+  const own = MAP_PATHS[isoCode as keyof typeof MAP_PATHS]
+  const ring = own ? largestRing(own) : undefined
+  if (!ring) return undefined
+
+  let best: { isoCode: ISOCountryCode; length: number } | undefined
+  for (const neighbour of BORDERS[isoCode] ?? []) {
+    const path = MAP_PATHS[neighbour as keyof typeof MAP_PATHS]
+    if (!path) continue
+    const run = sharedBoundary(ring, parsePolygons(path).flat())
+    // The same two guards `sharedBorderPair` applies, so the country named here
+    // is always the one the map actually erases toward.
+    if (!run || run.length < 2 || run.length >= ring.length) continue
+    if (!best || run.length > best.length) best = { isoCode: neighbour, length: run.length }
+  }
+  return best?.isoCode
+}
+
 export const terraField = (rules: GameRules): ISOCountryCode[] =>
   playableCountries(rules)
     .filter(isoCode => !!BORDERS[isoCode]?.length)
     .filter(isoCode => isLabelableBox(labelBoxFor(MAP_BOUNDS[isoCode], MAP_REGIONS[isoCode])))
+    // A border to give up. Having a land neighbour is not enough: Lesotho's
+    // host wraps its whole ring and the UK's only neighbour never touches its
+    // mainland, so the map paints out nothing and the country "vanishes" while
+    // sitting there fully outlined. That is an unanswerable question, not a
+    // hard one — the same gate that names the absorber keeps them out.
+    .filter(isoCode => !!terraAbsorber(isoCode))
     .sort(
       (a, b) =>
         (COUNTRIES[b]?.people?.population?.amount ?? 0) -

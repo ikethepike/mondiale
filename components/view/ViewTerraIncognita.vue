@@ -5,7 +5,7 @@
       tone="alert"
       :kicker="`Round ${currentRound?.number ?? 1} — Terra Incognita`"
       title="The atlas is failing"
-      :stakes="`Countries are being erased from the map, one every ${cadenceSeconds} seconds. Name a missing country to put it back. Let ${challenge.collapseThreshold} go at once and the world starts coming apart.`"
+      :stakes="`Countries are being erased from the map, one every ${cadenceSeconds} seconds. Name the missing country — or the one that swallowed it — to put it back. Let ${challenge.collapseThreshold} go at once and the world starts coming apart.`"
       @done="begin"
     />
 
@@ -77,7 +77,12 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { MOTION } from '~~/lib/motion'
-import { terraTheatre, terraVanishedBy } from '~~/lib/terra-incognita'
+import {
+  terraRestoredBy,
+  terraRestoredHoles,
+  terraTheatre,
+  terraVanishedBy,
+} from '~~/lib/terra-incognita'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -134,6 +139,21 @@ const gone = computed(() =>
   challenge.value ? terraVanishedBy(challenge.value, elapsedMs.value) : []
 )
 
+/**
+ * Holes that have opened and nobody has closed yet.
+ *
+ * Read lazily by `resolve` below (the callback runs long after setup, so the
+ * forward reference to `guesses` is safe). It resolves the guess list from
+ * scratch each time rather than reading `found`, which would be circular —
+ * `found` is what the composable derives THROUGH `resolve`.
+ */
+const openHoles = computed(() => {
+  const active = challenge.value
+  if (!active) return new Set<ISOCountryCode>()
+  const claimed = new Set(terraRestoredHoles(active, guesses.value, gone.value))
+  return new Set(gone.value.filter(isoCode => !claimed.has(isoCode)))
+})
+
 const {
   guesses,
   answerSet,
@@ -148,6 +168,17 @@ const {
     // so the miss copy costs the player a point without telling them one is
     // on its way.
     wrongHint: country => `${countryName(country)} is still on the map`,
+    // The land that swallowed a hole answers for it: the round shows one
+    // country expanding over another, so either name puts it back.
+    //
+    // Scoped to what has ALREADY gone, never the whole deck — accepting the
+    // absorber of a country still on the map would tell the player it is about
+    // to vanish, which is the leak `wrongHint` above is worded to avoid.
+    // Open holes only. Germany swallows both Austria and Denmark in about a
+    // fifth of decks; once it has answered for Austria, naming it again has to
+    // reach Denmark rather than re-claim Austria and bounce as a repeat.
+    resolve: isoCode =>
+      challenge.value ? terraRestoredBy(challenge.value, isoCode, openHoles.value) : undefined,
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )

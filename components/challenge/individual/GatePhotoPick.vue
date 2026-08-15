@@ -49,7 +49,7 @@ const photo = computed(() => {
             image: active.image,
             caption: 'Which country is this landmark in?',
             alt: 'A famous landmark',
-            dataset: 'landmarks' as const,
+            dataset: 'places' as const,
           }
         : undefined
   }

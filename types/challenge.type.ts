@@ -46,4 +46,22 @@ export interface ChallengeScale {
   min: number
   max: number
   invert?: boolean
+  /** How the track is painted — see `ScaleTone`. Defaults to `neutral`. */
+  tone?: ScaleTone
 }
+
+/**
+ * Whether the poles of a plotted scale carry a value judgement, and which way
+ * round it runs. The track's colour is the only thing this decides:
+ *
+ * - `positive` — the "most" pole is the good end (democracy, HDI, happiness):
+ *   the gradient warms from alert at the left to calm at the right.
+ * - `inverted` — the "most" pole is the bad end (inequality, years at war):
+ *   the same gradient, mirrored.
+ * - `neutral` — the poles are just ends, not verdicts (average height, share
+ *   aged 65+). A plain ink ramp: more to the right, no judgement.
+ *
+ * `neutral` is the default because claiming a verdict a stat doesn't carry is
+ * the worse failure — an ageing population is not a red-to-green story.
+ */
+export type ScaleTone = 'positive' | 'inverted' | 'neutral'

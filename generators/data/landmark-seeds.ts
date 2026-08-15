@@ -1,4 +1,6 @@
+import type { Fame } from '../../types/fame.types'
 import type { ISOCountryCode } from '../../types/geography.types'
+import type { LandmarkKind } from '../../types/places.types'
 
 /**
  * Curated list of world-famous landmarks for the Landmark Quiz. A hand-picked
@@ -20,13 +22,35 @@ import type { ISOCountryCode } from '../../types/geography.types'
  *  - ancient:   ruins & pre-modern archaeological sites (Petra, Machu Picchu)
  *  - monument:  built icons — towers, bridges, statues, palaces, castles
  *  - urban:     districts, squares, whole old towns
+ *
+ * Declared in types/places.types.ts alongside the entry it lands on, so the
+ * game and the generator read one definition.
  */
-export type LandmarkKind = 'natural' | 'religious' | 'ancient' | 'monument' | 'urban'
+export type { LandmarkKind }
 
 export interface LandmarkSeed {
   name: string
   country: ISOCountryCode
   kind: LandmarkKind
+  /**
+   * Override the recognisability tier this landmark is dealt at.
+   *
+   * Omit it and the generator derives the tier from position within the
+   * country — first listed is the icon (`major`), second `minor`, the rest
+   * `obscure`. Set it where the ordering lies: a country whose second entry is
+   * genuinely pub-quiz canon, or a first entry that is only locally famous.
+   */
+  fame?: Fame
+  /**
+   * Ship this seed as a photo only, never as a pin answer.
+   *
+   * For a seed whose Wikidata item carries a point that belongs somewhere else
+   * INSIDE the same country — the polygon guard only catches the ones that
+   * cross a border, so a wrong item in the right country sails through. The
+   * proper fix is pinning the right `qid` below; this is the honest stopgap
+   * until someone does, because a wrong pin answer is worse than no round.
+   */
+  noCoordinates?: true
   /**
    * Pin the exact Wikidata item, e.g. `Q243`.
    *
@@ -158,7 +182,9 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     kind: 'natural',
     commons: 'Waterfalls Kravica 5, Bosnia and Herzegovina.jpg',
   },
-  { name: 'Stari Most', country: 'BA', kind: 'monument' },
+  // Bosnia's icon in every sense except seed order — Kravice Falls is listed
+  // first but never resolved a point, so it can't carry the pin round.
+  { name: 'Stari Most', country: 'BA', kind: 'monument', fame: 'major' },
   { name: 'Plitvice Lakes', country: 'HR', kind: 'natural' },
   {
     name: "Diocletian's Palace",
@@ -341,7 +367,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     imageUrl:
       'https://cdn.britannica.com/94/94894-050-C40775EF/Apadana-Darius-I-Persepolis-Iran.jpg',
   },
-  { name: 'Registan of Samarkand', country: 'UZ', kind: 'ancient' },
   { name: 'Boudhanath', country: 'NP', kind: 'religious' },
   // Everest's summit is the Nepal–China border; Annapurna is all Nepal.
   { name: 'Annapurna', country: 'NP', kind: 'natural' },
@@ -460,7 +485,10 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // Supplied URL is the same 800px file Wikidata already rejected; this one is 1600px.
   { name: 'Jeita Grotto', country: 'LB', kind: 'natural', commons: 'Jeita Grotto ITH041.jpg' },
   { name: 'Umayyad Mosque', country: 'SY', kind: 'religious' },
-  { name: 'Sheikh Lotfollah Mosque', country: 'IR', kind: 'religious' },
+  // Third-listed for Iran, kept at the dealable second: Persepolis above it
+  // resolves to the football club by name, and only carries a point at all
+  // because the same subject is on the World Heritage register.
+  { name: 'Sheikh Lotfollah Mosque', country: 'IR', kind: 'religious', fame: 'minor' },
   { name: 'Gates of Hell Darvaza', country: 'TM', kind: 'natural' },
   { name: 'Gergeti Trinity Church', country: 'GE', kind: 'religious' },
   { name: 'Tatev Monastery', country: 'AM', kind: 'religious' },
@@ -535,7 +563,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Monte Carlo Casino', country: 'MC', kind: 'urban' },
   { name: "Prince's Palace of Monaco", country: 'MC', kind: 'monument' },
   { name: 'Guaita', country: 'SM', kind: 'monument' },
-  { name: 'Three Towers of San Marino', country: 'SM', kind: 'urban' },
   // The name search landed 100km south of Belgrade, in open countryside.
   { name: 'Church of Saint Sava', country: 'RS', kind: 'religious', qid: 'Q330385' },
   { name: 'Petrovaradin Fortress', country: 'RS', kind: 'monument' },
@@ -652,7 +679,10 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   // 384px wide, so Matobo Hills carries ZW.
   { name: 'Matobo Hills', country: 'ZW', kind: 'natural' },
   { name: 'Mount Cameroon', country: 'CM', kind: 'natural' },
-  { name: 'Ennedi Massif', country: 'TD', kind: 'natural' },
+  // Its item resolves to a point inside the Lakes of Ounianga, ~250km west of
+  // the massif and still in Chad, so the polygon guard cannot see it. Pin the
+  // right qid to restore the pin round.
+  { name: 'Ennedi Massif', country: 'TD', kind: 'natural', noCoordinates: true },
   // Dahlak/Bijagós resolve to satellite imagery on Wikidata — use the ports.
   { name: 'Massawa', country: 'ER', kind: 'urban' },
   { name: 'Lake Assal', country: 'DJ', kind: 'natural', commons: 'Lake Assal 1-Djibouti.jpg' },
