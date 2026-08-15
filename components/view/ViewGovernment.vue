@@ -5,7 +5,14 @@
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
     </ChallengePrompt>
 
-    <p v-if="challenge && !finished && beat !== 'party'" class="chamber-facts">
+    <!-- Beat 3 stows them on a phone: the seat maths is beat 2's subject, and
+         by the roll it is background the round no longer asks about — while
+         the roll itself is the tallest thing the round puts on a phone. -->
+    <p
+      v-if="challenge && !finished && beat !== 'party'"
+      class="chamber-facts"
+      :class="{ stowed: beat === 'sides' }"
+    >
       <span class="fact"
         ><strong>{{ challenge.totalSeats }}</strong> seats</span
       >
@@ -147,7 +154,15 @@
             <span class="eyebrow">The rest of the house</span>
           </header>
           <p class="sides-lede">With the government, or against it?</p>
-          <div class="bench-rows">
+          <!-- The roll is the round's one scroller on a phone, so it says so:
+               the shared scroll-fade mists whichever edge still has benches
+               past it (rules/_scroll-fade.scss). -->
+          <div
+            ref="benchRows"
+            class="bench-rows"
+            :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+            @scroll.passive="syncScrollEdges"
+          >
             <div
               v-for="(name, index) in challenge?.sorted ?? []"
               :key="name"
@@ -207,14 +222,20 @@
       </div>
     </Transition>
 
-    <!-- Beats 1 and 2 have no footer of their own, so the dial floats. Beat 3
-         docks it in its lock row instead — see there. -->
-    <ChallengeTimerRadial
-      v-if="!finished && beat !== 'sides'"
-      class="footer-clock"
-      :value="secondsOnClock"
-      :total="BEAT_SECONDS[beat]"
-    />
+    <!-- Beats 1 and 2 carry no controls, but the dial still stands in the
+         shell's FOOTER band rather than floating: as a bare last child of the
+         column it was `position: static` with no berth of its own, so it
+         landed hard in the bottom-left corner, under the home indicator, and
+         jumped to beat 3's lock row at the next beat. In the footer it is
+         centred, inherits `--bottom-clearance`, and sits where beat 3's dial
+         sits — one place for the clock all round. -->
+    <footer v-if="!finished && beat !== 'sides'" class="clock-footer">
+      <ChallengeTimerRadial
+        class="footer-clock"
+        :value="secondsOnClock"
+        :total="BEAT_SECONDS[beat]"
+      />
+    </footer>
   </section>
 </template>
 
@@ -229,6 +250,7 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import { BEAT_SECONDS, MAX_SEAT_DOTS } from '~~/lib/government'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { GovernmentState } from '~~/types/challenges/group-modes.type'
 
@@ -291,6 +313,16 @@ watch(
     mySides.value = {}
   }
 )
+
+/**
+ * Beat 3's roll scrolls on a phone — a nine-bench chamber cannot stand in one
+ * screen beside the lock row. The edges drive the shared fades, so a chamber
+ * short enough to fit never wears a dimmed row. The scroller is behind the
+ * beat's `v-else`, so it only exists once the beat is dealt; `useScrollEdges`
+ * picks it up when it appears.
+ */
+const benchRows = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => benchRows.value)
 
 const allFiled = computed(() =>
   (challenge.value?.sorted ?? []).every(name => mySides.value[name] !== undefined)
@@ -468,6 +500,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/_ink.scss' as *;
 @use '~/assets/scss/rules/_breakpoints.scss' as *;
+@use '~/assets/scss/rules/_scroll-fade.scss' as *;
 
 /**
  * NOTE ON SCALE: `_reset.scss` puts the document on a 62.5% root, so 1rem is
@@ -514,8 +547,11 @@ const promptSources = computed(() => datasetAttribution('parties'))
   border-radius: 50%;
 }
 
+// Fluid for the same reason as `.bench-name`: beat 3 prints "<party> governs",
+// and a long name at a fixed 19px wrapped the chip to two lines on a phone —
+// which cost the roll below a row it does not have to give.
 .subject-name {
-  font-size: 19px;
+  font-size: clamp(15px, 4.6vw, 19px);
   font-weight: 600;
 }
 
@@ -678,9 +714,13 @@ const promptSources = computed(() => datasetAttribution('parties'))
   }
 }
 
+// A grid, not a wrapping flex line: under `flex: 1 1 110px` a row that broke
+// to two lines stretched the orphan tile to the full width, so "6 parties
+// seated" read as a banner rather than as the third of three numbers. Even
+// tracks reflow 3 → 2 → 1 and every tile keeps its share.
 .chamber-facts {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 0.5rem;
   justify-content: center;
   width: min(94vw, 34rem);
@@ -698,8 +738,8 @@ const promptSources = computed(() => datasetAttribution('parties'))
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 0.05rem;
-    flex: 1 1 110px;
     padding: 0.4rem 0.6rem;
     border: 1px solid ink(0.2);
     border-radius: 12px;
@@ -715,6 +755,18 @@ const promptSources = computed(() => datasetAttribution('parties'))
       font-size: 26px;
       line-height: 1.05;
       letter-spacing: -0.01em;
+    }
+  }
+
+  // Stowed for beat 3 on a phone: the tiles cost ~76px of a screen that has to
+  // hold the subject chip, a scrolling roll of benches and the lock row. The
+  // numbers are beat 2's material — by the roll they are trivia, and the
+  // question on screen is about allegiance, not arithmetic. Tablets up keep
+  // them: there the column has the room and the majority line still reads as
+  // context for who can carry the house.
+  &.stowed {
+    @media (max-width: $phone) {
+      display: none;
     }
   }
 }
@@ -763,6 +815,18 @@ const promptSources = computed(() => datasetAttribution('parties'))
   gap: 6px;
   align-content: safe center;
   min-height: 0;
+}
+
+// Beats 1 and 2 have no scroller of their own, and the shell is a fixed-height
+// column — a seven-party table on a phone, or the arc over four blocks on a
+// short one, simply ran off the bottom edge with no way to reach it. They
+// scroll only when they actually overflow, so a beat that fits still centres.
+// Beat 3 is excluded on purpose: it scrolls its ROLL (`.bench-rows`) so the
+// subject chip and the lock row stay put.
+.logos,
+.seats-beat {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 // Chip, panel, footer — and the PANEL is the one that both GROWS and gives
@@ -896,6 +960,15 @@ const promptSources = computed(() => datasetAttribution('parties'))
   width: min(100%, 720px);
   margin-inline: auto;
   aspect-ratio: 2 / 1;
+
+  // On a phone a 2:1 box at full width is half the screen, and the blocks
+  // under it fell off the bottom edge. Sized from whichever bites first there
+  // — the column's width or the room the viewport's HEIGHT can spare — so the
+  // chamber keeps its shape and gives ground instead of pushing the answer
+  // out of view. A tall phone barely notices; a 667px one gets 40px back.
+  @media (max-width: $phone) {
+    width: min(100%, 44vh);
+  }
 
   .seat {
     position: absolute;
@@ -1033,15 +1106,32 @@ const promptSources = computed(() => datasetAttribution('parties'))
   opacity: 0.75;
 }
 
+// A BLOCK scroller, not a grid: the shared scroll-fade's sticky ::before and
+// ::after cancel their own height with a negative margin, which a grid (or a
+// flex column) defeats — they would become items of their own and each add a
+// gap. The rows space themselves instead, and the recipe's maths holds.
 .bench-rows {
-  display: grid;
-  gap: 8px;
   min-height: 0;
   overflow-y: auto;
+  // Thin rather than absent: the fade says "more below", the bar says how much
+  // more, and on a phone the roll can run twice the panel's height.
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
   // The rows' own focus rings and the card's radius must not be clipped flat
   // against the scroller's edge.
   padding: 2px;
   margin: -2px;
+
+  // Edge fades from the shared recipe (rules/_scroll-fade.scss), each showing
+  // only when benches really continue past that edge. Deeper at the bottom
+  // than the top: the panel's lede sits above the first row and the fade only
+  // has a row's corner to soften, while the bottom edge is where a half-shown
+  // bench needs to read as receding rather than sliced.
+  @include scroll-fade($top: 1.8rem, $bottom: 3rem);
+
+  .bench-row + .bench-row {
+    margin-top: 8px;
+  }
 }
 
 // Three tracks rather than `space-between`, so the seat counts stand in a
@@ -1050,6 +1140,10 @@ const promptSources = computed(() => datasetAttribution('parties'))
 // 44px row, and the mixin's blur would cost a compositor layer per row for
 // nothing on the flat cream of the panel it already sits on.
 .bench-row {
+  // The row's type, one token for the name and its seat count — see
+  // `.bench-name` for why it is fluid.
+  --bench-type: clamp(12px, 4vw, 15px);
+
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -1090,12 +1184,19 @@ const promptSources = computed(() => datasetAttribution('parties'))
 
 // The mark gets room to read as a mark rather than a prefix — 0.5rem was 5px
 // on the 62.5% root, which crowded every logo against its party.
+//
+// Party names are the one string in this round whose length the data decides:
+// "Fidesz" and "Alliance of Independent Social Democrats" stand in the same
+// column. The type is fluid so the long ones give ground on a narrow phone
+// instead of clamping to two lines and doubling the row — full size from a
+// ~375px screen up, easing to 12px on the narrowest. The seat count reads off
+// the same token, so the row stays one set of type rather than two.
 .bench-name {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--bench-type);
 }
 
 // Wraps to a second line before it will truncate: an ellipsis is the last
@@ -1131,7 +1232,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
 // even inside a fixed track.
 .bench-seats {
   min-width: 4ch;
-  font-size: 15px;
+  font-size: var(--bench-type, 15px);
   font-variant-numeric: tabular-nums;
   text-align: right;
   opacity: 0.6;
@@ -1169,10 +1270,47 @@ const promptSources = computed(() => datasetAttribution('parties'))
   }
 }
 
-.sides-footer {
-  display: flex;
-  justify-content: center;
+// Both footers are a one-cell grid: the row centres itself and reflows as a
+// column if its contents ever outgrow the width, which a flex row cannot do
+// without a wrap rule per footer.
+.sides-footer,
+.clock-footer {
+  display: grid;
+  justify-items: center;
   pointer-events: auto;
+}
+
+// The shell caps a footer at `60% + clearance` so a tall one cannot eat the
+// stage — written for a footer that is a FLEX CHILD of the shell, where the
+// percentage resolves against the whole column. This one is a GRID ROW of the
+// beat, so it resolves against the row's own `auto` height instead: the cap
+// became 60% of the lock row itself, and the button hung 18px below its own
+// scrollport, reachable only by scrolling a 44px strip. Nothing is lost by
+// lifting it — the beat's `minmax(0, 1fr)` panel is what yields here, and the
+// footer's row is `auto` by construction.
+.sides-footer {
+  max-height: none;
+}
+
+// Chrome, not a control strip. The shell's footer padding is sized for buttons
+// and typed consoles; a display-only dial does not need that band, and on a
+// short phone every row of it comes straight out of the beat above (beat 2 was
+// 13px over its box with the full band). Only the TOP is trimmed — the bottom
+// keeps the shell's `--bottom-clearance` formula, which is what holds the dial
+// off the home indicator.
+// The dial also takes beat 3's docked size, so the clock never changes size as
+// the round moves from beat to beat.
+.clock-footer {
+  padding-top: 0.4rem;
+
+  // Beat 3's docked size, so the clock never changes size as the round moves
+  // from beat to beat. Written on the dial rather than the footer: the shared
+  // `.footer-clock` sets these tokens on the element itself, and an inherited
+  // value from the parent would never win.
+  .footer-clock {
+    --clock-size: 4.6rem;
+    --clock-seconds-size: 1.5rem;
+  }
 }
 
 // Wide enough for "Lock it in (0/4)", so locking in never resizes it.
