@@ -31,7 +31,7 @@
 <script lang="ts" setup>
 import { OrbitControls } from '@tresjs/cientos'
 import { gsap } from 'gsap'
-import { Mesh, MeshBasicMaterial, Quaternion, RingGeometry, Vector3 } from 'three'
+import { Mesh, MeshBasicMaterial, RingGeometry, Vector3 } from 'three'
 import type { Group, PerspectiveCamera } from 'three'
 import {
   type BoardBuild,
@@ -40,12 +40,12 @@ import {
   buildPawn,
   type CrownVariant,
   disposePawn,
-  finalClimbAnchor,
   getBoardBuild,
   HIGHLIGHT_RING_LIFT,
   PATH_MARKER_LIFT,
   TILE_RADIUS_RATIO,
 } from '~~/lib/board3d/board-builder'
+import { summitClimbAnchor } from '~~/lib/board3d/summit'
 import { spawnCheerSprite } from '~~/lib/board3d/cheer-sprite'
 import { BOARD_COLORS } from '~~/lib/board3d/colors'
 import type { TileTransform } from '~~/lib/board3d/path'
@@ -67,7 +67,6 @@ import {
   WALK_RESUME_FRAME_MS,
 } from '~~/lib/round-beats'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
-import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
 import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
@@ -386,12 +385,14 @@ watch(
   () => syncPathPreview()
 )
 
-// --- Final-gauntlet climb: the mountain marker makes progress physical -----
+// --- Final-gauntlet climb: the finale massif makes progress physical -------
 // Gauntlet progress rides the public snapshot (moves[0].challenge), so every
 // client can stand a challenger's pawn on the ledge matching their cleared
 // count. The mover never fights this: position only changes on entry (its
 // own hop) and on knockout/victory, where the display position shifts and
-// its tween takes over from wherever the pawn stands.
+// its tween takes over from wherever the pawn stands. Boards that dealt no
+// massif (no open ground behind the final tile, or the seeded roll) keep the
+// pawn at the arch — the checkered gate alone carries the finale there.
 const gauntletFor = (player: Player) => {
   const challenge = player.moves[0]?.challenge
   return challenge?._type === 'final-challenge' ? challenge : undefined
@@ -399,7 +400,7 @@ const gauntletFor = (player: Player) => {
 
 const syncClimbs = () => {
   const build = board.value
-  if (!build) return
+  if (!build?.summit) return
   const finalIndex = props.game.tiles.length - 1
 
   for (const player of Object.values(props.game.players)) {
@@ -409,22 +410,13 @@ const syncClimbs = () => {
     const victor = player.phase === 'victory'
     if (!gauntlet && !victor) continue
 
-    const stages = GAUNTLET_LENGTH[props.game.difficulty]
+    // World-space ledge anchors, precomputed by the build for this board's
+    // difficulty — copied straight onto the pawn, no tile transform.
     const anchor = victor
-      ? finalClimbAnchor(1, 1, build.spacing, stages)
-      : finalClimbAnchor(gauntlet!.answeredCorrect, gauntlet!.totalCount, build.spacing, stages)
-    const tile = tileFor(finalIndex)
-    if (!anchor || !tile) continue
+      ? summitClimbAnchor(build.summit, 1, 1)
+      : summitClimbAnchor(build.summit, gauntlet!.answeredCorrect, gauntlet!.totalCount)
+    if (!anchor) continue
 
-    // Same yaw the marker was planted with — ledges are in its local space
-    anchor
-      .applyQuaternion(
-        new Quaternion().setFromAxisAngle(
-          new Vector3(0, 1, 0),
-          Math.atan2(tile.tangent.x, tile.tangent.z)
-        )
-      )
-      .add(tile.position)
     if (prefersReducedMotion()) {
       pawn.position.copy(anchor)
     } else {

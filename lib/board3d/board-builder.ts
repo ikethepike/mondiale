@@ -37,6 +37,7 @@ import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
+import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
 import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
 
@@ -45,6 +46,9 @@ export interface BoardBuild {
   transforms: TileTransform[]
   spacing: number
   archetype: TrackArchetype
+  /** The finale massif, when this board dealt one — TopoScene climbs its
+   *  `climbAnchors` during the gauntlet. */
+  summit?: SummitSite
   contourMaterial: ContourMaterial
   dispose(): void
 }
@@ -117,8 +121,20 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // bridge over basin-carved water. Purely visual — the tile stays 'normal'.
   const pondSite = pickPondSite(seed, tiles, tilePath)
 
+  // The finale massif: a terrain mountain beyond the final tile that the
+  // gauntlet climbs. Sited off-track by construction, so the shelf and the
+  // flank never fight and track elevation stays untouched.
+  const summitSite = pickSummitSite(
+    seed,
+    tilePath,
+    pondSite,
+    rawSampler,
+    GAUNTLET_LENGTH[difficulty]
+  )
+
   const shelved = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
-  const sampler = pondSite ? withPondBasin(shelved, pondSite) : shelved
+  const ponded = pondSite ? withPondBasin(shelved, pondSite) : shelved
+  const sampler = summitSite ? withSummitMassif(ponded, summitSite, spacing) : ponded
 
   // --- Terrain -------------------------------------------------------------
   const segments = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
@@ -161,7 +177,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   positions.needsUpdate = true
   terrainGeometry.setAttribute('aSlope', new BufferAttribute(slopes, 1))
 
-  const contourMaterial = createContourMaterial(spacing * 4)
+  const contourMaterial = createContourMaterial(spacing * 4, summitSite?.snowlineY)
   group.add(new Mesh(terrainGeometry, contourMaterial))
 
   // --- Track ribbon ----------------------------------------------------------
@@ -277,7 +293,9 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   }
 
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
-  buildChallengeMarkers(tiles, transforms, spacing, tileRadius, difficulty, chords).forEach(mesh =>
+  if (summitSite) buildSummitCairn(summitSite, spacing).forEach(mesh => group.add(mesh))
+
+  buildChallengeMarkers(tiles, transforms, spacing, tileRadius, chords).forEach(mesh =>
     group.add(mesh)
   )
 
@@ -300,7 +318,15 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     })
   }
 
-  return { group, transforms, spacing, archetype: tilePath.archetype, contourMaterial, dispose }
+  return {
+    group,
+    transforms,
+    spacing,
+    archetype: tilePath.archetype,
+    summit: summitSite,
+    contourMaterial,
+    dispose,
+  }
 }
 
 export interface MarkerPart {
@@ -314,7 +340,7 @@ export interface MarkerPart {
 
 export type MarkerType = IndividualChallengeAccessorId | 'final'
 
-type MarkerRecipe = (s: number, stages?: number) => MarkerPart[]
+type MarkerRecipe = (s: number) => MarkerPart[]
 
 /**
  * Local-space marker shapes per gate theme (y up, origin at tile ground, +z
@@ -661,153 +687,13 @@ const capitalSkyline: MarkerRecipe = s => {
   return parts
 }
 
-// The main peak of the final mountain: a faceted frustum, so the summit is a
-// flat plateau a winner's pawn can actually stand on. Offset from the tile
-// centre so the massif reads asymmetric. Steep on purpose — a squat cone
-// reads as a lump, not a mountain.
-const MOUNTAIN_PEAK = { x: 0.06, z: -0.05, radius: 0.46, height: 1.5, top: 0.07 }
-/** Height where rock gives way to snow on the main peak. */
-const SNOWLINE = 1.02
-
-/**
- * Pawn-base anchors up the final mountain for an n-stage gauntlet: one flank
- * ledge per stage spiralling the main peak's +x face (the side the path
- * camera watches), then the summit plateau as the last entry. Local marker
- * space in spacing units. `finalMountain` carves a slab under each flank
- * anchor from this same list — sculpt and climb cannot drift.
- */
-const mountainLedges = (stages: number): [number, number, number][] => {
-  const flanks = Math.max(1, stages)
-  const anchors: [number, number, number][] = []
-  for (let step = 0; step < flanks; step++) {
-    const t = flanks === 1 ? 0.5 : step / (flanks - 1)
-    const y = 0.3 + 0.8 * t
-    const angle = -0.7 + 1.4 * t
-    const reach = MOUNTAIN_PEAK.radius * (1 - y / MOUNTAIN_PEAK.height) + 0.13
-    anchors.push([
-      MOUNTAIN_PEAK.x + Math.cos(angle) * reach,
-      y,
-      MOUNTAIN_PEAK.z + Math.sin(angle) * reach,
-    ])
-  }
-  anchors.push([MOUNTAIN_PEAK.x, 1.56, MOUNTAIN_PEAK.z])
-  return anchors
-}
-
-// Mount Olympus for the final tile: an asymmetric three-peak massif — snow
-// on the two tall peaks — with one carved ledge per gauntlet stage
-// spiralling the main face. TopoScene stands a challenger's pawn on the
-// ledge matching their cleared-stage count (finalClimbAnchor), so the whole
-// room watches the climb; the summit plateau is the victory stand.
-const finalMountain: MarkerRecipe = (s, stages = GAUNTLET_LENGTH.normal) => {
-  const parts: MarkerPart[] = []
-
-  const peak = new CylinderGeometry(
-    MOUNTAIN_PEAK.top * s,
-    MOUNTAIN_PEAK.radius * s,
-    MOUNTAIN_PEAK.height * s,
-    7
-  )
-  peak.translate(MOUNTAIN_PEAK.x * s, (MOUNTAIN_PEAK.height / 2) * s, MOUNTAIN_PEAK.z * s)
-  parts.push({ geometry: faceted(peak), color: BOARD_COLORS.warmSand })
-
-  // The snow CONTINUES the peak's own taper — computed from the rock's radius
-  // at the snowline plus a hair, so it caps the summit instead of flaring
-  // over it like a lampshade. Half a facet out of phase → the snowline
-  // zigzags. Its flat top is the summit plateau.
-  const snowBottom = MOUNTAIN_PEAK.radius * (1 - SNOWLINE / MOUNTAIN_PEAK.height) + 0.03
-  const snowHeight = MOUNTAIN_PEAK.height + 0.06 - SNOWLINE
-  const snow = new CylinderGeometry(
-    (MOUNTAIN_PEAK.top + 0.03) * s,
-    snowBottom * s,
-    snowHeight * s,
-    7
-  )
-  snow.rotateY(Math.PI / 7)
-  snow.translate(MOUNTAIN_PEAK.x * s, (SNOWLINE + snowHeight / 2) * s, MOUNTAIN_PEAK.z * s)
-  parts.push({ geometry: faceted(snow), color: BOARD_COLORS.sourMilk })
-
-  const shoulder = new ConeGeometry(0.3 * s, 0.95 * s, 6)
-  shoulder.translate(-0.38 * s, 0.475 * s, 0.16 * s)
-  parts.push({ geometry: faceted(shoulder), color: BOARD_COLORS.warmSand })
-  const shoulderSnow = new ConeGeometry(0.11 * s, 0.3 * s, 6)
-  shoulderSnow.translate(-0.38 * s, 0.83 * s, 0.16 * s)
-  parts.push({ geometry: faceted(shoulderSnow), color: BOARD_COLORS.sourMilk })
-
-  const foothill = new ConeGeometry(0.24 * s, 0.5 * s, 6)
-  foothill.translate(0.14 * s, 0.25 * s, -0.42 * s)
-  parts.push({ geometry: faceted(foothill), color: BOARD_COLORS.warmSand })
-
-  mountainLedges(stages)
-    .slice(0, -1)
-    .forEach(([x, y, z]) => {
-      const inward = Math.atan2(z - MOUNTAIN_PEAK.z, x - MOUNTAIN_PEAK.x)
-      const slab = new BoxGeometry(0.26 * s, 0.07 * s, 0.26 * s)
-      slab.rotateY(-inward)
-      slab.translate(
-        (x - Math.cos(inward) * 0.08) * s,
-        (y - 0.035) * s,
-        (z - Math.sin(inward) * 0.08) * s
-      )
-      parts.push({ geometry: slab, color: BOARD_COLORS.darkBlue })
-    })
-  return parts
-}
-
-/**
- * Where a climbing pawn stands after clearing `cleared` of `total` gauntlet
- * stages on a `stages`-ledge mountain: one ledge per stage when the deal is
- * full-length, a proportional ledge when a thin board dealt fewer, and the
- * summit at `cleared >= total` (victory). Local marker space — callers
- * rotate by the tile's path yaw and add the tile position. Returns undefined
- * while the shipping final marker has no ledges to stand on.
- */
-export const finalClimbAnchor = (
-  cleared: number,
-  total: number,
-  spacing: number,
-  stages: number
-): Vector3 | undefined => {
-  if (Object.keys(MARKER_VARIANTS.final)[0] !== 'mountain') return undefined
-  if (cleared <= 0 || total <= 0) return undefined
-
-  const anchors = mountainLedges(stages)
-  const flankCount = anchors.length - 1
-  const ledge =
-    cleared >= total
-      ? anchors[anchors.length - 1]
-      : anchors[Math.min(flankCount - 1, Math.ceil((cleared / total) * flankCount) - 1)]
-  return new Vector3(ledge[0], ledge[1], ledge[2]).multiplyScalar(spacing)
-}
-
-/** Candidate sculpts under review — the FIRST entry of each set is the
- *  production default. Once a winner is picked it gets baked into its
- *  `markerPartsFor` case and its set leaves this map (picked 2026-08: lexicon
- *  plume, waving flag, capital skyline, landmarks camera, currency coin). The
- *  /test-markers workbench that flipped between variants live is gone, so
- *  `markerPartsFor`'s variant param currently has no live consumer. */
-export const MARKER_VARIANTS = {
-  // Checker-gate ships; the mountain stays as the lab alternate carrying the
-  // dormant gauntlet-climb feature (finalClimbAnchor only activates when the
-  // mountain leads this set).
-  final: {
-    'checker-gate': finalCheckerGate,
-    mountain: finalMountain,
-  },
-} as const
-
-export const markerPartsFor = (
-  type: MarkerType,
-  spacing: number,
-  variant?: string,
-  stages?: number
-): MarkerPart[] => {
+export const markerPartsFor = (type: MarkerType, spacing: number): MarkerPart[] => {
   const s = spacing
   switch (type) {
-    case 'final': {
-      const variants: Record<string, MarkerRecipe> = MARKER_VARIANTS[type]
-      return ((variant ? variants[variant] : undefined) ?? Object.values(variants)[0])(s, stages)
-    }
+    case 'final':
+      // The checkered arch — the finale massif (see summit.ts) replaced the
+      // old marker-mesh mountain, which could never read as one at gap scale.
+      return finalCheckerGate(s)
     case 'isoCode':
       return isoCompassRose(s)
     case 'government.leader':
@@ -909,7 +795,6 @@ const buildChallengeMarkers = (
   transforms: TileTransform[],
   spacing: number,
   tileRadius: number,
-  difficulty: GameDifficulty,
   chords: number[]
 ): Mesh[] => {
   const colorBuckets = new Map<string, BufferGeometry[]>()
@@ -924,12 +809,7 @@ const buildChallengeMarkers = (
 
     const { position, tangent } = transforms[tile.position]
     const isFinal = tile.type === 'final'
-    const parts = markerPartsFor(
-      isFinal ? 'final' : tile.type,
-      spacing,
-      undefined,
-      GAUNTLET_LENGTH[difficulty]
-    )
+    const parts = markerPartsFor(isFinal ? 'final' : tile.type, spacing)
 
     // A gate is a HURDLE: it stands in the path itself, at the tile's exit
     // edge, so the pawn pulls up and is stopped by the thing barring its way.
@@ -960,28 +840,48 @@ const buildChallengeMarkers = (
     quaternion.setFromAxisAngle(up, Math.atan2(tangent.x, tangent.z))
     matrix.compose(anchor, quaternion, new Vector3(fit, fit, fit))
 
-    for (const part of parts) {
-      // mergeGeometries refuses a bucket where some geometries carry an index
-      // and others don't, and `faceted()` has to drop the index to give a part
-      // its own face normals. Normalising everything to non-indexed keeps the
-      // buckets mergeable; it duplicates vertices but carries the existing
-      // normals across, so nothing that wasn't faceted changes appearance.
-      const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
-      if (geometry !== part.geometry) part.geometry.dispose()
-
-      if (part.outline !== false) {
-        const outline = outlineOf(geometry, outlineWidth)
-        outline.applyMatrix4(matrix)
-        outlines.push(outline)
-      }
-
-      geometry.applyMatrix4(matrix)
-      const bucket = colorBuckets.get(part.color) ?? []
-      bucket.push(geometry)
-      colorBuckets.set(part.color, bucket)
-    }
+    bakeParts(parts, matrix, outlineWidth, colorBuckets, outlines)
   }
 
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** Transform a recipe's parts into world space and file them into the shared
+ *  color buckets (plus the one ink outline pile) for merged drawing. */
+const bakeParts = (
+  parts: MarkerPart[],
+  matrix: Matrix4,
+  outlineWidth: number,
+  colorBuckets: Map<string, BufferGeometry[]>,
+  outlines: BufferGeometry[]
+) => {
+  for (const part of parts) {
+    // mergeGeometries refuses a bucket where some geometries carry an index
+    // and others don't, and `faceted()` has to drop the index to give a part
+    // its own face normals. Normalising everything to non-indexed keeps the
+    // buckets mergeable; it duplicates vertices but carries the existing
+    // normals across, so nothing that wasn't faceted changes appearance.
+    const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
+    if (geometry !== part.geometry) part.geometry.dispose()
+
+    if (part.outline !== false) {
+      const outline = outlineOf(geometry, outlineWidth)
+      outline.applyMatrix4(matrix)
+      outlines.push(outline)
+    }
+
+    geometry.applyMatrix4(matrix)
+    const bucket = colorBuckets.get(part.color) ?? []
+    bucket.push(geometry)
+    colorBuckets.set(part.color, bucket)
+  }
+}
+
+/** Merge the baked buckets: one mesh per color plus one ink outline mesh. */
+const bucketsToMeshes = (
+  colorBuckets: Map<string, BufferGeometry[]>,
+  outlines: BufferGeometry[]
+): Mesh[] => {
   const meshes: Mesh[] = []
   if (outlines.length) {
     meshes.push(
@@ -998,6 +898,41 @@ const buildChallengeMarkers = (
   }
 
   return meshes
+}
+
+/**
+ * The summit cairn: stacked faceted stones and an orange pennant on the
+ * finale massif's plateau — the victory stand the gauntlet climb tops out
+ * at. Modest against the peak on purpose: the MOUNTAIN is the monument.
+ */
+const buildSummitCairn = (site: SummitSite, spacing: number): Mesh[] => {
+  const s = spacing * 0.55
+  const parts: MarkerPart[] = []
+
+  let stackY = 0
+  for (const [radius, height] of [
+    [0.42, 0.3],
+    [0.3, 0.26],
+    [0.18, 0.22],
+  ]) {
+    const drum = new CylinderGeometry(radius * 0.72 * s, radius * s, height * s, 7)
+    drum.translate(0, (stackY + height / 2) * s, 0)
+    parts.push({ geometry: faceted(drum), color: BOARD_COLORS.warmSand })
+    stackY += height
+  }
+
+  const pole = new CylinderGeometry(0.035 * s, 0.035 * s, 1.1 * s, 8)
+  pole.translate(0, (stackY + 0.55) * s, 0)
+  parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
+  const pennant = new BoxGeometry(0.46 * s, 0.2 * s, 0.04 * s)
+  pennant.translate(0.26 * s, (stackY + 0.94) * s, 0)
+  parts.push({ geometry: pennant, color: BOARD_COLORS.hiorAnge })
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4().setPosition(site.center.x, site.center.y, site.center.z)
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
 }
 
 /**

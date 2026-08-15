@@ -55,7 +55,7 @@ const pathFor = (seed: string, count: number, archetype?: TrackArchetype) => {
 
 const boxOf = (type: MarkerType, spacing: number) => {
   const box = new Box3()
-  for (const part of markerPartsFor(type, spacing, undefined, 5)) {
+  for (const part of markerPartsFor(type, spacing)) {
     part.geometry.computeBoundingBox()
     if (part.geometry.boundingBox) box.union(part.geometry.boundingBox)
   }
@@ -100,7 +100,7 @@ describe('a hurdle stands clear of the disc geometry', () => {
     // dipped below its own origin would sink back into the rim it was lifted
     // out of, which is the exact bug being fixed.
     for (const type of [...GATE_TYPES, 'final' as MarkerType]) {
-      for (const part of markerPartsFor(type, 10, undefined, 5)) {
+      for (const part of markerPartsFor(type, 10)) {
         part.geometry.computeBoundingBox()
         const box = part.geometry.boundingBox
         if (!box) continue
@@ -174,7 +174,7 @@ describe('a hurdle sits in the gap it was measured for', () => {
           const box = boxOf(type, spacing)
           return {
             type,
-            parts: markerPartsFor(type, spacing, undefined, 5),
+            parts: markerPartsFor(type, spacing),
             depth: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
           }
         })
@@ -200,7 +200,7 @@ describe('a hurdle sits in the gap it was measured for', () => {
         const { chords, spacing } = pathFor(seed, count)
         const tileRadius = spacing * TILE_RADIUS_RATIO
         const parts = GATE_TYPES.map(
-          type => [type, markerPartsFor(type, spacing, undefined, 5)] as const
+          type => [type, markerPartsFor(type, spacing)] as const
         )
         for (let index = 1; index < count - 1; index++) {
           const gap = markerGapFor(index, chords, tileRadius)
@@ -215,7 +215,7 @@ describe('a hurdle sits in the gap it was measured for', () => {
   })
 
   it('leaves a marker that already fits at full size', () => {
-    expect(markerFitFactor(markerPartsFor('flag', 10, undefined, 5), 1000, 1000)).toBe(1)
+    expect(markerFitFactor(markerPartsFor('flag', 10), 1000, 1000)).toBe(1)
   })
 })
 
@@ -235,7 +235,7 @@ describe('every archetype keeps the hurdle invariants', () => {
             const box = boxOf(type, spacing)
             return {
               type,
-              parts: markerPartsFor(type, spacing, undefined, 5),
+              parts: markerPartsFor(type, spacing),
               depth: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
             }
           })
@@ -283,7 +283,7 @@ describe('a marker keeps its silhouette', () => {
     const { chords, spacing } = pathFor('bravo', 52)
     const tileRadius = spacing * TILE_RADIUS_RATIO
     const gap = markerGapFor(20, chords, tileRadius)
-    const fit = markerFitFactor(markerPartsFor('history', spacing, undefined, 5), tileRadius, gap)
+    const fit = markerFitFactor(markerPartsFor('history', spacing), tileRadius, gap)
 
     const size = boxOf('history', spacing).getSize(new Vector3())
     expect(size.z).toBeGreaterThan(0)

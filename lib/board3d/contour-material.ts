@@ -10,6 +10,10 @@ export interface ContourMaterial extends ShaderMaterial {
   }
 }
 
+/** Cool near-white for the finale massif's snowcap — deliberately not
+ *  sourMilk: against the warm cream page, the cold cast is what reads. */
+const SNOW_COLOR = '#eef4f7'
+
 /**
  * Unlit topographic material: fwidth-antialiased iso-lines over a cream base.
  * Minor contours in soft blue, every 5th in dark blue — the clean-lined
@@ -18,10 +22,22 @@ export interface ContourMaterial extends ShaderMaterial {
  * Success feedback lives in the same language: `uRippleCenter` +
  * `uRippleProgress` (0→1) drive an expanding annulus that briefly tints the
  * contour lines mint around a landing tile.
+ *
+ * `snowlineY`: above this world elevation, contour lines fade out as a cool
+ * snow wash fades in — the finale massif's cap. Only that peak crosses a real
+ * snowline (hills top out at MAX_ELEVATION); the default parks it far above
+ * everything. The fade doubles as the moiré guard: ring spacing tightens near
+ * a summit, and the wash covers exactly the band where rings would alias.
  */
-export const createContourMaterial = (rippleRadius: number): ContourMaterial => {
+export const createContourMaterial = (
+  rippleRadius: number,
+  snowlineY = 1e6
+): ContourMaterial => {
   const material = new ShaderMaterial({
     uniforms: {
+      uSnow: { value: new Color(SNOW_COLOR) },
+      uSnowline: { value: snowlineY },
+      uSnowBand: { value: 1.6 },
       uBase: { value: new Color(BOARD_COLORS.sourMilk) },
       uMinor: { value: new Color(BOARD_COLORS.softBlue) },
       uMajor: { value: new Color(BOARD_COLORS.darkBlue) },
@@ -60,6 +76,9 @@ export const createContourMaterial = (rippleRadius: number): ContourMaterial => 
       uniform vec3 uMajor;
       uniform vec3 uSand;
       uniform vec3 uMint;
+      uniform vec3 uSnow;
+      uniform float uSnowline;
+      uniform float uSnowBand;
       uniform float uStep;
       uniform float uMajorEvery;
       uniform float uLineWidth;
@@ -90,15 +109,20 @@ export const createContourMaterial = (rippleRadius: number): ContourMaterial => 
         float flatness = smoothstep(0.02, 0.06, vSlope);
         // Contours dissolve toward the horizon instead of ending at a hard edge
         float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
-        float strength = flatness * edgeFade;
+        // Lines hand over to the snow wash across the snowline band
+        float snow = smoothstep(uSnowline, uSnowline + uSnowBand, vElevation);
+        float strength = flatness * edgeFade * (1.0 - snow);
         float minor = lineMask(vElevation, uStep, uLineWidth) * strength;
         float major = lineMask(vElevation, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
 
         // Near-imperceptible warm tint toward peaks for depth without shading;
-        // it drains with edgeFade so the rim lands on exactly the page color
-        vec3 color = mix(uBase, uSand, (vElevation / uMaxElevation) * 0.08 * edgeFade);
+        // it drains with edgeFade so the rim lands on exactly the page color.
+        // Clamped: the finale massif rises past uMaxElevation, and unclamped
+        // it dragged the mix 2-3x past the wash the palette was tuned for.
+        vec3 color = mix(uBase, uSand, clamp(vElevation / uMaxElevation, 0.0, 1.0) * 0.08 * edgeFade);
         color = mix(color, uMinor, minor * 0.95);
         color = mix(color, uMajor, major);
+        color = mix(color, uSnow, snow * 0.85);
 
         if (uRippleProgress >= 0.0) {
           float radius = uRippleProgress * uRippleRadius;
