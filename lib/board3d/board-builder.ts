@@ -184,9 +184,46 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const ribbonCurve = new CatmullRomCurve3(
     shelfPoints.map(point => new Vector3(point.x, point.y + 0.18, point.z))
   )
-  const ribbonGeometry = new TubeGeometry(ribbonCurve, tiles.length * 6, 0.16, 6, false)
+  const tubularSegments = tiles.length * 6
+  const ribbonGeometry = new TubeGeometry(ribbonCurve, tubularSegments, 0.16, 6, false)
+
+  // Approach telegraphing: the ribbon warms into each gate's wash over the
+  // last stretch of track before it, so a coming gauntlet reads at overview
+  // zoom where the marker itself is small. Per-vertex colors — TubeGeometry
+  // orders vertices ring-major, so ring i maps to curve parameter i/segments.
+  const APPROACH_TILES = 1.15
+  const ribbonBase = new Color(BOARD_COLORS.softBlue)
+  const ringColor = new Color()
+  const ribbonColors = new Float32Array(ribbonGeometry.attributes.position.count * 3)
+  const gateTints = tiles.flatMap(tile => {
+    if (tile.type === 'normal' || tile.type === 'start') return []
+    return {
+      position: tile.position,
+      tint: new Color(tile.type === 'final' ? BOARD_COLORS.hiorAnge : TILE_TOP_TINTS[tile.type]),
+    }
+  })
+  const ringsPerVertexRow = ribbonGeometry.attributes.position.count / (tubularSegments + 1)
+  for (let ring = 0; ring <= tubularSegments; ring++) {
+    const tileAt = (ring / tubularSegments) * (tiles.length - 1)
+    ringColor.copy(ribbonBase)
+    for (const gate of gateTints) {
+      const ahead = gate.position - tileAt
+      if (ahead >= 0 && ahead <= APPROACH_TILES) {
+        ringColor.lerp(gate.tint, 1 - ahead / APPROACH_TILES)
+        break
+      }
+    }
+    for (let around = 0; around < ringsPerVertexRow; around++) {
+      const vertex = ring * ringsPerVertexRow + around
+      ribbonColors[vertex * 3] = ringColor.r
+      ribbonColors[vertex * 3 + 1] = ringColor.g
+      ribbonColors[vertex * 3 + 2] = ringColor.b
+    }
+  }
+  ribbonGeometry.setAttribute('color', new BufferAttribute(ribbonColors, 3))
+
   const ribbonMaterial = new MeshBasicMaterial({
-    color: BOARD_COLORS.softBlue,
+    vertexColors: true,
     transparent: true,
     opacity: 0.35,
   })
@@ -197,9 +234,11 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const rimHeight = TILE_RIM_HEIGHT
 
   const unitDisc = new CylinderGeometry(1, 1, 1, 28)
+  // White base + per-instance colors: plain rims stay ink, gate rims carry a
+  // darkened theme tint — the second half of the approach telegraph.
   const rimMesh = new InstancedMesh(
     unitDisc,
-    new MeshBasicMaterial({ color: BOARD_COLORS.ink }),
+    new MeshBasicMaterial({ color: '#ffffff' }),
     tiles.length
   )
   const topMesh = new InstancedMesh(
@@ -211,6 +250,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const matrix = new Matrix4()
   const quaternion = new Quaternion()
   const topColor = new Color()
+  const rimColor = new Color()
+  const rimInk = new Color(BOARD_COLORS.ink)
   const climaxWarmth = new Color(BOARD_COLORS.warmSand)
 
   tiles.forEach((tile, index) => {
@@ -231,6 +272,15 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       new Vector3(tileRadius * emphasis, rimHeight, tileRadius * emphasis)
     )
     rimMesh.setMatrixAt(index, matrix)
+
+    // Gate rims wear their theme's wash pulled well toward ink — colored
+    // enough to flag "gate ahead" at overview zoom, dark enough to stay the
+    // disc's border in the outline language.
+    rimColor.copy(rimInk)
+    if (tile.type !== 'normal' && tile.type !== 'start' && tile.type !== 'final') {
+      rimColor.set(TILE_TOP_TINTS[tile.type]).lerp(rimInk, 0.55)
+    }
+    rimMesh.setColorAt(index, rimColor)
 
     matrix.compose(
       new Vector3(position.x, position.y + rimHeight / 2 + TILE_TOP_INSET, position.z),
@@ -262,6 +312,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   })
   rimMesh.instanceMatrix.needsUpdate = true
   topMesh.instanceMatrix.needsUpdate = true
+  if (rimMesh.instanceColor) rimMesh.instanceColor.needsUpdate = true
   if (topMesh.instanceColor) topMesh.instanceColor.needsUpdate = true
   group.add(rimMesh, topMesh)
 
@@ -435,11 +486,14 @@ const lexiconPlume: MarkerRecipe = s => {
   back.quadraticCurveTo(-0.15, 0.5, -0.06, 0.36)
   back.quadraticCurveTo(-0.095, 0.5, -0.125, 0.66)
 
-  // Flat extrudes on purpose: a bevel folds over itself at reflex corners
-  const frontVane = new ExtrudeGeometry(front, { depth: 0.06, bevelEnabled: false })
-  frontVane.translate(0, 0, -0.03)
-  const backVane = new ExtrudeGeometry(back, { depth: 0.06, bevelEnabled: false })
-  backVane.translate(0, 0, -0.075)
+  // Flat extrudes on purpose: a bevel folds over itself at reflex corners.
+  // Vane depth 0.06 → 0.09 after the overview-zoom pass: the blade thinned
+  // to a hairline at framing distance. The back vane keeps its tuck-behind
+  // overlap (front spans −0.045…0.045, back −0.12…−0.03).
+  const frontVane = new ExtrudeGeometry(front, { depth: 0.09, bevelEnabled: false })
+  frontVane.translate(0, 0, -0.045)
+  const backVane = new ExtrudeGeometry(back, { depth: 0.09, bevelEnabled: false })
+  backVane.translate(0, 0, -0.12)
   for (const vane of [frontVane, backVane]) {
     vane.scale(s, s, s)
     vane.rotateY(QUILL_YAW)
@@ -484,13 +538,19 @@ const historyHourglass: MarkerRecipe = s => {
   sandUp.rotateX(Math.PI)
   sandUp.translate(0, 0.65 * s, 0)
 
-  return [
+  const parts: MarkerPart[] = [
     { geometry: base, color: BOARD_COLORS.darkBlue },
     { geometry: cap, color: BOARD_COLORS.darkBlue },
     ...posts.map(geometry => ({ geometry, color: BOARD_COLORS.darkBlue })),
     { geometry: sandDown, color: BOARD_COLORS.warmSand },
     { geometry: sandUp, color: BOARD_COLORS.warmSand },
   ]
+  // The heaviest silhouette in the set by ~2× (measured AABB mass 210 vs the
+  // 23–166 of everything else) — trimmed uniformly toward the pack so no one
+  // gate dominates the overview shot. Uniform about the foot, so the
+  // authored-from-origin invariant holds.
+  parts.forEach(part => part.geometry.scale(0.86, 0.86, 0.86))
+  return parts
 }
 
 // Cloth caught mid-ripple: an S-waved band drawn in plan and extruded
@@ -721,12 +781,15 @@ export const markerPartsFor = (type: MarkerType, spacing: number): MarkerPart[] 
       // ways — the swap made physical. Shares the ISO gate's post on purpose
       // (both are "a sign that names a place"); the tilt and the alert red,
       // which no other marker uses, are what tell them apart at board scale.
-      const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.95 * s, 10)
+      // Thickened from 0.045/0.2/0.05 after the overview-zoom pass: the
+      // lightest silhouette in the set (AABB mass 23 vs the hourglass's 210)
+      // vanished at framing distance.
+      const pole = new CylinderGeometry(0.06 * s, 0.06 * s, 0.95 * s, 10)
       pole.translate(0, 0.475 * s, 0)
-      const lower = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      const lower = new BoxGeometry(0.52 * s, 0.24 * s, 0.09 * s)
       lower.rotateZ(-0.21)
       lower.translate(0, 0.5 * s, 0)
-      const upper = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      const upper = new BoxGeometry(0.52 * s, 0.24 * s, 0.09 * s)
       upper.rotateZ(0.21)
       upper.translate(0, 0.8 * s, 0)
       return [
