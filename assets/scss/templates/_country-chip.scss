@@ -82,7 +82,11 @@
   .country-chip {
     flex-shrink: 0;
     white-space: nowrap;
-    scroll-snap-align: end;
+    // Snapped by its START, so every resting position — a flick as much as the
+    // trail's own scroll (lib/use-chip-trail) — puts a whole chip against the
+    // leading edge. Snapping by `end` framed the newest chip flush right and
+    // paid for it by slicing whichever name straddled the left edge.
+    scroll-snap-align: start;
   }
 }
 
