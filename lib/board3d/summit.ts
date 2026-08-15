@@ -38,12 +38,14 @@ export interface SummitSite {
  *  all) decline one regardless of the roll. */
 const SUMMIT_CHANCE = 0.55
 
-/** World units, deliberately NOT spacing-scaled: the massif is scenery, and
- *  its flank slope (height / (radius − plateau)) is what the contour shader
- *  renders — at these numbers the ring-to-ring gap stays above the terrain's
- *  vertex pitch (0.87), which is what keeps the rings from moiréing. */
+/** World units, deliberately NOT spacing-scaled — and HEIGHT scales with the
+ *  gauntlet while the FOOTPRINT stays fixed: a hard board's five-stage climb
+ *  earns a visibly taller mountain (2×MAX vs easy's 1.7×), but the radius
+ *  never grows — a wider footprint needed more site clearance and quietly
+ *  deleted hard-mode massifs from boards whose sites only just fit. The
+ *  snowcap and the shader's line-density fade own the steeper ring band. */
 const SUMMIT_RADIUS = 20
-const SUMMIT_HEIGHT = MAX_ELEVATION * 1.8
+const summitHeightFor = (stages: number) => MAX_ELEVATION * (1.55 + stages * 0.09)
 const PLATEAU_RADIUS = 5
 /** Snow takes over at this fraction of the rise — only the massif crosses it
  *  (the fBm hills top out at MAX_ELEVATION). High on purpose, twice over:
@@ -181,8 +183,10 @@ export const pickSummitSite = (
 
   const { transforms, shelfPoints, spacing } = path
   const final = transforms[transforms.length - 1]
-  const clearance = SUMMIT_RADIUS + spacing * 1.05
-  const centerDistance = SUMMIT_RADIUS + spacing * 1.15
+  const radius = SUMMIT_RADIUS
+  const height = summitHeightFor(stages)
+  const clearance = radius + spacing * 1.05
+  const centerDistance = radius + spacing * 1.15
 
   // Bearings fan out from "directly behind the final tile", where behind
   // means outward from the board's heart — the annulus between the track's
@@ -209,7 +213,7 @@ export const pickSummitSite = (
     if (!clear) continue
 
     if (pond) {
-      const pondGap = SUMMIT_RADIUS + pond.basinRadius
+      const pondGap = radius + pond.basinRadius
       const dx = pond.center.x - center.x
       const dz = pond.center.z - center.z
       if (dx * dx + dz * dz < pondGap * pondGap) continue
@@ -217,11 +221,11 @@ export const pickSummitSite = (
 
     const baseY = sampler(center.x, center.z)
     const site: SummitSite = {
-      center: new Vector3(center.x, baseY + SUMMIT_HEIGHT, center.z),
-      radius: SUMMIT_RADIUS,
-      height: SUMMIT_HEIGHT,
+      center: new Vector3(center.x, baseY + height, center.z),
+      radius,
+      height,
       plateauRadius: PLATEAU_RADIUS,
-      snowlineY: baseY + SUMMIT_HEIGHT * SNOWLINE_FRACTION,
+      snowlineY: baseY + height * SNOWLINE_FRACTION,
       faceAngle: Math.atan2(final.position.x - center.x, final.position.z - center.z),
       cragPhases,
       climbAnchors: [],
@@ -249,7 +253,9 @@ const climbAnchorsFor = (site: SummitSite, sampler: HeightSampler, stages: numbe
   for (let step = 0; step < flanks; step++) {
     const t = flanks === 1 ? 0.5 : step / (flanks - 1)
     const angle = site.faceAngle + wrapDirection * (0.35 + 2.3 * t)
-    const reach = site.radius * 0.84 + (site.plateauRadius * 1.15 - site.radius * 0.84) * t
+    // The wrap tops out CLEAR of the plateau's rounding shoulder (1.45×) —
+    // at 1.15× the last stage's disc rim caught the dome's rise.
+    const reach = site.radius * 0.84 + (site.plateauRadius * 1.45 - site.radius * 0.84) * t
     const x = site.center.x + Math.sin(angle) * reach
     const z = site.center.z + Math.cos(angle) * reach
     const y = sampler(x, z) + site.height * summitMask(site, x, z)
@@ -260,7 +266,16 @@ const climbAnchorsFor = (site: SummitSite, sampler: HeightSampler, stages: numbe
     anchors.push(new Vector3(x, floor, z))
   }
 
-  anchors.push(new Vector3(site.center.x, site.center.y, site.center.z))
+  // The victory stand is BESIDE the cairn, not through it: the winner poses
+  // 2.9 units toward the face while the cairn itself steps 1.2 back — the
+  // 4.1-unit separation clears a pawn base against the (shrunken) stones.
+  anchors.push(
+    new Vector3(
+      site.center.x + Math.sin(site.faceAngle) * 2.9,
+      site.center.y,
+      site.center.z + Math.cos(site.faceAngle) * 2.9
+    )
+  )
   return anchors
 }
 

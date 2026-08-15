@@ -404,12 +404,45 @@ const gauntletFor = (player: Player) => {
  *  absent = still at the arch), so a stage clear HOPS the missing rungs
  *  instead of gliding — a climb, not a float. */
 const climbRungs = new Map<string, number>()
+/** The last summit party seen — when it changes, everyone up top re-spaces. */
+let summitParty = ''
 
 const syncClimbs = () => {
   const build = board.value
   if (!build?.summit) return
   const summit = build.summit
   const finalIndex = props.game.tiles.length - 1
+  const summitRung = summit.climbAnchors.length - 1
+
+  const atSummit = (player: Player) => {
+    if (displayPositionFor(player) !== finalIndex) return false
+    if (player.phase === 'victory') return true
+    const gauntlet = gauntletFor(player)
+    return Boolean(gauntlet && gauntlet.answeredCorrect >= gauntlet.totalCount)
+  }
+
+  // The summit is a PODIUM: winners fan around the plateau ring, ranked by
+  // id (the mover's shared-tile rule — deterministic on every client), so a
+  // crowd of victors poses around the cairn instead of standing inside one
+  // another. A new arrival re-spaces the whole party.
+  const party = Object.values(props.game.players)
+    .filter(player => pawns.has(player.id) && atSummit(player))
+    .map(player => player.id)
+    .sort()
+  const partyChanged = party.join('|') !== summitParty
+  summitParty = party.join('|')
+
+  const summitSpotFor = (playerId: string) => {
+    const rank = party.indexOf(playerId)
+    if (rank <= 0) return summit.climbAnchors[summitRung].clone()
+    const swing = (rank % 2 === 1 ? 1 : -1) * Math.ceil(rank / 2) * 0.75
+    const angle = summit.faceAngle + swing
+    return new Vector3(
+      summit.center.x + Math.sin(angle) * 2.9,
+      summit.center.y,
+      summit.center.z + Math.cos(angle) * 2.9
+    )
+  }
 
   for (const player of Object.values(props.game.players)) {
     const pawn = pawns.get(player.id)
@@ -423,16 +456,18 @@ const syncClimbs = () => {
     if (!gauntlet && !victor) continue
 
     const target = victor
-      ? summit.climbAnchors.length - 1
+      ? summitRung
       : summitClimbIndex(summit, gauntlet!.answeredCorrect, gauntlet!.totalCount)
     if (target === undefined) continue
     const current = climbRungs.get(player.id) ?? -1
-    if (target === current) continue
+    if (target === current && !(target === summitRung && partyChanged)) continue
     climbRungs.set(player.id, target)
+
+    const resting = target === summitRung ? summitSpotFor(player.id) : summit.climbAnchors[target]
 
     gsap.killTweensOf(pawn.position)
     if (prefersReducedMotion() || target < current) {
-      pawn.position.copy(summit.climbAnchors[target])
+      pawn.position.copy(resting)
       continue
     }
 
@@ -443,7 +478,7 @@ const syncClimbs = () => {
     let from = pawn.position.clone()
     for (let rung = current + 1; rung <= target; rung++) {
       const start = from
-      const to = summit.climbAnchors[rung].clone()
+      const to = rung === target ? resting.clone() : summit.climbAnchors[rung].clone()
       const progress = { t: 0 }
       timeline.to(progress, {
         t: 1,

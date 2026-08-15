@@ -10,6 +10,13 @@
       <select v-model="length" @change="regenerate">
         <option v-for="option in gameLengths" :key="option" :value="option">{{ option }}</option>
       </select>
+      <!-- Difficulty sizes the massif and the gauntlet ladder (2/3/5 stages);
+           the build key watches it, so switching rebuilds the mountain live -->
+      <select v-model="mockGame.difficulty">
+        <option value="easy">easy</option>
+        <option value="normal">normal</option>
+        <option value="hard">hard</option>
+      </select>
     </nav>
     <!-- Pawn-replay repro: the persistent stage hides for challenge views
          (active=false holds the position watcher), and the gate resolves
@@ -179,7 +186,7 @@ const dealWalk = (steps: number) => {
 // --- Final-gauntlet climb demo --------------------------------------------
 // The board only reads _type / answeredCorrect / totalCount / lives off the
 // gauntlet, so the question items can stay empty husks.
-const GAUNTLET_STAGES = GAUNTLET_LENGTH['normal']
+const gauntletStages = () => GAUNTLET_LENGTH[mockGame.difficulty]
 
 const startGauntlet = () => {
   const player = mockGame.players['mock-player-1']
@@ -192,9 +199,9 @@ const startGauntlet = () => {
       challenge: {
         _type: 'final-challenge',
         difficulty: 'normal',
-        challenges: Array.from({ length: GAUNTLET_STAGES }, () => ({}) as FinalChallengeItem),
+        challenges: Array.from({ length: gauntletStages() }, () => ({}) as FinalChallengeItem),
         lives: 2,
-        totalCount: GAUNTLET_STAGES,
+        totalCount: gauntletStages(),
         answeredCorrect: 0,
       } satisfies FinalChallenge,
     },

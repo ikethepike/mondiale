@@ -18,9 +18,9 @@ const pathFor = (seed: string, count = 65, archetype?: TrackArchetype) => {
   }
 }
 
-const siteFor = (seed: string, count = 65, archetype?: TrackArchetype) => {
+const siteFor = (seed: string, count = 65, archetype?: TrackArchetype, stages = STAGES) => {
   const { path, sampler } = pathFor(seed, count, archetype)
-  return { site: pickSummitSite(seed, path, undefined, sampler, STAGES), path, sampler }
+  return { site: pickSummitSite(seed, path, undefined, sampler, stages), path, sampler }
 }
 
 describe('pickSummitSite', () => {
@@ -35,10 +35,12 @@ describe('pickSummitSite', () => {
   })
 
   it('deals a massif on some boards and declines on others', () => {
+    // Rate measured at NORMAL difficulty: a hard board's bigger massif
+    // (radius scales with stages) legitimately fits fewer sites.
     let dealt = 0
     let declined = 0
     for (let index = 0; index < 60; index++) {
-      const { site } = siteFor(`summit-deal-${index}`)
+      const { site } = siteFor(`summit-deal-${index}`, 65, undefined, 3)
       if (site) dealt++
       else declined++
     }
@@ -76,9 +78,13 @@ describe('pickSummitSite', () => {
           site.climbAnchors[step - 1].y
         )
       }
+      // The victory stand is ON the plateau but BESIDE the cairn (a pawn at
+      // the exact center clipped straight through the monument).
       const summit = site.climbAnchors[site.climbAnchors.length - 1]
-      expect(summit.x).toBe(site.center.x)
-      expect(summit.z).toBe(site.center.z)
+      const offCenter = Math.hypot(summit.x - site.center.x, summit.z - site.center.z)
+      expect(offCenter).toBeGreaterThan(1.5)
+      expect(offCenter).toBeLessThan(site.plateauRadius)
+      expect(summit.y).toBe(site.center.y)
       expect(site.snowlineY).toBeLessThan(site.center.y)
     }
   })
