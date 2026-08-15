@@ -470,7 +470,9 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // --- Pond + bridge (when this board drew one) ------------------------------
   if (pondSite) {
     const tileTopY = pondSite.center.y + rimHeight + TILE_TOP_INSET
-    buildPondMeshes(pondSite, spacing, tileTopY).forEach(mesh => group.add(mesh))
+    buildPondMeshes(pondSite, spacing, tileTopY, biome, sampler, timeUniforms).forEach(mesh =>
+      group.add(mesh)
+    )
   }
 
   const dispose = () => {
@@ -1163,6 +1165,9 @@ const buildRiverMeshes = (
   const meshes: Mesh[] = []
   const water = createWaterMaterial(biome, timeUniforms)
 
+  // Six columns across the fine spline — smooth foam shorelines, not the
+  // fractal facets the coarse four-column ribbon triangulated.
+  const ACROSS = [-1, -0.6, -0.25, 0.25, 0.6, 1]
   const ribbon = new BufferGeometry()
   const vertices: number[] = []
   const depths: number[] = []
@@ -1173,7 +1178,7 @@ const buildRiverMeshes = (
     const previous = river.points[Math.max(index - 1, 0)]
     const tangent = new Vector3().subVectors(next, previous).setY(0).normalize()
     const side = new Vector3(-tangent.z, 0, tangent.x)
-    for (const offset of [-1, -0.33, 0.33, 1]) {
+    for (const offset of ACROSS) {
       const x = point.x + side.x * offset * river.width * 0.75
       const z = point.z + side.z * offset * river.width * 0.75
       vertices.push(x, point.y, z)
@@ -1181,10 +1186,10 @@ const buildRiverMeshes = (
     }
   }
   for (let segment = 0; segment < river.points.length - 1; segment++) {
-    const row = segment * 4
-    for (let quad = 0; quad < 3; quad++) {
+    const row = segment * ACROSS.length
+    for (let quad = 0; quad < ACROSS.length - 1; quad++) {
       const a = row + quad
-      indices.push(a, a + 4, a + 1, a + 1, a + 4, a + 5)
+      indices.push(a, a + ACROSS.length, a + 1, a + 1, a + ACROSS.length, a + ACROSS.length + 1)
     }
   }
   ribbon.setIndex(indices)
@@ -1195,10 +1200,7 @@ const buildRiverMeshes = (
   const fallVertices: number[] = []
   const fallDepths: number[] = []
   const fallIndices: number[] = []
-  for (let index = 0; index < river.points.length - 1; index++) {
-    const top = river.points[index]
-    const bottom = river.points[index + 1]
-    if (top.y - bottom.y < 1.1) continue
+  for (const { top, bottom } of river.falls) {
     const tangent = new Vector3().subVectors(bottom, top).setY(0).normalize()
     const side = new Vector3(-tangent.z, 0, tangent.x)
     const lip = new Vector3().addVectors(top, tangent.clone().multiplyScalar(1.1))

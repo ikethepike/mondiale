@@ -1,5 +1,5 @@
 import Alea from 'alea'
-import { Vector3 } from 'three'
+import { CatmullRomCurve3, Vector3 } from 'three'
 import type { HeightSampler } from './terrain'
 import { EDGE_FADE_START, smoothstep } from './terrain'
 import type { TilePathResult } from './path'
@@ -15,8 +15,13 @@ import type { SummitSite } from './summit'
  * follow-up, not v1 — a half-right crossing reads as a flooded board).
  */
 export interface RiverPath {
-  /** Downstream points; `y` is the WATER surface at that point. */
+  /** Downstream points at FINE spacing (spline-resampled from the march);
+   *  `y` is the WATER surface at that point. Fine points are what keep the
+   *  carve and the foam ribbon smooth — the raw march was coarse enough
+   *  that its nearest-point scallops read as fractal foam. */
   points: Vector3[]
+  /** Big drops detected on the raw march — each hangs a cascade sheet. */
+  falls: { top: Vector3; bottom: Vector3 }[]
   /** Carve reach either side of the centerline (world units). */
   width: number
 }
@@ -106,11 +111,30 @@ export const pickRiverPath = (
 
     // Water must run downhill: clamp the surface non-increasing downstream.
     let level = Infinity
-    const points = march.map(point => {
+    const coarse = march.map(point => {
       level = Math.min(level, point.y - WATER_DROP)
       return new Vector3(point.x, level, point.z)
     })
-    return { points, width: RIVER_WIDTH }
+
+    // Falls detect on the RAW march, where a drop is one step.
+    const falls: RiverPath['falls'] = []
+    for (let index = 0; index < coarse.length - 1; index++) {
+      if (coarse[index].y - coarse[index + 1].y >= 1.1)
+        falls.push({ top: coarse[index].clone(), bottom: coarse[index + 1].clone() })
+    }
+
+    // Fine resample through a spline, then re-clamp: the smooth centerline is
+    // what keeps the bed carve and the foam shoreline from scalloping.
+    const spline = new CatmullRomCurve3(coarse, false, 'centripetal')
+    const fineCount = Math.max(coarse.length * 2, Math.ceil(spline.getLength() / 1.2))
+    const points = spline.getSpacedPoints(fineCount)
+    let fineLevel = Infinity
+    for (const point of points) {
+      fineLevel = Math.min(fineLevel, point.y)
+      point.y = fineLevel
+    }
+
+    return { points, falls, width: RIVER_WIDTH }
   }
   return undefined
 }

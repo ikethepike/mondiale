@@ -2,16 +2,16 @@ import Alea from 'alea'
 import {
   BackSide,
   BoxGeometry,
+  BufferAttribute,
   type BufferGeometry,
-  CircleGeometry,
   Color,
   DoubleSide,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshToonMaterial,
+  PlaneGeometry,
   Quaternion,
-  RingGeometry,
   ShaderMaterial,
   Vector3,
 } from 'three'
@@ -176,32 +176,30 @@ export const withPondBasin = (sampler: HeightSampler, site: PondSite): HeightSam
  * plank bridge whose apex matches the tile-top height — pawns land on the
  * deck exactly as they would on the disc it replaces.
  */
-export const buildPondMeshes = (site: PondSite, spacing: number, tileTopY: number): Mesh[] => {
+export const buildPondMeshes = (
+  site: PondSite,
+  spacing: number,
+  tileTopY: number,
+  biome: BoardBiome,
+  sampler: HeightSampler,
+  timeUniforms: { value: number }[]
+): Mesh[] => {
   const meshes: Mesh[] = []
   const { center, tangent, waterY, waterRadius } = site
 
-  const water = new CircleGeometry(waterRadius, 40)
+  // Living water: a grid with per-vertex analytic depth (water line minus
+  // the carved basin under each vertex) — the foam shoreline emerges where
+  // depth crosses zero, replacing the old flat disc and milk ripple rings.
+  const water = new PlaneGeometry(waterRadius * 2.6, waterRadius * 2.6, 28, 28)
   water.rotateX(-Math.PI / 2)
   water.translate(center.x, waterY, center.z)
-  meshes.push(new Mesh(water, new MeshBasicMaterial({ color: BOARD_COLORS.pondBlue })))
-
-  for (const reach of [0.38, 0.62]) {
-    const ripple = new RingGeometry(waterRadius * reach, waterRadius * (reach + 0.035), 36)
-    ripple.rotateX(-Math.PI / 2)
-    ripple.translate(center.x, waterY + 0.05, center.z)
-    meshes.push(
-      new Mesh(
-        ripple,
-        // depthWrite off: translucent overlay a hair above the water plane
-        new MeshBasicMaterial({
-          color: BOARD_COLORS.sourMilk,
-          transparent: true,
-          opacity: 0.45,
-          depthWrite: false,
-        })
-      )
-    )
+  const positions = water.attributes.position
+  const pondDepths = new Float32Array(positions.count)
+  for (let index = 0; index < positions.count; index++) {
+    pondDepths[index] = waterY - sampler(positions.getX(index), positions.getZ(index))
   }
+  water.setAttribute('aDepth', new BufferAttribute(pondDepths, 1))
+  meshes.push(new Mesh(water, createWaterMaterial(biome, timeUniforms)))
 
   // --- Bridge: planks arched along the path tangent -------------------------
   const matrix = new Matrix4()
