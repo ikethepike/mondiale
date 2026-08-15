@@ -45,7 +45,7 @@ import {
   PATH_MARKER_LIFT,
   TILE_RADIUS_RATIO,
 } from '~~/lib/board3d/board-builder'
-import { summitClimbAnchor } from '~~/lib/board3d/summit'
+import { summitClimbIndex } from '~~/lib/board3d/summit'
 import { spawnCheerSprite } from '~~/lib/board3d/cheer-sprite'
 import { BOARD_COLORS } from '~~/lib/board3d/colors'
 import type { TileTransform } from '~~/lib/board3d/path'
@@ -63,6 +63,7 @@ import {
   ARRIVAL_RIPPLE_MS,
   GATE_PUNCH_MS,
   MOVE_INTERSTITIAL_TOTAL_MS,
+  PAWN_HOP_MS,
   WALK_FRAME_MS,
   WALK_RESUME_FRAME_MS,
 } from '~~/lib/round-beats'
@@ -207,6 +208,7 @@ const knockPawn = (playerId: string) => {
  * identically, so the shot lives here once.
  */
 const punchInOn = (playerId: string, tile: TileTransform) => {
+  if (devFrameQuery === 'summit') return
   boardCamera?.frameOn(pawns.get(playerId)?.position ?? tile.position, {
     tiles: ALERT_TILES,
     durationMs: GATE_PUNCH_MS,
@@ -398,36 +400,66 @@ const gauntletFor = (player: Player) => {
   return challenge?._type === 'final-challenge' ? challenge : undefined
 }
 
+/** The rung each climbing pawn last stood on (index into climbAnchors;
+ *  absent = still at the arch), so a stage clear HOPS the missing rungs
+ *  instead of gliding — a climb, not a float. */
+const climbRungs = new Map<string, number>()
+
 const syncClimbs = () => {
   const build = board.value
   if (!build?.summit) return
+  const summit = build.summit
   const finalIndex = props.game.tiles.length - 1
 
   for (const player of Object.values(props.game.players)) {
     const pawn = pawns.get(player.id)
-    if (!pawn || displayPositionFor(player) !== finalIndex) continue
+    if (!pawn) continue
+    if (displayPositionFor(player) !== finalIndex) {
+      climbRungs.delete(player.id)
+      continue
+    }
     const gauntlet = gauntletFor(player)
     const victor = player.phase === 'victory'
     if (!gauntlet && !victor) continue
 
-    // World-space ledge anchors, precomputed by the build for this board's
-    // difficulty — copied straight onto the pawn, no tile transform.
-    const anchor = victor
-      ? summitClimbAnchor(build.summit, 1, 1)
-      : summitClimbAnchor(build.summit, gauntlet!.answeredCorrect, gauntlet!.totalCount)
-    if (!anchor) continue
+    const target = victor
+      ? summit.climbAnchors.length - 1
+      : summitClimbIndex(summit, gauntlet!.answeredCorrect, gauntlet!.totalCount)
+    if (target === undefined) continue
+    const current = climbRungs.get(player.id) ?? -1
+    if (target === current) continue
+    climbRungs.set(player.id, target)
 
-    if (prefersReducedMotion()) {
-      pawn.position.copy(anchor)
-    } else {
-      gsap.to(pawn.position, {
-        x: anchor.x,
-        y: anchor.y,
-        z: anchor.z,
-        duration: 0.7,
-        ease: 'power2.inOut',
-        overwrite: 'auto',
+    gsap.killTweensOf(pawn.position)
+    if (prefersReducedMotion() || target < current) {
+      pawn.position.copy(summit.climbAnchors[target])
+      continue
+    }
+
+    // Hop rung by rung up the gorge — the walk's own hop language, one arc
+    // per carved step, chaining through any rungs a rejoin missed.
+    const hopHeight = build.spacing * 0.35
+    const timeline = gsap.timeline()
+    let from = pawn.position.clone()
+    for (let rung = current + 1; rung <= target; rung++) {
+      const start = from
+      const to = summit.climbAnchors[rung].clone()
+      const progress = { t: 0 }
+      timeline.to(progress, {
+        t: 1,
+        duration: PAWN_HOP_MS / 1000,
+        ease: 'none',
+        onUpdate() {
+          pawn.position.set(
+            start.x + (to.x - start.x) * progress.t,
+            start.y +
+              (to.y - start.y) * progress.t +
+              Math.sin(progress.t * Math.PI) * hopHeight,
+            start.z + (to.z - start.z) * progress.t
+          )
+        },
       })
+      from = to
     }
   }
 }
@@ -560,6 +592,23 @@ const rebuild = () => {
   // After placement: a rebuild mid-gauntlet must put the climber back on
   // their ledge, not on the tile top
   syncClimbs()
+  frameDevSubject()
+}
+
+// Dev harness: `?frame=summit` pins the entry shot on the finale massif.
+// Sculpt iteration was unverifiable through blind orbit choreography — a
+// named subject makes a screenshot loop deterministic. Inert without the
+// query, and a real gesture reclaims the camera as always. Declared before
+// the immediate rebuild watcher below, which calls it.
+const devFrameQuery = String(useRoute().query.frame ?? '')
+const frameDevSubject = () => {
+  const summit = board.value?.summit
+  if (devFrameQuery !== 'summit' || !boardCamera || !summit) return
+  // Claim the entry beat AND the pending announce, or the show-pass sweep
+  // and the walk-announce frame each re-take the shot for the pawn.
+  hasFramed = true
+  framedAnnounce = announceTokenFor(props.game.players[cameraTargetId.value]) ?? framedAnnounce
+  boardCamera.frameOn(summit.center, { tiles: 7, commanding: true })
 }
 
 // Fingerprint the tile types: with seeded gate rhythm, same-length boards
@@ -650,6 +699,8 @@ const frameSubject = (options: FrameOptions) => {
  * resume re-frames inside the short resume lead.
  */
 const syncCameraFraming = () => {
+  // The dev summit pin owns the camera outright — no automatic beats.
+  if (devFrameQuery === 'summit') return false
   if (!props.active || !boardCamera) return false
 
   const subject = props.game.players[cameraTargetId.value]
@@ -999,13 +1050,20 @@ watch([cameraRef, controlsRef, board], () => {
   // The walk-follow shot: glue the orbit centre to the followed pawn's LIVE
   // object, not its tile. Re-read per frame, so subject switches and rebuilds
   // need no re-wiring; a hidden stage yields undefined and the tick holds.
-  boardCamera.track(() => (props.active ? pawns.get(cameraTargetId.value)?.position : undefined))
+  // (When the dev summit frame is pinned, the tracker yields — it re-centers
+  // the rig on the pawn every frame and would drag any frameOn straight back.)
+  boardCamera.track(() =>
+    props.active && devFrameQuery !== 'summit'
+      ? pawns.get(cameraTargetId.value)?.position
+      : undefined
+  )
 
   // The rig can be built while the stage is still hidden (it is, every game —
   // the persistent stage mounts on idle behind round 1), which is precisely
   // how the entry sweep used to be consumed off screen. Frame through the
   // sync instead: it holds until the board is actually on screen.
   syncCameraFraming()
+  frameDevSubject()
 })
 
 onUnmounted(() => {

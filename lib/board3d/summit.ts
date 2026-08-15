@@ -51,8 +51,12 @@ const SUMMIT_RADIUS = 20
 const SUMMIT_HEIGHT = MAX_ELEVATION * 1.8
 const PLATEAU_RADIUS = 5
 /** Snow takes over at this fraction of the rise — only the massif crosses it
- *  (the fBm hills top out at MAX_ELEVATION). */
-const SNOWLINE_FRACTION = 0.62
+ *  (the fBm hills top out at MAX_ELEVATION). High on purpose, twice over:
+ *  snow keys on ABSOLUTE elevation while the flank rides ±half a hill of
+ *  base noise, smearing the band outward — and a wide cap buried the whole
+ *  sculpted peak under a smooth white dome. The shader's line-density fade
+ *  owns the tight-ring moiré now, so the crown can stay small. */
+const SNOWLINE_FRACTION = 0.9
 
 /** Flat ground carved under each climb anchor (×spacing — pawn-scaled, wide
  *  enough that the terrace notches the contour rings visibly). */
@@ -69,15 +73,15 @@ const MAX_CENTER_DISTANCE = EDGE_FADE_START - 7
 /** How deep the 3-lobe spur/gully cut and the 5-lobe detail bite into the
  *  flank radius (inward only — the footprint never exceeds `radius`, so the
  *  site-pick clearance math is untouched). */
-const CRAG_PRIMARY = 0.1
-const CRAG_DETAIL = 0.05
+const CRAG_PRIMARY = 0.14
+const CRAG_DETAIL = 0.06
 /** Flank profile exponent: >1 pulls the flanks concave under a sharp peak —
  *  a mountain silhouette, not the dome the plain smoothstep gave. */
 const PEAK_SHARPNESS = 1.65
 /** The ascent gorge: how much of the flank height the notch removes, and its
  *  angular half-width around `faceAngle`. */
-const GORGE_DEPTH = 0.5
-const GORGE_HALF_RAD = 0.42
+const GORGE_DEPTH = 0.65
+const GORGE_HALF_RAD = 0.5
 
 /**
  * The massif's height mask in [0, 1] — THE single shape source: terrain
@@ -262,17 +266,23 @@ export const withSummitMassif = (sampler: HeightSampler, site: SummitSite, spaci
  * ledge when a thin board dealt fewer, and the summit at `cleared >= total`
  * (victory). World space — TopoScene copies it straight onto the pawn.
  */
+export const summitClimbIndex = (
+  site: SummitSite,
+  cleared: number,
+  total: number
+): number | undefined => {
+  if (cleared <= 0 || total <= 0) return undefined
+  const flankCount = site.climbAnchors.length - 1
+  return cleared >= total
+    ? flankCount
+    : Math.min(flankCount - 1, Math.ceil((cleared / total) * flankCount) - 1)
+}
+
 export const summitClimbAnchor = (
   site: SummitSite,
   cleared: number,
   total: number
 ): Vector3 | undefined => {
-  if (cleared <= 0 || total <= 0) return undefined
-  const anchors = site.climbAnchors
-  const flankCount = anchors.length - 1
-  const ledge =
-    cleared >= total
-      ? anchors[anchors.length - 1]
-      : anchors[Math.min(flankCount - 1, Math.ceil((cleared / total) * flankCount) - 1)]
-  return ledge.clone()
+  const index = summitClimbIndex(site, cleared, total)
+  return index === undefined ? undefined : site.climbAnchors[index].clone()
 }
