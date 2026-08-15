@@ -18,7 +18,9 @@ import {
   fetchPageImages,
   placeHasPhoto,
   placeSitsInCountry,
+  PLACE_IMAGE_DIRECTORY,
   PLACE_PHOTO_WIDTH,
+  PLACE_PUBLIC_BASE,
   savePlacePhoto,
   slugify,
   wait,
@@ -39,14 +41,12 @@ import {
  * stamped onto every entry as an explicit `fame` tier, so the difficulty gate
  * no longer depends on array order surviving every merge.
  *
- * Photos live one per landmark under public/landmarks/. Merges with the
- * previous run so a transient failure never erases a captured landmark.
+ * Photos live one per slug under public/landmarks/ — the one place folder, which
+ * the heritage roster shares. Merges with the previous run so a transient
+ * failure never erases a captured landmark.
  *
  *   bun run generate:landmarks [--force]
  */
-
-const OUTPUT_DIRECTORY = 'public/landmarks'
-const PUBLIC_BASE = '/landmarks'
 
 const force = process.argv.includes('--force')
 
@@ -142,7 +142,7 @@ for (const entry of resolved) {
   // download, so it would survive forever — delete it. A seed with an explicit
   // override owns its image and is left alone.
   if (seedHasImageOverride(seed)) continue
-  const stalePath = `${OUTPUT_DIRECTORY}/${slugify(seed.name)}.webp`
+  const stalePath = `${PLACE_IMAGE_DIRECTORY}/${slugify(seed.name)}.webp`
   if (existsSync(stalePath)) {
     rmSync(stalePath, { force: true })
     console.warn(`    removed its cached image — add an image override to keep this landmark`)
@@ -161,7 +161,7 @@ const famed = assignFameByCountry(
   resolved.map(({ seed, qid }) => ({ ...seed, qid, country: seed.country }))
 )
 
-mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
+mkdirSync(PLACE_IMAGE_DIRECTORY, { recursive: true })
 const mapping: LandmarkMapping = {}
 let done = 0
 let failed = 0
@@ -182,8 +182,8 @@ for (const seed of famed) {
   if (seed.imageUrl) {
     publicPath = await saveImageUrl(
       seed.imageUrl,
-      `${OUTPUT_DIRECTORY}/${slug}`,
-      `${PUBLIC_BASE}/${slug}`,
+      `${PLACE_IMAGE_DIRECTORY}/${slug}`,
+      `${PLACE_PUBLIC_BASE}/${slug}`,
       {
         width: PLACE_PHOTO_WIDTH,
         force,
@@ -196,8 +196,8 @@ for (const seed of famed) {
   if (!publicPath && seed.unsplashPhotoId && hasUnsplashKey()) {
     const photo = await saveUnsplashPhoto(
       seed.unsplashPhotoId,
-      `${OUTPUT_DIRECTORY}/${slug}`,
-      `${PUBLIC_BASE}/${slug}`,
+      `${PLACE_IMAGE_DIRECTORY}/${slug}`,
+      `${PLACE_PUBLIC_BASE}/${slug}`,
       PLACE_PHOTO_WIDTH,
       force
     )
@@ -210,8 +210,8 @@ for (const seed of famed) {
   if (!publicPath && seed.unsplash && hasUnsplashKey()) {
     const photo = await saveUnsplashImage(
       seed.unsplash,
-      `${OUTPUT_DIRECTORY}/${slug}`,
-      `${PUBLIC_BASE}/${slug}`,
+      `${PLACE_IMAGE_DIRECTORY}/${slug}`,
+      `${PLACE_PUBLIC_BASE}/${slug}`,
       PLACE_PHOTO_WIDTH,
       force
     )
@@ -225,8 +225,8 @@ for (const seed of famed) {
     const photo = await savePlacePhoto({
       file: seed.commons,
       slug,
-      directory: OUTPUT_DIRECTORY,
-      publicBase: PUBLIC_BASE,
+      directory: PLACE_IMAGE_DIRECTORY,
+      publicBase: PLACE_PUBLIC_BASE,
       previous: previousMapping[slug],
       force,
     })
@@ -241,8 +241,8 @@ for (const seed of famed) {
     const photo = await savePlacePhoto({
       file: photoFiles.get(qid),
       slug,
-      directory: OUTPUT_DIRECTORY,
-      publicBase: PUBLIC_BASE,
+      directory: PLACE_IMAGE_DIRECTORY,
+      publicBase: PLACE_PUBLIC_BASE,
       previous: previousMapping[slug],
       force,
     })

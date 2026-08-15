@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { LANDMARKS } from '~~/data/landmarks.gen'
 import { famousPlaces, getRoundChallenge, PIN_LANDMARK_TIERS } from '~~/lib/challenges'
@@ -136,6 +138,47 @@ describe('generated place fame', () => {
 
     const countries = easy.map(([, landmark]) => landmark.country)
     expect(new Set(countries).size).toBe(countries.length)
+  })
+
+  it('keeps one photo per slug, shared by both rosters, with no orphans', () => {
+    // The two rosters live in ONE folder now. A subject both hold (Ha Long Bay
+    // is a curated landmark AND a World Heritage site) must be one file with one
+    // credit, and nothing on disk may be unreferenced.
+    const directory = 'public/landmarks'
+    const referenced = new Set(
+      [...Object.values(LANDMARKS), ...Object.values(HERITAGE)].map(entry =>
+        entry.image.replace('/landmarks/', '')
+      )
+    )
+    for (const entry of [...Object.values(LANDMARKS), ...Object.values(HERITAGE)]) {
+      expect(entry.image, entry.name).toMatch(/^\/landmarks\//)
+      expect(existsSync(`public${entry.image}`), entry.image).toBe(true)
+    }
+    for (const file of readdirSync(directory)) {
+      expect(referenced.has(file), `${file} is on disk but no entry points at it`).toBe(true)
+    }
+  })
+
+  it('never ships the same photo twice', () => {
+    const byHash = new Map<string, string[]>()
+    for (const file of readdirSync('public/landmarks')) {
+      const hash = createHash('md5')
+        .update(readFileSync(`public/landmarks/${file}`))
+        .digest('hex')
+      byHash.set(hash, [...(byHash.get(hash) ?? []), file])
+    }
+    const duplicates = [...byHash.values()].filter(files => files.length > 1)
+    expect(duplicates.map(files => files.join(' = '))).toEqual([])
+  })
+
+  it('credits a shared photo to the roster that owns the file', () => {
+    for (const [slug, site] of Object.entries(HERITAGE)) {
+      const curated = LANDMARKS[slug]
+      if (!curated) continue
+      expect(site.image, slug).toBe(curated.image)
+      expect(site.credit, slug).toBe(curated.credit)
+      expect(site.license, slug).toBe(curated.license)
+    }
   })
 
   it('gives every landmark and heritage site a tier', () => {

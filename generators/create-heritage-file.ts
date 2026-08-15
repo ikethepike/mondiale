@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ISOCountryCode } from '../types/geography.types'
 import type { HeritageDesignation, HeritageEntry, HeritageMapping } from '../types/places.types'
+import { LANDMARKS } from '../data/landmarks.gen'
+import { pickMediaCredit } from '../lib/attribution'
 import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import {
   assignFameByCountry,
@@ -14,6 +16,8 @@ import {
   fetchLabels,
   fetchPageImages,
   paginatedSearch,
+  PLACE_IMAGE_DIRECTORY,
+  PLACE_PUBLIC_BASE,
   placeHasPhoto,
   placeSitsInCountry,
   ranked,
@@ -38,13 +42,15 @@ import {
  * (the fame proxy: the Pyramids over a mining town), capped per country, and
  * that ranking is then stamped onto each entry as an explicit `fame` tier.
  *
+ * Photos land in the one place folder (public/landmarks), keyed by slug. A site
+ * the curated landmarks roster already holds reuses that photo and its credit
+ * rather than fetching a second picture of the same subject.
+ *
  * Merges with the previous run so a transient failure never erases a site.
  *
  *   bun run generate:heritage [--force]
  */
 
-const OUTPUT_DIRECTORY = 'public/heritage'
-const PUBLIC_BASE = '/heritage'
 const MAX_SITES_PER_COUNTRY = 4
 const UNESCO_SITE_QID = 'Q9259'
 
@@ -171,25 +177,32 @@ console.log(`${chosen.length} sites after the top-${MAX_SITES_PER_COUNTRY}-per-c
 // --- 4. Photos + assemble ------------------------------------------------------
 const photoFiles = await fetchPageImages(chosen.map(site => site.qid))
 
-mkdirSync(OUTPUT_DIRECTORY, { recursive: true })
+mkdirSync(PLACE_IMAGE_DIRECTORY, { recursive: true })
 const mapping: HeritageMapping = {}
 let done = 0
 let rejected = 0
 let missing = 0
+let reused = 0
 
 for (const site of chosen) {
   let slug = slugify(site.name)
   // Same-named sites in different countries keep distinct slugs.
   if (mapping[slug]) slug = `${slug}-${site.country.toLowerCase()}`
 
-  const photo = await savePlacePhoto({
-    file: photoFiles.get(site.qid),
-    slug,
-    directory: OUTPUT_DIRECTORY,
-    publicBase: PUBLIC_BASE,
-    previous: previousMapping[slug],
-    force,
-  })
+  // The curated roster already ships this subject: take its file and its
+  // credit rather than fetching a second photo of the same place.
+  const curated = LANDMARKS[slug]
+  const photo = curated
+    ? ({ status: 'existing', image: curated.image, media: pickMediaCredit(curated) ?? {} } as const)
+    : await savePlacePhoto({
+        file: photoFiles.get(site.qid),
+        slug,
+        directory: PLACE_IMAGE_DIRECTORY,
+        publicBase: PLACE_PUBLIC_BASE,
+        previous: previousMapping[slug],
+        force,
+      })
+  if (curated) reused++
   if (photo.status === 'rejected') {
     rejected++
     continue
@@ -215,7 +228,9 @@ for (const site of chosen) {
   process.stdout.write(`\r  ${done + rejected + missing}/${chosen.length} photos`)
   if (photo.status === 'saved') await wait(250)
 }
-console.log(`\nPhotos: ${done} saved, ${rejected} rejected (low-res), ${missing} missing`)
+console.log(
+  `\nPhotos: ${done} saved (${reused} reused from the landmarks roster), ${rejected} rejected (low-res), ${missing} missing`
+)
 
 const carried = carryPreviousPlaces<HeritageEntry>(mapping, previousMapping)
 if (carried) console.log(`Carried ${carried} sites from the previous run`)

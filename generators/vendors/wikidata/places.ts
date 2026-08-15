@@ -163,6 +163,15 @@ export const slugify = (name: string) =>
     .replace(/^-|-$/g, '')
 
 /**
+ * One folder for every place photo, keyed by slug, whichever roster fetched it.
+ * A subject both rosters hold (Ha Long Bay is a curated landmark AND a World
+ * Heritage site) is ONE file with ONE photographer credit — the curated
+ * roster's, since that is the copy whose attribution we hold.
+ */
+export const PLACE_IMAGE_DIRECTORY = 'public/landmarks'
+export const PLACE_PUBLIC_BASE = '/landmarks'
+
+/**
  * Every place photo is a prompt inside `ZoomableImage` (MAX_SCALE 5), so they
  * all need real pixels. One width for both rosters — heritage sat at 1400 on
  * the strength of a comment saying it was "never pixel-zoomed", which stopped

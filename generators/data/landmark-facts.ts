@@ -329,7 +329,7 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'Built between 1598 and 1629 at the centre of Isfahan, and known before 1979 as the Shah Square.',
   persepolis:
     'The ceremonial capital of the Achaemenid Empire, on the plains of Marvdasht under the Zagros.',
-  'registan-of-samarkand':
+  registan:
     'A public square in Samarkand framed by three madrasas — the Ulugh Beg of Timurid days, the Sherdar and Tilakari from later.',
   boudhanath: 'A stupa in Kathmandu, held to embody the enlightened mind of all the Buddhas.',
   annapurna:
@@ -521,8 +521,6 @@ export const LANDMARK_FACTS: Record<string, string> = {
     'Built in 1191 as a Genoese fortress, and bombarded and besieged by foreign powers ever since.',
   guaita:
     'One of three towered peaks above the city of San Marino. The others are Cesta and Montale.',
-  'three-towers-of-san-marino':
-    'Three towers on the three peaks of Monte Titano, drawn on both the flag and the coat of arms.',
   'church-of-saint-sava':
     'The fourth largest Eastern Orthodox church in the world, and among the largest anywhere by volume.',
   'petrovaradin-fortress':

@@ -357,7 +357,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
     imageUrl:
       'https://cdn.britannica.com/94/94894-050-C40775EF/Apadana-Darius-I-Persepolis-Iran.jpg',
   },
-  { name: 'Registan of Samarkand', country: 'UZ', kind: 'ancient' },
   { name: 'Boudhanath', country: 'NP', kind: 'religious' },
   // Everest's summit is the Nepal–China border; Annapurna is all Nepal.
   { name: 'Annapurna', country: 'NP', kind: 'natural' },
@@ -553,7 +552,6 @@ export const LANDMARK_SEEDS: LandmarkSeed[] = [
   { name: 'Monte Carlo Casino', country: 'MC', kind: 'urban' },
   { name: "Prince's Palace of Monaco", country: 'MC', kind: 'monument' },
   { name: 'Guaita', country: 'SM', kind: 'monument' },
-  { name: 'Three Towers of San Marino', country: 'SM', kind: 'urban' },
   // The name search landed 100km south of Belgrade, in open countryside.
   { name: 'Church of Saint Sava', country: 'RS', kind: 'religious', qid: 'Q330385' },
   { name: 'Petrovaradin Fortress', country: 'RS', kind: 'monument' },
