@@ -438,7 +438,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
   if (summitSite) {
     buildSummitCairn(summitSite, spacing).forEach(mesh => group.add(mesh))
-    buildClimbSlabs(summitSite, spacing).forEach(mesh => group.add(mesh))
+    buildClimbPlatforms(summitSite, spacing).forEach(mesh => group.add(mesh))
   }
 
   if (riverPath)
@@ -1126,31 +1126,42 @@ const buildSummitCairn = (site: SummitSite, spacing: number): Mesh[] => {
 }
 
 /**
- * One carved step per gauntlet stage up the massif's climb face: a squat
- * faceted slab standing `LEDGE_SLAB_INSET` proud of its terraced shelf, its
- * top face AT the climb anchor a challenger's pawn lands on. The stage count
- * is readable from across the board — a hard gauntlet wears five steps.
+ * One CONSTRUCTED platform per gauntlet stage, wrapping the massif: a plank
+ * deck seated in its carved shelf (top face AT the climb anchor a pawn lands
+ * on) with diagonal support beams jutting from the outer edge down into the
+ * flank — the ascent reads as built, bolted to the mountain. Each platform
+ * yaws to face radially out, so the braces always anchor into the slope.
  */
-const buildClimbSlabs = (site: SummitSite, spacing: number): Mesh[] => {
+const buildClimbPlatforms = (site: SummitSite, spacing: number): Mesh[] => {
   const colorBuckets = new Map<string, BufferGeometry[]>()
   const outlines: BufferGeometry[] = []
-  const radius = spacing * 0.34
   const matrix = new Matrix4()
+  const quaternion = new Quaternion()
+  const up = new Vector3(0, 1, 0)
+  const deckSpan = spacing * 0.58
 
   for (const anchor of site.climbAnchors.slice(0, -1)) {
-    const sink = 0.6 // buried base — the slab meets the flank, never floats
-    const slab = new CylinderGeometry(radius * 0.94, radius, LEDGE_SLAB_INSET + sink, 7)
-    slab.translate(0, (LEDGE_SLAB_INSET + sink) / 2 - sink, 0)
-    matrix.setPosition(anchor.x, anchor.y - LEDGE_SLAB_INSET, anchor.z)
-    bakeParts(
-      // Sand, not ink-blue: a dark disc on the pale flank read as a HOLE in
-      // the mountain; outlined stone reads as a carved step.
-      [{ geometry: faceted(slab), color: BOARD_COLORS.warmSand }],
-      matrix,
-      spacing * OUTLINE_WIDTH_RATIO,
-      colorBuckets,
-      outlines
-    )
+    // Local +z points radially OUT of the mountain; braces run down-inward.
+    quaternion.setFromAxisAngle(up, Math.atan2(anchor.x - site.center.x, anchor.z - site.center.z))
+    matrix.compose(new Vector3(anchor.x, anchor.y, anchor.z), quaternion, new Vector3(1, 1, 1))
+
+    const parts: MarkerPart[] = []
+    const deck = new BoxGeometry(deckSpan, LEDGE_SLAB_INSET + 0.06, deckSpan)
+    deck.translate(0, -(LEDGE_SLAB_INSET + 0.06) / 2, 0)
+    parts.push({ geometry: deck, color: BOARD_COLORS.warmSand })
+
+    // A bearer under the outer lip, then the two diagonal struts.
+    const bearer = new BoxGeometry(deckSpan * 0.92, 0.09 * spacing, 0.09 * spacing)
+    bearer.translate(0, -LEDGE_SLAB_INSET - 0.1 * spacing, deckSpan * 0.38)
+    parts.push({ geometry: bearer, color: BOARD_COLORS.darkBlue })
+    for (const side of [-1, 1]) {
+      const brace = new BoxGeometry(0.07 * spacing, 0.07 * spacing, spacing * 0.85)
+      brace.rotateX(-0.95)
+      brace.translate(side * deckSpan * 0.32, -LEDGE_SLAB_INSET - spacing * 0.3, deckSpan * 0.12)
+      parts.push({ geometry: brace, color: BOARD_COLORS.darkBlue })
+    }
+
+    bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
   }
   return bucketsToMeshes(colorBuckets, outlines)
 }

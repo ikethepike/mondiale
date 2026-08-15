@@ -53,9 +53,12 @@ const PLATEAU_RADIUS = 5
  *  owns the tight-ring moiré now, so the crown can stay small. */
 const SNOWLINE_FRACTION = 0.9
 
-/** Flat ground carved under each climb anchor (×spacing — pawn-scaled, wide
- *  enough that the terrace notches the contour rings visibly). */
-const LEDGE_RADIUS_RATIO = 0.42
+/** The bench cut under each climb anchor (×spacing): DEAD FLAT out to the
+ *  platform deck's whole footprint (its half-diagonal is 0.41), then a
+ *  transition back to the flank — so terrain can never rise through a deck,
+ *  and the uphill side reads as an honest carved scarp behind it. */
+const LEDGE_FLAT_RATIO = 0.46
+const LEDGE_RADIUS_RATIO = 0.85
 /** The carved shelf sits this far BELOW the anchor: the slab platform
  *  board-builder stands on each ledge rises exactly this proud of the ground,
  *  and the pawn stands on the slab's top face (the anchor itself). */
@@ -239,15 +242,16 @@ const climbAnchorsFor = (site: SummitSite, sampler: HeightSampler, stages: numbe
   const anchors: Vector3[] = []
   let floor = -Infinity
 
+  // The climb WRAPS the mountain: platforms spiral ~130° around the flank
+  // from beside the gorge mouth up to the plateau rim, direction seeded —
+  // the whole room watches the ascent circle the massif.
+  const wrapDirection = site.cragPhases[0] > Math.PI ? 1 : -1
   for (let step = 0; step < flanks; step++) {
     const t = flanks === 1 ? 0.5 : step / (flanks - 1)
-    // A tight stair on one bearing up the gorge floor — the wide zigzag
-    // scattered the slabs across the face, where they read as loose blobs
-    // instead of a ladder (Isaac's screenshot).
-    const zigzag = site.faceAngle + (step % 2 === 0 ? -0.05 : 0.05)
-    const reach = site.radius * 0.88 + (site.plateauRadius * 1.1 - site.radius * 0.88) * t
-    const x = site.center.x + Math.sin(zigzag) * reach
-    const z = site.center.z + Math.cos(zigzag) * reach
+    const angle = site.faceAngle + wrapDirection * (0.35 + 2.3 * t)
+    const reach = site.radius * 0.84 + (site.plateauRadius * 1.15 - site.radius * 0.84) * t
+    const x = site.center.x + Math.sin(angle) * reach
+    const z = site.center.z + Math.cos(angle) * reach
     const y = sampler(x, z) + site.height * summitMask(site, x, z)
     // Base-noise bumps must never let a gorge ledge out-climb the summit:
     // each stays under it by a margin that shrinks toward the top.
@@ -269,17 +273,20 @@ export const withSummitMassif = (
   site: SummitSite,
   spacing: number
 ): HeightSampler => {
+  const ledgeFlat = LEDGE_FLAT_RATIO * spacing
   const ledgeRadius = LEDGE_RADIUS_RATIO * spacing
   return (x, z) => {
     let y = sampler(x, z) + site.height * summitMask(site, x, z)
     site.climbAnchors.forEach((anchor, index) => {
       const distance = Math.hypot(x - anchor.x, z - anchor.z)
       if (distance >= ledgeRadius) return
-      // Flank shelves sit a slab-inset below their anchor (the slab platform
+      // Flank benches sit a slab-inset below their anchor (the platform deck
       // tops out AT the anchor); the summit plateau pins exactly — a pawn
-      // stands on the mountain itself there.
+      // stands on the mountain itself there. Flat to `ledgeFlat`, then blend.
       const inset = index === site.climbAnchors.length - 1 ? 0 : LEDGE_SLAB_INSET
-      const t = smoothstep(distance / ledgeRadius)
+      const t = smoothstep(
+        Math.min(1, Math.max(0, (distance - ledgeFlat) / (ledgeRadius - ledgeFlat)))
+      )
       y = (anchor.y - inset) * (1 - t) + y * t
     })
     return y
