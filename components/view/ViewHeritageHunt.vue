@@ -33,7 +33,7 @@
     <Transition name="dossier">
       <article v-if="state!.revealing || state!.finished" class="pane dossier tr decorator-bottom">
         <div class="pane-content">
-          <HeritageReveal :site="site" />
+          <PlaceReveal :place="site" compact />
           <PlacementList :rows="beatStandings" :players="gameStore.game?.players ?? {}" />
         </div>
       </article>
@@ -66,9 +66,9 @@ import MediaDock from '~/components/challenge/MediaDock.vue'
 import PlacementList from '~/components/challenge/PlacementList.vue'
 import ZoomableImage from '~/components/challenge/ZoomableImage.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
-import HeritageReveal from '~/components/feedback/HeritageReveal.vue'
+import PlaceReveal from '~/components/feedback/PlaceReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { HERITAGE } from '~~/data/heritage.gen'
+import { PLACES } from '~~/data/places.gen'
 import { datasetAttribution } from '~~/lib/attribution'
 import { formatKm } from '~~/lib/number'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
@@ -77,7 +77,7 @@ import { usePinDrop } from '~~/lib/use-pin-drop'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { seatLabel } from '~~/lib/player'
 
-const photoSources = datasetAttribution('heritage')
+const photoSources = datasetAttribution('places')
 
 const {
   challenge,
@@ -96,7 +96,7 @@ const {
 
 const state = computed(() => challenge.value?.state)
 const site = computed(() =>
-  challenge.value ? HERITAGE[challenge.value.slugs[state.value?.beat ?? 0]] : undefined
+  challenge.value ? PLACES[challenge.value.slugs[state.value?.beat ?? 0]] : undefined
 )
 const canPin = computed(() => !!state.value && !state.value.revealing && !state.value.finished)
 const showPhoto = computed(() => canPin.value)

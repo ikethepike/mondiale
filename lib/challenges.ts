@@ -4,8 +4,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { CURRENCIES } from '~~/data/currencies.gen'
-import { HERITAGE } from '~~/data/heritage.gen'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
 import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
@@ -21,6 +20,7 @@ import {
 } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
+import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
@@ -519,8 +519,10 @@ const getHeritageHuntChallenge = ({
   if (!contenders.length) return undefined
 
   const playable = new Set(playableCountries(game))
+  // Gated on the site's own recognisability tier, the same way pin-landmark
+  // gates: easy deals a country's best-known site, not its fourth.
   const pool = shuffleArray(
-    Object.entries(HERITAGE).filter(([, site]) => playable.has(site.country))
+    dealableHeritage(game.difficulty).filter(([, site]) => playable.has(site.country))
   )
   // One site per country per round, for variety.
   const slugs: string[] = []
@@ -746,7 +748,7 @@ const TWO_TRUTHS_SECONDS = 40
  *  then any curated landmark. Used as Stat Detective's final visual clue. */
 const photoClueFor = (country: ISOCountryCode): string | undefined => {
   if (CAPITALS[country]?.image) return CAPITALS[country]!.image
-  const landmark = Object.values(LANDMARKS).find(entry => entry.country === country)
+  const landmark = Object.values(PLACES).find(entry => entry.country === country)
   return landmark?.image
 }
 
@@ -1458,54 +1460,30 @@ const getFlashpointChallenge = async (
 const PIN_PERFECT_KM = 150
 const PIN_ZERO_KM = 3000
 
-/** Below hard, only each country's icon landmarks deal and the taper is
- *  kinder: on easy the right country is a bullseye, and only a missed
+/** Below hard, only each country's icon landmarks deal (the fame gate) and the
+ *  taper is kinder: on easy the right country is a bullseye, and only a missed
  *  continent scores nothing. */
 export const PIN_LANDMARK_TIERS: {
   [difficulty in gameTypes.GameDifficulty]: {
-    landmarksPerCountry: number
     perfectDistanceKm: number
     zeroDistanceKm: number
   }
 } = {
-  easy: { landmarksPerCountry: 1, perfectDistanceKm: 300, zeroDistanceKm: 5000 },
-  normal: { landmarksPerCountry: 2, perfectDistanceKm: 200, zeroDistanceKm: 4000 },
-  hard: {
-    landmarksPerCountry: Infinity,
-    perfectDistanceKm: PIN_PERFECT_KM,
-    zeroDistanceKm: PIN_ZERO_KM,
-  },
-}
-
-/** Pools under this many candidates widen back to the whole pool. */
-const PIN_LANDMARK_MINIMUM_POOL = 8
-
-/** The seed file lists each country's icon first and the generator preserves
- *  that order, so "first N per country" is the fame tier (pinned by the
- *  characterization test against known icons). */
-export const pinLandmarkCandidates = <T extends { country: ISOCountryCode }>(
-  pool: [string, T][],
-  difficulty: gameTypes.GameDifficulty
-): [string, T][] => {
-  const cap = PIN_LANDMARK_TIERS[difficulty].landmarksPerCountry
-  const dealt = new Map<ISOCountryCode, number>()
-  const famous = pool.filter(([, landmark]) => {
-    const rank = dealt.get(landmark.country) ?? 0
-    dealt.set(landmark.country, rank + 1)
-    return rank < cap
-  })
-  return famous.length >= PIN_LANDMARK_MINIMUM_POOL ? famous : pool
+  easy: { perfectDistanceKm: 300, zeroDistanceKm: 5000 },
+  normal: { perfectDistanceKm: 200, zeroDistanceKm: 4000 },
+  hard: { perfectDistanceKm: PIN_PERFECT_KM, zeroDistanceKm: PIN_ZERO_KM },
 }
 
 const getPinLandmarkChallenge = (game: gameTypes.Game): PinLandmarkChallenge | undefined => {
-  // Only landmarks whose coordinates survived the generator's country check;
-  // and only countries this variant actually deals. Kept in LANDMARKS order —
-  // insertion order is the fame signal pinLandmarkCandidates slices on.
+  // Only curated landmarks whose coordinates survived the generator's country
+  // check, and only countries this variant actually deals. The recognisability
+  // gate is the entry's own `fame` tier, not its position in the map.
   const playable = new Set(playableCountries(game))
-  const pool = Object.entries(LANDMARKS).filter(
-    ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
+  const picked = sample(
+    dealableLandmarks(game.difficulty).filter(
+      ([, landmark]) => landmark.coordinates && playable.has(landmark.country)
+    )
   )
-  const picked = sample(pinLandmarkCandidates(pool, game.difficulty))
   if (!picked) return undefined
 
   const tier = PIN_LANDMARK_TIERS[game.difficulty]
@@ -2109,7 +2087,7 @@ export const scorePinLandmark = ({
   pin: LatLng | undefined
 }): { scored: number; maximum: number; distanceKm?: number } => {
   const maximum = challenge.maximumPoints
-  const landmark = LANDMARKS[challenge.slug]
+  const landmark = PLACES[challenge.slug]
   if (!pin || !landmark?.coordinates) return { scored: 0, maximum }
 
   const distanceKm = haversineKm(pin, landmark.coordinates)
@@ -2529,7 +2507,7 @@ const dealLandmarkQuiz = (
   // Only landmarks whose country is in play — a benched micro-nation
   // (St Peter's → the Vatican) can't be the answer to anything.
   const inPlay = new Set(world)
-  const entries = Object.entries(LANDMARKS).filter(([, entry]) => inPlay.has(entry.country))
+  const entries = curatedPlaces().filter(([, entry]) => inPlay.has(entry.country))
   if (!entries.length) return undefined
 
   // Prefer a landmark whose country is on the board; else any (widen to world).

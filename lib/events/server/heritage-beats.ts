@@ -1,4 +1,4 @@
-import { HERITAGE } from '~~/data/heritage.gen'
+import { PLACES } from '~~/data/places.gen'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { haversineKm, type LatLng } from '~~/lib/geo'
 import { clampScore, scorePinDistance } from '~~/lib/scoring'
@@ -83,7 +83,7 @@ const resolveHeritageBeat = async (
   challenge: HeritageHuntChallenge
 ) => {
   const { state } = challenge
-  const site = HERITAGE[challenge.slugs[state.beat]]
+  const site = PLACES[challenge.slugs[state.beat]]
   const share = beatShare(challenge)
   const players = state.order
   const solo = players.length <= 1
@@ -93,7 +93,8 @@ const resolveHeritageBeat = async (
   const distances = new Map<string, number>()
   for (const playerId of players) {
     const entry = state.pins[playerId]?.[state.beat]
-    if (entry && site) entry.distanceKm = Math.round(haversineKm(entry.pin, site.coordinates))
+    if (entry && site?.coordinates)
+      entry.distanceKm = Math.round(haversineKm(entry.pin, site.coordinates))
     distances.set(playerId, entry?.distanceKm ?? Infinity)
   }
 

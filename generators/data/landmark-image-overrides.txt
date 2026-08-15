@@ -9,7 +9,7 @@
 # not the page it sits on. Landscape orientation, ≥900px wide — anything
 # narrower looks bad upscaled in the photo quiz.
 #
-# Once filled in, these are consumed by `bun run generate:landmarks`, which
+# Once filled in, these are consumed by `bun run generate:places`, which
 # downloads each URL to public/landmarks/<slug>.<ext> and takes precedence over
 # the Unsplash / Commons / Wikidata lookups.
 #

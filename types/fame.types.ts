@@ -11,8 +11,15 @@ import type { GameDifficulty } from './game.types'
  * beginner's table.
  *
  * ONE classification for every mode that deals a curated roster — Timeline and
- * Chronicle's events (`EventSeed.fame`) and Ghosts of Empires' polities
- * (`EmpireSeed.fame`) — so a tier means the same thing wherever it is read.
+ * Chronicle's events (`EventSeed.fame`), Ghosts of Empires' polities
+ * (`EmpireSeed.fame`) and the photographed places behind pin-landmark and
+ * Heritage Hunt (`PlaceEntry.fame`) — so a tier means the same thing wherever
+ * it is read.
+ *
+ * A roster's generator STAMPS the tier; nothing re-derives it at deal time. The
+ * place rosters used to gate on position within the country as the pool was
+ * filtered, which made the difficulty an implicit property of array order that
+ * the generators' resurrection merge could scramble.
  */
 export type Fame = 'major' | 'minor' | 'obscure'
 

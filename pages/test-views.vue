@@ -132,8 +132,8 @@ import { ROSETTA_RELATIONS } from '~~/lib/rosetta'
 import type { OrganizationVector } from '~~/types/organization.type'
 import { EMPIRES } from '~~/data/empires.gen'
 import { TRENDS } from '~~/lib/trends-data'
-import { HERITAGE } from '~~/data/heritage.gen'
-import { LANDMARKS } from '~~/data/landmarks.gen'
+import { PLACES } from '~~/data/places.gen'
+import { heritagePlaces } from '~~/lib/places'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
@@ -815,8 +815,8 @@ interface Scenario {
   build: (variant?: Variant) => Game
 }
 
-const landmark = LANDMARKS['eiffel-tower']
-const heritageSlugs = Object.keys(HERITAGE)
+const landmark = PLACES['eiffel-tower']
+const heritageSlugs = heritagePlaces().map(([slug]) => slug)
 
 /** Signature trajectories, one card per shape — scales, delta chips and
  *  endpoint labels in a single screen. Data straight from data/trends.gen. */
