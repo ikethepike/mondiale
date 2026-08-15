@@ -30,7 +30,7 @@ const MARCH_LIMIT = 60
 const MIN_LENGTH = 26
 /** Water sits this far below the local bank, the bed a bit further. */
 const WATER_DROP = 0.4
-const BED_DROP = 0.7
+const BED_DROP = 1.1
 /** Carve reach either side of the centerline. */
 const RIVER_WIDTH = 2.6
 /** The stream keeps this many spacings clear of every track pass. */

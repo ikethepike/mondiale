@@ -63,6 +63,7 @@ export const createContourMaterial = (options: ContourMaterialOptions): ContourM
       uSnowBand: { value: 1.6 },
       uHeightMap: { value: heightMap },
       uHeightHalf: { value: heightHalf },
+      uTime: { value: 0 },
       uRippleCenter: { value: new Vector2() },
       uRippleProgress: { value: -1 },
       uRippleRadius: { value: rippleRadius },
@@ -104,7 +105,7 @@ export const createContourMaterial = (options: ContourMaterialOptions): ContourM
       uniform float uBanding; uniform float uHachure;
       uniform float uStep; uniform float uMajorEvery; uniform float uLineWidth;
       uniform float uMaxElevation; uniform float uSnowline; uniform float uSnowBand;
-      uniform sampler2D uHeightMap; uniform float uHeightHalf;
+      uniform sampler2D uHeightMap; uniform float uHeightHalf; uniform float uTime;
       uniform vec2 uRippleCenter; uniform float uRippleProgress;
       uniform float uRippleRadius; uniform vec3 uRippleColor;
       uniform float uAtmoStart; uniform float uFadeStart; uniform float uFadeEnd;
@@ -169,6 +170,15 @@ export const createContourMaterial = (options: ContourMaterialOptions): ContourM
         color = mix(color, uMinor, minor * 0.9);
         color = mix(color, uMajor, major);
         color = mix(color, uSnow, snow * 0.9);
+
+        // Drifting cloud shadows: three slow sine fields, faint on purpose —
+        // the board stays a game surface first. uTime holds at zero while the
+        // stage is hidden or under reduced motion, freezing the sky.
+        float cloud =
+          sin(vXZ.x * 0.045 + uTime * 0.05) +
+          sin(vXZ.y * 0.038 - uTime * 0.04) +
+          sin((vXZ.x + vXZ.y) * 0.027 + uTime * 0.03);
+        color = mix(color, uShade, smoothstep(1.4, 2.6, cloud) * 0.08);
 
         if (uRippleProgress >= 0.0) {
           float radius = uRippleProgress * uRippleRadius;

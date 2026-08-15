@@ -94,18 +94,43 @@ const summitMask = (
   const dx = x - site.center.x
   const dz = z - site.center.z
   const distance = Math.hypot(dx, dz)
-  if (distance >= site.radius) return 0
+  const [phaseA, phaseB] = site.cragPhases
+
+  // Shoulder peaks: two lower companions merged into the flanks OPPOSITE the
+  // gorge face — a massif is a family of summits, not an upturned bowl.
+  // Reach + radius stays under radius + spacing (the site-pick clearance
+  // margin at the tightest shipped spacing), so a shoulder can NEVER touch
+  // the track the site was cleared against.
+  const backAngle = site.faceAngle + Math.PI
+  let shoulders = 0
+  for (const [swingOffset, heightRatio] of [
+    [0.9 + (phaseA % 1) * 0.4, 0.5],
+    [-1.1 - (phaseB % 1) * 0.4, 0.36],
+  ]) {
+    const cx = site.center.x + Math.sin(backAngle + swingOffset) * site.radius * 0.8
+    const cz = site.center.z + Math.cos(backAngle + swingOffset) * site.radius * 0.8
+    const d = Math.hypot(x - cx, z - cz)
+    const shoulderRadius = site.radius * 0.42
+    if (d < shoulderRadius) {
+      shoulders = Math.max(
+        shoulders,
+        Math.pow(smoothstep((shoulderRadius - d) / shoulderRadius), 1.5) * heightRatio
+      )
+    }
+  }
+
+  if (distance >= site.radius) return shoulders
 
   const theta = Math.atan2(dx, dz)
-  const [phaseA, phaseB] = site.cragPhases
   const cut =
     CRAG_PRIMARY * (0.5 + 0.5 * Math.sin(3 * theta + phaseA)) +
-    CRAG_DETAIL * (0.5 + 0.5 * Math.sin(5 * theta + phaseB))
+    CRAG_DETAIL * (0.5 + 0.5 * Math.sin(5 * theta + phaseB)) +
+    0.035 * (0.5 + 0.5 * Math.sin(8 * theta + phaseA * 1.7))
   const craggedRadius = site.radius * (1 - cut)
-  if (distance >= craggedRadius) return 0
+  if (distance >= craggedRadius) return shoulders
   if (distance <= site.plateauRadius) return 1
 
-  const profile = Math.pow(
+  let profile = Math.pow(
     smoothstep((craggedRadius - distance) / (craggedRadius - site.plateauRadius)),
     PEAK_SHARPNESS
   )
@@ -114,10 +139,20 @@ const summitMask = (
   // the plateau, so the summit stays whole and the notch funnels upward.
   const swing = Math.atan2(Math.sin(theta - site.faceAngle), Math.cos(theta - site.faceAngle))
   const gorge = Math.exp(-((swing / GORGE_HALF_RAD) * (swing / GORGE_HALF_RAD)))
+
+  // Mid-flank crenellation: two incommensurate polar waves wobble the rings
+  // the way real mountains do — masked to zero at the plateau, the base seam
+  // and inside the gorge, so every clean surface stays clean.
+  const flankMask = profile * (1 - profile) * 4 * (1 - gorge)
+  profile +=
+    (Math.sin(distance * 0.9 + theta * 4 + phaseB) * 0.045 +
+      Math.sin(distance * 1.7 - theta * 6 + phaseA) * 0.025) *
+    flankMask
+
   const outerness = smoothstep(
     Math.min(1, Math.max(0, (distance - site.plateauRadius) / (craggedRadius - site.plateauRadius)))
   )
-  return profile * (1 - GORGE_DEPTH * gorge * outerness)
+  return Math.max(profile * (1 - GORGE_DEPTH * gorge * outerness), shoulders)
 }
 
 /**

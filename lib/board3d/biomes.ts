@@ -34,6 +34,15 @@ export interface BoardBiome {
   /** Print strengths. */
   banding: number
   hachure: number
+  /** Flora: prop silhouette + palette, blade-grass palette, sky life. */
+  foliage: 'trees' | 'spires' | 'shards'
+  foliageColor: string
+  trunkColor: string
+  foliageCount: number
+  stippleColor: string
+  /** Grass clump spots (desktop; phones halve) — 6 blades sprout per spot. */
+  stippleCount: number
+  birdCount: number
 }
 
 export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
@@ -58,6 +67,13 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     hilliness: 1,
     banding: 0.14,
     hachure: 0.22,
+    foliage: 'trees',
+    foliageColor: '#90bcb5',
+    trunkColor: '#0d2f61',
+    foliageCount: 50,
+    stippleColor: '#a8c3b8',
+    stippleCount: 900,
+    birdCount: 8,
   },
   grassland: {
     name: 'grassland',
@@ -79,6 +95,13 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     hilliness: 1.05,
     banding: 0.14,
     hachure: 0.12,
+    foliage: 'trees',
+    foliageColor: '#5c8a52',
+    trunkColor: '#6b4f35',
+    foliageCount: 60,
+    stippleColor: '#7fae6e',
+    stippleCount: 1600,
+    birdCount: 10,
   },
   desert: {
     name: 'desert',
@@ -100,6 +123,13 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     hilliness: 0.8,
     banding: 0.34,
     hachure: 0.2,
+    foliage: 'spires',
+    foliageColor: '#c98f5f',
+    trunkColor: '#8a5a33',
+    foliageCount: 22,
+    stippleColor: '#9fc48b',
+    stippleCount: 220,
+    birdCount: 5,
   },
   ice: {
     name: 'ice',
@@ -121,6 +151,13 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     hilliness: 0.7,
     banding: 0.22,
     hachure: 0.16,
+    foliage: 'shards',
+    foliageColor: '#cfe2ec',
+    trunkColor: '#8fb4c6',
+    foliageCount: 28,
+    stippleColor: '#dcebf2',
+    stippleCount: 320,
+    birdCount: 4,
   },
 }
 

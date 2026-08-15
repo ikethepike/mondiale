@@ -1,7 +1,7 @@
 import {
   BoxGeometry,
   BufferAttribute,
-  type BufferGeometry,
+  BufferGeometry,
   CatmullRomCurve3,
   CircleGeometry,
   Color,
@@ -48,7 +48,8 @@ import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
 import { LEDGE_SLAB_INSET, pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
-import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
+import { buildPondMeshes, createWaterMaterial, pickPondSite, withPondBasin } from './water'
+import { buildFlora } from './flora'
 
 export interface BoardBuild {
   group: Group
@@ -57,6 +58,9 @@ export interface BoardBuild {
   archetype: TrackArchetype
   /** The board's landscape voice — game pieces never read it. */
   biome: BoardBiome
+  /** Clocks of every animated landscape shader (wind, water, birds, clouds);
+   *  TopoScene advances them while the stage is visible. */
+  timeUniforms: { value: number }[]
   /** The finale massif, when this board dealt one — TopoScene climbs its
    *  `climbAnchors` during the gauntlet. */
   summit?: SummitSite
@@ -125,6 +129,10 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // The landscape's voice: ramps, inks and noise character. Game pieces
   // (discs, markers, pawns) never read it — they stay cream-and-ink.
   const biome = pickBoardBiome(seed)
+
+  // Every animated shader registers its clock here; TopoScene advances them
+  // only while the stage is on screen (the parked render loop stays parked).
+  const timeUniforms: { value: number }[] = []
 
   // Edge falloff wraps the base field so hills subside into the page at the
   // horizon; the track (radius < EDGE_FADE_START) never feels it.
@@ -256,6 +264,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     heightHalf: fieldHalf,
     snowlineY: summitSite?.snowlineY,
   })
+  timeUniforms.push(contourMaterial.uniforms.uTime as { value: number })
   group.add(new Mesh(terrainGeometry, contourMaterial))
 
   // --- Track ribbon ----------------------------------------------------------
@@ -427,7 +436,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     buildClimbSlabs(summitSite, spacing).forEach(mesh => group.add(mesh))
   }
 
-  if (riverPath) group.add(buildRiverMesh(riverPath))
+  if (riverPath)
+    buildRiverMeshes(riverPath, biome, sampler, timeUniforms).forEach(mesh => group.add(mesh))
 
   // Survey furniture on the open terrain: cairned hilltops and a compass-rose
   // ink decal. Heights come from the final composed sampler, so everything
@@ -435,6 +445,23 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler, riverPath)
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
   if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing))
+
+  // The living layer: blade grass, biome props, gull flocks — all wind-swayed
+  // in the vertex shader, all clear of the track, stilled by reduced motion.
+  buildFlora(
+    {
+      biome,
+      path: tilePath,
+      pond: pondSite,
+      summit: summitSite,
+      river: riverPath,
+      sampler,
+      waterDistanceAt,
+      seed,
+      phone: typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX,
+    },
+    timeUniforms
+  ).forEach(mesh => group.add(mesh))
 
   buildChallengeMarkers(tiles, transforms, spacing, tileRadius, chords).forEach(mesh =>
     group.add(mesh)
@@ -466,6 +493,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     spacing,
     archetype: tilePath.archetype,
     biome,
+    timeUniforms,
     summit: summitSite,
     contourMaterial,
     dispose,
@@ -1120,20 +1148,94 @@ const buildClimbSlabs = (site: SummitSite, spacing: number): Mesh[] => {
   return bucketsToMeshes(colorBuckets, outlines)
 }
 
-/** The river's water: a slim translucent ribbon along the carved bed. The
- *  bed itself is terrain — the contour shader draws the banks for free. */
-const buildRiverMesh = (river: RiverPath): Mesh => {
-  const curve = new CatmullRomCurve3(river.points, false, 'centripetal')
-  const tube = new TubeGeometry(curve, river.points.length * 2, river.width * 0.42, 6, false)
-  return new Mesh(
-    tube,
-    new MeshBasicMaterial({
-      color: BOARD_COLORS.pondBlue,
-      transparent: true,
-      opacity: 0.62,
-      depthWrite: false,
-    })
-  )
+/**
+ * The river's living water: a ribbon with per-vertex ANALYTIC depth (water
+ * line minus the carved bed under each vertex) rendered by the shared water
+ * shader — foam edges, two-tone depth — plus a cascade sheet and boiling
+ * plunge pool wherever the downhill clamp took a big step.
+ */
+const buildRiverMeshes = (
+  river: RiverPath,
+  biome: BoardBiome,
+  sampler: (x: number, z: number) => number,
+  timeUniforms: { value: number }[]
+): Mesh[] => {
+  const meshes: Mesh[] = []
+  const water = createWaterMaterial(biome, timeUniforms)
+
+  const ribbon = new BufferGeometry()
+  const vertices: number[] = []
+  const depths: number[] = []
+  const indices: number[] = []
+  for (let index = 0; index < river.points.length; index++) {
+    const point = river.points[index]
+    const next = river.points[Math.min(index + 1, river.points.length - 1)]
+    const previous = river.points[Math.max(index - 1, 0)]
+    const tangent = new Vector3().subVectors(next, previous).setY(0).normalize()
+    const side = new Vector3(-tangent.z, 0, tangent.x)
+    for (const offset of [-1, -0.33, 0.33, 1]) {
+      const x = point.x + side.x * offset * river.width * 0.75
+      const z = point.z + side.z * offset * river.width * 0.75
+      vertices.push(x, point.y, z)
+      depths.push(point.y - sampler(x, z))
+    }
+  }
+  for (let segment = 0; segment < river.points.length - 1; segment++) {
+    const row = segment * 4
+    for (let quad = 0; quad < 3; quad++) {
+      const a = row + quad
+      indices.push(a, a + 4, a + 1, a + 1, a + 4, a + 5)
+    }
+  }
+  ribbon.setIndex(indices)
+  ribbon.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
+  ribbon.setAttribute('aDepth', new BufferAttribute(new Float32Array(depths), 1))
+  meshes.push(new Mesh(ribbon, water))
+
+  const fallVertices: number[] = []
+  const fallDepths: number[] = []
+  const fallIndices: number[] = []
+  for (let index = 0; index < river.points.length - 1; index++) {
+    const top = river.points[index]
+    const bottom = river.points[index + 1]
+    if (top.y - bottom.y < 1.1) continue
+    const tangent = new Vector3().subVectors(bottom, top).setY(0).normalize()
+    const side = new Vector3(-tangent.z, 0, tangent.x)
+    const lip = new Vector3().addVectors(top, tangent.clone().multiplyScalar(1.1))
+    const row = fallVertices.length / 3
+    for (const y of [top.y + 0.06, bottom.y - 0.15]) {
+      for (const offset of [-1, 1]) {
+        fallVertices.push(lip.x + side.x * offset * 1.15, y, lip.z + side.z * offset * 1.15)
+        fallDepths.push(0.12)
+      }
+    }
+    fallIndices.push(row, row + 2, row + 1, row + 1, row + 2, row + 3)
+
+    const pool = new Vector3().addVectors(bottom, tangent.clone().multiplyScalar(0.6))
+    const poolRow = fallVertices.length / 3
+    const POOL_SPOKES = 10
+    fallVertices.push(pool.x, bottom.y + 0.05, pool.z)
+    fallDepths.push(0.08)
+    for (let spoke = 0; spoke <= POOL_SPOKES; spoke++) {
+      const angle = (spoke / POOL_SPOKES) * Math.PI * 2
+      fallVertices.push(
+        pool.x + Math.cos(angle) * 1.7,
+        bottom.y + 0.05,
+        pool.z + Math.sin(angle) * 1.7
+      )
+      fallDepths.push(0.22)
+      if (spoke > 0) fallIndices.push(poolRow, poolRow + spoke, poolRow + spoke + 1)
+    }
+  }
+  if (fallIndices.length) {
+    const falls = new BufferGeometry()
+    falls.setIndex(fallIndices)
+    falls.setAttribute('position', new BufferAttribute(new Float32Array(fallVertices), 3))
+    falls.setAttribute('aDepth', new BufferAttribute(new Float32Array(fallDepths), 1))
+    meshes.push(new Mesh(falls, water))
+  }
+
+  return meshes
 }
 
 /** A survey cairn on an off-track hilltop: two stacked stones and a slim

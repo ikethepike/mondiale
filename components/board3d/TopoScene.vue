@@ -1064,7 +1064,21 @@ watch([cameraRef, controlsRef, board], () => {
   frameDevSubject()
 })
 
+// The landscape's clock: wind, water foam, gulls and cloud drift each read a
+// per-material time uniform registered by the build. One ticker advances the
+// lot, only while the stage is on screen — the parked render loop draws no
+// frames anyway, and a hidden stage must not bank sky time. Reduced motion
+// freezes the clock outright (sway amplitudes are also zeroed at build).
+const advanceLandscape = () => {
+  if (!props.active || prefersReducedMotion()) return
+  const uniforms = board.value?.timeUniforms
+  if (!uniforms) return
+  for (const uniform of uniforms) uniform.value = gsap.ticker.time
+}
+gsap.ticker.add(advanceLandscape)
+
 onUnmounted(() => {
+  gsap.ticker.remove(advanceLandscape)
   // NOT spectateTargetId: a context-loss epoch remount unmounts this scene
   // while the booth lives on — clearing the follow target here dropped the
   // HUD and silently reset a racer's spectate. Its owners are the release
