@@ -36,8 +36,6 @@
 //   no depth textures involved (we carved the bed, so we KNOW the depth)
 // - instanced foliage with a faint vertex sway (reduced-motion gated)
 // - the contour-ink language kept on top of all of it, per-biome palettes
-definePageMeta({ layout: false })
-
 import Alea from 'alea'
 import { OrbitControls } from '@tresjs/cientos'
 import { gsap } from 'gsap'
@@ -61,6 +59,8 @@ import { createNoise2D } from 'simplex-noise'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { smoothstep } from '~~/lib/board3d/terrain'
 
+definePageMeta({ layout: false })
+
 // ---------------------------------------------------------------------------
 // Biome presets: a biome is a ramp + ink palette + noise character + foliage.
 // ---------------------------------------------------------------------------
@@ -69,6 +69,11 @@ interface Biome {
   mid: string
   crest: string
   rock: string
+  /** Wet-ground tint pulled in near water (the oasis effect). */
+  lush: string
+  /** Quantized hillshade: sun-facing and shaded slope tones. */
+  lit: string
+  shade: string
   minor: string
   major: string
   snow: string
@@ -90,6 +95,9 @@ const BIOMES: Record<string, Biome> = {
     mid: '#fdf3e7',
     crest: '#f7e7d2',
     rock: '#e8d3b8',
+    lush: '#dcead9',
+    lit: '#fffdf8',
+    shade: '#f0e5da',
     minor: '#3481a1',
     major: '#0d2f61',
     snow: '#eef4f7',
@@ -108,6 +116,9 @@ const BIOMES: Record<string, Biome> = {
     mid: '#dce8c8',
     crest: '#c2d3a8',
     rock: '#b5b39a',
+    lush: '#a9cf99',
+    lit: '#f5f8ea',
+    shade: '#c8d6ba',
     minor: '#7d9b6a',
     major: '#3f5d3a',
     snow: '#f2f6ee',
@@ -126,6 +137,9 @@ const BIOMES: Record<string, Biome> = {
     mid: '#f0d9ae',
     crest: '#e3bd82',
     rock: '#c98f5f',
+    lush: '#9fc48b',
+    lit: '#fbf2da',
+    shade: '#dfc192',
     minor: '#c2955c',
     major: '#8a5a33',
     snow: '#f7efdd',
@@ -144,6 +158,9 @@ const BIOMES: Record<string, Biome> = {
     mid: '#e2ecf2',
     crest: '#cfdfe9',
     rock: '#b9cdd9',
+    lush: '#cfe6e2',
+    lit: '#ffffff',
+    shade: '#d3e0ea',
     minor: '#7fa8bd',
     major: '#3d6b85',
     snow: '#fbfdfe',
@@ -263,6 +280,9 @@ const terrainMaterial = (preset: Biome) =>
       uMid: { value: new Color(preset.mid) },
       uCrest: { value: new Color(preset.crest) },
       uRock: { value: new Color(preset.rock) },
+      uLush: { value: new Color(preset.lush) },
+      uLit: { value: new Color(preset.lit) },
+      uShade: { value: new Color(preset.shade) },
       uMinor: { value: new Color(preset.minor) },
       uMajor: { value: new Color(preset.major) },
       uSnow: { value: new Color(preset.snow) },
@@ -279,24 +299,35 @@ const terrainMaterial = (preset: Biome) =>
     },
     vertexShader: /* glsl */ `
       attribute float aSlope;
+      attribute vec2 aGradient;
+      attribute float aCurve;
+      attribute float aMoisture;
       varying float vElevation;
       varying float vSlope;
+      varying vec2 vGradient;
+      varying float vCurve;
+      varying float vMoisture;
       varying vec2 vXZ;
       void main() {
         vElevation = position.y;
         vSlope = aSlope;
+        vGradient = aGradient;
+        vCurve = aCurve;
+        vMoisture = aMoisture;
         vXZ = position.xz;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uValley; uniform vec3 uMid; uniform vec3 uCrest; uniform vec3 uRock;
+      uniform vec3 uLush; uniform vec3 uLit; uniform vec3 uShade;
       uniform vec3 uMinor; uniform vec3 uMajor; uniform vec3 uSnow; uniform vec3 uAtmosphere;
       uniform vec3 uPage;
       uniform float uStep; uniform float uMajorEvery; uniform float uLineWidth;
       uniform float uMaxH; uniform float uSnowline;
       uniform float uAtmoStart; uniform float uFadeStart; uniform float uFadeEnd;
       varying float vElevation; varying float vSlope; varying vec2 vXZ;
+      varying vec2 vGradient; varying float vCurve; varying float vMoisture;
 
       float lineMask(float value, float stepSize, float width) {
         float derivative = max(fwidth(value), 1e-5);
@@ -313,7 +344,28 @@ const terrainMaterial = (preset: Biome) =>
         float h = clamp(vElevation / uMaxH, 0.0, 2.4);
         vec3 color = mix(uValley, uMid, smoothstep(0.25, 0.85, h));
         color = mix(color, uCrest, smoothstep(0.85, 1.7, h));
+
+        // Moisture: wet ground pulls toward the lush tone near water —
+        // rich banks in grass, an oasis ring in sand. Flat ground only;
+        // slopes stay in the rock family.
+        color = mix(color, uLush, vMoisture * (1.0 - smoothstep(0.25, 0.8, vSlope)) * 0.55);
         color = mix(color, uRock, smoothstep(0.55, 1.35, vSlope) * 0.65);
+
+        // Quantized hillshade from the analytic normal — cartographic relief
+        // with a fixed NW sun, three tones, no lights in the scene.
+        vec3 normal = normalize(vec3(-vGradient.x, 1.0, -vGradient.y));
+        float lambert = dot(normal, normalize(vec3(-0.45, 0.85, -0.4)));
+        float litSide = smoothstep(0.86, 0.98, lambert);
+        float shadeSide = 1.0 - smoothstep(0.55, 0.78, lambert);
+        color = mix(color, uLit, litSide * 0.35);
+        color = mix(color, uShade, shadeSide * 0.5);
+
+        // Curvature accents: ink the ridgelines, deepen the hollows — the
+        // crag spurs and terrace edges become drawn strokes.
+        float ridge = smoothstep(0.06, 0.3, -vCurve);
+        float hollow = smoothstep(0.06, 0.3, vCurve);
+        color = mix(color, uMajor, ridge * 0.12);
+        color = mix(color, uShade, hollow * 0.25);
 
         float flatness = smoothstep(0.02, 0.06, vSlope);
         float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
@@ -329,6 +381,13 @@ const terrainMaterial = (preset: Biome) =>
         // page fade — depth without lights, fog without fog.
         float aerial = smoothstep(uAtmoStart, uFadeStart, length(vXZ));
         color = mix(color, uAtmosphere, aerial * 0.55);
+
+        // Valley mist: in that same far field, LOW ground drowns first —
+        // fog pools in distant valleys while crests ride clear above it.
+        float mist = smoothstep(uAtmoStart * 0.7, uFadeStart, length(vXZ)) *
+          (1.0 - smoothstep(uMaxH * 0.35, uMaxH * 0.95, vElevation));
+        color = mix(color, uAtmosphere, mist * 0.45);
+
         color = mix(color, uPage, smoothstep(uFadeStart, uFadeEnd, length(vXZ)));
 
         gl_FragColor = vec4(color, 1.0);
@@ -448,6 +507,9 @@ const buildWorld = (name: string) => {
     heights[index] = bedAt(x, z, height(x, z))
   }
   const slopes = new Float32Array(positions.count)
+  const gradients = new Float32Array(positions.count * 2)
+  const curvatures = new Float32Array(positions.count)
+  const moistures = new Float32Array(positions.count)
   const epsilon = (SIZE * 1.6) / SEGMENTS
   for (let index = 0; index < positions.count; index++) {
     positions.setY(index, heights[index])
@@ -463,9 +525,32 @@ const buildWorld = (name: string) => {
       (heights[far * lattice + column] - heights[near * lattice + column]) /
       ((far - near) * epsilon)
     slopes[index] = Math.hypot(gradientX, gradientZ)
+    gradients[index * 2] = gradientX
+    gradients[index * 2 + 1] = gradientZ
+    // Laplacian: negative on ridgelines and crag crests, positive in hollows.
+    curvatures[index] =
+      heights[row * lattice + right] +
+      heights[row * lattice + left] +
+      heights[far * lattice + column] +
+      heights[near * lattice + column] -
+      4 * heights[index]
+
+    // Moisture: analytic distance to the nearest water — the ground greens
+    // toward the river and lake (an oasis ring, in the desert's case).
+    const x = positions.getX(index)
+    const z = positions.getZ(index)
+    let waterDistance = Math.max(0, Math.hypot(x - LAKE.x, z - LAKE.z) - LAKE.radius)
+    for (const point of river) {
+      const d = Math.hypot(point.x - x, point.z - z)
+      if (d < waterDistance) waterDistance = d
+    }
+    moistures[index] = 1 - Math.min(1, waterDistance / 9)
   }
   positions.needsUpdate = true
   geometry.setAttribute('aSlope', new BufferAttribute(slopes, 1))
+  geometry.setAttribute('aGradient', new BufferAttribute(gradients, 2))
+  geometry.setAttribute('aCurve', new BufferAttribute(curvatures, 1))
+  geometry.setAttribute('aMoisture', new BufferAttribute(moistures, 1))
   group.add(new Mesh(geometry, terrainMaterial(preset)))
 
   // --- Lake water (grid with analytic depth) --------------------------------
@@ -516,6 +601,59 @@ const buildWorld = (name: string) => {
     const riverWater = waterMaterial(preset)
     timeUniforms.push(riverWater.uniforms.uTime)
     group.add(new Mesh(ribbon, riverWater))
+
+    // Waterfalls: wherever the downhill clamp took a big step, hang a white
+    // cascade sheet down the drop and boil a foam pool at its foot — the
+    // water shader renders both as pure foam (their depth is near zero).
+    const fallVertices: number[] = []
+    const fallDepths: number[] = []
+    const fallIndices: number[] = []
+    for (let index = 0; index < river.length - 1; index++) {
+      const top = river[index]
+      const bottom = river[index + 1]
+      const drop = top.y - bottom.y
+      if (drop < 1.1) continue
+      const tangent = new Vector3().subVectors(bottom, top).setY(0).normalize()
+      const side = new Vector3(-tangent.z, 0, tangent.x)
+      const lip = new Vector3().addVectors(top, tangent.clone().multiplyScalar(1.1))
+      const row = fallVertices.length / 3
+      for (const [point, y] of [
+        [lip, top.y + 0.06],
+        [lip, bottom.y - 0.15],
+      ] as const) {
+        for (const offset of [-1, 1]) {
+          fallVertices.push(point.x + side.x * offset * 1.15, y, point.z + side.z * offset * 1.15)
+          fallDepths.push(0.12)
+        }
+      }
+      fallIndices.push(row, row + 2, row + 1, row + 1, row + 2, row + 3)
+
+      // The plunge pool: a foam disc where the cascade lands.
+      const pool = new Vector3().addVectors(bottom, tangent.clone().multiplyScalar(0.6))
+      const poolRow = fallVertices.length / 3
+      const POOL_SPOKES = 10
+      fallVertices.push(pool.x, bottom.y + 0.05, pool.z)
+      fallDepths.push(0.08)
+      for (let spoke = 0; spoke <= POOL_SPOKES; spoke++) {
+        const angle = (spoke / POOL_SPOKES) * Math.PI * 2
+        fallVertices.push(
+          pool.x + Math.cos(angle) * 1.7,
+          bottom.y + 0.05,
+          pool.z + Math.sin(angle) * 1.7
+        )
+        fallDepths.push(0.22)
+        if (spoke > 0) fallIndices.push(poolRow, poolRow + spoke, poolRow + spoke + 1)
+      }
+    }
+    if (fallIndices.length) {
+      const falls = new BufferGeometry()
+      falls.setIndex(fallIndices)
+      falls.setAttribute('position', new BufferAttribute(new Float32Array(fallVertices), 3))
+      falls.setAttribute('aDepth', new BufferAttribute(new Float32Array(fallDepths), 1))
+      const fallWater = waterMaterial(preset)
+      timeUniforms.push(fallWater.uniforms.uTime)
+      group.add(new Mesh(falls, fallWater))
+    }
   }
 
   // --- Foliage (instanced, swaying) -----------------------------------------
