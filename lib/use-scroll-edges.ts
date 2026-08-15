@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 
 /**
  * Scroll-edge state for a scrollport: does its content continue above, below,
@@ -30,13 +30,26 @@ export const useScrollEdges = (
 
   let observer: ResizeObserver | undefined
 
-  onMounted(() => {
-    syncScrollEdges()
-    if (!observe) return
-    observer = new ResizeObserver(syncScrollEdges)
-    const el = body()
-    if (el) observer.observe(el, { box: 'border-box' })
-  })
+  // The scrollport is not always there when the host mounts: a list behind a
+  // `v-if` — a round beat that has not been dealt yet, a panel that swaps in
+  // mid-round — appears later, and an observer attached once on mount would
+  // never see it (and the edges would read as "nothing to scroll" forever).
+  // Watching the getter re-attaches on every change, undefined → element
+  // included. `flush: 'post'` so the element is laid out before it is measured.
+  if (observe) {
+    watch(
+      body,
+      el => {
+        observer?.disconnect()
+        if (el) {
+          observer ??= new ResizeObserver(syncScrollEdges)
+          observer.observe(el, { box: 'border-box' })
+        }
+        syncScrollEdges()
+      },
+      { immediate: true, flush: 'post' }
+    )
+  }
 
   onBeforeUnmount(() => {
     observer?.disconnect()

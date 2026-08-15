@@ -5,7 +5,14 @@
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
     </ChallengePrompt>
 
-    <p v-if="challenge && !finished && beat !== 'party'" class="chamber-facts">
+    <!-- Beat 3 stows them on a phone: the seat maths is beat 2's subject, and
+         by the roll it is background the round no longer asks about — while
+         the roll itself is the tallest thing the round puts on a phone. -->
+    <p
+      v-if="challenge && !finished && beat !== 'party'"
+      class="chamber-facts"
+      :class="{ stowed: beat === 'sides' }"
+    >
       <span class="fact"
         ><strong>{{ challenge.totalSeats }}</strong> seats</span
       >
@@ -147,7 +154,15 @@
             <span class="eyebrow">The rest of the house</span>
           </header>
           <p class="sides-lede">With the government, or against it?</p>
-          <div class="bench-rows">
+          <!-- The roll is the round's one scroller on a phone, so it says so:
+               the shared scroll-fade mists whichever edge still has benches
+               past it (rules/_scroll-fade.scss). -->
+          <div
+            ref="benchRows"
+            class="bench-rows"
+            :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+            @scroll.passive="syncScrollEdges"
+          >
             <div
               v-for="(name, index) in challenge?.sorted ?? []"
               :key="name"
@@ -229,6 +244,7 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import { BEAT_SECONDS, MAX_SEAT_DOTS } from '~~/lib/government'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { GovernmentState } from '~~/types/challenges/group-modes.type'
 
@@ -291,6 +307,16 @@ watch(
     mySides.value = {}
   }
 )
+
+/**
+ * Beat 3's roll scrolls on a phone — a nine-bench chamber cannot stand in one
+ * screen beside the lock row. The edges drive the shared fades, so a chamber
+ * short enough to fit never wears a dimmed row. The scroller is behind the
+ * beat's `v-else`, so it only exists once the beat is dealt; `useScrollEdges`
+ * picks it up when it appears.
+ */
+const benchRows = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => benchRows.value)
 
 const allFiled = computed(() =>
   (challenge.value?.sorted ?? []).every(name => mySides.value[name] !== undefined)
@@ -468,6 +494,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/_ink.scss' as *;
 @use '~/assets/scss/rules/_breakpoints.scss' as *;
+@use '~/assets/scss/rules/_scroll-fade.scss' as *;
 
 /**
  * NOTE ON SCALE: `_reset.scss` puts the document on a 62.5% root, so 1rem is
@@ -514,8 +541,11 @@ const promptSources = computed(() => datasetAttribution('parties'))
   border-radius: 50%;
 }
 
+// Fluid for the same reason as `.bench-name`: beat 3 prints "<party> governs",
+// and a long name at a fixed 19px wrapped the chip to two lines on a phone —
+// which cost the roll below a row it does not have to give.
 .subject-name {
-  font-size: 19px;
+  font-size: clamp(15px, 4.6vw, 19px);
   font-weight: 600;
 }
 
@@ -717,6 +747,18 @@ const promptSources = computed(() => datasetAttribution('parties'))
       letter-spacing: -0.01em;
     }
   }
+
+  // Stowed for beat 3 on a phone: the tiles cost ~76px of a screen that has to
+  // hold the subject chip, a scrolling roll of benches and the lock row. The
+  // numbers are beat 2's material — by the roll they are trivia, and the
+  // question on screen is about allegiance, not arithmetic. Tablets up keep
+  // them: there the column has the room and the majority line still reads as
+  // context for who can carry the house.
+  &.stowed {
+    @media (max-width: $phone) {
+      display: none;
+    }
+  }
 }
 
 .beat-enter-active,
@@ -763,6 +805,18 @@ const promptSources = computed(() => datasetAttribution('parties'))
   gap: 6px;
   align-content: safe center;
   min-height: 0;
+}
+
+// Beats 1 and 2 have no scroller of their own, and the shell is a fixed-height
+// column — a seven-party table on a phone, or the arc over four blocks on a
+// short one, simply ran off the bottom edge with no way to reach it. They
+// scroll only when they actually overflow, so a beat that fits still centres.
+// Beat 3 is excluded on purpose: it scrolls its ROLL (`.bench-rows`) so the
+// subject chip and the lock row stay put.
+.logos,
+.seats-beat {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 // Chip, panel, footer — and the PANEL is the one that both GROWS and gives
@@ -1033,15 +1087,32 @@ const promptSources = computed(() => datasetAttribution('parties'))
   opacity: 0.75;
 }
 
+// A BLOCK scroller, not a grid: the shared scroll-fade's sticky ::before and
+// ::after cancel their own height with a negative margin, which a grid (or a
+// flex column) defeats — they would become items of their own and each add a
+// gap. The rows space themselves instead, and the recipe's maths holds.
 .bench-rows {
-  display: grid;
-  gap: 8px;
   min-height: 0;
   overflow-y: auto;
+  // Thin rather than absent: the fade says "more below", the bar says how much
+  // more, and on a phone the roll can run twice the panel's height.
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
   // The rows' own focus rings and the card's radius must not be clipped flat
   // against the scroller's edge.
   padding: 2px;
   margin: -2px;
+
+  // Edge fades from the shared recipe (rules/_scroll-fade.scss), each showing
+  // only when benches really continue past that edge. Deeper at the bottom
+  // than the top: the panel's lede sits above the first row and the fade only
+  // has a row's corner to soften, while the bottom edge is where a half-shown
+  // bench needs to read as receding rather than sliced.
+  @include scroll-fade($top: 1.8rem, $bottom: 3rem);
+
+  .bench-row + .bench-row {
+    margin-top: 8px;
+  }
 }
 
 // Three tracks rather than `space-between`, so the seat counts stand in a
@@ -1050,6 +1121,10 @@ const promptSources = computed(() => datasetAttribution('parties'))
 // 44px row, and the mixin's blur would cost a compositor layer per row for
 // nothing on the flat cream of the panel it already sits on.
 .bench-row {
+  // The row's type, one token for the name and its seat count — see
+  // `.bench-name` for why it is fluid.
+  --bench-type: clamp(12px, 4vw, 15px);
+
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -1090,12 +1165,19 @@ const promptSources = computed(() => datasetAttribution('parties'))
 
 // The mark gets room to read as a mark rather than a prefix — 0.5rem was 5px
 // on the 62.5% root, which crowded every logo against its party.
+//
+// Party names are the one string in this round whose length the data decides:
+// "Fidesz" and "Alliance of Independent Social Democrats" stand in the same
+// column. The type is fluid so the long ones give ground on a narrow phone
+// instead of clamping to two lines and doubling the row — full size from a
+// ~375px screen up, easing to 12px on the narrowest. The seat count reads off
+// the same token, so the row stays one set of type rather than two.
 .bench-name {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--bench-type);
 }
 
 // Wraps to a second line before it will truncate: an ellipsis is the last
@@ -1131,7 +1213,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
 // even inside a fixed track.
 .bench-seats {
   min-width: 4ch;
-  font-size: 15px;
+  font-size: var(--bench-type, 15px);
   font-variant-numeric: tabular-nums;
   text-align: right;
   opacity: 0.6;
