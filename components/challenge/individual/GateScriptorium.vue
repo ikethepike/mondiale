@@ -31,23 +31,35 @@
         >{{ line }}</span
       >
     </div>
+    <!-- The page never arrived. Say so rather than staging an empty leaf: an
+         unreadable question the player can't tell is broken is the one shape
+         this gate had no move out of. -->
+    <div v-else-if="blind" class="manuscript manuscript-blank">
+      <span class="blank-note">The page didn't load — every hint is open.</span>
+    </div>
 
-    <Transition name="caption">
-      <span v-if="shownRegion" class="region-note map-caption">
-        Spoken mostly in {{ shownRegion }}
-      </span>
-    </Transition>
+    <!-- The ladder's bought rungs, weakest first — they accumulate rather
+         than replace, so a player who paid for three is looking at all
+         three while they type. -->
+    <TransitionGroup name="caption" tag="div" class="hint-notes">
+      <span v-for="note in shownHints" :key="note" class="hint-note map-caption">{{ note }}</span>
+    </TransitionGroup>
 
+    <!-- One chip at a time: the ladder is a descent, so the rung on offer is
+         always the topmost still standing. -->
     <div class="hint-row">
       <Transition name="caption">
         <button
-          v-if="!shownRegion && regionHint && hintUnlocked"
+          v-if="ladder.offered"
           class="hint-button"
           type="button"
-          @click="buyRegionHint"
+          @click="buyHint(ladder.offered)"
         >
-          <StatTopicIcon class="hint-icon" topic="question" />
-          Name the region (−{{ GATE_HINT_BITE_STEPS }} from the pot)
+          <StatTopicIcon
+            class="hint-icon"
+            :topic="ladder.offered === 'region' ? 'question' : 'reveal'"
+          />
+          {{ offeredLabel }} (−{{ GATE_HINT_BITE_STEPS }} from the pot)
         </button>
       </Transition>
     </div>
@@ -63,13 +75,17 @@
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import {
+  SCRIPTORIUM_RUNGS,
   scriptoriumAnswers,
   scriptoriumEntry,
+  scriptoriumLadder,
   scriptoriumRegionHint,
   scriptoriumRtl,
+  type ScriptoriumRung,
 } from '~~/lib/scriptorium'
 import { anthemTongueSample, seededTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
@@ -84,20 +100,36 @@ const { gameStore } = useClientEvents()
 const { status, isEasy, submitAnswer, giveUp } = useGateChallenge()
 
 const footerReady = ref(false)
-const boughtRegion = ref(false)
+
+/**
+ * The hint ladder, weakest rung first. Three rungs rather than one because a
+ * single region chip ("Spoken mostly in Asia" — eighteen of the pool's thirty
+ * languages) narrowed nothing, and a player who could not read the page had
+ * no second move: the mode's only progression was to run the clock out and
+ * forfeit the walk. Each rung genuinely narrows further than the last, and the
+ * bottom one ends the gate outright — it pays no leap (three bites clear the
+ * pot), but a correct answer still keeps the walk a miss would forfeit.
+ */
+const bought = reactive(new Set<ScriptoriumRung>())
+
+/** What each rung's chip is called in the shop. */
+const RUNG_LABELS: { [rung in ScriptoriumRung]: string } = {
+  region: "Where it's spoken",
+  script: 'Name the script',
+  country: 'Name one country',
+}
 
 const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(
   SCRIPTORIUM_SECONDS,
   { onExpire: () => giveUp(hintsUsed.value) }
 )
-const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
 const language = computed(() => props.challenge.scriptorium?.language)
 
 /** The written sample: a seed for the seeded languages, a couple of anthem
  *  lines through the same home for everyone else — lib/tongue-samples, shared
- *  with the Tongues round. A failed fetch leaves the gate unplayable-blind,
- *  so the safety expiry (`useGateClock`) still resolves it as a miss. */
+ *  with the Tongues round. A failed fetch leaves nothing to read, which `blind`
+ *  below turns into an open ladder rather than a gate with no move in it. */
 const borrowedLyrics = useAnthemLyrics(() => {
   const active = language.value
   if (!active || seededTongueSample(active)) return undefined
@@ -112,23 +144,70 @@ const sample = computed(() => {
   )
 })
 
-/** Easy mode gets the region for free (rosetta's freebie posture — the
- *  difficulty, not a purchase); everyone else can buy it once unlocked. */
-const regionHint = computed(() =>
-  language.value ? scriptoriumRegionHint(language.value) : undefined
-)
 const rtl = computed(() => !!language.value && scriptoriumRtl(language.value))
-const shownRegion = computed(() =>
-  isEasy.value || boughtRegion.value ? regionHint.value : undefined
+
+/**
+ * The page never arrived: no seed, no lyric wall, or the fetch failed. The
+ * player is being asked to read nothing at all, so the whole ladder opens at
+ * once rather than leaving them to watch a blank leaf run the clock out. The
+ * first wave is the tell — before it, `sample` is merely still in flight.
+ */
+const blind = computed(() => !sample.value && elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
+
+/** What each rung actually says, in the ladder's own order. */
+const notes = computed<{ [rung in ScriptoriumRung]: string | undefined }>(() => {
+  const active = language.value
+  const region = active ? scriptoriumRegionHint(active) : undefined
+  // Rung 1: where its speakers are, and how many countries the verdict will
+  // take. The count is the half that narrows — one answer is a different
+  // search from twenty, and the region alone said neither.
+  const count = active ? scriptoriumAnswers(active).length : 0
+  // Rung 2: the script by name. For a family script (Cyrillic, Devanagari) it
+  // narrows; for a one-country script it all but answers — which is exactly
+  // the grading the ladder wants, and the deal decides which you get. Read
+  // from the pool entry, the same field ScriptoriumReveal names it by.
+  const entry = active ? scriptoriumEntry(active) : undefined
+  return {
+    region:
+      region && active
+        ? count === 1
+          ? `Only one country speaks it, in ${region}`
+          : `${count} countries speak it, mostly in ${region}`
+        : undefined,
+    script: entry ? `Written in ${entry.script}` : undefined,
+    // Rung 3, the last resort (border-detective's ISO chip, one rung down):
+    // the dealt subject is the most populous in-play speaker and always grades
+    // correct, so this ends the gate. It stakes nothing and saves the walk.
+    country: `${countryName(props.challenge.country)} counts`,
+  }
+})
+
+/** What the shop shows — whose rules are lib/scriptorium's, not this view's.
+ *  Easy mode gets rung 1 free (rosetta's freebie posture — the difficulty,
+ *  not a purchase), so it shows without ever counting against the pot. */
+const ladder = computed(() =>
+  scriptoriumLadder({
+    elapsedFraction: elapsedFraction.value,
+    bought,
+    free: isEasy.value ? ['region'] : [],
+    mute: SCRIPTORIUM_RUNGS.filter(rung => !notes.value[rung]),
+    blind: blind.value,
+    resolved: !!status.value,
+  })
 )
-const hintsUsed = computed(() => (boughtRegion.value ? 1 : 0))
+const shownHints = computed(() =>
+  ladder.value.shown.map(rung => notes.value[rung]).filter((note): note is string => !!note)
+)
+const offeredLabel = computed(() => (ladder.value.offered ? RUNG_LABELS[ladder.value.offered] : ''))
+
+const hintsUsed = computed(() => bought.size)
 
 onMounted(() => {
   footerReady.value = true
 })
-const buyRegionHint = () => {
-  if (boughtRegion.value || status.value) return
-  boughtRegion.value = true
+const buyHint = (rung: ScriptoriumRung) => {
+  if (status.value || bought.has(rung)) return
+  bought.add(rung)
 }
 
 const onGuess = (country: Country) => {
@@ -205,6 +284,17 @@ const onGuess = (country: Country) => {
   overscroll-behavior: contain;
 }
 
+.manuscript-blank {
+  min-height: 8rem;
+  justify-content: center;
+}
+
+.blank-note {
+  font-size: 1.4rem;
+  text-align: center;
+  color: var(--soft-blue);
+}
+
 .manuscript-line {
   font-size: 3rem;
   line-height: 1.5;
@@ -266,8 +356,17 @@ const onGuess = (country: Country) => {
   }
 }
 
-.region-note {
+// The bought rungs stack under the leaf, narrowest last — a short column so
+// three of them never crowd the console out of the band.
+.hint-notes {
+  gap: 0.4rem;
+  display: flex;
   margin-top: 0.8rem;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+
+.hint-note {
   padding: 0.4rem 1.4rem;
 }
 
@@ -308,6 +407,15 @@ const onGuess = (country: Country) => {
     gap: 0.6rem;
     margin-top: 0;
     padding: 1rem 1.4rem;
+  }
+
+  // Three bought rungs is three rows the glyphs would otherwise have.
+  .hint-notes {
+    gap: 0.2rem;
+    margin-top: 0.4rem;
+  }
+  .hint-note {
+    padding: 0.2rem 1rem;
   }
 
   .manuscript-line {

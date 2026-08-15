@@ -18,6 +18,7 @@ import {
   GATE_LEAP_STEPS,
   gateLeapSteps,
   HINT_UNLOCK_FIRST_ELAPSED,
+  HINT_UNLOCK_SECOND_ELAPSED,
   gatePot,
   HINT_BITE_FRACTION,
   hintDockedScore,
@@ -242,6 +243,29 @@ describe('gatePot', () => {
     expect(gatePot('errata')).toBeGreaterThan(GATE_LEAP_STEPS)
     expect(gatePot('rosetta')).toBeGreaterThan(GATE_LEAP_STEPS)
     expect(gatePot('atlas')).toBeGreaterThan(GATE_LEAP_STEPS)
+    expect(gatePot('scriptorium')).toBeGreaterThan(GATE_LEAP_STEPS)
+  })
+
+  it("keeps scriptorium's three-rung ladder graded rather than one surrender", () => {
+    // The ladder is only a ladder if each rung stakes strictly less than the
+    // one above it and the first two still stake SOMETHING. At pot 4 rungs two
+    // and three both bottom out at zero, which is the single-surrender shape
+    // the deep pots exist to undo — this is what pins the pot at 5.
+    const pot = gatePot('scriptorium')
+    // Where a player can actually stand: a rung bought the instant its wave
+    // breaks is answered with at most that much clock left.
+    const afterFirst = 1 - HINT_UNLOCK_FIRST_ELAPSED
+    const afterSecond = 1 - HINT_UNLOCK_SECOND_ELAPSED
+    expect(gateLeapSteps(afterFirst, 1, pot)).toBeGreaterThan(0)
+    expect(gateLeapSteps(afterSecond, 2, pot)).toBeGreaterThan(0)
+    expect(gateLeapSteps(afterFirst, 1, pot)).toBeLessThan(gateLeapSteps(afterFirst, 0, pot))
+    expect(gateLeapSteps(afterSecond, 2, pot)).toBeLessThan(gateLeapSteps(afterSecond, 1, pot))
+    // The last resort names an accepted country outright: it stakes nothing at
+    // any clock reading. It is still worth buying — a correct answer keeps the
+    // walk that a miss forfeits whole.
+    for (const fraction of [afterSecond, 0.2, 0]) {
+      expect(gateLeapSteps(fraction, 3, pot), `last resort at ${fraction} left`).toBe(0)
+    }
   })
 })
 

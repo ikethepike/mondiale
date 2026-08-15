@@ -26,7 +26,15 @@ export const ROSETTA_SECONDS = 30
 export const LOGO_POLITICS_SECONDS = 25
 // Several full names typed with no autocomplete — long, but under the ceiling.
 export const ATLAS_SECONDS = 35
-export const SCRIPTORIUM_SECONDS = 25
+/**
+ * A script you cannot read, answered by typing a country name with no option
+ * table anywhere — and a three-rung hint ladder whose last rung opens at
+ * HINT_UNLOCK_LAST_ELAPSED. At 25s that rung landed with five seconds left,
+ * which is not long enough to read a country's name and type it, so the
+ * bottom of the ladder was unspendable. Atlas's length, for the same reason:
+ * typing is slower than pressing.
+ */
+export const SCRIPTORIUM_SECONDS = 35
 // Four cards dragged into place — reading time, not typing time.
 export const CHRONICLE_SECONDS = 35
 export const FAR_FLUNG_SECONDS = 25
