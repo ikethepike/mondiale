@@ -59,7 +59,10 @@ export const pickRiverPath = (
     }
     if (pond && Math.hypot(pond.center.x - x, pond.center.z - z) < pond.basinRadius + RIVER_WIDTH)
       return false
-    if (summit && Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + RIVER_WIDTH)
+    if (
+      summit &&
+      Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + RIVER_WIDTH
+    )
       return false
     return true
   }
@@ -81,8 +84,10 @@ export const pickRiverPath = (
 
     for (let step = 0; step < MARCH_LIMIT; step++) {
       // Downhill gradient with momentum and a seeded meander wobble.
-      const gradientX = (sampler(position.x + 1, position.z) - sampler(position.x - 1, position.z)) / 2
-      const gradientZ = (sampler(position.x, position.z + 1) - sampler(position.x, position.z - 1)) / 2
+      const gradientX =
+        (sampler(position.x + 1, position.z) - sampler(position.x - 1, position.z)) / 2
+      const gradientZ =
+        (sampler(position.x, position.z + 1) - sampler(position.x, position.z - 1)) / 2
       const downhill = new Vector3(-gradientX, 0, -gradientZ)
       if (downhill.lengthSq() < 1e-6) break
       downhill.normalize()

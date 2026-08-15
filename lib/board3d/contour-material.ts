@@ -29,10 +29,7 @@ const SNOW_COLOR = '#eef4f7'
  * everything. The fade doubles as the moiré guard: ring spacing tightens near
  * a summit, and the wash covers exactly the band where rings would alias.
  */
-export const createContourMaterial = (
-  rippleRadius: number,
-  snowlineY = 1e6
-): ContourMaterial => {
+export const createContourMaterial = (rippleRadius: number, snowlineY = 1e6): ContourMaterial => {
   const material = new ShaderMaterial({
     uniforms: {
       uSnow: { value: new Color(SNOW_COLOR) },

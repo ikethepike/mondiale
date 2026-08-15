@@ -199,9 +199,7 @@ describe('a hurdle sits in the gap it was measured for', () => {
       for (const count of LENGTHS) {
         const { chords, spacing } = pathFor(seed, count)
         const tileRadius = spacing * TILE_RADIUS_RATIO
-        const parts = GATE_TYPES.map(
-          type => [type, markerPartsFor(type, spacing)] as const
-        )
+        const parts = GATE_TYPES.map(type => [type, markerPartsFor(type, spacing)] as const)
         for (let index = 1; index < count - 1; index++) {
           const gap = markerGapFor(index, chords, tileRadius)
           for (const [type, geometry] of parts) {

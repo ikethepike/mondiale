@@ -42,9 +42,7 @@ export const installTimerVisibilityGuard = (timerClass: typeof Timer = Timer): (
   if (existing) return existing
 
   const originalConnect = timerClass.prototype.connect
-  timerClass.prototype.connect = function guardedConnect(
-    ...args: Parameters<Timer['connect']>
-  ) {
+  timerClass.prototype.connect = function guardedConnect(...args: Parameters<Timer['connect']>) {
     this.disconnect()
     return originalConnect.apply(this, args)
   }

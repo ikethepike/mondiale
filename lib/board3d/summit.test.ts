@@ -12,7 +12,10 @@ const pathFor = (seed: string, count = 65, archetype?: TrackArchetype) => {
     type: 'normal' as const,
   }))
   const sampler = withEdgeFalloff(createHeightSampler(seed))
-  return { path: createTilePath(seed, tiles, sampler, archetype ? { archetype } : undefined), sampler }
+  return {
+    path: createTilePath(seed, tiles, sampler, archetype ? { archetype } : undefined),
+    sampler,
+  }
 }
 
 const siteFor = (seed: string, count = 65, archetype?: TrackArchetype) => {
@@ -69,10 +72,9 @@ describe('pickSummitSite', () => {
       if (!site) continue
       expect(site.climbAnchors).toHaveLength(STAGES + 1)
       for (let step = 1; step < site.climbAnchors.length; step++) {
-        expect(
-          site.climbAnchors[step].y,
-          `summit-ladder-${index} step ${step}`
-        ).toBeGreaterThan(site.climbAnchors[step - 1].y)
+        expect(site.climbAnchors[step].y, `summit-ladder-${index} step ${step}`).toBeGreaterThan(
+          site.climbAnchors[step - 1].y
+        )
       }
       const summit = site.climbAnchors[site.climbAnchors.length - 1]
       expect(summit.x).toBe(site.center.x)

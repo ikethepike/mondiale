@@ -1,11 +1,6 @@
 import Alea from 'alea'
 import { Vector3 } from 'three'
-import {
-  EDGE_FADE_START,
-  type HeightSampler,
-  MAX_ELEVATION,
-  smoothstep,
-} from './terrain'
+import { EDGE_FADE_START, type HeightSampler, MAX_ELEVATION, smoothstep } from './terrain'
 import type { TilePathResult } from './path'
 import type { PondSite } from './water'
 
@@ -117,16 +112,10 @@ const summitMask = (
 
   // The gorge cuts the outer flank on the approach bearing and heals toward
   // the plateau, so the summit stays whole and the notch funnels upward.
-  const swing = Math.atan2(
-    Math.sin(theta - site.faceAngle),
-    Math.cos(theta - site.faceAngle)
-  )
+  const swing = Math.atan2(Math.sin(theta - site.faceAngle), Math.cos(theta - site.faceAngle))
   const gorge = Math.exp(-((swing / GORGE_HALF_RAD) * (swing / GORGE_HALF_RAD)))
   const outerness = smoothstep(
-    Math.min(
-      1,
-      Math.max(0, (distance - site.plateauRadius) / (craggedRadius - site.plateauRadius))
-    )
+    Math.min(1, Math.max(0, (distance - site.plateauRadius) / (craggedRadius - site.plateauRadius)))
   )
   return profile * (1 - GORGE_DEPTH * gorge * outerness)
 }
@@ -210,11 +199,7 @@ export const pickSummitSite = (
  *  Elevations come from the same mask `withSummitMassif` renders, so carve
  *  and climb cannot drift; the ladder is forced non-decreasing so a cleared
  *  stage always reads as ground gained. */
-const climbAnchorsFor = (
-  site: SummitSite,
-  sampler: HeightSampler,
-  stages: number
-): Vector3[] => {
+const climbAnchorsFor = (site: SummitSite, sampler: HeightSampler, stages: number): Vector3[] => {
   const flanks = Math.max(1, stages)
   const anchors: Vector3[] = []
   let floor = -Infinity
@@ -244,7 +229,11 @@ const climbAnchorsFor = (
  * Compose the massif into the height field: the peak's smoothstep profile on
  * top of the base terrain, then a flat shelf carved under each climb anchor.
  */
-export const withSummitMassif = (sampler: HeightSampler, site: SummitSite, spacing: number): HeightSampler => {
+export const withSummitMassif = (
+  sampler: HeightSampler,
+  site: SummitSite,
+  spacing: number
+): HeightSampler => {
   const ledgeRadius = LEDGE_RADIUS_RATIO * spacing
   return (x, z) => {
     let y = sampler(x, z) + site.height * summitMask(site, x, z)

@@ -452,9 +452,7 @@ const syncClimbs = () => {
         onUpdate() {
           pawn.position.set(
             start.x + (to.x - start.x) * progress.t,
-            start.y +
-              (to.y - start.y) * progress.t +
-              Math.sin(progress.t * Math.PI) * hopHeight,
+            start.y + (to.y - start.y) * progress.t + Math.sin(progress.t * Math.PI) * hopHeight,
             start.z + (to.z - start.z) * progress.t
           )
         },

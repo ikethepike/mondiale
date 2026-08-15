@@ -21,7 +21,12 @@ const tilesOf = (count: number): Tile[] =>
   Array.from({ length: count }, (_, position) => ({ position, type: 'normal' as const }))
 
 const pathFor = (seed: string, count: number, archetype?: TrackArchetype) =>
-  createTilePath(seed, tilesOf(count), createHeightSampler(seed), archetype ? { archetype } : undefined)
+  createTilePath(
+    seed,
+    tilesOf(count),
+    createHeightSampler(seed),
+    archetype ? { archetype } : undefined
+  )
 
 describe('createTilePath', () => {
   it('is deterministic per seed', () => {

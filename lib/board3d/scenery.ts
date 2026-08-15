@@ -97,9 +97,7 @@ export const pickScenerySites = (
     .filter(spot => spot.slope <= COMPASS_MAX_SLOPE)
     .filter(spot => cairns.every(cairn => Math.hypot(cairn.x - spot.x, cairn.z - spot.z) > 18))
     .sort((a, b) => a.slope - b.slope)
-  const compass = quiet.length
-    ? new Vector3(quiet[0].x, quiet[0].y, quiet[0].z)
-    : undefined
+  const compass = quiet.length ? new Vector3(quiet[0].x, quiet[0].y, quiet[0].z) : undefined
 
   return { cairns, compass }
 }
