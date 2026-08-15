@@ -81,6 +81,7 @@ import type {
   RoundChallengeKind,
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
+import type { ScaleTone } from '~~/types/challenge.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
@@ -3815,6 +3816,7 @@ export interface ScalePlotProps {
   min: number
   max: number
   invert?: boolean
+  tone: ScaleTone
   leastLabel: string
   mostLabel: string
 }
@@ -3830,12 +3832,14 @@ export const getScaleProps = (
   if (amount === undefined) return undefined
   const details = getChallengeDetails(accessorId)
   if (!details?.scale || !details.markers) return undefined
-  const { min, max, invert } = details.scale
+  const { min, max, invert, tone } = details.scale
   return {
     amount,
     min,
     max,
     invert,
+    // A stat that never declared a verdict doesn't get one painted on it.
+    tone: tone ?? 'neutral',
     leastLabel: details.markers.least,
     mostLabel: details.markers.most,
   }

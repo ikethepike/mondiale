@@ -1839,17 +1839,22 @@ const scenarios: Scenario[] = [
       mockGame('group-challenge', [
         groupRound({
           _type: 'stat-detective-challenge',
-          country: 'BR',
+          country: 'IT',
+          // A full ladder, and one plotted stat of each ScaleTone: share65Plus
+          // (neutral), equality (inverted), democracyIndex (positive) — the
+          // clue pile that used to squeeze the console off the bottom edge.
           clues: [
             'people.population',
             'geography.area.total',
             'economics.gdpPerCapita',
             'government.corruptionIndex',
-            'environment.CO2Emissions',
+            'people.share65Plus',
+            'economics.equality',
+            'government.democracyIndex',
           ],
           secondsPerClue: 4,
-          region: 'South America',
-          photo: '/capitals/BR.webp',
+          region: 'Europe',
+          photo: '/capitals/IT.webp',
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
@@ -4497,12 +4502,14 @@ $harness-bar-height: 3.4rem;
   // hiding the very question the round is asking. Start the scene below it
   // instead — the bar can't move to the bottom, where the guess console lives.
   @media screen and (max-width: $phone) {
-    height: calc(var(--viewport-height) - #{$harness-bar-height});
     margin-top: $harness-bar-height;
 
     // The scene inside is sized from --viewport-height, so shortening the
     // frame alone leaves it a bar's-worth too tall and its footer lands
-    // under the fold. Re-point the variable for the subtree instead.
+    // under the fold. Re-point the variable for the subtree instead — the
+    // `height` above reads it too, so the frame follows without a second
+    // subtraction (which clipped a bar's-worth off the console, making the
+    // harness lie about the very thing it exists to show).
     --viewport-height: calc(100dvh - #{$harness-bar-height});
   }
 }
