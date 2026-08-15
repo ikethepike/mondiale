@@ -157,23 +157,16 @@ const blind = computed(() => !sample.value && elapsedFraction.value >= HINT_UNLO
 /** What each rung actually says, in the ladder's own order. */
 const notes = computed<{ [rung in ScriptoriumRung]: string | undefined }>(() => {
   const active = language.value
+  // Rung 1: where its speakers are. Just the region — an answer tally was
+  // tried here and read as bookkeeping, not as a clue.
   const region = active ? scriptoriumRegionHint(active) : undefined
-  // Rung 1: where its speakers are, and how many countries the verdict will
-  // take. The count is the half that narrows — one answer is a different
-  // search from twenty, and the region alone said neither.
-  const count = active ? scriptoriumAnswers(active).length : 0
   // Rung 2: the script by name. For a family script (Cyrillic, Devanagari) it
   // narrows; for a one-country script it all but answers — which is exactly
   // the grading the ladder wants, and the deal decides which you get. Read
   // from the pool entry, the same field ScriptoriumReveal names it by.
   const entry = active ? scriptoriumEntry(active) : undefined
   return {
-    region:
-      region && active
-        ? count === 1
-          ? `Only one country speaks it, in ${region}`
-          : `${count} countries speak it, mostly in ${region}`
-        : undefined,
+    region: region ? `Spoken mostly in ${region}` : undefined,
     script: entry ? `Written in ${entry.script}` : undefined,
     // Rung 3, the last resort (border-detective's ISO chip, one rung down):
     // the dealt subject is the most populous in-play speaker and always grades

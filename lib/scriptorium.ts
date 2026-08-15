@@ -96,10 +96,12 @@ export const scriptoriumAnswers = (language: string): ISOCountryCode[] =>
  * The hint ladder, strongest rung LAST — the order is the descent, and the
  * descent is what prices it.
  *
- * The mode shipped with one rung (the region), which for eighteen of the
- * pool's thirty languages read "Asia" and narrowed nothing. A player who could
- * not read the page had no second move at all: the only progression left was
- * to run the clock out and forfeit the walk.
+ * The mode shipped with the region rung alone, and it is a WIDE opener — for
+ * eighteen of the pool's thirty languages it says "Asia". That is fine as a
+ * first step and hopeless as the only one: a player who could not read the
+ * page had no second move at all, and the only progression left was to run
+ * the clock out and forfeit the walk. The rungs below it are the answer to
+ * that, not a sharper opener.
  */
 export const SCRIPTORIUM_RUNGS = ['region', 'script', 'country'] as const
 export type ScriptoriumRung = (typeof SCRIPTORIUM_RUNGS)[number]
