@@ -951,6 +951,15 @@ const promptSources = computed(() => datasetAttribution('parties'))
   margin-inline: auto;
   aspect-ratio: 2 / 1;
 
+  // On a phone a 2:1 box at full width is half the screen, and the blocks
+  // under it fell off the bottom edge. Sized from whichever bites first there
+  // — the column's width or the room the viewport's HEIGHT can spare — so the
+  // chamber keeps its shape and gives ground instead of pushing the answer
+  // out of view. A tall phone barely notices; a 667px one gets 40px back.
+  @media (max-width: $phone) {
+    width: min(100%, 44vh);
+  }
+
   .seat {
     position: absolute;
     width: 1.8%;
