@@ -3,6 +3,7 @@ import { Vector3 } from 'three'
 import type { HeightSampler } from './terrain'
 import { BOARD_SIZE, EDGE_FADE_START } from './terrain'
 import type { TilePathResult } from './path'
+import type { RiverPath } from './river'
 import type { PondSite } from './water'
 import type { SummitSite } from './summit'
 
@@ -35,7 +36,8 @@ export const pickScenerySites = (
   path: TilePathResult,
   pond: PondSite | undefined,
   summit: SummitSite | undefined,
-  sampler: HeightSampler
+  sampler: HeightSampler,
+  river?: RiverPath
 ): ScenerySites => {
   const random = Alea(`${seed}:scenery`)
   const { shelfPoints, spacing } = path
@@ -56,6 +58,12 @@ export const pickScenerySites = (
     if (summit) {
       const gap = summit.radius + margin + spacing
       if (Math.hypot(summit.center.x - x, summit.center.z - z) < gap) return false
+    }
+    if (river) {
+      const gap = river.width + 2
+      for (const point of river.points) {
+        if (Math.hypot(point.x - x, point.z - z) < gap) return false
+      }
     }
     return true
   }

@@ -39,6 +39,7 @@ import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
+import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
 import { LEDGE_SLAB_INSET, pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
@@ -135,9 +136,14 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     GAUNTLET_LENGTH[difficulty]
   )
 
+  // A decorative river: rises on open high ground, marches downhill, stops
+  // at the track's clearance. Carved into the bed the shader contours draw.
+  const riverPath = pickRiverPath(seed, tilePath, pondSite, summitSite, rawSampler)
+
   const shelved = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
   const ponded = pondSite ? withPondBasin(shelved, pondSite) : shelved
-  const sampler = summitSite ? withSummitMassif(ponded, summitSite, spacing) : ponded
+  const sculpted = summitSite ? withSummitMassif(ponded, summitSite, spacing) : ponded
+  const sampler = riverPath ? withRiverBed(sculpted, riverPath) : sculpted
 
   // --- Terrain -------------------------------------------------------------
   const segments = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
@@ -352,10 +358,12 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     buildClimbSlabs(summitSite, spacing).forEach(mesh => group.add(mesh))
   }
 
+  if (riverPath) group.add(buildRiverMesh(riverPath))
+
   // Survey furniture on the open terrain: cairned hilltops and a compass-rose
   // ink decal. Heights come from the final composed sampler, so everything
   // sits exactly on the rendered ground.
-  const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler)
+  const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler, riverPath)
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
   if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing))
 
@@ -1029,7 +1037,9 @@ const buildClimbSlabs = (site: SummitSite, spacing: number): Mesh[] => {
     slab.translate(0, (LEDGE_SLAB_INSET + sink) / 2 - sink, 0)
     matrix.setPosition(anchor.x, anchor.y - LEDGE_SLAB_INSET, anchor.z)
     bakeParts(
-      [{ geometry: faceted(slab), color: BOARD_COLORS.darkBlue }],
+      // Sand, not ink-blue: a dark disc on the pale flank read as a HOLE in
+      // the mountain; outlined stone reads as a carved step.
+      [{ geometry: faceted(slab), color: BOARD_COLORS.warmSand }],
       matrix,
       spacing * OUTLINE_WIDTH_RATIO,
       colorBuckets,
@@ -1037,6 +1047,22 @@ const buildClimbSlabs = (site: SummitSite, spacing: number): Mesh[] => {
     )
   }
   return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** The river's water: a slim translucent ribbon along the carved bed. The
+ *  bed itself is terrain — the contour shader draws the banks for free. */
+const buildRiverMesh = (river: RiverPath): Mesh => {
+  const curve = new CatmullRomCurve3(river.points, false, 'centripetal')
+  const tube = new TubeGeometry(curve, river.points.length * 2, river.width * 0.42, 6, false)
+  return new Mesh(
+    tube,
+    new MeshBasicMaterial({
+      color: BOARD_COLORS.pondBlue,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+    })
+  )
 }
 
 /** A survey cairn on an off-track hilltop: two stacked stones and a slim

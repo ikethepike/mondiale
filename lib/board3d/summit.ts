@@ -80,8 +80,8 @@ const CRAG_DETAIL = 0.06
 const PEAK_SHARPNESS = 1.65
 /** The ascent gorge: how much of the flank height the notch removes, and its
  *  angular half-width around `faceAngle`. */
-const GORGE_DEPTH = 0.65
-const GORGE_HALF_RAD = 0.5
+const GORGE_DEPTH = 0.78
+const GORGE_HALF_RAD = 0.55
 
 /**
  * The massif's height mask in [0, 1] — THE single shape source: terrain
@@ -221,8 +221,10 @@ const climbAnchorsFor = (
 
   for (let step = 0; step < flanks; step++) {
     const t = flanks === 1 ? 0.5 : step / (flanks - 1)
-    // Zigzag within the gorge walls while climbing from mouth to plateau rim.
-    const zigzag = site.faceAngle + (step % 2 === 0 ? -0.13 : 0.13)
+    // A tight stair on one bearing up the gorge floor — the wide zigzag
+    // scattered the slabs across the face, where they read as loose blobs
+    // instead of a ladder (Isaac's screenshot).
+    const zigzag = site.faceAngle + (step % 2 === 0 ? -0.05 : 0.05)
     const reach = site.radius * 0.88 + (site.plateauRadius * 1.1 - site.radius * 0.88) * t
     const x = site.center.x + Math.sin(zigzag) * reach
     const z = site.center.z + Math.cos(zigzag) * reach
