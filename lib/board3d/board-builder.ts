@@ -7,8 +7,11 @@ import {
   Color,
   ConeGeometry,
   CylinderGeometry,
+  DataTexture,
+  FloatType,
   Group,
   InstancedMesh,
+  LinearFilter,
   LatheGeometry,
   Matrix4,
   Mesh,
@@ -19,6 +22,7 @@ import {
   ExtrudeGeometry,
   PlaneGeometry,
   Quaternion,
+  RedFormat,
   RingGeometry,
   Shape,
   ShapeGeometry,
@@ -39,6 +43,7 @@ import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
+import { type BoardBiome, pickBoardBiome } from './biomes'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
 import { LEDGE_SLAB_INSET, pickSummitSite, type SummitSite, withSummitMassif } from './summit'
@@ -50,6 +55,8 @@ export interface BoardBuild {
   transforms: TileTransform[]
   spacing: number
   archetype: TrackArchetype
+  /** The board's landscape voice — game pieces never read it. */
+  biome: BoardBiome
   /** The finale massif, when this board dealt one — TopoScene climbs its
    *  `climbAnchors` during the gauntlet. */
   summit?: SummitSite
@@ -115,9 +122,13 @@ export const PATH_MARKER_LIFT = 0.75
 const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): BoardBuild => {
   const group = new Group()
 
+  // The landscape's voice: ramps, inks and noise character. Game pieces
+  // (discs, markers, pawns) never read it — they stay cream-and-ink.
+  const biome = pickBoardBiome(seed)
+
   // Edge falloff wraps the base field so hills subside into the page at the
   // horizon; the track (radius < EDGE_FADE_START) never feels it.
-  const rawSampler = withEdgeFalloff(createHeightSampler(seed))
+  const rawSampler = withEdgeFalloff(createHeightSampler(seed, biome))
   const tilePath = createTilePath(seed, tiles, rawSampler)
   const { transforms, shelfPoints, spacing, chords } = tilePath
 
@@ -153,7 +164,28 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
 
   const positions = terrainGeometry.attributes.position
   const slopes = new Float32Array(positions.count)
+  const gradients = new Float32Array(positions.count * 2)
+  const curvatures = new Float32Array(positions.count)
+  const moistures = new Float32Array(positions.count)
   const epsilon = terrainSize / segments
+
+  // Analytic distance to the nearest water body — the moisture field that
+  // greens the banks (and the desert's oasis ring) in the shader.
+  const waterDistanceAt = (x: number, z: number) => {
+    let distance = Infinity
+    if (pondSite)
+      distance = Math.max(
+        0,
+        Math.hypot(pondSite.center.x - x, pondSite.center.z - z) - pondSite.waterRadius
+      )
+    if (riverPath) {
+      for (const point of riverPath.points) {
+        const d = Math.hypot(point.x - x, point.z - z)
+        if (d < distance) distance = d
+      }
+    }
+    return distance
+  }
 
   // One sampler tap per vertex: the grid pitch equals `epsilon`, so the
   // finite-difference taps land exactly on neighbouring lattice points —
@@ -182,11 +214,48 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       (heights[far * lattice + column] - heights[near * lattice + column]) /
       ((far - near) * epsilon)
     slopes[index] = Math.hypot(gradientX, gradientZ)
+    gradients[index * 2] = gradientX
+    gradients[index * 2 + 1] = gradientZ
+    // Laplacian: negative on ridgelines, positive in hollows — curvature ink.
+    curvatures[index] =
+      heights[row * lattice + right] +
+      heights[row * lattice + left] +
+      heights[far * lattice + column] +
+      heights[near * lattice + column] -
+      4 * heights[index]
+    const wet = waterDistanceAt(positions.getX(index), positions.getZ(index))
+    moistures[index] = wet === Infinity ? 0 : 1 - Math.min(1, wet / 9)
   }
   positions.needsUpdate = true
   terrainGeometry.setAttribute('aSlope', new BufferAttribute(slopes, 1))
+  terrainGeometry.setAttribute('aGradient', new BufferAttribute(gradients, 2))
+  terrainGeometry.setAttribute('aCurve', new BufferAttribute(curvatures, 1))
+  terrainGeometry.setAttribute('aMoisture', new BufferAttribute(moistures, 1))
 
-  const contourMaterial = createContourMaterial(spacing * 4, summitSite?.snowlineY)
+  // The height field again at texture resolution, finer than the mesh:
+  // fragment-space contours never crumble along triangle edges.
+  const fieldSize = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 384 : 512
+  const fieldHalf = terrainSize / 2
+  const field = new Float32Array(fieldSize * fieldSize)
+  for (let row = 0; row < fieldSize; row++) {
+    for (let column = 0; column < fieldSize; column++) {
+      const x = (column / (fieldSize - 1)) * terrainSize - fieldHalf
+      const z = (row / (fieldSize - 1)) * terrainSize - fieldHalf
+      field[row * fieldSize + column] = sampler(x, z)
+    }
+  }
+  const heightMap = new DataTexture(field, fieldSize, fieldSize, RedFormat, FloatType)
+  heightMap.minFilter = LinearFilter
+  heightMap.magFilter = LinearFilter
+  heightMap.needsUpdate = true
+
+  const contourMaterial = createContourMaterial({
+    rippleRadius: spacing * 4,
+    biome,
+    heightMap,
+    heightHalf: fieldHalf,
+    snowlineY: summitSite?.snowlineY,
+  })
   group.add(new Mesh(terrainGeometry, contourMaterial))
 
   // --- Track ribbon ----------------------------------------------------------
@@ -378,6 +447,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   }
 
   const dispose = () => {
+    heightMap.dispose()
     group.traverse(child => {
       if (child instanceof Mesh || child instanceof InstancedMesh) {
         child.geometry.dispose()
@@ -395,6 +465,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     transforms,
     spacing,
     archetype: tilePath.archetype,
+    biome,
     summit: summitSite,
     contourMaterial,
     dispose,

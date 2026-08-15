@@ -1,5 +1,5 @@
-import { Color, ShaderMaterial, Vector2 } from 'three'
-import { BOARD_COLORS } from './colors'
+import { Color, type DataTexture, ShaderMaterial, Vector2 } from 'three'
+import type { BoardBiome } from './biomes'
 import { EDGE_FADE_END, EDGE_FADE_START, MAX_ELEVATION } from './terrain'
 
 export interface ContourMaterial extends ShaderMaterial {
@@ -10,127 +10,165 @@ export interface ContourMaterial extends ShaderMaterial {
   }
 }
 
-/** Cool near-white for the finale massif's snowcap — deliberately not
- *  sourMilk: against the warm cream page, the cold cast is what reads. */
-const SNOW_COLOR = '#eef4f7'
+export interface ContourMaterialOptions {
+  rippleRadius: number
+  biome: BoardBiome
+  /** High-res height field for fragment-space contours — the field the ink
+   *  traces is finer than the mesh, so lines never crumble along triangle
+   *  edges (proven in /test-terrain). */
+  heightMap: DataTexture
+  /** Half-extent of the square the height map covers, world units. */
+  heightHalf: number
+  /** Contour lines fade into the snow wash above this world elevation; only
+   *  a finale massif crosses a real snowline. */
+  snowlineY?: number
+}
 
 /**
- * Unlit topographic material: fwidth-antialiased iso-lines over a cream base.
- * Minor contours in soft blue, every 5th in dark blue — the clean-lined
- * editorial look, no lighting at all.
+ * The landscape material, grown from the plain iso-line shader through the
+ * /test-terrain lab: elevation + slope ramps and quantized hillshade model
+ * the land with zero lights; curvature inks ridgelines; moisture greens the
+ * water margins; hypsometric banding and hachures print the atlas layer;
+ * aerial perspective and valley mist give the far field air — all under the
+ * fwidth-antialiased contour ink, per-biome palettes throughout.
  *
- * Success feedback lives in the same language: `uRippleCenter` +
- * `uRippleProgress` (0→1) drive an expanding annulus that briefly tints the
- * contour lines mint around a landing tile.
- *
- * `snowlineY`: above this world elevation, contour lines fade out as a cool
- * snow wash fades in — the finale massif's cap. Only that peak crosses a real
- * snowline (hills top out at MAX_ELEVATION); the default parks it far above
- * everything. The fade doubles as the moiré guard: ring spacing tightens near
- * a summit, and the wash covers exactly the band where rings would alias.
+ * Success feedback is unchanged: `uRippleCenter` + `uRippleProgress` drive
+ * the expanding annulus that tints lines around a landing tile.
  */
-export const createContourMaterial = (rippleRadius: number, snowlineY = 1e6): ContourMaterial => {
+export const createContourMaterial = (options: ContourMaterialOptions): ContourMaterial => {
+  const { rippleRadius, biome, heightMap, heightHalf, snowlineY = 1e6 } = options
   const material = new ShaderMaterial({
     uniforms: {
-      uSnow: { value: new Color(SNOW_COLOR) },
-      uSnowline: { value: snowlineY },
-      uSnowBand: { value: 1.6 },
-      uBase: { value: new Color(BOARD_COLORS.sourMilk) },
-      uMinor: { value: new Color(BOARD_COLORS.softBlue) },
-      uMajor: { value: new Color(BOARD_COLORS.darkBlue) },
-      uSand: { value: new Color(BOARD_COLORS.warmSand) },
-      uMint: { value: new Color(BOARD_COLORS.softMint) },
+      uValley: { value: new Color(biome.valley) },
+      uMid: { value: new Color(biome.mid) },
+      uCrest: { value: new Color(biome.crest) },
+      uRock: { value: new Color(biome.rock) },
+      uLush: { value: new Color(biome.lush) },
+      uLit: { value: new Color(biome.lit) },
+      uShade: { value: new Color(biome.shade) },
+      uMinor: { value: new Color(biome.minor) },
+      uMajor: { value: new Color(biome.major) },
+      uSnow: { value: new Color(biome.snow) },
+      uAtmosphere: { value: new Color(biome.atmosphere) },
+      // The page the canvas clears to — the far fade must land EXACTLY here
+      // or the plane's edge draws itself (the horizon-seam bug).
+      uPage: { value: new Color('#fffaf5') },
+      uBanding: { value: biome.banding },
+      uHachure: { value: biome.hachure },
       uStep: { value: MAX_ELEVATION / 8 },
       uMajorEvery: { value: 5 },
       uLineWidth: { value: 0.9 },
       uMaxElevation: { value: MAX_ELEVATION },
+      uSnowline: { value: snowlineY },
+      uSnowBand: { value: 1.6 },
+      uHeightMap: { value: heightMap },
+      uHeightHalf: { value: heightHalf },
       uRippleCenter: { value: new Vector2() },
       uRippleProgress: { value: -1 },
       uRippleRadius: { value: rippleRadius },
       // Mint for landings, swapped to coral when a pawn slams into a challenge
-      uRippleColor: { value: new Color(BOARD_COLORS.softMint) },
+      uRippleColor: { value: new Color(biome.foam) },
       // Matches withEdgeFalloff's band, so lines, hills and tint melt together
+      uAtmoStart: { value: EDGE_FADE_START * 0.6 },
       uFadeStart: { value: EDGE_FADE_START },
       uFadeEnd: { value: EDGE_FADE_END },
     },
     vertexShader: /* glsl */ `
       attribute float aSlope;
+      attribute vec2 aGradient;
+      attribute float aCurve;
+      attribute float aMoisture;
 
       varying float vElevation;
       varying float vSlope;
+      varying vec2 vGradient;
+      varying float vCurve;
+      varying float vMoisture;
       varying vec2 vXZ;
 
       void main() {
         vElevation = position.y;
         vSlope = aSlope;
+        vGradient = aGradient;
+        vCurve = aCurve;
+        vMoisture = aMoisture;
         vXZ = position.xz;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uBase;
-      uniform vec3 uMinor;
-      uniform vec3 uMajor;
-      uniform vec3 uSand;
-      uniform vec3 uMint;
-      uniform vec3 uSnow;
-      uniform float uSnowline;
-      uniform float uSnowBand;
-      uniform float uStep;
-      uniform float uMajorEvery;
-      uniform float uLineWidth;
-      uniform float uMaxElevation;
-      uniform vec2 uRippleCenter;
-      uniform float uRippleProgress;
-      uniform float uRippleRadius;
-      uniform vec3 uRippleColor;
-      uniform float uFadeStart;
-      uniform float uFadeEnd;
+      uniform vec3 uValley; uniform vec3 uMid; uniform vec3 uCrest; uniform vec3 uRock;
+      uniform vec3 uLush; uniform vec3 uLit; uniform vec3 uShade;
+      uniform vec3 uMinor; uniform vec3 uMajor; uniform vec3 uSnow; uniform vec3 uAtmosphere;
+      uniform vec3 uPage;
+      uniform float uBanding; uniform float uHachure;
+      uniform float uStep; uniform float uMajorEvery; uniform float uLineWidth;
+      uniform float uMaxElevation; uniform float uSnowline; uniform float uSnowBand;
+      uniform sampler2D uHeightMap; uniform float uHeightHalf;
+      uniform vec2 uRippleCenter; uniform float uRippleProgress;
+      uniform float uRippleRadius; uniform vec3 uRippleColor;
+      uniform float uAtmoStart; uniform float uFadeStart; uniform float uFadeEnd;
 
-      varying float vElevation;
-      varying float vSlope;
-      varying vec2 vXZ;
+      varying float vElevation; varying float vSlope; varying vec2 vXZ;
+      varying vec2 vGradient; varying float vCurve; varying float vMoisture;
 
       float lineMask(float value, float stepSize, float width) {
         float derivative = max(fwidth(value), 1e-5);
-        float distance = abs(fract(value / stepSize - 0.5) - 0.5) * stepSize / derivative;
-        // AA band widened from +1.0 after Isaac's aliasing report: the line
-        // edge crumbled where the coarse terrain lattice interpolates the
-        // elevation across a whole pixel-scale ring period.
-        float mask = 1.0 - smoothstep(width, width + 1.8, distance);
-        // When contours pack tighter than the antialiasing can resolve (the
-        // far field at grazing camera angles), the smeared lines read as a
-        // grey wash over the cream — and that wash meeting the clean page at
-        // the plane's edge was the visible horizon seam. Fade lines away as
-        // ring period approaches pixel scale; majors (5x the step) naturally
-        // survive the longest, which is correct topo behavior.
+        float dist = abs(fract(value / stepSize - 0.5) - 0.5) * stepSize / derivative;
+        float mask = 1.0 - smoothstep(width, width + 1.8, dist);
+        // Fade lines as their period approaches pixel scale — the far-field
+        // grey-wash and steep-flank moiré guard in one term.
         float density = derivative / stepSize;
         return mask * (1.0 - smoothstep(0.18, 0.5, density));
       }
 
       void main() {
-        // Fade lines out only on genuinely flat ground (the path shelf).
-        // World-space slope keeps line strength constant along a contour —
-        // screen-space derivatives vary with zoom/angle and looked patchy.
-        // The band's lower edge also culls contour micro-islands: tiny closed
-        // loops circling near-flat bumps that read as specks on the page.
+        // Painterly modelling with zero lights: elevation ramp, then the
+        // wet margin, then rock on steep ground.
+        float h = clamp(vElevation / uMaxElevation, 0.0, 2.4);
+        vec3 color = mix(uValley, uMid, smoothstep(0.25, 0.85, h));
+        color = mix(color, uCrest, smoothstep(0.85, 1.7, h));
+        color = mix(color, uLush, vMoisture * (1.0 - smoothstep(0.25, 0.8, vSlope)) * 0.55);
+        color = mix(color, uShade, smoothstep(0.86, 0.98, vMoisture) * 0.22);
+        color = mix(color, uRock, smoothstep(0.55, 1.35, vSlope) * 0.65);
+
+        // Quantized hillshade from the analytic normal — cartographic relief
+        // with a fixed NW sun.
+        vec3 normal = normalize(vec3(-vGradient.x, 1.0, -vGradient.y));
+        float lambert = dot(normal, normalize(vec3(-0.45, 0.85, -0.4)));
+        color = mix(color, uLit, smoothstep(0.86, 0.98, lambert) * 0.35);
+        color = mix(color, uShade, (1.0 - smoothstep(0.55, 0.78, lambert)) * 0.5);
+
+        // Curvature accents: ink the ridgelines, deepen the hollows.
+        color = mix(color, uMajor, smoothstep(0.06, 0.3, -vCurve) * 0.12);
+        color = mix(color, uShade, smoothstep(0.06, 0.3, vCurve) * 0.25);
+
+        // Contours trace the HIGH-RES height texture, not the vertex lattice.
+        float hField = texture2D(uHeightMap, (vXZ + uHeightHalf) / (2.0 * uHeightHalf)).r;
+
+        // Hypsometric banding: the printed-atlas layer.
+        float hQuant = (floor(hField / uStep) + 0.5) * uStep / uMaxElevation;
+        color = mix(color, mix(uValley, uCrest, clamp(hQuant * 0.7, 0.0, 1.0)), uBanding);
+
         float flatness = smoothstep(0.02, 0.06, vSlope);
-        // Contours dissolve toward the horizon instead of ending at a hard edge
         float edgeFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, length(vXZ));
-        // Lines hand over to the snow wash across the snowline band
         float snow = smoothstep(uSnowline, uSnowline + uSnowBand, vElevation);
         float strength = flatness * edgeFade * (1.0 - snow);
-        float minor = lineMask(vElevation, uStep, uLineWidth) * strength;
-        float major = lineMask(vElevation, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
 
-        // Near-imperceptible warm tint toward peaks for depth without shading;
-        // it drains with edgeFade so the rim lands on exactly the page color.
-        // Clamped: the finale massif rises past uMaxElevation, and unclamped
-        // it dragged the mix 2-3x past the wash the palette was tuned for.
-        vec3 color = mix(uBase, uSand, clamp(vElevation / uMaxElevation, 0.0, 1.0) * 0.08 * edgeFade);
-        color = mix(color, uMinor, minor * 0.95);
+        // Hachures: downslope strokes curving with the gradient on mid-slopes.
+        vec2 downslope = normalize(vGradient + vec2(1e-4));
+        float across = dot(vXZ, vec2(-downslope.y, downslope.x)) * 0.85;
+        float acrossWidth = fwidth(across);
+        float stroke = 1.0 - smoothstep(0.3, 0.3 + acrossWidth * 2.2, abs(fract(across) - 0.5) * 2.0);
+        stroke *= 1.0 - smoothstep(0.45, 1.1, acrossWidth);
+        float hachureBand = smoothstep(0.24, 0.42, vSlope) * (1.0 - smoothstep(0.85, 1.25, vSlope));
+        color = mix(color, uMajor, stroke * hachureBand * uHachure * edgeFade * (1.0 - snow));
+
+        float minor = lineMask(hField, uStep, uLineWidth) * strength;
+        float major = lineMask(hField, uStep * uMajorEvery, uLineWidth * 1.6) * strength;
+        color = mix(color, uMinor, minor * 0.9);
         color = mix(color, uMajor, major);
-        color = mix(color, uSnow, snow * 0.85);
+        color = mix(color, uSnow, snow * 0.9);
 
         if (uRippleProgress >= 0.0) {
           float radius = uRippleProgress * uRippleRadius;
@@ -144,15 +182,19 @@ export const createContourMaterial = (rippleRadius: number, snowlineY = 1e6): Co
           color = mix(color, uRippleColor, annulus * fade * 0.3);
         }
 
+        // Aerial perspective, then valley mist (LOW far ground drowns first),
+        // then the page fade — which must land exactly on the clear color.
+        float aerial = smoothstep(uAtmoStart, uFadeStart, length(vXZ));
+        color = mix(color, uAtmosphere, aerial * 0.55);
+        float mist = smoothstep(uAtmoStart * 0.7, uFadeStart, length(vXZ)) *
+          (1.0 - smoothstep(uMaxElevation * 0.35, uMaxElevation * 0.95, vElevation));
+        color = mix(color, uAtmosphere, mist * 0.45);
+        color = mix(color, uPage, smoothstep(uFadeStart, uFadeEnd, length(vXZ)));
+
         gl_FragColor = vec4(color, 1.0);
-        // Colorspace conversion ONLY — deliberately no tonemapping chunk.
-        // Without the conversion, a custom ShaderMaterial outputs raw linear
-        // color and the terrain rendered a shade darker than the identical
-        // clear color behind it, drawing the plane's edge as a hard horizon
-        // seam. Tone mapping must stay OUT: the renderer tone-maps materials
-        // but never the clear color, so a tone-mapped terrain can never match
-        // the page — converted-but-unmapped output makes the far field
-        // EXACTLY the authored cream the canvas clears to.
+        // Colorspace conversion ONLY — no tonemapping chunk: the renderer
+        // never tone-maps the clear color, so converted-but-unmapped output
+        // is what makes the far field EXACTLY the page the canvas clears to.
         #include <colorspace_fragment>
       }
     `,
