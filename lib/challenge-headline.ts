@@ -43,7 +43,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
         : ''
     case 'tongue-buzz':
       return '_type' in challenge && challenge._type === 'tongue-buzz-challenge'
-        ? `That was ${challenge.language} — official in ${challenge.countries.length} countries${challenge.scope ? ` ${motherTongueScope(challenge)}` : ''}`
+        ? `That was ${challenge.language} — spoken in ${challenge.countries.length} countries${challenge.scope ? ` ${motherTongueScope(challenge)}` : ''}`
         : ''
     case 'hot-cold':
       return '_type' in challenge && challenge._type === 'hot-cold-challenge'
@@ -102,7 +102,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       // The scope only earns its words on a regional board; on a world board
       // "in the world" is what the line already meant.
       return '_type' in challenge && challenge._type === 'mother-tongue-challenge'
-        ? `${challenge.language} — official in ${challenge.countries.length} countries${challenge.scope ? ` ${motherTongueScope(challenge)}` : ''}`
+        ? `${challenge.language} — spoken in ${challenge.countries.length} countries${challenge.scope ? ` ${motherTongueScope(challenge)}` : ''}`
         : ''
     case 'ghost-state':
       return '_type' in challenge && challenge._type === 'ghost-state-challenge'

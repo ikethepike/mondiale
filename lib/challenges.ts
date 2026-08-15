@@ -115,6 +115,7 @@ import {
 } from './game-rules'
 import { pickChainSeed } from './chain'
 import { flagSwatches } from './audio-palette'
+import { boardSpeakers } from './language-rounds'
 import { seededTongueSample } from './tongue-samples'
 import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
@@ -643,19 +644,12 @@ const getTongueBuzzChallenge = ({
   game: gameTypes.Game
 }): TongueBuzzChallenge | undefined => {
   const pool = playableCountries(game)
-  // OFFICIAL languages, like Mother Tongue: this round's own prompt says "where
-  // that language is official", so the set it grades has to mean it. Reading
-  // the spoken list both rejected countries where it IS official (Burundi for
-  // English, Rwanda for Swahili) and accepted ones where it isn't.
-  const speakers = new Map<string, ISOCountryCode[]>()
-  for (const isoCode of pool) {
-    for (const language of COUNTRIES[isoCode].officialLanguages ?? []) {
-      if (!TONGUES[language]) continue
-      speakers.set(language, [...(speakers.get(language) ?? []), isoCode])
-    }
-  }
+  // Everyone who speaks it, like Mother Tongue: the round asks where a voice
+  // is understood, not where a statute names it, so `boardSpeakers` reads both
+  // language fields and the two rounds can't disagree about a country.
+  const speakers = [...boardSpeakers(pool)].filter(([language]) => TONGUES[language])
 
-  const entry = sample([...speakers.entries()])
+  const entry = sample(speakers)
   if (!entry) return undefined
 
   const [language, countries] = entry
@@ -1021,7 +1015,7 @@ const getNameWaterChallenge = async (
   }
 }
 
-/** How many countries on the board have this as an official language. */
+/** How many countries on the board speak this language. */
 const MOTHER_TONGUE_MIN_SPEAKERS = 3
 const MOTHER_TONGUE_MAX_SPEAKERS = 12
 const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge | undefined => {
@@ -1029,17 +1023,9 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
 
   // Count on-board speakers per language, keep the answerable band (a language
   // spoken by 3–12 board countries — fewer is guessable, more is a slog).
-  // OFFICIAL languages only: the round says "as an official language" on its
-  // own interstitial, so the set it grades has to mean it.
-  const speakers = new Map<string, ISOCountryCode[]>()
-  for (const isoCode of pool) {
-    for (const language of COUNTRIES[isoCode].officialLanguages ?? []) {
-      const list = speakers.get(language) ?? []
-      list.push(isoCode)
-      speakers.set(language, list)
-    }
-  }
-  const viable = [...speakers.entries()].filter(
+  // `boardSpeakers` counts every speaker, official or not, because that is what
+  // the round asks and what it credits.
+  const viable = [...boardSpeakers(pool)].filter(
     ([, countries]) =>
       countries.length >= MOTHER_TONGUE_MIN_SPEAKERS &&
       countries.length <= MOTHER_TONGUE_MAX_SPEAKERS

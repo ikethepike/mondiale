@@ -177,8 +177,8 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
         return {
           submitted: 'Your Answers',
           correct: scope
-            ? `Where It's Official in ${REGION_LABELS[scope]}`
-            : "Everywhere It's Official",
+            ? `Where It's Spoken in ${REGION_LABELS[scope]}`
+            : "Everywhere It's Spoken",
         }
       }
       case 'clean-sweep':

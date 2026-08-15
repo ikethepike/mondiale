@@ -74,6 +74,11 @@
       max-height: none;
       overflow-x: auto;
       overflow-y: hidden;
+      // One row, and it keeps all of it. A scroller is shrinkable, so in a
+      // footer the keyboard had squeezed the trail gave up its height and
+      // served the top half of a chip — a rail has nothing to scroll to
+      // vertically, so it must never be the one that gives way.
+      flex: none;
       justify-content: flex-start;
       scroll-snap-type: x proximity;
       scrollbar-width: none;

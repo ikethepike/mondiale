@@ -193,6 +193,7 @@ import AnswerLedger from '~/components/challenge/AnswerLedger.vue'
 import { sweepClaimedBy as claimedByFor } from '~~/lib/clean-sweep'
 import { scorecardRevealsFor, type ScorecardRevealContext } from '~/components/view/scores/reveals'
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
+import { tongueBuzzTally } from '~~/lib/language-rounds'
 import { playerDisplayName } from '~~/lib/player'
 import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
@@ -441,9 +442,7 @@ const audioReveal = computed(() => {
     return {
       subject: challenge.language,
       countryCode: undefined,
-      subtitle: `Official in ${challenge.countries.length} ${
-        challenge.countries.length === 1 ? 'country' : 'countries'
-      } — any of them counted`,
+      subtitle: `${tongueBuzzTally(challenge)} — any of them counted`,
       credit: undefined,
       // The scorecard replays one voice, not the sequence — first sample.
       clip: challenge.clips[0],

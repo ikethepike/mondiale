@@ -934,7 +934,7 @@ const longAtlasGame = (finished: boolean): Game => {
 }
 
 /** The Tongues rungs: a language, its clip files, and who speaks it. Swahili is
- *  official in four countries, so the any-speaker rule shows in its reveal. */
+ *  spoken across four countries, so the any-speaker rule shows in its reveal. */
 const TONGUE_RUNGS: {
   [id: string]: {
     language: string
@@ -1933,7 +1933,7 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'mother-tongue-regional-reveal',
-    label: 'Mother tongue — Europe board scorecard (scoped "official" label)',
+    label: 'Mother tongue — Europe board scorecard (scoped "spoken" label)',
     build: () => {
       const countries: ISOCountryCode[] = ['FR', 'BE', 'LU', 'MC', 'CH']
       const game = mockGame('group-scores', [

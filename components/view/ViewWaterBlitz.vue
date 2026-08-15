@@ -17,7 +17,7 @@
     </ChallengePrompt>
 
     <footer ref="consoleFooter" class="suggest-berth">
-      <TransitionGroup tag="ol" name="chain" class="country-chip-list">
+      <TransitionGroup ref="trail" tag="ol" name="chain" class="country-chip-list rail">
         <CountryChip
           v-for="isoCode in guesses"
           :key="isoCode"
@@ -54,6 +54,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { touchesButOffKey } from '~~/lib/off-board'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { countryName, getCountry } from '~~/lib/country'
+import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -156,6 +157,9 @@ const {
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
+
+// The caught chips ride the phone's one-row rail — it follows the newest.
+const { trail } = useChipTrail(() => guesses.value.length)
 </script>
 <!-- Chips, list layout and the chain landing all come from shared templates. -->
 <style lang="scss" scoped>

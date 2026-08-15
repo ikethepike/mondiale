@@ -23,7 +23,7 @@
     </ChallengePrompt>
 
     <footer>
-      <TransitionGroup ref="probeList" tag="ol" name="chain" class="country-chip-list rail">
+      <TransitionGroup ref="trail" tag="ol" name="chain" class="country-chip-list rail">
         <CountryChip
           v-for="probe in probes"
           :key="probe.isoCode"
@@ -46,6 +46,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { bearingDegrees, compassArrow, compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
 import { formatApproxKm, formatKm } from '~~/lib/number'
@@ -81,17 +82,9 @@ interface Probe {
 
 const probes = ref<Probe[]>([])
 
-// On phones the trail is a single scrolling strip; keep the newest probe in
-// view. Harmless on desktop, where the wrapped list never overflows.
-const probeList = ref<{ $el: HTMLElement } | null>(null)
-watch(
-  () => probes.value.length,
-  async () => {
-    await nextTick()
-    const list = probeList.value?.$el
-    list?.scrollTo({ left: list.scrollWidth, behavior: 'smooth' })
-  }
-)
+// The probe trail rides the shared rail — it keeps the newest probe in view.
+const { trail } = useChipTrail(() => probes.value.length)
+
 const feedback = ref('')
 const warmthClass = ref<'hot' | 'warm' | 'cold' | ''>('')
 

@@ -43,7 +43,7 @@
     </ChallengePrompt>
 
     <footer v-if="!revealed" ref="consoleFooter" class="suggest-berth">
-      <TransitionGroup tag="ol" name="chain" class="country-chip-list">
+      <TransitionGroup ref="trail" tag="ol" name="chain" class="country-chip-list rail">
         <CountryChip
           v-for="isoCode in guesses"
           :key="isoCode"
@@ -78,6 +78,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { MOTION } from '~~/lib/motion'
 import { terraTheatre, terraVanishedBy } from '~~/lib/terra-incognita'
+import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -150,6 +151,9 @@ const {
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
+
+// The restored names ride the phone's one-row rail — it follows the newest.
+const { trail } = useChipTrail(() => guesses.value.length)
 
 /** Gone and not yet named back — what the collapse gauge counts. */
 const outstanding = computed(() => gone.value.filter(isoCode => !found.value.includes(isoCode)))
