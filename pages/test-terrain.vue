@@ -553,13 +553,20 @@ const birdMaterial = (color: string) =>
       uniform float uTime;
       void main() {
         vec3 p = position;
-        p.y += sin(uTime * 7.0 + aFlight.x * 5.0) * aWing * 0.4;
+        // Flap: outer wing leads, inner follows a beat behind.
+        float beat = uTime * (5.5 + aFlight.z * 14.0) + aFlight.x * 5.0;
+        p.y += sin(beat) * aWing * 0.45 + sin(beat - 0.6) * aWing * aWing * 0.25;
+        // Bank into the turn: roll around the body axis, harder on tight orbits.
+        float bank = 0.5 * (10.0 / aFlight.y);
+        p = vec3(p.x * cos(bank) - p.y * sin(bank), p.x * sin(bank) + p.y * cos(bank), p.z);
         float a = uTime * aFlight.z + aFlight.x;
         // Face along the orbit's tangent.
         float yaw = atan(cos(a), -sin(a));
         p = vec3(p.x * cos(yaw) + p.z * sin(yaw), p.y, -p.x * sin(yaw) + p.z * cos(yaw));
         p.x += sin(a) * aFlight.y;
         p.z += cos(a) * aFlight.y;
+        // A slow rise and fall along the loop — gliding, not a carousel.
+        p.y += sin(a * 2.0 + aFlight.x) * 1.1;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
       }
     `,
@@ -574,11 +581,27 @@ const birdMaterial = (color: string) =>
 
 const birdGeometry = () => {
   const geometry = new BufferGeometry()
-  // A chevron: two wing triangles meeting at the body, tips flagged for flap.
+  // A gull "m": each wing is two segments — a lifted inner panel and a
+  // swept, drooping outer blade — so the silhouette reads as a bird from
+  // every angle, not a dart. aWing drives the flap, strongest at the tips.
+  // prettier-ignore
   const vertices = new Float32Array([
-    0, 0, 0.3, -0.5, 0, -0.05, -1.25, 0.22, -0.4, 0, 0, 0.3, 1.25, 0.22, -0.4, 0.5, 0, -0.05,
+    // left inner panel
+    0, 0.02, 0.32,   -0.62, 0.3, 0.02,   -0.5, 0.16, -0.28,
+    // left outer blade
+    -0.62, 0.3, 0.02,   -1.45, 0.08, -0.42,   -0.5, 0.16, -0.28,
+    // right inner panel
+    0, 0.02, 0.32,   0.5, 0.16, -0.28,   0.62, 0.3, 0.02,
+    // right outer blade
+    0.62, 0.3, 0.02,   0.5, 0.16, -0.28,   1.45, 0.08, -0.42,
   ])
-  const wings = new Float32Array([0, 0.3, 1, 0, 1, 0.3])
+  // prettier-ignore
+  const wings = new Float32Array([
+    0, 0.35, 0.28,
+    0.35, 1, 0.28,
+    0, 0.28, 0.35,
+    0.35, 0.28, 1,
+  ])
   geometry.setAttribute('position', new BufferAttribute(vertices, 3))
   geometry.setAttribute('aWing', new BufferAttribute(wings, 1))
   return geometry
@@ -595,9 +618,17 @@ const foliageMaterial = (color: string, sway: number) =>
       varying float vShade;
       void main() {
         vec3 p = position;
-        float reach = max(p.y, 0.0);
-        p.x += sin(uTime * 0.8 + aPhase) * reach * reach * uSway;
-        p.z += cos(uTime * 0.66 + aPhase * 1.3) * reach * reach * uSway * 0.6;
+        float reach = pow(max(p.y, 0.0), 1.3);
+        // WIND, not jitter: a wave with spatial phase from the instance's
+        // world origin, so gusts visibly TRAVEL through the field — whole
+        // stretches of meadow bow together and recover.
+        vec3 origin = vec3(instanceMatrix[3]);
+        float gust =
+          sin(uTime * 1.3 + origin.x * 0.11 + origin.z * 0.07) +
+          0.5 * sin(uTime * 2.1 + origin.x * 0.23 + aPhase) +
+          0.25 * sin(uTime * 3.4 + aPhase * 2.0);
+        p.x += gust * reach * uSway;
+        p.z += gust * reach * uSway * 0.35;
         vShade = 0.88 + 0.12 * sin(aPhase * 3.7);
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
       }
@@ -881,7 +912,7 @@ const buildWorld = (name: string) => {
         ? new CylinderGeometry(0.28, 0.5, 2.6, 6)
         : new ConeGeometry(0.55, 2.8, 4)
   canopy.translate(0, preset.foliage === 'trees' ? 2.1 : 1.3, 0)
-  const canopyMaterial = foliageMaterial(preset.foliageColor, prefersReducedMotion() ? 0 : 0.012)
+  const canopyMaterial = foliageMaterial(preset.foliageColor, prefersReducedMotion() ? 0 : 0.03)
   timeUniforms.push(canopyMaterial.uniforms.uTime)
   const canopyMesh = new InstancedMesh(canopy, canopyMaterial, spots.length)
 
@@ -938,7 +969,7 @@ const buildWorld = (name: string) => {
     const tuft = mergeGeometries([bladeA, bladeB])
     bladeA.dispose()
     bladeB.dispose()
-    const tuftMaterial = foliageMaterial(preset.stippleColor, prefersReducedMotion() ? 0 : 0.16)
+    const tuftMaterial = foliageMaterial(preset.stippleColor, prefersReducedMotion() ? 0 : 0.6)
     timeUniforms.push(tuftMaterial.uniforms.uTime as { value: number })
     const tuftMesh = new InstancedMesh(tuft, tuftMaterial, tuftSpots.length)
     const tuftPhases = new Float32Array(tuftSpots.length)
@@ -965,19 +996,29 @@ const buildWorld = (name: string) => {
     const birds = birdGeometry()
     const birdShader = birdMaterial(preset.major)
     timeUniforms.push(birdShader.uniforms.uTime as { value: number })
+    // Birds fly in FLOCKS: a few share each orbit, phase-staggered so they
+    // chase one another around the loop instead of wandering alone.
     const birdMesh = new InstancedMesh(birds, birdShader, flock)
     const flights = new Float32Array(flock * 3)
-    for (let index = 0; index < flock; index++) {
-      const x = (prng() - 0.5) * SIZE * 0.7
-      const z = (prng() - 0.5) * SIZE * 0.7
+    let placed = 0
+    while (placed < flock) {
+      const centerX = (prng() - 0.5) * SIZE * 0.7
+      const centerZ = (prng() - 0.5) * SIZE * 0.7
       const altitude = 20 + prng() * 8
-      const scale = 0.7 + prng() * 0.5
-      matrix.makeScale(scale, scale, scale)
-      matrix.setPosition(x, altitude, z)
-      birdMesh.setMatrixAt(index, matrix)
-      flights[index * 3] = prng() * Math.PI * 2
-      flights[index * 3 + 1] = 6 + prng() * 9
-      flights[index * 3 + 2] = 0.06 + prng() * 0.07
+      const radius = 7 + prng() * 8
+      const speed = 0.07 + prng() * 0.06
+      const flockmates = Math.min(flock - placed, 2 + Math.floor(prng() * 3))
+      const lead = prng() * Math.PI * 2
+      for (let mate = 0; mate < flockmates; mate++) {
+        const scale = 0.7 + prng() * 0.5
+        matrix.makeScale(scale, scale, scale)
+        matrix.setPosition(centerX, altitude + mate * 0.6, centerZ)
+        birdMesh.setMatrixAt(placed, matrix)
+        flights[placed * 3] = lead + mate * (0.45 + prng() * 0.2)
+        flights[placed * 3 + 1] = radius
+        flights[placed * 3 + 2] = speed
+        placed++
+      }
     }
     birds.setAttribute('aFlight', new InstancedBufferAttribute(flights, 3))
     group.add(birdMesh)
