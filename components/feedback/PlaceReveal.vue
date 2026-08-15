@@ -5,13 +5,12 @@
       <span class="copy">
         <strong class="name">{{ place.name }}</strong>
         <span class="where">
-          {{ place.curated?.city ? `${place.curated.city}, ` : ''
-          }}{{ countryName(getCountry(place.country)) }}
+          {{ place.city ? `${place.city}, ` : '' }}{{ countryName(getCountry(place.country)) }}
         </span>
         <span v-if="standing" class="standing">{{ standing }}</span>
       </span>
     </span>
-    <span v-if="place.description" class="description">{{ capitalize(place.description) }}</span>
+    <span v-if="prose" class="description">{{ capitalize(prose) }}</span>
     <span class="credit-row">
       <SourceInfo :attributions="sources" label="Sources" :item-credit="mediaCreditLine(place)" />
       <span class="credit">{{ sources[0].credit }}</span>
@@ -41,9 +40,9 @@ const KIND_COPY: { [kind in LandmarkKind]: string } = {
  * which is the fact the split datasets could never show in one reveal.
  */
 const standing = computed(() => {
+  const { curated, unesco, inception } = props.place
   const parts: string[] = []
-  if (props.place.curated) parts.push(KIND_COPY[props.place.curated.kind])
-  const { unesco } = props.place
+  if (curated) parts.push(KIND_COPY[curated.kind])
   if (unesco) {
     parts.push(
       unesco.inscribedYear
@@ -51,8 +50,13 @@ const standing = computed(() => {
         : 'A World Heritage Site'
     )
   }
+  if (inception) parts.push(inception < 0 ? `From ${Math.abs(inception)} BC` : `From ${inception}`)
   return parts.join(' · ')
 })
+
+/** The hand-written prose where we have it, else Wikidata's one-liner — a
+ *  place the curated roster never wrote up carries only the latter. */
+const prose = computed(() => props.place.description ?? props.place.summary)
 
 // The entry's own `imageSource` says whether the photo is Commons or
 // Unsplash — mediaCreditLine reads it, so no fallback source is passed.

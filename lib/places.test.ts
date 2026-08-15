@@ -149,6 +149,32 @@ describe('PLACES', () => {
     expect(PLACES['ha-long-bay']?.unesco).toBeDefined()
   })
 
+  it('takes the UNION of what both selections knew, never a winner per field', () => {
+    // The merge used to keep the curated prose and drop the register's
+    // one-liner for all 60 shared subjects. Both are kept now: they are
+    // different registers of fact, and one is all we have for a place the
+    // curated roster never wrote up.
+    const shared = Object.values(PLACES).filter(place => place.curated && place.unesco)
+    expect(shared.filter(place => place.description && place.summary).length).toBe(shared.length)
+
+    // Coverage can only improve: the curated pass never used to ask Wikidata
+    // for a description at all, so the handful still silent are places neither
+    // the facts file nor the register wrote up. Seven today, and the next
+    // generator run fetches summaries for the curated roster too.
+    const withText = Object.values(PLACES).filter(
+      place => place.description ?? place.summary
+    ).length
+    expect(withText).toBeGreaterThanOrEqual(726)
+  })
+
+  it('prefers the register point where the two sources disagree', () => {
+    // A curated Q-id often resolves to the municipality around a site rather
+    // than the site; the inscribed coordinate is the site's own. That gap put
+    // Copan's pin answer 40km from the ruins and Palenque's 27km from theirs.
+    expect(PLACES['copan']?.coordinates).toEqual({ lat: 14.838, lng: -89.1424 })
+    expect(PLACES['palenque']?.coordinates).toEqual({ lat: 17.4842, lng: -92.0464 })
+  })
+
   it('ranks fame per facet, so each roster keeps its own country icon', () => {
     // "France's best-known landmark" and "France's best-known World Heritage
     // site" are different questions — flattening them to one tier per place

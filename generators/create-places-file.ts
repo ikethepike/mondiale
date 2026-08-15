@@ -15,9 +15,11 @@ import { loadCountryShapes } from './vendors/naturalearth/country-shapes'
 import { resolveQidBySearch, saveImageUrl } from './vendors/wikidata/commons'
 import { hasUnsplashKey, saveUnsplashImage, saveUnsplashPhoto } from './vendors/unsplash/unsplash'
 import {
+  alsoKnownAs,
   assignFameByCountry,
   carryPreviousPlaces,
   claimValue,
+  claimYear,
   coordinatesOf,
   entityId,
   fetchCountryQidMap,
@@ -27,6 +29,7 @@ import {
   paginatedSearch,
   placeHasPhoto,
   placeSitsInCountry,
+  PLACE_ENTITY_PROPS,
   PLACE_IMAGE_DIRECTORY,
   PLACE_PHOTO_WIDTH,
   PLACE_PUBLIC_BASE,
@@ -101,16 +104,22 @@ for (const seed of LANDMARK_SEEDS) {
   await wait(150)
 }
 
-console.log('Reading curated locations (P131) and coordinates (P625)…')
+console.log('Reading curated locations, coordinates, summaries and renown…')
 const locationQidOf = new Map<string, string>()
 const locationLabelQids = new Set<string>()
 const coordinateOf = new Map<string, { lat: number; lng: number }>()
+/** Everything else the same response carried, keyed by landmark qid. */
+const seedExtras = new Map<
+  string,
+  { summary?: string; inception?: number; sitelinks: number; aliases: string[] }
+>()
 // Overridden seeds may carry an empty qid — never send those to the API.
 const seedQids = seeds.map(entry => entry.qid).filter(Boolean)
+const nameOfQid = new Map(seeds.map(({ seed, qid }) => [qid, seed.name]))
 for (let index = 0; index < seedQids.length; index += 30) {
   const batch = seedQids.slice(index, index + 30)
   const data = await fetchJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims&format=json`
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=${PLACE_ENTITY_PROPS}&format=json`
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
     const locationQid = entityId(claimValue(entity.claims, 'P131'))
@@ -118,9 +127,15 @@ for (let index = 0; index < seedQids.length; index += 30) {
       locationQidOf.set(qid, locationQid)
       locationLabelQids.add(locationQid)
     }
-    // P625 rides along in this same response — free.
+    // P625 and the rest ride along in this same response — free.
     const point = coordinatesOf(entity.claims)
     if (point) coordinateOf.set(qid, point)
+    seedExtras.set(qid, {
+      ...(entity.descriptions?.en?.value ? { summary: entity.descriptions.en.value } : {}),
+      ...(claimYear(entity.claims, 'P571') ? { inception: claimYear(entity.claims, 'P571') } : {}),
+      sitelinks: Object.keys(entity.sitelinks ?? {}).length,
+      aliases: alsoKnownAs(entity, nameOfQid.get(qid) ?? ''),
+    })
   }
   await wait(200)
 }
@@ -186,10 +201,15 @@ interface Site {
   coordinates: { lat: number; lng: number }
   inscribedYear?: number
   description?: string
-  /** Criterion item Q-ids (P2614), resolved to a designation after the sweep. */
+  /** Criterion item Q-ids (P2614), resolved to numerals after the sweep. */
   criteria: string[]
   /** Wikipedia sitelink count — the ranking signal behind the fame tier. */
   sitelinks: number
+  inception?: number
+  aliases: string[]
+  /** Admin location (P131) — the register never used to read this, so no
+   *  heritage site had a city. It was in the response the whole time. */
+  locationQid?: string
 }
 
 const sites: Site[] = []
@@ -197,7 +217,7 @@ let skipped = 0
 for (let index = 0; index < siteQids.length; index += 20) {
   const batch = siteQids.slice(index, index + 20)
   const data = await fetchJson<EntityResponse>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=claims|labels|descriptions|sitelinks&languages=en&languagefallback=1&format=json`
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${batch.join('|')}&props=${PLACE_ENTITY_PROPS}&languages=en&languagefallback=1&format=json`
   )
   for (const [qid, entity] of Object.entries(data?.entities ?? {})) {
     const name = entity.labels?.en?.value
@@ -226,6 +246,11 @@ for (let index = 0; index < siteQids.length; index += 20) {
         .map(statement => entityId(statement.mainsnak?.datavalue?.value))
         .filter((id): id is string => !!id),
       sitelinks: Object.keys(entity.sitelinks ?? {}).length,
+      ...(claimYear(entity.claims, 'P571') ? { inception: claimYear(entity.claims, 'P571') } : {}),
+      aliases: alsoKnownAs(entity, name),
+      ...(entityId(claimValue(entity.claims, 'P131'))
+        ? { locationQid: entityId(claimValue(entity.claims, 'P131')) }
+        : {}),
     })
   }
   process.stdout.write(`\r  ${Math.min(index + 20, siteQids.length)}/${siteQids.length} read`)
@@ -243,14 +268,27 @@ for (const [qid, label] of criterionLabels) {
   if (numeral) numeralOfCriterion.set(qid, numeral)
 }
 
-const designationOf = (site: Site): HeritageDesignation | undefined => {
-  const numerals = site.criteria
+/** The roman numerals a site was inscribed under — the raw UNESCO judgement,
+ *  kept alongside the one-word designation it collapses to. */
+const numeralsOf = (site: Site): string[] =>
+  site.criteria
     .map(qid => numeralOfCriterion.get(qid))
     .filter((numeral): numeral is string => !!numeral)
+
+const designationOf = (numerals: string[]): HeritageDesignation | undefined => {
   if (!numerals.length) return undefined
   const cultural = numerals.some(numeral => CULTURAL_NUMERALS.has(numeral))
   const natural = numerals.some(numeral => !CULTURAL_NUMERALS.has(numeral))
   return cultural && natural ? 'mixed' : natural ? 'natural' : 'cultural'
+}
+
+// The register's P131 labels, resolved the same way the curated pass does.
+const heritageLocationQids = sites
+  .map(site => site.locationQid)
+  .filter((qid): qid is string => !!qid)
+  .filter(qid => !locationLabels.has(qid))
+for (const [qid, label] of await fetchLabels([...new Set(heritageLocationQids)])) {
+  locationLabels.set(qid, label)
 }
 
 console.log('Validating heritage coordinates against country polygons…')
@@ -287,9 +325,14 @@ console.log(
 interface Draft {
   slug: string
   name: string
+  alsoKnownAs: Set<string>
   country: ISOCountryCode
+  city?: string
   coordinates?: { lat: number; lng: number }
   description?: string
+  summary?: string
+  inception?: number
+  sitelinks?: number
   curated?: CuratedFacet
   unesco?: UnescoFacet
   /** The Q-id whose Commons photo illustrates this place. */
@@ -302,16 +345,21 @@ const drafts = new Map<string, Draft>()
 
 for (const entry of curatedRoster) {
   const slug = slugify(entry.name)
-  const city = locationQidOf.get(entry.qid)
-    ? locationLabels.get(locationQidOf.get(entry.qid)!)
-    : undefined
+  const locationQid = locationQidOf.get(entry.qid)
+  const city = locationQid ? locationLabels.get(locationQid) : undefined
+  const extras = seedExtras.get(entry.qid)
   drafts.set(slug, {
     slug,
     name: entry.name,
+    alsoKnownAs: new Set(extras?.aliases ?? []),
     country: entry.country,
+    ...(city ? { city } : {}),
     ...(coordinateOf.get(entry.qid) ? { coordinates: coordinateOf.get(entry.qid) } : {}),
     ...(LANDMARK_FACTS[slug] ? { description: LANDMARK_FACTS[slug] } : {}),
-    curated: { fame: entry.fame, kind: entry.kind, ...(city ? { city } : {}) },
+    ...(extras?.summary ? { summary: extras.summary } : {}),
+    ...(extras?.inception ? { inception: extras.inception } : {}),
+    ...(extras?.sitelinks ? { sitelinks: extras.sitelinks } : {}),
+    curated: { fame: entry.fame, kind: entry.kind },
     photoQid: entry.qid,
     seed: entry,
   })
@@ -325,30 +373,46 @@ for (const site of heritageRoster) {
   // that happens to share a name — give the site its own.
   if (existing && existing.country !== site.country) slug = `${slug}-${site.country.toLowerCase()}`
 
-  const designation = designationOf(site)
+  const numerals = numeralsOf(site)
+  const designation = designationOf(numerals)
   const facet: UnescoFacet = {
     fame: site.fame,
     ...(site.inscribedYear ? { inscribedYear: site.inscribedYear } : {}),
+    ...(numerals.length ? { criteria: numerals } : {}),
     ...(designation ? { designation } : {}),
   }
+  const city = site.locationQid ? locationLabels.get(site.locationQid) : undefined
 
   const draft = drafts.get(slug)
   if (draft) {
-    // Same subject, both rosters. The curated identity wins — its name, its
-    // prose and its photo were chosen by hand — and the sweep contributes its
-    // facet plus anything the curation left blank.
+    // Same subject, both rosters — so take the union, not a winner. The curated
+    // identity leads (its name and prose were chosen by hand) and everything
+    // the register knows is folded in beside it rather than discarded.
     draft.unesco = facet
-    draft.description ??= site.description
-    draft.coordinates ??= roundCoordinates(site.coordinates)
+    draft.summary ??= site.description
+    draft.city ??= city
+    draft.inception ??= site.inception
+    draft.sitelinks ??= site.sitelinks
+    if (site.name !== draft.name) draft.alsoKnownAs.add(site.name)
+    for (const alias of site.aliases) draft.alsoKnownAs.add(alias)
+    // The one field where the register OUTRANKS the curation: an inscribed
+    // site's registered point is the site's own coordinate, while the curated
+    // Q-id often resolves to the municipality around it. That gap put Copán's
+    // pin answer 40km from the ruins and Palenque's 27km from theirs.
+    draft.coordinates = roundCoordinates(site.coordinates)
     sharedSubjects++
     continue
   }
   drafts.set(slug, {
     slug,
     name: site.name,
+    alsoKnownAs: new Set(site.aliases),
     country: site.country,
+    ...(city ? { city } : {}),
     coordinates: roundCoordinates(site.coordinates),
-    ...(site.description ? { description: site.description } : {}),
+    ...(site.description ? { summary: site.description } : {}),
+    ...(site.inception ? { inception: site.inception } : {}),
+    ...(site.sitelinks ? { sitelinks: site.sitelinks } : {}),
     unesco: facet,
     photoQid: site.qid,
   })
@@ -453,11 +517,16 @@ for (const draft of drafts.values()) {
 
   mapping[slug] = {
     name: draft.name,
+    ...(draft.alsoKnownAs.size ? { alsoKnownAs: [...draft.alsoKnownAs].sort() } : {}),
     country: draft.country,
+    ...(draft.city ? { city: draft.city } : {}),
     image: publicPath,
     ...(media ?? {}),
     ...(draft.coordinates ? { coordinates: draft.coordinates } : {}),
     ...(draft.description ? { description: draft.description } : {}),
+    ...(draft.summary ? { summary: draft.summary } : {}),
+    ...(draft.inception ? { inception: draft.inception } : {}),
+    ...(draft.sitelinks ? { sitelinks: draft.sitelinks } : {}),
     ...(draft.curated ? { curated: draft.curated } : {}),
     ...(draft.unesco ? { unesco: draft.unesco } : {}),
   } satisfies PlaceEntry

@@ -35,20 +35,38 @@ export interface GlobeCoordinate {
   precision?: number
 }
 
-export type StatementValue = string | { id?: string } | GlobeCoordinate | undefined
+/** Wikidata's `time` datavalue, e.g. `+1889-01-01T00:00:00Z`. */
+export interface TimeValue {
+  time?: string
+}
+
+export type StatementValue = string | { id?: string } | GlobeCoordinate | TimeValue | undefined
 
 export interface Statement {
   rank: 'preferred' | 'normal' | 'deprecated'
   mainsnak?: { datavalue?: { value?: StatementValue } }
-  qualifiers?: { [property: string]: { datavalue?: { value?: { time?: string } } }[] }
+  qualifiers?: { [property: string]: { datavalue?: { value?: TimeValue } }[] }
 }
 
 export interface Entity {
   claims?: { [property: string]: Statement[] }
   labels?: { en?: { value: string } }
+  aliases?: { en?: { value: string }[] }
   descriptions?: { en?: { value: string } }
   sitelinks?: { [site: string]: unknown }
 }
+
+/**
+ * Everything worth having about a place, in one request per batch.
+ *
+ * The claims, labels, descriptions, aliases and sitelinks all ride the SAME
+ * response — asking for fewer props does not make the call cheaper, it just
+ * throws the rest away. The two generators used to do exactly that in opposite
+ * directions: the curated pass asked for claims only (so it never saw a
+ * summary or a sitelink count) and the register pass never read P131 (so no
+ * heritage site had a city).
+ */
+export const PLACE_ENTITY_PROPS = 'claims|labels|aliases|descriptions|sitelinks'
 
 export interface EntityResponse {
   entities?: { [id: string]: Entity }
@@ -60,6 +78,9 @@ export interface LabelResponse {
 
 export const isGlobeCoordinate = (value: StatementValue): value is GlobeCoordinate =>
   typeof value === 'object' && value !== null && 'latitude' in value
+
+export const isTimeValue = (value: StatementValue): value is TimeValue =>
+  typeof value === 'object' && value !== null && 'time' in value
 
 /** An `wikibase-entityid` datavalue — a reference to another Q-item. */
 export const entityId = (value: StatementValue): string | undefined =>
@@ -76,6 +97,26 @@ export const claimValue = (
   claims: Entity['claims'],
   property: string
 ): StatementValue | undefined => ranked(claims?.[property])[0]?.mainsnak?.datavalue?.value
+
+/** A Wikidata `time` datavalue's year (P571 inception, P580 start). Wikidata
+ *  writes these as `+1889-01-01T00:00:00Z`, negative for BC. */
+export const claimYear = (claims: Entity['claims'], property: string): number | undefined => {
+  const time = ranked(claims?.[property])[0]?.mainsnak?.datavalue?.value
+  const text = isTimeValue(time) ? time.time : undefined
+  if (!text) return undefined
+  const year = Number(text.slice(0, 5))
+  return Number.isFinite(year) && year !== 0 ? year : undefined
+}
+
+/** English aliases, plus any label variant worth keeping as another name. */
+export const alsoKnownAs = (entity: Entity, primary: string): string[] => {
+  const names = new Set<string>()
+  for (const alias of entity.aliases?.en ?? []) if (alias.value) names.add(alias.value)
+  const label = entity.labels?.en?.value
+  if (label) names.add(label)
+  names.delete(primary)
+  return [...names]
+}
 
 /** The point (P625) of an entity, when it has one. */
 export const coordinatesOf = (
