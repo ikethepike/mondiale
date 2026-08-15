@@ -1138,27 +1138,39 @@ const buildClimbPlatforms = (site: SummitSite, spacing: number): Mesh[] => {
   const matrix = new Matrix4()
   const quaternion = new Quaternion()
   const up = new Vector3(0, 1, 0)
-  const deckSpan = spacing * 0.58
 
   for (const anchor of site.climbAnchors.slice(0, -1)) {
     // Local +z points radially OUT of the mountain; braces run down-inward.
     quaternion.setFromAxisAngle(up, Math.atan2(anchor.x - site.center.x, anchor.z - site.center.z))
     matrix.compose(new Vector3(anchor.x, anchor.y, anchor.z), quaternion, new Vector3(1, 1, 1))
 
+    // A SHELF facing out: wider across than deep, its outer half projecting
+    // over the downslope, the carved scarp closing the triangle behind it.
+    const shelfWidth = spacing * 0.66
+    const shelfDepth = spacing * 0.52
     const parts: MarkerPart[] = []
-    const deck = new BoxGeometry(deckSpan, LEDGE_SLAB_INSET + 0.06, deckSpan)
+    const deck = new BoxGeometry(shelfWidth, LEDGE_SLAB_INSET + 0.06, shelfDepth)
     deck.translate(0, -(LEDGE_SLAB_INSET + 0.06) / 2, 0)
     parts.push({ geometry: deck, color: BOARD_COLORS.warmSand })
 
-    // A bearer under the outer lip, then the two diagonal struts.
-    const bearer = new BoxGeometry(deckSpan * 0.92, 0.09 * spacing, 0.09 * spacing)
-    bearer.translate(0, -LEDGE_SLAB_INSET - 0.1 * spacing, deckSpan * 0.38)
+    // The bearer ties the strut tops along the outer lip...
+    const bearer = new BoxGeometry(shelfWidth * 0.92, 0.09 * spacing, 0.09 * spacing)
+    bearer.translate(0, -LEDGE_SLAB_INSET - 0.08 * spacing, shelfDepth * 0.36)
     parts.push({ geometry: bearer, color: BOARD_COLORS.darkBlue })
+
+    // ...and two struts at a TRUE 45° feed from the flank up into it — the
+    // bracket-shelf triangle: shelf, wall, hypotenuse.
+    const strutLength = spacing * 0.95
+    const halfReach = (strutLength / 2) * Math.SQRT1_2
     for (const side of [-1, 1]) {
-      const brace = new BoxGeometry(0.07 * spacing, 0.07 * spacing, spacing * 0.85)
-      brace.rotateX(-0.95)
-      brace.translate(side * deckSpan * 0.32, -LEDGE_SLAB_INSET - spacing * 0.3, deckSpan * 0.12)
-      parts.push({ geometry: brace, color: BOARD_COLORS.darkBlue })
+      const strut = new BoxGeometry(0.08 * spacing, 0.08 * spacing, strutLength)
+      strut.rotateX(-Math.PI / 4)
+      strut.translate(
+        side * shelfWidth * 0.3,
+        -LEDGE_SLAB_INSET - 0.04 - halfReach,
+        shelfDepth * 0.36 - halfReach
+      )
+      parts.push({ geometry: strut, color: BOARD_COLORS.darkBlue })
     }
 
     bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
