@@ -4497,12 +4497,18 @@ $harness-bar-height: 3.4rem;
   // hiding the very question the round is asking. Start the scene below it
   // instead — the bar can't move to the bottom, where the guess console lives.
   @media screen and (max-width: $phone) {
-    height: calc(var(--viewport-height) - #{$harness-bar-height});
     margin-top: $harness-bar-height;
 
     // The scene inside is sized from --viewport-height, so shortening the
     // frame alone leaves it a bar's-worth too tall and its footer lands
     // under the fold. Re-point the variable for the subtree instead.
+    //
+    // The `height` above then needs NO second subtraction: it already reads
+    // the re-pointed variable. Taking the bar off twice left the frame 34px
+    // shorter than the scene it clips, so the bottom band of every mode —
+    // a docked clock, a lock row, the last row of an option grid — was cut
+    // in the harness and nowhere else, which reads as a layout bug in the
+    // mode being reviewed.
     --viewport-height: calc(100dvh - #{$harness-bar-height});
   }
 }

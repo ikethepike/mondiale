@@ -222,14 +222,20 @@
       </div>
     </Transition>
 
-    <!-- Beats 1 and 2 have no footer of their own, so the dial floats. Beat 3
-         docks it in its lock row instead — see there. -->
-    <ChallengeTimerRadial
-      v-if="!finished && beat !== 'sides'"
-      class="footer-clock"
-      :value="secondsOnClock"
-      :total="BEAT_SECONDS[beat]"
-    />
+    <!-- Beats 1 and 2 carry no controls, but the dial still stands in the
+         shell's FOOTER band rather than floating: as a bare last child of the
+         column it was `position: static` with no berth of its own, so it
+         landed hard in the bottom-left corner, under the home indicator, and
+         jumped to beat 3's lock row at the next beat. In the footer it is
+         centred, inherits `--bottom-clearance`, and sits where beat 3's dial
+         sits — one place for the clock all round. -->
+    <footer v-if="!finished && beat !== 'sides'" class="clock-footer">
+      <ChallengeTimerRadial
+        class="footer-clock"
+        :value="secondsOnClock"
+        :total="BEAT_SECONDS[beat]"
+      />
+    </footer>
   </section>
 </template>
 
@@ -708,9 +714,13 @@ const promptSources = computed(() => datasetAttribution('parties'))
   }
 }
 
+// A grid, not a wrapping flex line: under `flex: 1 1 110px` a row that broke
+// to two lines stretched the orphan tile to the full width, so "6 parties
+// seated" read as a banner rather than as the third of three numbers. Even
+// tracks reflow 3 → 2 → 1 and every tile keeps its share.
 .chamber-facts {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 0.5rem;
   justify-content: center;
   width: min(94vw, 34rem);
@@ -728,8 +738,8 @@ const promptSources = computed(() => datasetAttribution('parties'))
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 0.05rem;
-    flex: 1 1 110px;
     padding: 0.4rem 0.6rem;
     border: 1px solid ink(0.2);
     border-radius: 12px;
@@ -1260,10 +1270,35 @@ const promptSources = computed(() => datasetAttribution('parties'))
   }
 }
 
-.sides-footer {
-  display: flex;
-  justify-content: center;
+// Both footers are a one-cell grid: the row centres itself and reflows as a
+// column if its contents ever outgrow the width, which a flex row cannot do
+// without a wrap rule per footer.
+.sides-footer,
+.clock-footer {
+  display: grid;
+  justify-items: center;
   pointer-events: auto;
+}
+
+// Chrome, not a control strip. The shell's footer padding is sized for buttons
+// and typed consoles; a display-only dial does not need that band, and on a
+// short phone every row of it comes straight out of the beat above (beat 2 was
+// 13px over its box with the full band). Only the TOP is trimmed — the bottom
+// keeps the shell's `--bottom-clearance` formula, which is what holds the dial
+// off the home indicator.
+// The dial also takes beat 3's docked size, so the clock never changes size as
+// the round moves from beat to beat.
+.clock-footer {
+  padding-top: 0.4rem;
+
+  // Beat 3's docked size, so the clock never changes size as the round moves
+  // from beat to beat. Written on the dial rather than the footer: the shared
+  // `.footer-clock` sets these tokens on the element itself, and an inherited
+  // value from the parent would never win.
+  .footer-clock {
+    --clock-size: 4.6rem;
+    --clock-seconds-size: 1.5rem;
+  }
 }
 
 // Wide enough for "Lock it in (0/4)", so locking in never resizes it.
