@@ -2,6 +2,11 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { isValidISOCode } from '~~/types/geography.types'
 import { speaksLanguage } from './language-rounds'
+import {
+  HINT_UNLOCK_FIRST_ELAPSED,
+  HINT_UNLOCK_LAST_ELAPSED,
+  HINT_UNLOCK_SECOND_ELAPSED,
+} from './scoring'
 import { REGION_LABELS } from './variant'
 
 /**
@@ -92,6 +97,69 @@ export const scriptoriumAnswers = (language: string): ISOCountryCode[] =>
   Object.keys(COUNTRIES)
     .filter(isValidISOCode)
     .filter(isoCode => speaksLanguage(isoCode, language))
+
+/**
+ * The hint ladder, strongest rung LAST — the order is the descent, and the
+ * descent is what prices it.
+ *
+ * The mode shipped with the region rung alone, and it is a WIDE opener — for
+ * eighteen of the pool's thirty languages it says "Asia". That is fine as a
+ * first step and hopeless as the only one: a player who could not read the
+ * page had no second move at all, and the only progression left was to run
+ * the clock out and forfeit the walk. The rungs below it are the answer to
+ * that, not a sharper opener.
+ */
+export const SCRIPTORIUM_RUNGS = ['region', 'script', 'country'] as const
+export type ScriptoriumRung = (typeof SCRIPTORIUM_RUNGS)[number]
+
+/** Which wave opens each rung. Read from the shared unlock tokens so the
+ *  ladder can never drift from the hint economy every other gate keeps. */
+export const SCRIPTORIUM_RUNG_UNLOCK: { [rung in ScriptoriumRung]: number } = {
+  region: HINT_UNLOCK_FIRST_ELAPSED,
+  script: HINT_UNLOCK_SECOND_ELAPSED,
+  country: HINT_UNLOCK_LAST_ELAPSED,
+}
+
+export interface ScriptoriumLadderState {
+  /** How much of the clock is gone. */
+  elapsedFraction: number
+  /** Rungs the player has paid for — each bites `GATE_HINT_BITE_STEPS`. */
+  bought: Iterable<ScriptoriumRung>
+  /** Rungs the difficulty gives away (easy's region): shown, never charged. */
+  free?: Iterable<ScriptoriumRung>
+  /** Rungs with nothing to say for this language. Down by default, so a
+   *  language that cannot phrase one can never jam the descent below it. */
+  mute?: Iterable<ScriptoriumRung>
+  /** The page never arrived — every wave counts as already broken, or the
+   *  player is being asked to read nothing with no way to buy their way out. */
+  blind?: boolean
+  /** The gate has a verdict: the shop is shut. */
+  resolved?: boolean
+}
+
+/**
+ * What the shop shows right now: the rungs already down, and the ONE that is
+ * on offer.
+ *
+ * At most one, always the topmost that is still up. Ungated, a player could
+ * skip the two narrowing rungs and buy the naming one for a single bite — a
+ * real leap for being handed the answer, and rungs one and two made pointless.
+ * It also keeps the chip row to a single chip, so the shop never crowds the
+ * manuscript off a phone's band.
+ */
+export const scriptoriumLadder = (
+  state: ScriptoriumLadderState
+): { shown: ScriptoriumRung[]; offered: ScriptoriumRung | undefined } => {
+  const bought = new Set(state.bought)
+  const free = new Set(state.free ?? [])
+  const mute = new Set(state.mute ?? [])
+  const down = (rung: ScriptoriumRung) => bought.has(rung) || free.has(rung) || mute.has(rung)
+
+  const shown = SCRIPTORIUM_RUNGS.filter(rung => bought.has(rung) || free.has(rung))
+  const next = SCRIPTORIUM_RUNGS.find(rung => !down(rung))
+  const broken = !!next && (state.blind || state.elapsedFraction >= SCRIPTORIUM_RUNG_UNLOCK[next])
+  return { shown, offered: state.resolved || !broken ? undefined : next }
+}
 
 /** The buyable hint: where the answer countries mostly live. */
 export const scriptoriumRegionHint = (language: string): string | undefined => {
