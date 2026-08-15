@@ -507,8 +507,16 @@ header {
   // .main-board's overflow: hidden clips it — the lock row, button and clock
   // included, with no way to scroll to them. Capping the border box here and
   // opening the shrink chain below lets the gate's own giver take the squeeze.
+  //
+  // The console band is the floor, not the viewport's foot: the typed footer
+  // stands against the shell's bottom edge and its padding already carries the
+  // software keyboard's inset, so subtracting its measured height
+  // (--footer-band, lib/use-footer-berth.ts) leaves exactly the clear band
+  // above the console. Capped at the whole viewport instead, a tall gate — the
+  // scriptorium's page — grew straight THROUGH the console and on under the
+  // keyboard, where the question was neither readable nor reachable.
   display: flex;
-  max-height: var(--viewport-height);
+  max-height: calc(var(--viewport-height) - var(--footer-band, 0px));
   flex-flow: column nowrap;
 }
 
