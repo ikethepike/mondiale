@@ -57,6 +57,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
+  Quaternion,
   RedFormat,
   ShaderMaterial,
   Vector3,
@@ -541,6 +542,63 @@ const trailMaterial = (preset: Biome) =>
     `,
   })
 
+// Grass the Elysium way: each instance is ONE tapered blade, bowed along its
+// length in the vertex shader (bend grows with t², so the tip leads), colored
+// root-to-tip so the base grounds into the terrain — never crossed quads,
+// which read as X-marks from a high camera.
+const bladeMaterial = (root: Color, tip: Color, sway: number) =>
+  new ShaderMaterial({
+    side: DoubleSide,
+    uniforms: {
+      uRoot: { value: root },
+      uTip: { value: tip },
+      uTime: { value: 0 },
+      uSway: { value: sway },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aPhase;
+      uniform float uTime; uniform float uSway;
+      varying float vT;
+      varying float vShade;
+      void main() {
+        vec3 p = position;
+        float t = p.y;
+        vec3 origin = vec3(instanceMatrix[3]);
+        float gust =
+          sin(uTime * 1.3 + origin.x * 0.11 + origin.z * 0.07) +
+          0.5 * sin(uTime * 2.1 + origin.x * 0.23 + aPhase) +
+          0.3 * sin(uTime * 3.7 + aPhase * 2.0);
+        float bow = gust * uSway + 0.3 * sin(aPhase * 7.0);
+        p.x += bow * t * t;
+        p.z += bow * 0.35 * t * t;
+        vT = t;
+        vShade = 0.86 + 0.14 * sin(aPhase * 3.1);
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uRoot; uniform vec3 uTip;
+      varying float vT; varying float vShade;
+      void main() {
+        gl_FragColor = vec4(mix(uRoot, uTip, vT) * vShade, 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+const bladeGeometry = () => {
+  const geometry = new BufferGeometry()
+  // A single tapered blade: wide-ish root, waisted middle, pointed tip.
+  // prettier-ignore
+  const vertices = new Float32Array([
+    -0.05, 0, 0,   0.05, 0, 0,   0.032, 0.55, 0,
+    -0.05, 0, 0,   0.032, 0.55, 0,   -0.032, 0.55, 0,
+    -0.032, 0.55, 0,   0.032, 0.55, 0,   0, 1, 0,
+  ])
+  geometry.setAttribute('position', new BufferAttribute(vertices, 3))
+  return geometry
+}
+
 // Birds: instanced ink chevrons circling on slow orbits, wings flapping,
 // each instance steered in the vertex shader — no per-frame JS at all.
 const birdMaterial = (color: string) =>
@@ -962,26 +1020,39 @@ const buildWorld = (name: string) => {
     tuftSpots.push({ x, z, y })
   }
   if (tuftSpots.length) {
-    const bladeA = new PlaneGeometry(0.34, 0.4)
-    bladeA.translate(0, 0.2, 0)
-    const bladeB = bladeA.clone()
-    bladeB.rotateY(Math.PI / 2)
-    const tuft = mergeGeometries([bladeA, bladeB])
-    bladeA.dispose()
-    bladeB.dispose()
-    const tuftMaterial = foliageMaterial(preset.stippleColor, prefersReducedMotion() ? 0 : 0.6)
-    timeUniforms.push(tuftMaterial.uniforms.uTime as { value: number })
-    const tuftMesh = new InstancedMesh(tuft, tuftMaterial, tuftSpots.length)
-    const tuftPhases = new Float32Array(tuftSpots.length)
-    tuftSpots.forEach((spot, index) => {
-      const scale = 0.7 + prng() * 0.8
-      matrix.makeScale(scale, scale, scale)
-      matrix.setPosition(spot.x, spot.y, spot.z)
-      tuftMesh.setMatrixAt(index, matrix)
-      tuftPhases[index] = prng() * Math.PI * 2
-    })
-    tuft.setAttribute('aPhase', new InstancedBufferAttribute(tuftPhases, 1))
-    group.add(tuftMesh)
+    // Each moist spot becomes a CLUMP of individual blades — patchy growth,
+    // the way real meadows (and Elysium's) fill in.
+    const BLADES_PER_CLUMP = 9
+    const bladeCount = tuftSpots.length * BLADES_PER_CLUMP
+    const root = new Color(preset.stippleColor).multiplyScalar(0.72)
+    const tip = new Color(preset.stippleColor).lerp(new Color(preset.lit), 0.45)
+    const blades = bladeMaterial(root, tip, prefersReducedMotion() ? 0 : 0.35)
+    timeUniforms.push(blades.uniforms.uTime as { value: number })
+    const bladeMesh = new InstancedMesh(bladeGeometry(), blades, bladeCount)
+    const bladePhases = new Float32Array(bladeCount)
+    const bladeQuaternion = new Quaternion()
+    const up = new Vector3(0, 1, 0)
+    let blade = 0
+    for (const spot of tuftSpots) {
+      for (let sprout = 0; sprout < BLADES_PER_CLUMP; sprout++) {
+        const angle = prng() * Math.PI * 2
+        const spread = Math.sqrt(prng()) * 1.1
+        const x = spot.x + Math.sin(angle) * spread
+        const z = spot.z + Math.cos(angle) * spread
+        const y = bedAt(x, z, height(x, z))
+        bladeQuaternion.setFromAxisAngle(up, prng() * Math.PI * 2)
+        matrix.compose(
+          new Vector3(x, y - 0.02, z),
+          bladeQuaternion,
+          new Vector3(0.8 + prng() * 0.5, 0.45 + prng() * 0.75, 1)
+        )
+        bladeMesh.setMatrixAt(blade, matrix)
+        bladePhases[blade] = prng() * Math.PI * 2
+        blade++
+      }
+    }
+    bladeMesh.geometry.setAttribute('aPhase', new InstancedBufferAttribute(bladePhases, 1))
+    group.add(bladeMesh)
   }
 
   // --- Birds: small flocks on slow orbits over the open country --------------
