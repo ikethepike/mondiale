@@ -103,6 +103,7 @@ import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { formatEventYear, placedYears, scoreTimeline, timelineEvent } from '~~/lib/timeline'
 import { formatNumber } from '~~/lib/number'
 import { seatLabel } from '~~/lib/player'
+import { BROWSE_HINT_S } from '~~/lib/round-beats'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
@@ -122,24 +123,18 @@ const state = computed(() => props.challenge.state)
 // The browse clock: `deadline` is restamped at finish to the cap, so the
 // Continue label can count the backstop down without a second clock.
 const { secondsOnClock } = useDeadlineClock(() => state.value.deadline)
-/** Label flips to the countdown inside the final stretch (trend-race's hint). */
-const BROWSE_HINT_S = 10
 
 const iAmDone = computed(() => !!state.value.revealDone?.includes(props.playerId))
 const doneCount = computed(() => state.value.revealDone?.length ?? 0)
 const tableCount = computed(() => state.value.order.length)
 
-/** The tapped stop, blown up to read. */
-type ChronicleStop = {
-  slug: string
-  name: string
-  missed: boolean
-  placerLine?: string
-}
+// The tapped stop, blown up to read — held by SLUG and derived, so the
+// dossier's context can never go stale against the chronicle.
 const dossierOpen = ref(false)
-const dossierStop = ref<ChronicleStop>()
-const openDossier = (stop: ChronicleStop) => {
-  dossierStop.value = stop
+const dossierSlug = ref<string>()
+const dossierStop = computed(() => chronicle.value.find(stop => stop.slug === dossierSlug.value))
+const openDossier = (stop: { slug: string }) => {
+  dossierSlug.value = stop.slug
   dossierOpen.value = true
 }
 

@@ -27,6 +27,7 @@ import type { Player } from '~~/types/player.type'
 import { latestRound } from '~~/lib/rounds'
 import { moveStopTile } from '~~/lib/player-status'
 import {
+  GATE_RESULT_WIRE_GRACE_MS,
   NEW_ROUND_PAUSE_MS,
   ROUND_BOUND_PHASES,
   SETTLED_PHASES,
@@ -136,6 +137,20 @@ export const enterMovementPhaseHandler = defineGameHandler(
       return
     }
 
+    // The result beat's OWN token: walkSeq bumps only per walk, so a browse
+    // hold's tick can outlive its beat and land during the NEXT gate's beat
+    // on the same walk. A live stamp means a newer beat owns this seat — the
+    // straggler dies; the beat's own ender fires past its stamp (the wire
+    // grace absorbs timer jitter), and an early resume clears the stamp
+    // before it schedules.
+    if (
+      eventData.continuation &&
+      player.resultBeatUntil &&
+      Date.now() < player.resultBeatUntil - GATE_RESULT_WIRE_GRACE_MS
+    ) {
+      return
+    }
+
     // A player who has already settled (won, was kicked, or finished their
     // turn) must NOT be re-walked or re-settled on re-entry — treat this as a
     // pure round-advancement re-check. The victory path re-enters here to make
@@ -148,12 +163,15 @@ export const enterMovementPhaseHandler = defineGameHandler(
       SETTLED_PHASES.includes(player.phase) || ROUND_BOUND_PHASES.includes(player.phase)
 
     // The result beat is over once movement resumes for a live seat: clear the
-    // challenge answer latch so the next gate accepts a genuine answer. Only
-    // when this entry actually walks/settles the seat — a stray tick hitting a
-    // settled or round-bound seat must not re-open the duplicate-submit
-    // window. (Duplicates that race a live resume are still killed by the
-    // phase guard and the submit's gate-tile echo.)
-    if (!alreadySettled) player.resolving = false
+    // challenge answer latch (and the beat's stamp) so the next gate accepts
+    // a genuine answer. Only when this entry actually walks/settles the seat
+    // — a stray tick hitting a settled or round-bound seat must not re-open
+    // the duplicate-submit window. (Duplicates that race a live resume are
+    // still killed by the phase guard and the submit's gate-tile echo.)
+    if (!alreadySettled) {
+      player.resolving = false
+      player.resultBeatUntil = undefined
+    }
 
     const move = player.moves[0]
 

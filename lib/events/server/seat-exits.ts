@@ -119,6 +119,10 @@ export const armIndividualGateCap = (ctx: EngineContext, player: Player) => {
     if (currentMove.endTile.position !== gateTile) return
     console.warn(`Gate cap forfeiting unanswered gate for ${playerId} in ${ctx.eventTarget.gameId}`)
     forfeitGate(fresh, seat, currentMove)
+    // The forfeit's hold keeps the flat bask even for browsable variants —
+    // the cap fired because nobody was reading — but stamps the beat so the
+    // movement handler's stale-tick guard and the rearm know its window.
+    seat.resultBeatUntil = Date.now() + GATE_RESULT_HOLD_MS
     await server.updateGameState(fresh)
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     server.emit({ event: 'individual-challenge-checked', game: fresh }, eventTarget)
@@ -241,11 +245,16 @@ export const rearmSeatExits = (ctx: EngineContext, game: Game) => {
       case 'individual-challenge':
         if (seat.resolving || seat.moves[0]?.challenge?._type !== 'individual-challenge') {
           // Result beat's continuation died: resume the walk (clears the
-          // latch on re-entry) after the hold it was owed. The moves-empty
-          // shape is the cap forfeit's hold (resolving stays false there) —
-          // without this arm it had no exit at all.
+          // latch on re-entry) after the REMAINING window — the beat's stamp
+          // preserves a browse read across a restart (a chronicle reader
+          // keeps their ~45s instead of being walked off in 5). The flat
+          // bask is the pre-stamp fallback. The moves-empty shape is the cap
+          // forfeit's hold (resolving stays false there) — without this arm
+          // it had no exit at all.
           scheduleMovementPhase(
-            GATE_RESULT_HOLD_MS,
+            seat.resultBeatUntil
+              ? Math.max(0, seat.resultBeatUntil - Date.now())
+              : GATE_RESULT_HOLD_MS,
             { ...ctx, eventTarget },
             { continuation: true, walkSeq: seat.walkSeq }
           )

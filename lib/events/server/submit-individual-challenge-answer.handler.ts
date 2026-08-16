@@ -70,6 +70,12 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
       throw new RetryableReject('resolving')
     }
     player.resolving = true
+    // The beat's token: recovery re-arms the REMAINING window, a stale hold
+    // tick from a PRIOR beat dies on it, and gate-reveal-done requires it.
+    // Stamped from the answered gate's variant HERE because the shift below
+    // makes the variant unrecoverable from state.
+    const resultHoldMs = gateResultHoldMsFor(currentMove.challenge.variant)
+    player.resultBeatUntil = Date.now() + resultHoldMs
 
     const correct = isCorrectIndividualAnswer(currentMove.challenge, eventData.isoCode)
     if (correct) {
@@ -103,9 +109,11 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // own resumption, so it travels as a continuation under the current walk
     // generation. Browsable variants (Chronicle's storied record) get the
     // browse cap instead of the bask, and may leave early via
-    // 'gate-reveal-done' — this continuation then lands as a designed no-op.
+    // 'gate-reveal-done' — an early resume clears `resultBeatUntil`, and a
+    // LATER beat's live stamp kills this tick outright, so a browse hold can
+    // never cross into the next gate answered on the same walk.
     scheduleMovementPhase(
-      gateResultHoldMsFor(currentMove.challenge.variant),
+      resultHoldMs,
       { io, redis, socket, eventTarget },
       { continuation: true, walkSeq: player.walkSeq }
     )

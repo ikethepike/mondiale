@@ -152,7 +152,11 @@ import { createChainSimulator } from '~~/lib/harness/chain-simulator'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { BEAT_VERDICT_HOLD_MS, isClassicGroupRound, ROUND_BEATS } from '~~/lib/round-beats'
+import {
+  BEAT_VERDICT_HOLD_MS,
+  isClassicGroupRound,
+  TIMELINE_BROWSE_CAP_MS,
+} from '~~/lib/round-beats'
 import { settleGroupRound } from '~~/lib/harness/settle-group-round'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import type {
@@ -246,7 +250,7 @@ const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
         state.revealing = false
         // The browsable reveal: settle waits on the table (or the cap).
         state.revealDone = []
-        state.deadline = Date.now() + (ROUND_BEATS.timeline.browseCapMs ?? 60000)
+        state.deadline = Date.now() + TIMELINE_BROWSE_CAP_MS
         return
       }
       state.revealing = false

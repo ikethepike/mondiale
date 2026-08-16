@@ -14,6 +14,7 @@ import {
   FIRST_TURN_GRACE_MS,
   REVEAL_HOLD_MS,
   roundBeats,
+  TIMELINE_BROWSE_CAP_MS,
   TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
@@ -145,9 +146,11 @@ const advanceTimelineTurn = async (ctx: ChainContext, game: Game, challenge: Tim
   scheduleTimelineTimeout(ctx, challenge)
 }
 
-/** The finished chronicle's browse allowance — the one player-paced beat. */
+/** The finished chronicle's browse allowance — the one player-paced beat.
+ *  The fallback is the SAME named token the spec row carries, so a dropped
+ *  spec field can never quietly shrink the window the tests assert. */
 const timelineBrowseCapMs = (challenge: TimelineChallenge): number =>
-  roundBeats(challenge).browseCapMs ?? REVEAL_HOLD_MS
+  roundBeats(challenge).browseCapMs ?? TIMELINE_BROWSE_CAP_MS
 
 /**
  * Deck exhausted: freeze the finished line for the BROWSABLE reveal — every
@@ -215,10 +218,14 @@ const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: Serve
 }
 
 /** Arm the browse cap's settle backstop against the PERSISTED deadline —
- *  a restart re-arms the remaining window, never a fresh full cap. Safe to
+ *  a restart re-arms the remaining window, never a fresh full cap. Floored
+ *  at the classic reveal hold: a round finished under a PREVIOUS deploy
+ *  carries a stale past deadline (no browse restamp ever ran), and settling
+ *  it ~instantly on rejoin would hand the table zero reading time. Safe to
  *  arm twice: the settle dies on the `groupAnswers` latch. */
 const scheduleTimelineSettle = (ctx: ChainContext, challenge: TimelineChallenge) => {
-  scheduleDeadlineTask(ctx, challenge.state.deadline, (fresh, freshServer) =>
+  const remainingMs = Math.max(challenge.state.deadline - Date.now(), REVEAL_HOLD_MS)
+  scheduleEngineTask(ctx, remainingMs + TIMEOUT_SLACK_MS, (fresh, freshServer) =>
     settleTimeline(ctx, fresh, freshServer)
   )
 }

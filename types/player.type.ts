@@ -14,6 +14,15 @@ export interface Player {
    *  Rejects a duplicate submitted during the 5s reveal pause so it can't be
    *  applied against a shifted move. See submit-*-challenge-answer handlers. */
   resolving?: boolean
+  /** Epoch ms an INDIVIDUAL gate's result beat runs to — the beat's token.
+   *  Stamped by the submit (the answered gate is shifted off `moves`, so the
+   *  variant-aware hold length is unrecoverable from state without it) and
+   *  cleared when the walk resumes. Recovery paths re-arm the REMAINING
+   *  window instead of the flat bask; a hold continuation from a PRIOR beat
+   *  dies on a live stamp; `gate-reveal-done` requires it, which keeps the
+   *  final gauntlet's `resolving` latch out of reach. The gauntlet never
+   *  stamps it — its beat is `clearFinalResultBeat`'s. */
+  resultBeatUntil?: number
   /** Walk generation: bumped whenever a fresh moveset is dealt
    *  (settleRoundScores). Movement continuations carry the seq they were armed
    *  under and die on a mismatch, so a stale timer (a watchdog tick from a

@@ -36,7 +36,11 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { createRedeliver, useClientEvents } from './events/client-side'
-import { gateResultFallbackMsFor, isBrowsableGateVariant } from './round-beats'
+import {
+  GATE_RESULT_FALLBACK_MS,
+  gateResultFallbackMsFor,
+  isBrowsableGateVariant,
+} from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
 
@@ -219,14 +223,25 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     redeliver.deliver(() => update(payload))
 
   /** The browsable reveal's explicit exit: ask the server to resume the walk
-   *  now. One send per beat (the redeliver home owns retries); the server
-   *  refuses it unless the seat's `resolving` latch is up, so a stray press
-   *  outside a result beat is inert. Watchers hold no vote. */
-  let beatDoneSent = false
+   *  now. Deliberately NOT one-shot — the server is idempotent (it refuses
+   *  the send unless the beat's latch and stamp are up), and a permanent
+   *  latch would eat the press when it raced the answer's own delivery (a
+   *  refused-but-acked send is otherwise a dead button for the whole cap).
+   *  On press the long browse fallback collapses to the plain bask: in the
+   *  deferred-arrival shape (a leap landed on the next gate, nothing
+   *  unmounts) the shell must not park the spent reveal for the rest of the
+   *  45s cap while the next gate's own clock burns. */
   const finishBeat = () => {
     if (gameStore.watching || disposed) return
-    if (beatDoneSent || !status.value) return
-    beatDoneSent = true
+    if (!status.value) return
+    stopBeatTimer()
+    const fallbackMs = GATE_RESULT_FALLBACK_MS
+    beatDeadline.value = Date.now() + fallbackMs
+    beatTimer = setTimeout(() => {
+      beatTimer = undefined
+      status.value = undefined
+      relatch()
+    }, fallbackMs)
     deliver({ event: 'gate-reveal-done' })
   }
 
@@ -353,7 +368,6 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     trendDuelOutcomes.value = []
     atlasChain.value = []
     chronicleOrder.value = []
-    beatDoneSent = false
     gateSeq.value++
     showInterstitial.value = true
   }

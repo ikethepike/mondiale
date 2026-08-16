@@ -227,6 +227,11 @@ const openStopDossier = (slug: string) => {
   stopDossierSlug.value = slug
   stopDossierOpen.value = true
 }
+// The finished report is its own dialog — a dossier left open would stack
+// two aria-modals contending for Escape and focus.
+watch(finished, done => {
+  if (done) stopDossierOpen.value = false
+})
 
 /** The reveal's Continue: latch + ack-reopen (the ready-gate idiom). `iAmDone`
  *  itself derives from state in the reveal, so a rejoined tab reads true. */
@@ -1099,11 +1104,18 @@ footer {
 
   .stop {
     width: 100%;
-    display: grid;
-    align-items: center;
-    // auto photo column collapses cleanly when a card has no picture.
-    grid-template-columns: auto auto 1fr;
-    gap: 0 0.8rem;
+
+    // The button IS the content container now — the phone ledger row lays
+    // out inside it, or the three pieces stack vertically in the column
+    // default and the scroller shows two cards where it showed six.
+    .stop-open {
+      width: 100%;
+      display: grid;
+      align-items: center;
+      // auto photo column collapses cleanly when a card has no picture.
+      grid-template-columns: auto auto 1fr;
+      gap: 0 0.8rem;
+    }
 
     .stop-photo {
       width: 4.4rem;

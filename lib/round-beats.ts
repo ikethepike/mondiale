@@ -191,9 +191,6 @@ export const GATE_RESULT_HOLD_MS = 5000
  *  which unmounts the view in the ordinary walked case — lands first and the
  *  shell's fallback stays a fallback. */
 export const GATE_RESULT_WIRE_GRACE_MS = 750
-/** The gate shell's fallback end of the result beat — DERIVED, never an
- *  ad-hoc sum at the call site. */
-export const GATE_RESULT_FALLBACK_MS = GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS
 /** A browsable gate reveal (Chronicle's storied record): the player reads at
  *  their own pace and leaves by an explicit Continue; this cap is the AFK
  *  backstop, not the beat. The beat is SOLO — a long cap delays nobody else. */
@@ -209,10 +206,21 @@ export const isBrowsableGateVariant = (variant: IndividualChallengeVariant | und
  *  reveal is browsable, the shared verdict bask everywhere else. */
 export const gateResultHoldMsFor = (variant: IndividualChallengeVariant | undefined): number =>
   isBrowsableGateVariant(variant) ? GATE_BROWSE_CAP_MS : GATE_RESULT_HOLD_MS
-/** The shell's fallback end of the variant-aware beat — same derivation as
- *  GATE_RESULT_FALLBACK_MS, never an ad-hoc sum. */
+/** The shell's fallback end of the variant-aware beat — DERIVED, never an
+ *  ad-hoc sum at a call site. */
 export const gateResultFallbackMsFor = (variant: IndividualChallengeVariant | undefined): number =>
   gateResultHoldMsFor(variant) + GATE_RESULT_WIRE_GRACE_MS
+/** The no-variant fallback, kept as the named shape recovery paths reach for
+ *  when the answered gate's variant is unknowable. */
+export const GATE_RESULT_FALLBACK_MS = gateResultFallbackMsFor(undefined)
+/** The browsable Continue's countdown appears inside this final stretch,
+ *  seconds — ONE hint window for every browse button (trend-race, the
+ *  timeline chronicle, the gate record), so they flip in step. */
+export const BROWSE_HINT_S = 10
+/** The timeline chronicle's browse allowance — named so the harness and the
+ *  protocol tests read the SAME number the spec row carries, never a private
+ *  fallback that would keep tests green while the engine drifted. */
+export const TIMELINE_BROWSE_CAP_MS = 60000
 /** The mid-gauntlet reveal (clearFinalResultBeat): the teachable scorecards —
  *  rankings, lessons, the fact you missed — need longer on screen than a
  *  gate's verdict pill. The knockout keeps the shorter gate hold: its exit
@@ -388,7 +396,7 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'heritage-hunt': engine(),
   // The finished round's chronicle is browsable: settle waits on every seat's
   // reveal-done ack, capped so an AFK reader can't hold the table.
-  timeline: engine({ browseCapMs: 60000 }),
+  timeline: engine({ browseCapMs: TIMELINE_BROWSE_CAP_MS }),
   manhunt: engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'unique-or-bust': engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'clean-sweep': engine({ briefingCapMs: BRIEFING_CAP_MS }),

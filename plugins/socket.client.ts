@@ -72,11 +72,18 @@ export default defineNuxtPlugin(() => {
     socket.on(eventKey, (payload, eventTarget) => {
       console.info(`Received client event: ${eventKey}`)
 
-      // The ordering gate: a snapshot older than the one on screen is a
-      // deferred task's stale fetch, and applying it would walk pawns
-      // backward or resurface a staged round. One check here covers every
-      // applier, present and future; game-less events pass through.
-      if (hasGame(payload) && isStaleSnapshot(gameStore.game, payload.game)) {
+      // The ordering gate: a FULL-REPLACE snapshot older than the one on
+      // screen is a deferred task's stale fetch, and applying it would walk
+      // pawns backward or resurface a staged round. The registry's
+      // snapshotScope exempts the two shapes that must never be dropped —
+      // the join full-sync (the recovery moment, and the one emit that can
+      // carry a recreated room whose rev restarted) and seat slices (FIFO
+      // per seat; dropping one can discard a seat's only phase flip).
+      if (
+        configuration.snapshotScope === undefined &&
+        hasGame(payload) &&
+        isStaleSnapshot(gameStore.game, payload.game)
+      ) {
         console.info(`Dropped stale ${eventKey} (rev ${payload.game.rev})`)
         return
       }

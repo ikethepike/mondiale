@@ -1,6 +1,6 @@
 import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
-import { adoptRevision } from '~~/lib/events/client/snapshot-revision'
+import { adoptRevision, isStaleSnapshot } from '~~/lib/events/client/snapshot-revision'
 
 /**
  * Seat + that seat's round slice: the acting player's record, answer and
@@ -28,9 +28,11 @@ export const groupChallengeScoredEvent: ClientSideEventHandler = async ({
   // The slice is only safe when both sides agree which round is live. A
   // rejoin race (local staged round the payload predates, or vice versa)
   // makes indexing one side with the other's length silent cross-round
-  // corruption — the payload is the fresher authoritative state, take it
-  // whole instead.
+  // corruption — take the payload whole instead, but only when it is not
+  // itself the stale side (the event bypasses the dispatch gate as a slice,
+  // so this full-replace escape re-checks ordering for itself).
   if (gameStore.game.rounds.length !== game.rounds.length) {
+    if (isStaleSnapshot(gameStore.game, game)) return
     gameStore.game = game
     return
   }

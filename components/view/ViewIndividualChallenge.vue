@@ -97,6 +97,7 @@ import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { formatAmount } from '~~/lib/number'
 import { listJoin } from '~~/lib/strings'
+import { BROWSE_HINT_S } from '~~/lib/round-beats'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { provideGateChallenge } from '~~/lib/use-gate-challenge'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -130,8 +131,6 @@ const {
 
 // The browsable reveal's countdown: the backstop the Continue button beats.
 const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(() => beatDeadline.value)
-/** Label flips to the countdown inside the final stretch (trend-race's hint). */
-const BROWSE_HINT_S = 10
 
 const details = computed(() =>
   challenge.value ? getChallengeDetails(challenge.value.id) : undefined

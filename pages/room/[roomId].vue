@@ -133,44 +133,37 @@ watch(activeView, next => {
   // on the first snapshot of a burst even though the board is still shown.
   const fromBoard = presentedView.value?.key === 'board'
   const toChallenge = next?.key === 'individual-challenge' || next?.key === 'final-challenge'
-
-  if (holdTimer) {
-    // A hold in flight owns the swap — the timer reads the LIVE activeView
-    // when it fires, so mid-hold snapshots that still point at a challenge
-    // change nothing. Only a different destination re-decides; clearing on
-    // every snapshot let routine broadcast bursts starve the hold and cut
-    // the arrival beat short.
-    if (fromBoard && toChallenge) return
-    clearTimeout(holdTimer)
-    holdTimer = undefined
-  }
-
-  if (fromBoard && toChallenge) {
-    holdTimer = setTimeout(() => {
-      holdTimer = undefined
-      presentedView.value = activeView.value
-    }, BOARD_TO_CHALLENGE_HOLD_MS)
-    return
-  }
-
   // No legitimate phase sequence swaps one challenge DIRECTLY into another —
   // a board or scores beat always intervenes. Such a resolution is a
   // transient (a snapshot burst caught mid-flight between phase and round
   // updates), and applying it flashes the NEXT round's prompt before the
-  // walk. Park it on a short verify timer instead: reading the LIVE
-  // activeView when it fires self-heals a transient and still lands a real
-  // change.
+  // walk. It parks on a short verify timer: reading the LIVE activeView when
+  // it fires self-heals a transient and still lands a real change.
   const challengeToChallenge =
     presentedView.value?.kind === 'challenge' &&
     next?.kind === 'challenge' &&
     presentedView.value.key !== next.key
-  if (challengeToChallenge) {
+
+  // The timer reads the LIVE activeView when it fires, so both parked shapes
+  // let a hold in flight own the swap — mid-hold snapshots change nothing.
+  // Only a different destination re-decides; clearing on every snapshot let
+  // routine broadcast bursts starve the hold (the arrival beat cut short,
+  // or a verify window restarted per emission and never elapsing).
+  const park = (ms: number) => {
     holdTimer = setTimeout(() => {
       holdTimer = undefined
       presentedView.value = activeView.value
-    }, CHALLENGE_SWAP_VERIFY_MS)
-    return
+    }, ms)
   }
+
+  if (holdTimer) {
+    if ((fromBoard && toChallenge) || challengeToChallenge) return
+    clearTimeout(holdTimer)
+    holdTimer = undefined
+  }
+
+  if (fromBoard && toChallenge) return park(BOARD_TO_CHALLENGE_HOLD_MS)
+  if (challengeToChallenge) return park(CHALLENGE_SWAP_VERIFY_MS)
 
   presentedView.value = next
 })

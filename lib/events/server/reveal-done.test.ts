@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { gateRevealDoneHandler } from './gate-reveal-done.handler'
 import { handleTimelineRevealDone, rearmTimeline } from './timeline-turns'
-import { ROUND_BEATS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { TIMELINE_BROWSE_CAP_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
@@ -42,7 +43,7 @@ const timelineChallenge = (
       order,
       activeIndex: 0,
       turn: 2,
-      deadline: Date.now() + (ROUND_BEATS.timeline.browseCapMs ?? 60000),
+      deadline: Date.now() + TIMELINE_BROWSE_CAP_MS,
       placements: [],
       finished: true,
       ...(revealDone ? { revealDone } : {}),
@@ -160,9 +161,7 @@ describe('handleTimelineRevealDone', () => {
 
     // The rearm path arms the cap against the persisted deadline.
     rearmTimeline(ctx, game)
-    await vi.advanceTimersByTimeAsync(
-      (ROUND_BEATS.timeline.browseCapMs ?? 60000) + TIMEOUT_SLACK_MS + 100
-    )
+    await vi.advanceTimersByTimeAsync(TIMELINE_BROWSE_CAP_MS + TIMEOUT_SLACK_MS + 100)
     await vi.runAllTicks()
 
     expect(settled(store.get(game.id)!)).toBe(true)
@@ -192,8 +191,11 @@ describe('gateRevealDoneHandler', () => {
     expect(store.get(game.id)!.players.a.resolving).toBe(false)
   })
 
-  it('resumes the walk early while the latch is up', async () => {
-    const player = seat('a', 'individual-challenge', { resolving: true })
+  it('resumes the walk early while the latch and beat stamp are up', async () => {
+    const player = seat('a', 'individual-challenge', {
+      resolving: true,
+      resultBeatUntil: Date.now() + 40000,
+    })
     const game = buildGame([player], undefined)
     const ctx = context(game)
 
@@ -203,5 +205,89 @@ describe('gateRevealDoneHandler', () => {
 
     // The movement continuation cleared the beat latch — the reveal is over.
     expect(store.get(game.id)!.players.a.resolving).toBe(false)
+  })
+})
+
+describe('gateRevealDoneHandler stays out of the final gauntlet', () => {
+  const invoke = (ctx: ChainContext, gameId: string, playerId: string) =>
+    gateRevealDoneHandler({
+      io: (ctx as never as { io: unknown }).io,
+      redis: (ctx as never as { redis: unknown }).redis,
+      socket: {},
+      eventKey: 'gate-reveal-done',
+      eventTarget: { gameId, playerId },
+      eventData: { event: 'gate-reveal-done' },
+    } as never)
+
+  it('refuses a gauntlet seat even with the resolving latch up', async () => {
+    // `resolving` is ALSO the gauntlet's duplicate-submit latch: a
+    // late-flushed Continue must never clear it mid-hold.
+    const player = seat('a', 'final-challenge', { resolving: true })
+    const game = buildGame([player], undefined)
+    const ctx = context(game)
+
+    await invoke(ctx, game.id, 'a')
+    await vi.runAllTicks()
+
+    expect(store.get(game.id)!.players.a.resolving).toBe(true)
+    expect(store.get(game.id)!.players.a.phase).toBe('final-challenge')
+  })
+
+  it('refuses a resolving seat without the beat stamp', async () => {
+    // Only individual submits stamp resultBeatUntil — its absence marks a
+    // beat this exit does not own.
+    const player = seat('a', 'individual-challenge', { resolving: true })
+    const game = buildGame([player], undefined)
+    const ctx = context(game)
+
+    await invoke(ctx, game.id, 'a')
+    await vi.runAllTicks()
+
+    expect(store.get(game.id)!.players.a.resolving).toBe(true)
+  })
+
+  it('clears the stamp and resumes when the beat is genuinely browsable', async () => {
+    const player = seat('a', 'individual-challenge', {
+      resolving: true,
+      resultBeatUntil: Date.now() + 40000,
+    })
+    const game = buildGame([player], undefined)
+    const ctx = context(game)
+
+    await invoke(ctx, game.id, 'a')
+    await vi.advanceTimersByTimeAsync(100)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!.players.a
+    expect(fresh.resultBeatUntil).toBeUndefined()
+    expect(fresh.resolving).toBe(false)
+  })
+})
+
+describe('the result beat’s stale-tick guard', () => {
+  it('drops a prior beat’s hold tick while a newer beat is live', async () => {
+    // walkSeq bumps only per walk: a browse hold's tick can outlive its beat
+    // and land during the NEXT gate's beat on the same walk. The live stamp
+    // kills the straggler; the beat's own ender fires past its stamp.
+    const player = seat('a', 'individual-challenge', {
+      resolving: true,
+      resultBeatUntil: Date.now() + 40000,
+    })
+    const game = buildGame([player], undefined)
+    const ctx = context(game)
+
+    await enterMovementPhaseHandler({
+      io: (ctx as never as { io: unknown }).io,
+      redis: (ctx as never as { redis: unknown }).redis,
+      socket: {},
+      eventKey: 'enter-movement-phase',
+      eventTarget: { gameId: game.id, playerId: 'a' },
+      eventData: { event: 'enter-movement-phase', continuation: true, walkSeq: 1 },
+    } as never)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!.players.a
+    expect(fresh.resolving).toBe(true)
+    expect(fresh.phase).toBe('individual-challenge')
   })
 })
