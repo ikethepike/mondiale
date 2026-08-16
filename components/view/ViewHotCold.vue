@@ -173,9 +173,10 @@ const onMapClick = (event: Event) => {
   probes.value.push(probe)
   paintProbes()
 
-  // Never the isoCode: a probe's country and warmth together are a bearing fix
-  // on the hidden country. The room sees only that someone probed.
-  announce({ kind: 'probe' })
+  // The isoCode rides to the server only so it can measure the distance; the
+  // room is told a 100km-rounded radius and never the country — a probe's
+  // country and warmth together would be a bearing fix on the hidden target.
+  announce({ kind: 'probe', isoCode })
 
   feedback.value = clueFor(probe)
   warmthClass.value = warmth

@@ -177,7 +177,14 @@ import {
   isAtlasLink,
 } from '~~/lib/atlas-chain'
 import { datasetAttribution } from '~~/lib/attribution'
-import { activePlayerId, liveChain, walkColor } from '~~/lib/chain'
+import {
+  activePlayerId,
+  type ChainBeats,
+  chainBeats,
+  chainNarration,
+  liveChain,
+  walkColor,
+} from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
@@ -214,7 +221,10 @@ const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
   readySent.value = true
-  update({ event: 'chain-ready' })
+  // A failed ack re-opens the button — a lost ready must not strand the seat.
+  void update({ event: 'chain-ready' }).then(delivered => {
+    if (!delivered) readySent.value = false
+  })
 }
 const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
@@ -443,46 +453,33 @@ watch(
 )
 
 // --- Ephemeral narration -----------------------------------------------------
-// Table beats derive from consecutive snapshots — nothing rides the wire and
+// Table beats derive from consecutive snapshots through lib/chain's shared
+// beat-diff (Border Chain rides the same one) — nothing rides the wire and
 // nothing is stored. The first snapshot has no diff base, so a rejoiner lands
 // on the current state silently instead of replaying stale toasts. One
 // channel, one message at a time: the rail is the durable record.
-let seenBeats: { links: number; eliminated: number; strikes: string } | undefined
+let seenBeats: ChainBeats | undefined
 watch(
   challenge,
   current => {
     const s = current?.state
     if (!s) return
-    const snapshot = {
-      links: s.chains.reduce((total, walkedChain) => total + walkedChain.length, 0),
-      eliminated: s.eliminated.length,
-      strikes: JSON.stringify(s.strikesLeft),
-    }
+    const snapshot = chainBeats(s)
     const before = seenBeats
     seenBeats = snapshot
-    if (!before || s.briefing || s.finished || s.trap) return
+    if (!before) return
 
-    if (snapshot.eliminated > before.eliminated) {
-      const outId = s.eliminated[s.eliminated.length - 1]
-      if (outId === gameStore.seatId) return // the turn line already says so
-      const fate = s.outcomes[outId] === 'timeout' ? 'the clock ran dry' : 'the chain broke'
-      return announce({ hint: `${seatName(outId)} is out — ${fate}` })
-    }
-    if (snapshot.strikes !== before.strikes) {
-      const prior: Record<string, number> = JSON.parse(before.strikes)
-      const burner = Object.keys(s.strikesLeft).find(
-        playerId => (s.strikesLeft[playerId] ?? 0) < (prior[playerId] ?? 0)
-      )
-      if (!burner || burner === gameStore.seatId) return
-      return announce({ hint: `${seatName(burner)} burns a strike` })
-    }
-    if (snapshot.links > before.links && s.lastMoverId && s.lastMoverId !== gameStore.seatId) {
-      const moved = liveChain(s)
-      const [from, to] = [moved[moved.length - 2], moved[moved.length - 1]]
-      const overlap = current.overlaps && from && to ? atlasLinkOverlap(from, to) : 1
-      const flourish = overlap > 1 ? ` — ${overlap} letters deep` : ''
-      if (to) announce({ hint: `${seatName(s.lastMoverId)} chained ${countryName(to)}${flourish}` })
-    }
+    const line = chainNarration(s, before, snapshot, {
+      seatId: gameStore.seatId,
+      seatName,
+      fate: outcome => (outcome === 'timeout' ? 'the clock ran dry' : 'the chain broke'),
+      move: (name, to, from) => {
+        const overlap = current.overlaps ? atlasLinkOverlap(from, to) : 1
+        const flourish = overlap > 1 ? ` — ${overlap} letters deep` : ''
+        return `${name} chained ${countryName(to)}${flourish}`
+      },
+    })
+    if (line) announce({ hint: line })
   },
   { immediate: true, deep: true }
 )

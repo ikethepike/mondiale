@@ -33,6 +33,7 @@
             <span><strong>Claimed by</strong> {{ claimantNames }}</span>
           </span>
         </ChallengeResult>
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </ChallengePrompt>
 
       <footer v-if="!submitted">
@@ -75,6 +76,7 @@ import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -94,6 +96,7 @@ const {
   secondsLeft,
   begin,
   announce,
+  entries,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -232,7 +235,7 @@ const onMapClick = (event: Event) => {
   const { isoCode } = event.detail
   if (!isValidISOCode(isoCode)) return
   // Presence only: seeing someone tap Denmark on Hans Island IS the answer.
-  announce({ kind: 'probe', isoCode })
+  announce({ kind: 'probe' })
   toggle(isoCode)
 }
 

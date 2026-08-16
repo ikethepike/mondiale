@@ -12,6 +12,7 @@
     <ChallengePrompt>
       <h1 class="map-caption">Draw {{ countryName(challenge.country) }}</h1>
       <span class="map-caption sub">One continuous line — north is up</span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
     <section class="easel">
@@ -37,6 +38,7 @@
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -51,8 +53,17 @@ import {
 
 // The shared scaffolding blanks the map (no reference material while
 // sketching), runs the interstitial, and owns the submit latch + redelivery.
-const { gameStore, challenge, currentRound, showInterstitial, submitted, begin, submitOnce } =
-  useGroupChallenge('sketch-challenge')
+const {
+  gameStore,
+  challenge,
+  currentRound,
+  showInterstitial,
+  submitted,
+  begin,
+  submitOnce,
+  announce,
+  entries,
+} = useGroupChallenge('sketch-challenge')
 
 const canvas = ref<HTMLCanvasElement>()
 const points = ref<OutlinePoint[]>([])
@@ -136,6 +147,8 @@ const submitSketch = () => {
   )
 
   gameStore.map.status = clientScore > active.maximumPoints * 0.4 ? 'correct' : 'incorrect'
+  // Pencils-down is the only beat worth telling the room — never the drawing.
+  announce({ kind: 'presence' })
   submitOnce([active.country], clientScore, undefined, { sketch: normalized })
 }
 </script>

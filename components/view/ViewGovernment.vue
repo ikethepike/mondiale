@@ -3,6 +3,7 @@
     <ChallengePrompt :attributions="promptSources">
       <h1 class="map-caption">{{ heading }}</h1>
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
+      <GuessTicker v-if="!finished" :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
     <!-- Beat 3 stows them on a phone: the seat maths is beat 2's subject, and
@@ -242,6 +243,7 @@
 <script setup lang="ts">
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
@@ -249,6 +251,7 @@ import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import { BEAT_SECONDS, MAX_SEAT_DOTS } from '~~/lib/government'
+import { placedTotalFor } from '~~/lib/live-guess-policy'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -264,7 +267,8 @@ import type { GovernmentState } from '~~/types/challenges/group-modes.type'
  * timer here would eventually disagree with the grade.
  */
 
-const { challenge, gameStore, update } = useGroupChallenge('government-challenge')
+const { challenge, gameStore, update, announce, entries } =
+  useGroupChallenge('government-challenge')
 
 // Timers keep evaluating for a beat after the round advances, so the state
 // must never dereference undefined.
@@ -340,18 +344,37 @@ const send = (pick: { party?: string; seats?: number; sides?: typeof mySides.val
 
 const pickParty = (name: string) => {
   if (myParty.value) return
+  // The room hears that a pick landed, never which logo it was.
+  announce({ kind: 'presence' })
   void send({ party: name })
 }
 const pickSeats = (block: number) => {
   if (mySeats.value !== undefined) return
+  announce({ kind: 'presence' })
   void send({ seats: block })
 }
 const fileBench = (name: string, side: BenchSide) => {
   if (sidesLocked.value) return
+  // The race, not the ruling: only a NEW bench grows the count — re-filing one
+  // says nothing worth a chip — and the FULL count stays with the lock below,
+  // so "all N placed" means locked, never merely filed. Sparing the repeats
+  // also matters mechanically: the guess relay's token bucket is shared across
+  // all three beats (SORTED_BENCHES caps a chamber at 5), and a dropped final
+  // chip would freeze the room's view of the race.
+  const grew = mySides.value[name] === undefined
   mySides.value = { ...mySides.value, [name]: side }
+  const total = placedTotalFor(challenge.value) ?? 0
+  const seated = Object.keys(mySides.value).length
+  if (grew && seated < total) {
+    announce({ kind: 'presence', placed: { seated, total } })
+  }
 }
 const submitSides = () => {
   if (sidesLocked.value || !allFiled.value) return
+  // The race's finish line: "all N placed" is the lock, the one beat the
+  // presence policy exists to broadcast.
+  const total = placedTotalFor(challenge.value) ?? 0
+  announce({ kind: 'presence', placed: { seated: total, total } })
   void send({ sides: mySides.value })
 }
 

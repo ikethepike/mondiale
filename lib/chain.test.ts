@@ -5,7 +5,9 @@ import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges
 import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
+  chainBeats,
   chainHead,
+  chainNarration,
   closedDoors,
   connectionsOf,
   isStraitHop,
@@ -234,5 +236,46 @@ describe('scoreChainRound', () => {
       expect(scored).toBeLessThanOrEqual(maximum)
       expect(maximum).toBe(15)
     }
+  })
+})
+
+describe('chainNarration (the beat-diff both turn-chain views toast from)', () => {
+  const copy = {
+    seatId: 'me',
+    seatName: (playerId: string) => playerId.toUpperCase(),
+    fate: (outcome?: string) => (outcome === 'timeout' ? 'the clock ran dry' : 'walked off'),
+    move: (name: string, to: ISOCountryCode) => `${name} walks on to ${to}`,
+  }
+
+  it('narrates a rival move, never the viewer’s own', () => {
+    const walked = state({ chains: [['NO', 'SE']], lastMoverId: 'b' })
+    const before = chainBeats(state())
+    expect(chainNarration(walked, before, chainBeats(walked), copy)).toBe('B walks on to SE')
+    const mine = state({ chains: [['NO', 'SE']], lastMoverId: 'me' })
+    expect(chainNarration(mine, before, chainBeats(mine), copy)).toBeUndefined()
+  })
+
+  it('stays silent on a trap redeal — a fresh seed is a deal, not a move', () => {
+    // resumeFromTrap pushes [seed] and leaves lastMoverId stale: links grew,
+    // but the one-country live chain must not credit the stale mover.
+    const redealt = state({ chains: [['NO', 'SE'], ['KZ']], lastMoverId: 'b' })
+    const before = chainBeats(state({ chains: [['NO', 'SE']], lastMoverId: 'b' }))
+    expect(chainNarration(redealt, before, chainBeats(redealt), copy)).toBeUndefined()
+  })
+
+  it('narrates a strike burn per key, immune to record key order', () => {
+    const before = chainBeats(state({ strikesLeft: { a: 1, b: 2 } }))
+    const reordered = state({ strikesLeft: { b: 2, a: 1 } })
+    expect(chainNarration(reordered, before, chainBeats(reordered), copy)).toBeUndefined()
+    const burned = state({ strikesLeft: { b: 1, a: 1 } })
+    expect(chainNarration(burned, before, chainBeats(burned), copy)).toBe('B burns a strike')
+  })
+
+  it('narrates an elimination with its fate, and holds during trap/briefing', () => {
+    const out = state({ eliminated: ['c'], outcomes: { c: 'timeout' } })
+    const before = chainBeats(state())
+    expect(chainNarration(out, before, chainBeats(out), copy)).toBe('C is out — the clock ran dry')
+    const trapped = state({ eliminated: ['c'], outcomes: { c: 'trapped' }, trap: {} as never })
+    expect(chainNarration(trapped, before, chainBeats(trapped), copy)).toBeUndefined()
   })
 })

@@ -163,7 +163,11 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'terra-incognita'
     case 'pyramid-scheme-challenge':
       return 'pyramid-scheme'
+    case 'group-challenge':
+      return 'ranking'
     default:
+      // Unknown `_type`s land on ranking too — `guessPolicyFor` treats that
+      // fallback as unwired and broadcasts nothing for it.
       return 'ranking'
   }
 }

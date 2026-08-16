@@ -210,7 +210,10 @@ const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
   readySent.value = true
-  update({ event: 'unique-ready' })
+  // A failed ack re-opens the button — a lost ready must not strand the seat.
+  void update({ event: 'unique-ready' }).then(delivered => {
+    if (!delivered) readySent.value = false
+  })
 }
 
 const boardLine = computed(() =>

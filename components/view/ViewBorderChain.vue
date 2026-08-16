@@ -137,7 +137,16 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
-import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
+import {
+  activePlayerId,
+  type ChainBeats,
+  chainBeats,
+  chainNarration,
+  isStraitHop,
+  liveChain,
+  openMoves,
+  walkColor,
+} from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
@@ -172,7 +181,10 @@ const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
   readySent.value = true
-  update({ event: 'chain-ready' })
+  // A failed ack re-opens the button — a lost ready must not strand the seat.
+  void update({ event: 'chain-ready' }).then(delivered => {
+    if (!delivered) readySent.value = false
+  })
 }
 const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
@@ -285,6 +297,35 @@ watch(
     pending.value = false
     focusMyTurn()
   }
+)
+
+// --- Ephemeral narration -----------------------------------------------------
+// Table beats derive from consecutive snapshots through lib/chain's shared
+// beat-diff (Atlas rides the same one) — nothing rides the wire and nothing is
+// stored. The first snapshot has no diff base, so a rejoiner lands on the
+// current state silently instead of replaying stale toasts. Own moves stay
+// silent: the chain rail already tells the player.
+let seenBeats: ChainBeats | undefined
+watch(
+  challenge,
+  current => {
+    const s = current?.state
+    if (!s) return
+    const snapshot = chainBeats(s)
+    const before = seenBeats
+    seenBeats = snapshot
+    if (!before) return
+
+    const line = chainNarration(s, before, snapshot, {
+      seatId: gameStore.seatId,
+      seatName,
+      fate: outcome => (outcome === 'timeout' ? 'the clock ran dry' : 'walked off the map'),
+      move: (name, to, from) =>
+        `${name} walks on to ${countryName(to)}${isStraitHop(from, to) ? ' — across the strait' : ''}`,
+    })
+    if (line) announce({ hint: line })
+  },
+  { immediate: true, deep: true }
 )
 
 // --- Painting the map --------------------------------------------------------

@@ -30,6 +30,7 @@
               :definition="details.definition"
             />
           </h1>
+          <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
         </div>
       </section>
 
@@ -83,6 +84,7 @@
 </template>
 <script lang="ts" setup>
 import { Sortable } from 'sortablejs-vue3'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
@@ -96,8 +98,16 @@ import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geog
 
 // The board stays visible behind the ranking form (solo: false); the shared
 // scaffolding still owns the interstitial and the submit latch + redelivery.
-const { gameStore, currentRound, showInterstitial, submitted, begin, submitOnce } =
-  useGroupChallenge('group-challenge', { solo: false })
+const {
+  gameStore,
+  currentRound,
+  showInterstitial,
+  submitted,
+  begin,
+  submitOnce,
+  announce,
+  entries,
+} = useGroupChallenge('group-challenge', { solo: false })
 const countries = ref<Country[]>(
   gameStore.currentGroupChallengeForPlayer?.map(isoCode => COUNTRIES[isoCode]) || []
 )
@@ -139,7 +149,13 @@ const updateRanking = (event: Event) => {
   }
 }
 
-const submitRanking = () => submitOnce(ranking.value)
+const submitRanking = () => {
+  // The latch first: a second Enter press must not re-announce a submit that
+  // never happens. A reorder names nothing, so the room hears only the race.
+  if (submitted.value) return
+  announce({ kind: 'presence' })
+  submitOnce(ranking.value)
+}
 
 // The dense layout keeps even 6-tile hands on screen without scrolling, so
 // the tiles refuse the browser's pan gestures entirely and the shared no-delay

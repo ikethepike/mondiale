@@ -41,6 +41,7 @@
           </span>
           <span v-for="line in recognitionLines" :key="line" class="note">{{ line }}</span>
         </ChallengeResult>
+        <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </ChallengePrompt>
     </template>
   </section>
@@ -51,6 +52,7 @@ import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -71,6 +73,7 @@ const {
   secondsLeft,
   begin,
   announce,
+  entries,
   submitOnce,
   registerCleanup,
   gameStore,
@@ -266,7 +269,7 @@ const onMapClick = (event: Event) => {
   // `correct`/`wrong` kind still renders as "got it ✓" in the room's ticker —
   // and in a one-shot round, knowing a rival SOLVED it is most of the answer.
   // `probe` says somebody tapped, which is all this mode may say.
-  announce({ kind: 'probe', isoCode })
+  announce({ kind: 'probe' })
   submitRound(isoCode)
 }
 

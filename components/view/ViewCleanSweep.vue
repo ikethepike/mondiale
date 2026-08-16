@@ -226,7 +226,10 @@ const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
   readySent.value = true
-  update({ event: 'sweep-ready' })
+  // A failed ack re-opens the button — a lost ready must not strand the seat.
+  void update({ event: 'sweep-ready' }).then(delivered => {
+    if (!delivered) readySent.value = false
+  })
 }
 
 const claimedBy = computed(() => (challenge.value ? sweepClaimedBy(challenge.value) : {}))
