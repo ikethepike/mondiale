@@ -64,11 +64,12 @@ const SNOWLINE_FRACTION = 0.9
  *  lap snow over the disc rims on a hard board's steeper dome. */
 const LEDGE_FLAT_RATIO = 0.58
 const LEDGE_RADIUS_RATIO = 0.85
-/** The carved shelf sits this far BELOW the anchor: the slab platform
- *  board-builder stands on each ledge rises exactly this proud of the ground
- *  (a visible stone deck, taller than any mesh corner-cut), and the pawn
- *  stands on the slab's top face (the anchor itself). */
-export const LEDGE_SLAB_INSET = 0.42
+/** The carved shelf sits this far BELOW the anchor: the pedestal platform
+ *  board-builder stands on each ledge rises exactly this proud of the ground,
+ *  and the pawn stands on its top face (the anchor itself). Sized so the
+ *  pedestal clears the bench's own lips from ANY camera height — 0.42 still
+ *  read as sunk from a low orbit (Isaac's phone check, 2026-08-16). */
+export const LEDGE_SLAB_INSET = 0.9
 
 /** The peak may reach into the contour fade band (its far flank dissolving
  *  into the page is the aesthetic), but its center stays inside it. */
