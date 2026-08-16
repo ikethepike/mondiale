@@ -36,6 +36,7 @@ import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
 import type { GameDifficulty, Tile } from '~~/types/game.types'
 import { PHONE_MAX_PX } from '~~/lib/use-viewport'
+import { prefersReducedMotion } from '~~/lib/motion'
 import { CLIMAX_TILES } from '~~/lib/tiles'
 import { createNumberAtlas } from './atlas'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
@@ -54,6 +55,7 @@ import {
   type WaymarkSite,
 } from './scenery'
 import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
+import { pickTownSite, type TownSite } from './town'
 import {
   BOARD_SIZE,
   createHeightSampler,
@@ -507,21 +509,13 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   if (scenery.stones)
     buildStandingStones(scenery.stones, spacing, sampler).forEach(mesh => group.add(mesh))
   if (scenery.scaleBar) group.add(buildScaleBar(scenery.scaleBar, sampler))
-  pickWaymarkSites(
-    tilePath,
-    pondSite,
-    summitSite,
-    riverPath,
-    scenery,
-    sampler,
-    lakeSite
-  ).forEach(site => buildWaymark(site, spacing).forEach(mesh => group.add(mesh)))
 
-  // A decorative railway for certain seeds: a closed contour loop with an
-  // old steam train rounding it. Picked LAST among the placements, so it is
-  // always the feature that yields — the ticker drives it via `animations`.
   const animations: ((time: number) => void)[] = []
-  const railwayLoop = pickRailwayLoop(
+
+  // The hamlet: a huddle of houses and one tower around a lane, dressed in
+  // the biome's palette. Sited after the survey furniture, before the
+  // railway — later features yield to it, it yields to everything earlier.
+  const townSite = pickTownSite(
     seed,
     tilePath,
     pondSite,
@@ -530,6 +524,37 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     scenery,
     sampler,
     lakeSite
+  )
+  if (townSite) {
+    const town = buildTownMeshes(townSite, biome, spacing, sampler)
+    town.meshes.forEach(mesh => group.add(mesh))
+    if (town.animate) animations.push(town.animate)
+  }
+
+  pickWaymarkSites(
+    tilePath,
+    pondSite,
+    summitSite,
+    riverPath,
+    scenery,
+    sampler,
+    lakeSite,
+    townSite
+  ).forEach(site => buildWaymark(site, spacing).forEach(mesh => group.add(mesh)))
+
+  // A decorative railway for certain seeds: a closed contour loop with an
+  // old steam train rounding it. Picked LAST among the placements, so it is
+  // always the feature that yields — the ticker drives it via `animations`.
+  const railwayLoop = pickRailwayLoop(
+    seed,
+    tilePath,
+    pondSite,
+    summitSite,
+    riverPath,
+    scenery,
+    sampler,
+    lakeSite,
+    townSite
   )
   if (railwayLoop) {
     const railway = buildRailway(railwayLoop, biome)
@@ -545,6 +570,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     river: riverPath,
     railway: railwayLoop,
     lake: lakeSite,
+    town: townSite,
     snowlineY,
   })
   const contourLabels = buildContourLabels(labelPlan, biome)
@@ -560,6 +586,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       summit: summitSite,
       river: riverPath,
       lake: lakeSite,
+      town: townSite,
       railway: railwayLoop,
       sampler,
       waterDistanceAt,
@@ -1615,6 +1642,167 @@ const buildScaleBar = (
       depthWrite: false,
     })
   )
+}
+
+/** What the hamlet wears per biome — scenery reads the palette the way the
+ *  train does; game pieces still never do. */
+const TOWN_WALLS: Record<BoardBiome['name'], keyof BoardBiome> = {
+  parchment: 'foam',
+  grassland: 'trunkColor',
+  desert: 'rock',
+  ice: 'foam',
+}
+const TOWN_ROOFS: Record<BoardBiome['name'], keyof BoardBiome> = {
+  parchment: 'major',
+  grassland: 'foliageColor',
+  desert: 'crest',
+  ice: 'major',
+}
+
+/**
+ * The hamlet made flesh: gabled houses (box + squashed 45°-yawed pyramid),
+ * train-red door ticks, a ball-finial tower — never a windmill, whose sails
+ * are cross-arms — and a lane decal draped through the huddle. One chimney
+ * smokes on the railway's puff idiom; reduced motion shows a quiet town.
+ */
+const buildTownMeshes = (
+  town: TownSite,
+  biome: BoardBiome,
+  spacing: number,
+  sampler: HeightSampler
+): { meshes: (Mesh | Group)[]; animate?: (time: number) => void } => {
+  const walls = biome[TOWN_WALLS[biome.name]] as string
+  const roofs = biome[TOWN_ROOFS[biome.name]] as string
+  const accent = '#ec6247'
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  let chimneys = 0
+  let smokeStack: Vector3 | undefined
+
+  town.houses.forEach((house, index) => {
+    const parts: MarkerPart[] = []
+    if (house.kind === 'tower') {
+      const shaft = new BoxGeometry(0.62, 1.5, 0.62)
+      shaft.translate(0, 0.75, 0)
+      parts.push({ geometry: shaft, color: walls })
+      const cap = new ConeGeometry(0.52, 0.5, 4)
+      cap.rotateY(Math.PI / 4)
+      cap.translate(0, 1.75, 0)
+      parts.push({ geometry: faceted(cap), color: roofs })
+      const finial = new SphereGeometry(0.09, 10, 8)
+      finial.translate(0, 2.08, 0)
+      parts.push({ geometry: faceted(finial), color: BOARD_COLORS.darkBlue })
+      const door = new BoxGeometry(0.2, 0.36, 0.05)
+      door.translate(0, 0.18, 0.31)
+      parts.push({ geometry: door, color: accent })
+    } else {
+      const body = new BoxGeometry(1.15, 0.6, 0.9)
+      body.translate(0, 0.3, 0)
+      parts.push({ geometry: body, color: walls })
+      const roof = new ConeGeometry(0.85, 0.55, 4)
+      roof.rotateY(Math.PI / 4)
+      roof.scale(1, 1, 0.78)
+      roof.translate(0, 0.87, 0)
+      parts.push({ geometry: faceted(roof), color: roofs })
+      const door = new BoxGeometry(0.2, 0.34, 0.05)
+      door.translate(0, 0.17, 0.44)
+      parts.push({ geometry: door, color: accent })
+      if (chimneys < 3 && index % 2 === 0) {
+        chimneys++
+        const chimney = new BoxGeometry(0.15, 0.42, 0.15)
+        chimney.translate(0.32, 0.95, 0.12)
+        parts.push({ geometry: chimney, color: BOARD_COLORS.darkBlue })
+        if (!smokeStack) {
+          // World-space stack top for the puffs, matching the house's bake.
+          const local = new Vector3(0.32, 1.18, 0.12).multiplyScalar(house.scale)
+          local.applyAxisAngle(new Vector3(0, 1, 0), house.yaw)
+          smokeStack = new Vector3(house.x, house.y - 0.05, house.z).add(local)
+        }
+      }
+    }
+    const matrix = new Matrix4()
+      .makeRotationY(house.yaw)
+      .scale(new Vector3(house.scale, house.scale, house.scale))
+      .setPosition(house.x, house.y - 0.05, house.z)
+    bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  })
+
+  const meshes: (Mesh | Group)[] = bucketsToMeshes(colorBuckets, outlines)
+
+  // The lane: a draped ribbon decal in the biome's minor ink, segment by
+  // segment so it follows the ground (the compass-rose recipe).
+  const laneQuads: BufferGeometry[] = []
+  const LANE_HALF = 0.28
+  for (let index = 0; index < town.lane.length - 1; index++) {
+    const here = town.lane[index]
+    const next = town.lane[index + 1]
+    const direction = Math.atan2(next.x - here.x, next.z - here.z)
+    const acrossX = Math.cos(direction) * LANE_HALF
+    const acrossZ = -Math.sin(direction) * LANE_HALF
+    const quad = new BufferGeometry()
+    // prettier-ignore
+    const vertices = new Float32Array([
+      here.x - acrossX, 0, here.z - acrossZ,
+      here.x + acrossX, 0, here.z + acrossZ,
+      next.x - acrossX, 0, next.z - acrossZ,
+      here.x + acrossX, 0, here.z + acrossZ,
+      next.x + acrossX, 0, next.z + acrossZ,
+      next.x - acrossX, 0, next.z - acrossZ,
+    ])
+    quad.setAttribute('position', new BufferAttribute(vertices, 3))
+    laneQuads.push(quad)
+  }
+  const lane = mergeGeometries(laneQuads)
+  laneQuads.forEach(quad => quad.dispose())
+  const lanePositions = lane.attributes.position
+  for (let index = 0; index < lanePositions.count; index++) {
+    lanePositions.setY(
+      index,
+      sampler(lanePositions.getX(index), lanePositions.getZ(index)) + 0.14
+    )
+  }
+  lanePositions.needsUpdate = true
+  meshes.push(
+    new Mesh(
+      lane,
+      new MeshBasicMaterial({
+        color: biome.minor,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false,
+      })
+    )
+  )
+
+  // One hearth: puffs cycling off the first chimney, exactly the train's
+  // smoke — a still scene keeps them parked at the stack.
+  let animate: ((time: number) => void) | undefined
+  if (smokeStack) {
+    const stack = smokeStack
+    const puffs: Mesh[] = []
+    for (let index = 0; index < 3; index++) {
+      const puff = new Mesh(
+        new SphereGeometry(0.14, 8, 6),
+        new MeshBasicMaterial({ color: '#9aa4ae', transparent: true, opacity: 0.7 })
+      )
+      puff.position.copy(stack)
+      puffs.push(puff)
+      meshes.push(puff)
+    }
+    animate = (time: number) => {
+      if (prefersReducedMotion()) return
+      puffs.forEach((puff, index) => {
+        const cycle = (time * 0.32 + index / puffs.length) % 1
+        puff.position.set(stack.x + cycle * 0.5, stack.y + cycle * 1.5, stack.z)
+        const swell = 0.6 + cycle * 1.4
+        puff.scale.set(swell, swell, swell)
+        ;(puff.material as MeshBasicMaterial).opacity = 0.7 * (1 - cycle * cycle)
+      })
+    }
+  }
+
+  return { meshes, animate }
 }
 
 /**

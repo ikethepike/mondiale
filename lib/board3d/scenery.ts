@@ -7,6 +7,7 @@ import type { RiverPath } from './river'
 import type { PondSite } from './water'
 import type { SummitSite } from './summit'
 import { type LakeSite, lakeShoreDistance } from './lake'
+import type { TownSite } from './town'
 
 /**
  * Seeded, purely-visual furniture on the open terrain the track leaves empty:
@@ -192,7 +193,8 @@ export const pickWaymarkSites = (
   river: RiverPath | undefined,
   furniture: ScenerySites,
   sampler: HeightSampler,
-  lake?: LakeSite
+  lake?: LakeSite,
+  town?: TownSite
 ): WaymarkSite[] => {
   const { shelfPoints, spacing } = path
   const sites: WaymarkSite[] = []
@@ -209,6 +211,7 @@ export const pickWaymarkSites = (
       }
     }
     if (lake && lakeShoreDistance(lake, x, z) < 1.5) return false
+    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2) return false
     const others = [
       ...furniture.cairns,
       ...(furniture.compass ? [furniture.compass] : []),

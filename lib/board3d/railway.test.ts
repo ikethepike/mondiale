@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { Vector3 } from 'three'
+import { pickLakeSite, withLakeBed } from './lake'
 import { createTilePath } from './path'
 import { loopCrossesItself, pickRailwayLoop } from './railway'
 import { pickRiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
 import { pickSummitSite, withSummitMassif } from './summit'
 import { createHeightSampler, EDGE_FADE_START, withEdgeFalloff, withPathShelf } from './terrain'
+import { pickTownSite } from './town'
 import { pickPondSite, withPondBasin } from './water'
 import type { Tile } from '~~/types/game.types'
 
@@ -24,10 +26,13 @@ const worldFor = (seed: string, count = 65) => {
   const shelved = withPathShelf(rawSampler, path.shelfPoints, path.spacing * 1.05)
   const ponded = pond ? withPondBasin(shelved, pond) : shelved
   const sculpted = summit ? withSummitMassif(ponded, summit, path.spacing) : ponded
-  const sampler = river ? withRiverBed(sculpted, river) : sculpted
-  const scenery = pickScenerySites(seed, path, pond, summit, sampler, river)
-  const loop = pickRailwayLoop(seed, path, pond, summit, river, scenery, sampler)
-  return { loop, path, summit, sampler }
+  const rivered = river ? withRiverBed(sculpted, river) : sculpted
+  const lake = pickLakeSite(seed, path, pond, summit, river, rivered)
+  const sampler = lake ? withLakeBed(rivered, lake) : rivered
+  const scenery = pickScenerySites(seed, path, pond, summit, sampler, river, lake)
+  const town = pickTownSite(seed, path, pond, summit, river, scenery, sampler, lake)
+  const loop = pickRailwayLoop(seed, path, pond, summit, river, scenery, sampler, lake, town)
+  return { loop, path, summit, sampler, town }
 }
 
 type World = ReturnType<typeof worldFor> & { loop: Vector3[] }
@@ -103,5 +108,22 @@ describe('pickRailwayLoop', () => {
         expect(point.y).toBeCloseTo(sampler(point.x, point.z) + 0.1, 6)
       }
     }
+  })
+
+  it('keeps the loop clear of a dealt town', () => {
+    // The conjunction is rare (railway ~1-in-12 × town ~1-in-5) — scan wide
+    // and assert non-vacuously on whatever pairs turn up.
+    let pairs = 0
+    for (let index = 0; index < 600 && pairs < 2; index++) {
+      const { loop, town } = worldFor(`railway-town-${index}`)
+      if (!loop || !town) continue
+      pairs++
+      for (const point of loop) {
+        expect(
+          Math.hypot(point.x - town.center.x, point.z - town.center.z)
+        ).toBeGreaterThanOrEqual(town.radius + 1.5)
+      }
+    }
+    expect(pairs).toBeGreaterThan(0)
   })
 })

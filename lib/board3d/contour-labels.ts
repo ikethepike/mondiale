@@ -10,6 +10,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { BoardBiome } from './biomes'
 import { type LakeSite, lakeShoreDistance } from './lake'
 import type { TilePathResult } from './path'
+import type { TownSite } from './town'
 import type { PondSite } from './water'
 import type { RiverPath } from './river'
 import type { SummitSite } from './summit'
@@ -55,6 +56,7 @@ export interface ContourLabelOptions {
   river?: RiverPath
   railway?: Vector3[]
   lake?: LakeSite
+  town?: TownSite
   /** Lines fade into the snow wash — no label stands on snow. */
   snowlineY?: number
 }
@@ -69,7 +71,7 @@ export const pickContourLabels = (
   path: TilePathResult,
   options: ContourLabelOptions = {}
 ): ContourLabelPlan => {
-  const { pond, summit, river, railway, lake, snowlineY } = options
+  const { pond, summit, river, railway, lake, town, snowlineY } = options
   const { shelfPoints, spacing } = path
   const clearance = spacing * 0.95
   const clearanceSquared = clearance * clearance
@@ -103,6 +105,7 @@ export const pickContourLabels = (
       }
     }
     if (lake && lakeShoreDistance(lake, x, z) < 1.5) return false
+    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 1) return false
     return true
   }
 
