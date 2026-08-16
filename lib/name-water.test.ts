@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   getRoundChallenge,
   HIGHLANDS_TIERS,
@@ -106,9 +106,9 @@ describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
  * The three-country floor is measured on the key the table can actually reach,
  * never on the shipped list — otherwise benching a micro-nation would leave a
  * "name 3" round with two reachable answers and no third to find. The Ligurian
- * (FR/IT/MC) and Tyrrhenian (FR/IT/VA) seas are the shipped keys that fall
- * under it once Monaco and the Vatican are out, so they simply don't deal
- * below hard.
+ * (FR/IT/MC) is the shipped key that falls under it once Monaco is out, so it
+ * simply doesn't deal below hard. The Tyrrhenian used to be the other one, on
+ * a third shore the Holy See never had.
  */
 describe('the three-country floor and benched micro-nations', () => {
   const shores = (
@@ -119,13 +119,81 @@ describe('the three-country floor and benched micro-nations', () => {
 
   it('measures the floor on the in-play key, not the shipped one', async () => {
     const { WATER_FEATURES } = await import('~~/data/water.gen')
-    for (const id of ['ligurian-sea', 'tyrrhenian-sea']) {
-      expect(WATER_FEATURES[id].countries.length).toBeGreaterThanOrEqual(3)
-      expect(shores(id, { variant: 'world', difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
-      expect(
-        shores(id, { variant: 'world', difficulty: 'hard' }, WATER_FEATURES).length
-      ).toBeGreaterThanOrEqual(3)
+    const id = 'ligurian-sea'
+    expect(WATER_FEATURES[id].countries.length).toBeGreaterThanOrEqual(3)
+    expect(shores(id, { variant: 'world', difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
+    expect(
+      shores(id, { variant: 'world', difficulty: 'hard' }, WATER_FEATURES).length
+    ).toBeGreaterThanOrEqual(3)
+  })
+})
+
+/**
+ * A shore is a coast, and the generator proves it geometrically: proximity
+ * nominates, and an approach that spends its length inside a neighbour's
+ * ground is a reach-over, not a shore. The Factbook knows the same thing from
+ * an INDEPENDENT direction — it files a country's coastline in kilometres —
+ * so reading it here is a cross-check on the shipped rosters rather than a
+ * restatement of how they were built.
+ *
+ * The endorheic pair is the entire exception, and the reason the generator
+ * asks about the crossing rather than about coastlines: a sea with no way out
+ * to the ocean is exactly the water a landlocked state can hold, and three of
+ * the Caspian's five shores are countries the Factbook calls landlocked.
+ */
+describe('shore rosters are coasts', () => {
+  const ENDORHEIC = new Set(['caspian-sea', 'garabogazkol'])
+  /**
+   * The oracle's one blind spot, and it is the oracle's, not the geometry's:
+   * the Factbook files the Palestinian territories as two entries and the
+   * snapshot's PS is the West Bank, landlocked at 5,640 km². The game's PS is
+   * both territories, so Gaza's 40 km of Mediterranean coast is real.
+   */
+  const FILED_APART = new Set(['PS'])
+
+  // The frozen snapshot is 7 MB of prose; parse it once for the whole block.
+  let inland: Set<string>
+  beforeAll(async () => {
+    const { FACTBOOK } = await import('~~/data/factbook.gen')
+    inland = new Set(
+      Object.entries(FACTBOOK)
+        .filter(([, entry]) => /landlocked/i.test(entry.Geography?.Coastline?.text ?? ''))
+        .map(([isoCode]) => isoCode)
+    )
+  }, 30_000)
+
+  it('never puts a landlocked country on water that reaches the ocean', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    for (const feature of Object.values(WATER_FEATURES)) {
+      if (feature.kind !== 'sea' && feature.kind !== 'ocean') continue
+      if (ENDORHEIC.has(feature.id)) continue
+      for (const isoCode of feature.countries) {
+        if (FILED_APART.has(isoCode)) continue
+        expect(inland.has(isoCode), `${feature.id} claims landlocked ${isoCode}`).toBe(false)
+      }
     }
+  })
+
+  it('keeps the Caspian shores the Factbook calls landlocked', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    for (const isoCode of ['AZ', 'KZ', 'TM']) {
+      expect(inland.has(isoCode)).toBe(true)
+      expect(WATER_FEATURES['caspian-sea'].countries).toContain(isoCode)
+    }
+  })
+
+  /**
+   * The fix this bug invites — tighten the epsilon — cannot work, and this is
+   * why: Monaco's real coast sits FARTHER from the Ligurian (2.0 units) than
+   * the Holy See's non-coast did from the Tyrrhenian (1.3). Distance alone
+   * can only choose which of the two to get wrong.
+   */
+  it('keeps the coast that is farther out than the reach-over was', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    expect(WATER_FEATURES['ligurian-sea'].countries).toContain('MC')
+    expect(WATER_FEATURES['mediterranean-sea'].countries).toContain('MC')
+    expect(WATER_FEATURES['tyrrhenian-sea'].countries).not.toContain('VA')
+    expect(WATER_FEATURES['adriatic-sea'].countries).not.toContain('SM')
   })
 })
 

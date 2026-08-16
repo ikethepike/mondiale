@@ -78,8 +78,17 @@ const NOT_LAKES = new Set(['North Channel', 'Whitefish Bay', 'St. Marys River'])
 
 /** Keep projected points at least this far apart (viewBox units). */
 const DECIMATE_UNITS = 0.7
-/** A shore counts as touching water within this distance (viewBox units). */
+/** How far a shore may be nominated from the water it touches (viewBox units) —
+ *  the two geometries are generalized separately, and Monaco's real Ligurian
+ *  coast lands 2.0 units out. Candidates only; `shoresWater` rules. */
 const SHORE_EPSILON = 2.2
+/** Under this, the gap is generalization slop and nothing else — no approach
+ *  test needed. Above it, the line to the water has to be walked. */
+const SHORE_SLOP = 0.25
+/** How finely that line is sampled, and the share of it that may cross someone
+ *  else's ground before it stops being an approach to your own shore. */
+const APPROACH_SAMPLES = 9
+const MAX_FOREIGN_SHARE = 0.5
 /** Rivers shorter than this on the map aren't playable. */
 const MIN_RIVER_LENGTH = 18
 /** Sample step along rivers for country-crossing tests. */
@@ -288,6 +297,134 @@ const countriesNear = (points: Point[], epsilon: number): Set<ISOCountryCode> =>
   return found
 }
 
+/** Nearest point on a set of rings, measured to the SEGMENTS: vertex-to-vertex
+ *  would put a coast's nearest water point sideways along the shore, and the
+ *  approach test below reads that line. */
+const nearestOnRings = (point: Point, rings: Point[][]): { distance: number; at: Point } => {
+  let distance = Infinity
+  let at: Point = point
+  for (const ring of rings)
+    for (let i = 1; i < ring.length; i++) {
+      const [x1, y1] = ring[i - 1]
+      const [x2, y2] = ring[i]
+      const dx = x2 - x1
+      const dy = y2 - y1
+      const lengthSquared = dx * dx + dy * dy
+      const t = lengthSquared
+        ? Math.max(0, Math.min(1, ((point[0] - x1) * dx + (point[1] - y1) * dy) / lengthSquared))
+        : 0
+      const candidate: Point = [x1 + dx * t, y1 + dy * t]
+      const d = Math.hypot(point[0] - candidate[0], point[1] - candidate[1])
+      if (d < distance) {
+        distance = d
+        at = candidate
+      }
+    }
+  return { distance, at }
+}
+
+/**
+ * Which country's GROUND holds most of the line from a coast to the water, if
+ * any. A sample inside the feature itself never blocks whoever else's polygon
+ * it also sits in: national boundaries run down the middle of shared water, so
+ * Ontario's approach to Lake St. Clair lies inside the United States for its
+ * whole length without ever leaving the lake.
+ */
+const approachBlockedBy = (
+  from: Point,
+  to: Point,
+  own: ISOCountryCode,
+  water: Point[][]
+): ISOCountryCode | null => {
+  const hits = new Map<ISOCountryCode, number>()
+  for (let i = 1; i <= APPROACH_SAMPLES; i++) {
+    const t = i / (APPROACH_SAMPLES + 1)
+    const sample: Point = [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t]
+    if (pointInRings(sample, water)) continue
+    for (const shape of countryShapes) {
+      if (shape.code === own) continue
+      if (!inBounds(sample, shape.bounds, 0.2)) continue
+      if (!pointInRings(sample, shape.rings)) continue
+      hits.set(shape.code, (hits.get(shape.code) ?? 0) + 1)
+      break
+    }
+  }
+  const blocked = [...hits.values()].reduce((total, count) => total + count, 0)
+  if (blocked / APPROACH_SAMPLES <= MAX_FOREIGN_SHARE) return null
+  return [...hits.entries()].sort(([, a], [, b]) => b - a)[0][0]
+}
+
+/**
+ * Proximity NOMINATES a shore; this decides whether it is one. The two
+ * geometries are generalized apart, so a real coast can sit a couple of units
+ * from the water ring — and no epsilon can sort them by distance alone: the
+ * Vatican sits CLOSER to the Tyrrhenian (1.3) than Monaco does to the Ligurian
+ * (2.0), and Monaco's entire outline is smaller than either gap. What tells
+ * them apart is what lies in between. Walk the country's own vertices, take
+ * the nearest point on the water, and sample the line to it: a shore has at
+ * least one approach that is mostly its own land and water. When every
+ * approach spends most of its length inside somebody else, the country is
+ * looking at the water across a neighbour's ground — the Vatican at the
+ * Tyrrhenian across Rome, Bulgaria at the Aegean across Greece, Finland at the
+ * Barents across Norway — and it is not a shore.
+ *
+ * Landlocked is therefore never asked, and never has to be: the Caspian and
+ * Garabogazköl keep Azerbaijan, Kazakhstan and Turkmenistan because those
+ * coasts are real and the approach is their own.
+ */
+const shoresWater = (
+  shape: CountryShape,
+  rings: Point[][],
+  waterBounds: [number, number, number, number]
+): { shore: true } | { shore: false; blockedBy: ISOCountryCode | null; distance: number } => {
+  let nearest = Infinity
+  let blockedBy: ISOCountryCode | null = null
+  for (const ring of shape.rings)
+    for (const point of ring) {
+      if (!inBounds(point, waterBounds, SHORE_EPSILON)) continue
+      const { distance, at } = nearestOnRings(point, rings)
+      if (distance > SHORE_EPSILON) continue
+      // Inside the slop the gap is the generalization, not a crossing.
+      if (distance <= SHORE_SLOP) return { shore: true }
+      const blocker = approachBlockedBy(point, at, shape.code, rings)
+      if (!blocker) return { shore: true }
+      if (distance < nearest) {
+        nearest = distance
+        blockedBy = blocker
+      }
+    }
+  // A null blocker means proximity nominated it vertex-to-vertex but no vertex
+  // of its own comes within reach of the water ring itself — a near miss all
+  // the same, and one the report should not name a country for.
+  return { shore: false, blockedBy, distance: nearest }
+}
+
+/** Shores dropped as reach-overs, for the run's report. */
+const reachOvers: string[] = []
+
+/** The countries whose own coast meets the water, from the proximity candidates. */
+const shoreCountriesOf = (
+  featureName: string,
+  rings: Point[][],
+  bounds: [number, number, number, number]
+): ISOCountryCode[] => {
+  const kept: ISOCountryCode[] = []
+  for (const code of countriesNear(rings.flat(), SHORE_EPSILON)) {
+    const shape = countryShapes.find(candidate => candidate.code === code)!
+    const verdict = shoresWater(shape, rings, bounds)
+    if (verdict.shore) kept.push(code)
+    else
+      reachOvers.push(
+        `${featureName}: ${code} (` +
+          (verdict.blockedBy
+            ? `${verdict.distance.toFixed(2)} away, across ${verdict.blockedBy}`
+            : 'never reaches the water ring') +
+          ')'
+      )
+  }
+  return kept.sort()
+}
+
 const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
   const ordered: ISOCountryCode[] = []
   for (const sample of samples) {
@@ -305,14 +442,32 @@ const boundsOverlap = (
   [bx, by, bw, bh]: [number, number, number, number]
 ) => ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by
 
+type RosterExpectation = { includes: ISOCountryCode[]; excludes: ISOCountryCode[] }
+
+/**
+ * Shore rosters that pin the approach test against the fix it invites. The
+ * Ligurian is the reason SHORE_EPSILON cannot simply be tightened: Monaco's
+ * real coast is farther from its water than the Vatican's non-coast is from
+ * the Tyrrhenian. The Caspian is the reason the test asks about the crossing
+ * rather than about coastlines: three of its five shores belong to states the
+ * Factbook files as landlocked.
+ */
+const SHORE_ROSTER_EXPECTATIONS: Record<string, RosterExpectation> = {
+  // Rome is in the way; the Holy See is not on the sea.
+  'tyrrhenian-sea': { includes: ['FR', 'IT'], excludes: ['VA'] },
+  // Ten km inland behind Rimini — closer to its water than Monaco is to its.
+  'adriatic-sea': { includes: ['HR', 'IT', 'ME', 'SI'], excludes: ['SM'] },
+  // 2.0 units out and still a coast: the true positive that outranges both.
+  'ligurian-sea': { includes: ['FR', 'IT', 'MC'], excludes: [] },
+  // Landlocked by the Factbook, shores all the same.
+  'caspian-sea': { includes: ['AZ', 'IR', 'KZ', 'RU', 'TM'], excludes: [] },
+}
+
 /** Landform rosters whose two failure directions are worth pinning — see the
  *  check in the drift defenses. Andorra and Liechtenstein are benched below
  *  hard, so the gate in waterFeaturePool drops them from the dealt key; they
  *  still have to be IN the shipped roster for a hard game to ask for them. */
-const REGION_ROSTER_EXPECTATIONS: Record<
-  string,
-  { includes: ISOCountryCode[]; excludes: ISOCountryCode[] }
-> = {
+const REGION_ROSTER_EXPECTATIONS: Record<string, RosterExpectation> = {
   // Across the Strait of Gibraltar, not on the peninsula.
   'plateau-iberian-peninsula': { includes: ['AD', 'ES', 'FR', 'PT'], excludes: ['MA'] },
   // Wholly inside the range, so its outline never crosses them.
@@ -490,16 +645,17 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    const shoreCountries = countriesNear(rings.flat(), SHORE_EPSILON)
-    if (!shoreCountries.size) continue
+    const bounds = boundsOf(rings)
+    const shoreCountries = shoreCountriesOf(name, rings, bounds)
+    if (!shoreCountries.length) continue
 
     add({
       id: slugify(name),
       name,
       kind,
       d: pathFromRings(rings),
-      bounds: boundsOf(rings),
-      countries: [...shoreCountries].sort(),
+      bounds,
+      countries: shoreCountries,
     })
   }
 
@@ -518,16 +674,17 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    const shoreCountries = countriesNear(rings.flat(), SHORE_EPSILON)
-    if (!shoreCountries.size) continue
+    const bounds = boundsOf(rings)
+    const shoreCountries = shoreCountriesOf(name, rings, bounds)
+    if (!shoreCountries.length) continue
 
     add({
       id: featureId('lake', name),
       name,
       kind: 'lake',
       d: pathFromRings(rings),
-      bounds: boundsOf(rings),
-      countries: [...shoreCountries].sort(),
+      bounds,
+      countries: shoreCountries,
     })
   }
 
@@ -678,15 +835,19 @@ const main = async () => {
       console.warn(`water-aliases: lake display name matched nothing: ${resolved}`)
     }
   }
-  // A landform's roster fails in two silent directions, and both shipped once:
-  // a proximity term reaches across water (Morocco on the Iberian Peninsula),
-  // and an outline-only overlap test drops the countries the outline never
-  // touches (Andorra, Liechtenstein). Neither shows up as a crash or a bad
-  // name — only as a round asking for a country that isn't there, or not
-  // asking for one that is. Pin the three that caught it.
-  for (const [id, { includes, excludes }] of Object.entries(REGION_ROSTER_EXPECTATIONS)) {
+  // A roster fails in two silent directions, and both shipped once: a
+  // proximity term reaches across land or water (Morocco on the Iberian
+  // Peninsula, the Holy See on the Tyrrhenian), and the test that stops it
+  // drops the shores it cannot see (Andorra and Liechtenstein inside their
+  // ranges, Monaco two units off its own sea). Neither shows up as a crash or
+  // a bad name — only as a round asking for a country that isn't there, or not
+  // asking for one that is. Pin the cases that caught each.
+  for (const [id, { includes, excludes }] of [
+    ...Object.entries(SHORE_ROSTER_EXPECTATIONS),
+    ...Object.entries(REGION_ROSTER_EXPECTATIONS),
+  ]) {
     const feature = features[id]
-    if (!feature) throw new Error(`Region roster check: ${id} no longer deals`)
+    if (!feature) throw new Error(`Roster check: ${id} no longer deals`)
     const missing = includes.filter(code => !feature.countries.includes(code))
     const surplus = excludes.filter(code => feature.countries.includes(code))
     if (missing.length || surplus.length) {
@@ -739,6 +900,13 @@ export const WATER_FEATURES: Record<string, WaterFeature> = ${jsonParseLiteral(s
   console.info(
     `Output: ${(bytes / 1024).toFixed(0)} KB raw, ${(Bun.gzipSync(Buffer.from(output)).byteLength / 1024).toFixed(0)} KB gzip → ${OUT_FILE}`
   )
+
+  // Every shore proximity nominated and the approach test refused. A round's
+  // answer key is exactly this list, so read it: each line is a country the
+  // atlas will no longer ask for, and a wrong one here is as invisible as the
+  // Holy See on the Tyrrhenian was.
+  console.info(`\nReach-overs dropped (${reachOvers.length}):`)
+  for (const line of reachOvers.sort()) console.info(`  ${line}`)
 
   // Sanity spot-checks against well-known geography. Probe the EMITTED map by
   // exact id: a substring fallback let an earlier-inserted feature shadow the

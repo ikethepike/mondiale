@@ -19,8 +19,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "HR",
     "IT",
     "ME",
-    "SI",
-    "SM"
+    "SI"
   ],
   "AR": [
     "CL",
@@ -46,8 +45,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "HR",
     "IT",
     "ME",
-    "SI",
-    "SM"
+    "SI"
   ],
   "BB": [
     "BZ",
@@ -82,7 +80,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
   ],
   "BG": [
     "GE",
-    "GR",
     "RO",
     "RU",
     "TR",
@@ -167,7 +164,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "KR",
     "MY",
     "PH",
-    "RU",
     "SG",
     "TH",
     "TW",
@@ -397,7 +393,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "EE",
     "LT",
     "LV",
-    "NO",
     "PL",
     "RU",
     "SE"
@@ -422,8 +417,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "PS",
     "SY",
     "TN",
-    "TR",
-    "VA"
+    "TR"
   ],
   "GA": [
     "CI",
@@ -442,8 +436,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "IE",
     "IS",
     "NL",
-    "NO",
-    "SE"
+    "NO"
   ],
   "GE": [
     "BG",
@@ -475,7 +468,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
   "GR": [
     "AL",
     "BA",
-    "BG",
     "CY",
     "DZ",
     "EG",
@@ -490,7 +482,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "ME",
     "PS",
     "SI",
-    "SM",
     "SY",
     "TN",
     "TR"
@@ -526,8 +517,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "GR",
     "IT",
     "ME",
-    "SI",
-    "SM"
+    "SI"
   ],
   "HT": [
     "BB",
@@ -625,8 +615,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
   ],
   "IS": [
     "GB",
-    "NO",
-    "SE"
+    "NO"
   ],
   "IT": [
     "AL",
@@ -645,11 +634,9 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "ME",
     "PS",
     "SI",
-    "SM",
     "SY",
     "TN",
-    "TR",
-    "VA"
+    "TR"
   ],
   "JM": [
     "BB",
@@ -683,7 +670,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "TW"
   ],
   "KH": [
-    "MM",
     "MY",
     "TH",
     "VN"
@@ -832,8 +818,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "GR",
     "HR",
     "IT",
-    "SI",
-    "SM"
+    "SI"
   ],
   "MG": [
     "KM",
@@ -845,11 +830,8 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "BD",
     "ID",
     "IN",
-    "KH",
     "LK",
-    "MY",
-    "TH",
-    "VN"
+    "TH"
   ],
   "MX": [
     "BB",
@@ -874,7 +856,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "CN",
     "ID",
     "KH",
-    "MM",
     "PH",
     "SG",
     "TH",
@@ -927,13 +908,11 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "BE",
     "DE",
     "DK",
-    "FI",
     "FR",
     "GB",
     "IS",
     "NL",
-    "RU",
-    "SE"
+    "RU"
   ],
   "NZ": [
     "AU"
@@ -1041,7 +1020,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
   "RU": [
     "AZ",
     "BG",
-    "CN",
     "DE",
     "DK",
     "EE",
@@ -1096,11 +1074,8 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "DK",
     "EE",
     "FI",
-    "GB",
-    "IS",
     "LT",
     "LV",
-    "NO",
     "PL",
     "RU"
   ],
@@ -1120,17 +1095,7 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "GR",
     "HR",
     "IT",
-    "ME",
-    "SM"
-  ],
-  "SM": [
-    "AL",
-    "BA",
-    "GR",
-    "HR",
-    "IT",
-    "ME",
-    "SI"
+    "ME"
   ],
   "SO": [
     "DJ",
@@ -1283,10 +1248,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
   "UY": [
     "AR"
   ],
-  "VA": [
-    "FR",
-    "IT"
-  ],
   "VE": [
     "BB",
     "BZ",
@@ -1310,7 +1271,6 @@ export const SEA_NEIGHBOURS: Partial<Record<ISOCountryCode, ISOCountryCode[]>> =
     "CN",
     "ID",
     "KH",
-    "MM",
     "MY",
     "PH",
     "SG",
