@@ -2,7 +2,9 @@ import Alea from 'alea'
 import { CatmullRomCurve3, Vector3 } from 'three'
 import type { HeightSampler } from './terrain'
 import { EDGE_FADE_START, smoothstep } from './terrain'
+import type { Tile } from '~~/types/game.types'
 import type { TilePathResult } from './path'
+import { smoothPolyline } from './polyline'
 import type { PondSite } from './water'
 import type { SummitSite } from './summit'
 
@@ -74,12 +76,13 @@ export const pickRiverPath = (
   path: TilePathResult,
   pond: PondSite | undefined,
   summit: SummitSite | undefined,
-  sampler: HeightSampler
+  sampler: HeightSampler,
+  tiles?: Tile[]
 ): RiverPath | undefined => {
   const random = Alea(`${seed}:river`)
   if (random() >= RIVER_CHANCE) return undefined
 
-  const { shelfPoints, spacing } = path
+  const { shelfPoints, spacing, transforms } = path
   const clearance = TRACK_CLEARANCE * spacing
   const clearanceSquared = clearance * clearance
 
@@ -155,6 +158,16 @@ export const pickRiverPath = (
     // meeting a hillside embankment would saw a gorge through the shelf.
     if (Math.abs(sampler(fromX, fromZ) - shelf.y) > 0.4) {
       return undefined
+    }
+    // The channel slips BETWEEN two tiles, never under one: mid-segment
+    // only (clear of every disc rim, radius 0.42×spacing), and both
+    // flanking tiles plain — a gate's marker overhangs its disc.
+    for (let index = 0; index < transforms.length; index++) {
+      const center = transforms[index].position
+      const reach = Math.hypot(center.x - shelf.x, center.z - shelf.z)
+      if (reach > spacing * 1.2) continue
+      if (reach < spacing * 0.35) return undefined
+      if (tiles && tiles[index].type !== 'normal') return undefined
     }
 
     // Which side we entered from: the sign of the lateral offset must FLIP
@@ -356,18 +369,40 @@ export const pickRiverPath = (
           crossing.halfBand
       )
 
+    // After any smoothing pass, a drifted point is PROJECTED back out of the
+    // surveyed berth — smoothing keeps its gentle bends, the berth keeps its
+    // guarantee, and neither erodes the other unboundedly.
+    const holdTheBerth = (line: Vector3[]): void => {
+      for (const point of line) {
+        if (pinned(point)) continue
+        let nearest = Infinity
+        let anchorX = 0
+        let anchorZ = 0
+        for (const shelf of shelfPoints) {
+          const distance = Math.hypot(shelf.x - point.x, shelf.z - point.z)
+          if (distance < nearest) {
+            nearest = distance
+            anchorX = shelf.x
+            anchorZ = shelf.z
+          }
+        }
+        if (nearest >= clearance || nearest < 1e-6) continue
+        const push = clearance / nearest
+        point.x = anchorX + (point.x - anchorX) * push
+        point.z = anchorZ + (point.z - anchorZ) * push
+      }
+    }
+
     // The march can turn hard where the downhill direction flips across a
     // gully — and the spline faithfully reproduces every hairpin. Iron the
     // coarse polyline first (ends pinned; y re-clamps below), so the fine
     // resample inherits a graded line the way the railway's cut-and-fill does.
-    for (let round = 0; round < 2; round++) {
-      for (let index = 1; index < coarse.length - 1; index++) {
-        if (pinned(coarse[index])) continue
-        coarse[index].x =
-          coarse[index].x * 0.5 + (coarse[index - 1].x + coarse[index + 1].x) * 0.25
-        coarse[index].z =
-          coarse[index].z * 0.5 + (coarse[index - 1].z + coarse[index + 1].z) * 0.25
-      }
+    // Relaxation: smooth, project, and again — smoothing alone drifts into
+    // the berth, projection alone kinks along it; alternated, the line
+    // settles gently AGAINST the boundary.
+    for (let pass = 0; pass < 3; pass++) {
+      smoothPolyline(coarse, 1, 'xz', pinned)
+      holdTheBerth(coarse)
     }
 
     // Fine resample through a spline, then re-clamp: the smooth centerline is
@@ -375,17 +410,9 @@ export const pickRiverPath = (
     const spline = new CatmullRomCurve3(coarse, false, 'centripetal')
     const fineCount = Math.max(coarse.length * 2, Math.ceil(spline.getLength() / 1.2))
     const points = spline.getSpacedPoints(fineCount)
-    // Two lateral low-pass rounds over the fine points (ends pinned): the
-    // spline still carries the march's kinks through rough bed stretches,
-    // and the ribbon renders every one of them.
-    for (let round = 0; round < 2; round++) {
-      for (let index = 1; index < points.length - 1; index++) {
-        if (pinned(points[index])) continue
-        points[index].x =
-          points[index].x * 0.5 + (points[index - 1].x + points[index + 1].x) * 0.25
-        points[index].z =
-          points[index].z * 0.5 + (points[index - 1].z + points[index + 1].z) * 0.25
-      }
+    for (let pass = 0; pass < 3; pass++) {
+      smoothPolyline(points, 1, 'xz', pinned)
+      holdTheBerth(points)
     }
     let fineLevel = Infinity
     for (const point of points) {
@@ -436,7 +463,22 @@ export const withRiverBed = (sampler: HeightSampler, river: RiverPath): HeightSa
     if (nearestSquared >= localShoulder * localShoulder) return bank
     const t = smoothstep(Math.sqrt(nearestSquared) / localShoulder)
     const drop = (BED_DROP - WATER_DROP) * (1 - crossingBlend * 0.5)
-    const bed = Math.min(bank, waterY - drop)
+    let bed = Math.min(bank, waterY - drop)
+    // Inside a crossing corridor the channel floor is ALSO clamped against
+    // the shelf's own height — the level-flank and bank-height gates bound
+    // the usual case, but a low upstream water level could still cut deep.
+    for (const crossing of crossings) {
+      const reach = Math.hypot(crossing.center.x - x, crossing.center.z - z)
+      if (reach < crossing.halfBand) {
+        const blend = Math.sqrt(1 - reach / crossing.halfBand)
+        // ...but never above the water line — a clamp that dried the
+        // channel would be worse than the cut it prevents.
+        bed = Math.max(
+          bed,
+          Math.min(crossing.center.y - 0.95 + 0.25 * blend, waterY - 0.15)
+        )
+      }
+    }
     return bed * (1 - t) + bank * t
   }
 }

@@ -338,15 +338,20 @@ export const withLakeBed = (sampler: HeightSampler, lake: LakeSite): HeightSampl
 }
 
 /** Distance from a point to the lake's water edge (0 on/inside the shore
- *  ring) — the same cheap nearest-sample recipe the river uses. */
+ *  ring) — the same cheap nearest-sample recipe the river uses, behind two
+ *  fast paths: this runs per terrain vertex (~90k) and per flora attempt,
+ *  so the far field must cost one hypot, and the inside test must run
+ *  BEFORE the shore scan it would discard. */
 export const lakeShoreDistance = (lake: LakeSite, x: number, z: number): number => {
+  const fromCenter = Math.hypot(x - lake.center.x, z - lake.center.z)
+  // Beyond every consumer's largest margin (the moisture falloff's 9), the
+  // exact figure changes nothing.
+  if (fromCenter > lake.boundingRadius + 12) return fromCenter - lake.boundingRadius
+  if (fromCenter <= lake.boundingRadius && interiorAt(lake.grid, x, z) > 0) return 0
   let nearest = Infinity
   for (const point of lake.shore) {
     const distance = Math.hypot(point.x - x, point.z - z)
     if (distance < nearest) nearest = distance
   }
-  const inside =
-    Math.hypot(x - lake.center.x, z - lake.center.z) <= lake.boundingRadius &&
-    interiorAt(lake.grid, x, z) > 0
-  return inside ? 0 : nearest
+  return nearest
 }

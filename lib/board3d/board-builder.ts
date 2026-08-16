@@ -33,6 +33,7 @@ import {
   Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import Alea from 'alea'
 import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallengeAccessorId } from '~~/types/challenges/individual-challenge.type'
 import type { GameDifficulty, Tile } from '~~/types/game.types'
@@ -50,6 +51,7 @@ import { buildRailway, pickRailwayRoute } from './railway'
 import { lakeShoreDistance, pickLakeSite, withLakeBed } from './lake'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import {
+  furniturePoints,
   pickScenerySites,
   pickWaymarkSites,
   type ScenerySites,
@@ -74,6 +76,7 @@ import {
   withPondBasin,
 } from './water'
 import { buildFlora, windMaterial } from './flora'
+import { makeSmokePuffs } from './smoke'
 import { type BoatMooring, pickBoatMooring } from './boat'
 
 export interface BoardBuild {
@@ -187,7 +190,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
 
   // A decorative river: rises on open high ground, marches downhill, stops
   // at the track's clearance. Carved into the bed the shader contours draw.
-  const riverPath = pickRiverPath(seed, tilePath, pondSite, summitSite, rawSampler)
+  const riverPath = pickRiverPath(seed, tilePath, pondSite, summitSite, rawSampler, tiles)
 
   const shelved = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
   const ponded = pondSite ? withPondBasin(shelved, pondSite) : shelved
@@ -519,7 +522,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
   if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing, sampler))
   if (scenery.stones)
-    buildStandingStones(scenery.stones, spacing, sampler).forEach(mesh => group.add(mesh))
+    buildStandingStones(seed, scenery.stones, spacing, sampler).forEach(mesh => group.add(mesh))
   if (scenery.scaleBar) group.add(buildScaleBar(scenery.scaleBar, sampler))
   if (scenery.basecamp)
     buildBasecamp(scenery.basecamp, spacing, timeUniforms).forEach(mesh => group.add(mesh))
@@ -527,11 +530,12 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const animations: ((time: number) => void)[] = []
 
   // A rowboat moored on the board's still water — lake first, else pond.
+  // On frozen water it sits dead still, iced in at its mooring.
   const mooring = pickBoatMooring(seed, pondSite, lakeSite, spacing, sampler)
   if (mooring) {
     const boat = buildRowboat(mooring, spacing)
     group.add(boat.group)
-    animations.push(boat.animate)
+    if (biome.waterState !== 'frozen') animations.push(boat.animate)
   }
 
   // The hamlet: a huddle of houses and one tower around a lane, dressed in
@@ -553,7 +557,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     if (town.animate) animations.push(town.animate)
   }
 
-  pickWaymarkSites(
+  const waymarks = pickWaymarkSites(
     tilePath,
     pondSite,
     summitSite,
@@ -562,7 +566,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     sampler,
     lakeSite,
     townSite
-  ).forEach(site => buildWaymark(site, spacing).forEach(mesh => group.add(mesh)))
+  )
+  waymarks.forEach(site => buildWaymark(site, spacing).forEach(mesh => group.add(mesh)))
 
   // A decorative railway for certain seeds: a closed contour loop OR an
   // edge-to-edge traverse off the sheet, with an old steam train riding it.
@@ -577,7 +582,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     scenery,
     sampler,
     lakeSite,
-    townSite
+    townSite,
+    waymarks
   )
   const railwayLoop = railwayRoute?.points
   if (railwayRoute) {
@@ -595,6 +601,11 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     railway: railwayLoop,
     lake: lakeSite,
     town: townSite,
+    furniture: [
+      ...furniturePoints(scenery),
+      ...waymarks.map(mark => mark.position),
+      ...(mooring ? [mooring.position] : []),
+    ],
     snowlineY,
   })
   const contourLabels = buildContourLabels(labelPlan, biome)
@@ -1244,6 +1255,32 @@ const bucketsToMeshes = (
   return meshes
 }
 
+/** Drape a flat ink decal onto the terrain: every vertex re-sampled onto
+ *  the ground plus a small lift, so segmented geometry follows each swell.
+ *  The one drape all three printed decals (compass, scale bar, lane) share
+ *  — a z-fighting or density fix lands once. */
+const drapeToGround = (
+  geometry: BufferGeometry,
+  sampler: HeightSampler,
+  lift: number
+): void => {
+  const positions = geometry.attributes.position
+  for (let index = 0; index < positions.count; index++) {
+    positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + lift)
+  }
+  positions.needsUpdate = true
+}
+
+/** The whole single-bake recipe in one call: parts through `bakeParts` at
+ *  the standard outline width, out as merged meshes. Multi-bake builders
+ *  (the hamlet's houses) keep the raw pair. */
+const bakePartsToMeshes = (parts: MarkerPart[], matrix: Matrix4, spacing: number): Mesh[] => {
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
 /**
  * The summit cairn: stacked faceted stones and an orange pennant on the
  * finale massif's plateau — the victory stand the gauntlet climb tops out
@@ -1274,15 +1311,15 @@ const buildSummitCairn = (site: SummitSite, spacing: number): Mesh[] => {
   pennant.translate(0.26 * s, (stackY + 0.94) * s, 0)
   parts.push({ geometry: pennant, color: BOARD_COLORS.hiorAnge })
 
-  const colorBuckets = new Map<string, BufferGeometry[]>()
-  const outlines: BufferGeometry[] = []
-  const matrix = new Matrix4().setPosition(
-    site.center.x - Math.sin(site.faceAngle) * 1.2,
-    site.center.y,
-    site.center.z - Math.cos(site.faceAngle) * 1.2
+  return bakePartsToMeshes(
+    parts,
+    new Matrix4().setPosition(
+      site.center.x - Math.sin(site.faceAngle) * 1.2,
+      site.center.y,
+      site.center.z - Math.cos(site.faceAngle) * 1.2
+    ),
+    spacing
   )
-  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
-  return bucketsToMeshes(colorBuckets, outlines)
 }
 
 /**
@@ -1453,11 +1490,7 @@ const buildHillCairn = (site: Vector3, spacing: number): Mesh[] => {
   finial.translate(0, (stackY + 0.82) * s, 0)
   parts.push({ geometry: faceted(finial), color: BOARD_COLORS.darkBlue })
 
-  const colorBuckets = new Map<string, BufferGeometry[]>()
-  const outlines: BufferGeometry[] = []
-  const matrix = new Matrix4().setPosition(site.x, site.y, site.z)
-  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
-  return bucketsToMeshes(colorBuckets, outlines)
+  return bakePartsToMeshes(parts, new Matrix4().setPosition(site.x, site.y, site.z), spacing)
 }
 
 /** A compass-rose ink decal DRAPED onto the ground — every vertex sits on
@@ -1510,11 +1543,7 @@ const buildCompassRose = (site: Vector3, spacing: number, sampler: HeightSampler
   geometries.forEach(geometry => geometry.dispose())
   merged.rotateX(-Math.PI / 2)
   merged.translate(site.x, 0, site.z)
-  const positions = merged.attributes.position
-  for (let index = 0; index < positions.count; index++) {
-    positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + 0.16)
-  }
-  positions.needsUpdate = true
+  drapeToGround(merged, sampler, 0.16)
   return new Mesh(
     merged,
     new MeshBasicMaterial({
@@ -1530,20 +1559,23 @@ const buildCompassRose = (site: Vector3, spacing: number, sampler: HeightSampler
  *  uprights only — no lintels (a crossbar silhouette is banned board-wide).
  *  Survey furniture like the cairns, so biome-blind cream-and-ink. */
 const buildStandingStones = (
+  seed: string,
   stones: NonNullable<ScenerySites['stones']>,
   spacing: number,
   sampler: HeightSampler
 ): Mesh[] => {
   const { center, yaw, count } = stones
+  // Per-stone character on a derived stream — the board's ONE randomness
+  // convention (a sin-hash would be a second, unretunable one).
+  const random = Alea(`${seed}:stones-detail`)
   const parts: MarkerPart[] = []
   const ringRadius = spacing * 0.55
   for (let index = 0; index < count; index++) {
-    // Deterministic per-stone character without touching any RNG stream.
-    const wobble = Math.sin(index * 12.9898 + yaw * 78.233)
+    const wobble = random() * 2 - 1
     const angle = yaw + (index * Math.PI * 2) / count + wobble * 0.22
     const x = Math.sin(angle) * ringRadius
     const z = Math.cos(angle) * ringRadius
-    const height = spacing * (0.3 + Math.abs(Math.sin(index * 4.7 + yaw)) * 0.12)
+    const height = spacing * (0.3 + random() * 0.12)
     const monolith = new CylinderGeometry(
       spacing * (0.055 + Math.abs(wobble) * 0.012),
       spacing * (0.085 + Math.abs(wobble) * 0.015),
@@ -1558,11 +1590,7 @@ const buildStandingStones = (
     parts.push({ geometry: faceted(monolith), color: BOARD_COLORS.warmSand })
   }
 
-  const colorBuckets = new Map<string, BufferGeometry[]>()
-  const outlines: BufferGeometry[] = []
-  const matrix = new Matrix4().setPosition(center.x, center.y, center.z)
-  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
-  return bucketsToMeshes(colorBuckets, outlines)
+  return bakePartsToMeshes(parts, new Matrix4().setPosition(center.x, center.y, center.z), spacing)
 }
 
 /** A fingerpost: one darkBlue post, ONE pointed warmSand board angled along
@@ -1586,13 +1614,9 @@ const buildWaymark = (site: WaymarkSite, spacing: number): Mesh[] => {
   tip.translate(0, 0.44 * s, 0.345 * s)
   parts.push({ geometry: faceted(tip), color: BOARD_COLORS.warmSand })
 
-  const colorBuckets = new Map<string, BufferGeometry[]>()
-  const outlines: BufferGeometry[] = []
-  const matrix = new Matrix4()
+  return bakePartsToMeshes(parts, new Matrix4()
     .makeRotationY(site.yaw)
-    .setPosition(site.position.x, site.position.y - 0.04, site.position.z)
-  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
-  return bucketsToMeshes(colorBuckets, outlines)
+    .setPosition(site.position.x, site.position.y - 0.04, site.position.z), spacing)
 }
 
 /** The printed scale bar: alternating filled segments inside a hairline
@@ -1655,11 +1679,7 @@ const buildScaleBar = (
   merged.rotateZ(yaw)
   merged.rotateX(-Math.PI / 2)
   merged.translate(center.x, 0, center.z)
-  const positions = merged.attributes.position
-  for (let index = 0; index < positions.count; index++) {
-    positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + 0.16)
-  }
-  positions.needsUpdate = true
+  drapeToGround(merged, sampler, 0.16)
   return new Mesh(
     merged,
     new MeshBasicMaterial({
@@ -1693,13 +1713,11 @@ const buildBasecamp = (
   pole.translate(0.85, 0.475, 0)
   parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
 
-  const colorBuckets = new Map<string, BufferGeometry[]>()
-  const outlines: BufferGeometry[] = []
-  const matrix = new Matrix4()
-    .makeRotationY(yaw)
-    .setPosition(center.x, center.y - 0.04, center.z)
-  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
-  const meshes: (Mesh | InstancedMesh)[] = bucketsToMeshes(colorBuckets, outlines)
+  const meshes: (Mesh | InstancedMesh)[] = bakePartsToMeshes(
+    parts,
+    new Matrix4().makeRotationY(yaw).setPosition(center.x, center.y - 0.04, center.z),
+    spacing
+  )
 
   // The pennant: a two-triangle flag on the wind clock (count-1 instancing —
   // the wind shader reads instanceMatrix).
@@ -1752,11 +1770,8 @@ const buildRowboat = (
     parts.push({ geometry: thwart, color: BOARD_COLORS.darkBlue })
   }
 
-  const colorBuckets = new Map<string, BufferGeometry[]>()
-  const outlines: BufferGeometry[] = []
-  bakeParts(parts, new Matrix4(), spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
   const group = new Group()
-  bucketsToMeshes(colorBuckets, outlines).forEach(mesh => group.add(mesh))
+  bakePartsToMeshes(parts, new Matrix4(), spacing).forEach(mesh => group.add(mesh))
   group.rotation.y = mooring.yaw
   group.position.copy(mooring.position)
   group.position.y = mooring.position.y - 0.02
@@ -1770,26 +1785,12 @@ const buildRowboat = (
   return { group, animate }
 }
 
-/** What the hamlet wears per biome — scenery reads the palette the way the
- *  train does; game pieces still never do. */
-const TOWN_WALLS: Record<BoardBiome['name'], keyof BoardBiome> = {
-  parchment: 'foam',
-  grassland: 'trunkColor',
-  desert: 'rock',
-  ice: 'foam',
-}
-const TOWN_ROOFS: Record<BoardBiome['name'], keyof BoardBiome> = {
-  parchment: 'major',
-  grassland: 'foliageColor',
-  desert: 'crest',
-  ice: 'major',
-}
-
 /**
  * The hamlet made flesh: gabled houses (box + squashed 45°-yawed pyramid),
  * train-red door ticks, a ball-finial tower — never a windmill, whose sails
  * are cross-arms — and a lane decal draped through the huddle. One chimney
  * smokes on the railway's puff idiom; reduced motion shows a quiet town.
+ * The dress comes off the biome spec — this builder stays biome-blind.
  */
 const buildTownMeshes = (
   town: TownSite,
@@ -1797,9 +1798,9 @@ const buildTownMeshes = (
   spacing: number,
   sampler: HeightSampler
 ): { meshes: (Mesh | Group)[]; animate?: (time: number) => void } => {
-  const walls = biome[TOWN_WALLS[biome.name]] as string
-  const roofs = biome[TOWN_ROOFS[biome.name]] as string
-  const accent = '#ec6247'
+  const walls = biome.townWalls
+  const roofs = biome.townRoof
+  const accent = BOARD_COLORS.hiorAnge
 
   const colorBuckets = new Map<string, BufferGeometry[]>()
   const outlines: BufferGeometry[] = []
@@ -1881,14 +1882,7 @@ const buildTownMeshes = (
   }
   const lane = mergeGeometries(laneQuads)
   laneQuads.forEach(quad => quad.dispose())
-  const lanePositions = lane.attributes.position
-  for (let index = 0; index < lanePositions.count; index++) {
-    lanePositions.setY(
-      index,
-      sampler(lanePositions.getX(index), lanePositions.getZ(index)) + 0.14
-    )
-  }
-  lanePositions.needsUpdate = true
+  drapeToGround(lane, sampler, 0.14)
   meshes.push(
     new Mesh(
       lane,
@@ -1901,30 +1895,19 @@ const buildTownMeshes = (
     )
   )
 
-  // One hearth: puffs cycling off the first chimney, exactly the train's
-  // smoke — a still scene keeps them parked at the stack.
+  // One hearth: the shared puff idiom off the first chimney, gentler than
+  // the loco's — a still scene keeps the plume parked at the stack.
   let animate: ((time: number) => void) | undefined
   if (smokeStack) {
-    const stack = smokeStack
-    const puffs: Mesh[] = []
-    for (let index = 0; index < 3; index++) {
-      const puff = new Mesh(
-        new SphereGeometry(0.14, 8, 6),
-        new MeshBasicMaterial({ color: '#9aa4ae', transparent: true, opacity: 0.7 })
-      )
-      puff.position.copy(stack)
-      puffs.push(puff)
-      meshes.push(puff)
-    }
+    const smoke = makeSmokePuffs(3, smokeStack, new Vector3(0.5, 1.5, 0), {
+      rate: 0.32,
+      radius: 0.14,
+      baseOpacity: 0.7,
+    })
+    smoke.puffs.forEach(puff => meshes.push(puff))
     animate = (time: number) => {
       if (prefersReducedMotion()) return
-      puffs.forEach((puff, index) => {
-        const cycle = (time * 0.32 + index / puffs.length) % 1
-        puff.position.set(stack.x + cycle * 0.5, stack.y + cycle * 1.5, stack.z)
-        const swell = 0.6 + cycle * 1.4
-        puff.scale.set(swell, swell, swell)
-        ;(puff.material as MeshBasicMaterial).opacity = 0.7 * (1 - cycle * cycle)
-      })
+      smoke.animate(time)
     }
   }
 

@@ -272,7 +272,7 @@ export const buildFlora = (
     const z = (prng() - 0.5) * 150
     if (!clearOfTrack(x, z, spacing * 0.95)) continue
     const moisture = 1 - Math.min(1, waterDistanceAt(x, z) / 9)
-    const baseCoverage = biome.name === 'desert' ? 0.05 : 0.45
+    const baseCoverage = biome.grassCoverage
     if (prng() > baseCoverage + Math.pow(moisture, 1.3) * (1 - baseCoverage)) continue
     spots.push({ x, z })
   }
@@ -313,17 +313,31 @@ export const buildFlora = (
   const propTarget = Math.round(biome.foliageCount * (phone ? 0.6 : 1))
   const propSpots: { x: number; z: number; y: number }[] = []
 
-  // Surveyed orchard (parchment): a minority of the trees stand in one small
-  // seeded grid on flat clear ground — hand-drawn maps mark orchards exactly
-  // this way. The rest of the population scatters as always.
-  if (biome.name === 'parchment') {
+  for (let attempt = 0; attempt < propTarget * 12 && propSpots.length < propTarget; attempt++) {
+    const x = (prng() - 0.5) * 150
+    const z = (prng() - 0.5) * 150
+    if (!clearOfTrack(x, z, spacing * 1.6)) continue
+    // Huddling props keep to the water — the open ground stays empty, which
+    // is the desert's real signature (its oasis ring made structural). The
+    // extra draw is biome-gated, so non-huddling biomes' scatter never moves.
+    if (biome.huddleToWater && waterDistanceAt(x, z) > 12 && prng() < 0.6) continue
+    propSpots.push({ x, z, y: sampler(x, z) })
+  }
+
+  // Surveyed orchard: a minority of the trees stand in one small seeded grid
+  // on flat clear ground — hand-drawn maps mark orchards exactly this way.
+  // Placed on its OWN derived stream, REPLACING already-scattered spots, so
+  // the rest of the population (and every later draw) stays byte-stable.
+  let orchardCount = 0
+  if (biome.orchard) {
+    const orchardPrng = Alea(`${seed}:flora-orchard`)
     const ROWS = 2
     const COLS = 5
     const PITCH = 2.2
-    for (let attempt = 0; attempt < 40 && !propSpots.length; attempt++) {
-      const centerX = (prng() - 0.5) * 110
-      const centerZ = (prng() - 0.5) * 110
-      const yaw = prng() * Math.PI
+    for (let attempt = 0; attempt < 40 && !orchardCount; attempt++) {
+      const centerX = (orchardPrng() - 0.5) * 110
+      const centerZ = (orchardPrng() - 0.5) * 110
+      const yaw = orchardPrng() * Math.PI
       const grid: { x: number; z: number; y: number }[] = []
       let low = Infinity
       let high = -Infinity
@@ -342,19 +356,11 @@ export const buildFlora = (
       }
       // The whole plot must be clear AND level — an orchard on a hillside
       // reads as scattered trees, not a survey mark.
-      if (grid.length === ROWS * COLS && high - low < 0.5) propSpots.push(...grid)
+      if (grid.length === ROWS * COLS && high - low < 0.5 && propSpots.length >= grid.length) {
+        propSpots.splice(0, grid.length, ...grid)
+        orchardCount = grid.length
+      }
     }
-  }
-  const orchardCount = propSpots.length
-
-  for (let attempt = 0; attempt < propTarget * 12 && propSpots.length < propTarget; attempt++) {
-    const x = (prng() - 0.5) * 150
-    const z = (prng() - 0.5) * 150
-    if (!clearOfTrack(x, z, spacing * 1.6)) continue
-    // Desert spires huddle around water — the open erg stays empty, which is
-    // the desert's real signature (its oasis ring made structural).
-    if (biome.name === 'desert' && waterDistanceAt(x, z) > 12 && prng() < 0.6) continue
-    propSpots.push({ x, z, y: sampler(x, z) })
   }
   if (propSpots.length) {
     const canopy =
@@ -428,10 +434,12 @@ export const buildFlora = (
     meshes.push(birdMesh)
   }
 
-  // --- Reed fringe (grassland): dark blades crowding the water margins ------
-  // Drawn AFTER every other population on the same stream, so existing
-  // boards' grass, props and birds land exactly where they always did.
-  if (biome.name === 'grassland' && (river || pond || lake)) {
+  // --- Reed fringe: dark blades crowding the water margins ------------------
+  // Drawn AFTER every other population on the same stream, so a reed-fringed
+  // biome's grass, props and birds land exactly where they always did.
+  // (Stream-stability holds per biome only where that biome's OWN draws are
+  // unchanged — a huddling biome reshapes its scatter by design.)
+  if (biome.reedFringe && (river || pond || lake)) {
     const reedTarget = Math.round(140 * (phone ? 0.5 : 1))
     const reedSpots: { x: number; z: number }[] = []
     for (

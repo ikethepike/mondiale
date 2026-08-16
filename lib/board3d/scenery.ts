@@ -29,6 +29,18 @@ export interface ScenerySites {
   basecamp?: { center: Vector3; yaw: number }
 }
 
+/** Every placed furniture point as one flat list — the ONE assembly every
+ *  later picker walks, so a new furniture kind is a one-line change here
+ *  instead of a hunt across five hand-built spreads. */
+export const furniturePoints = (sites: ScenerySites): Vector3[] => {
+  const points = [...sites.cairns]
+  if (sites.compass) points.push(sites.compass)
+  if (sites.stones) points.push(sites.stones.center)
+  if (sites.scaleBar) points.push(sites.scaleBar.center)
+  if (sites.basecamp) points.push(sites.basecamp.center)
+  return points
+}
+
 /** How far scenery keeps from every track sample (×spacing) — outside the
  *  shelf band and any marker overhang. */
 const TRACK_CLEARANCE = 1.6
@@ -124,11 +136,10 @@ export const pickScenerySites = (
   const stonesCount = 3 + Math.floor(random() * 3)
   const scaleBarYaw = random() < 0.5 ? 0 : Math.PI / 2
 
-  const placedSoFar = (): Vector3[] => {
-    const placed = [...cairns]
-    if (compass) placed.push(compass)
-    return placed
-  }
+  // Loop-invariant: the list grows as each piece lands, and every filter
+  // below reads it — never a fresh spread per scanned spot.
+  const placed: Vector3[] = [...cairns]
+  if (compass) placed.push(compass)
 
   // Standing stones: a ring on a mid-elevation saddle, apart from the other
   // furniture — some boards, on a seeded roll.
@@ -139,7 +150,7 @@ export const pickScenerySites = (
     const saddle = spots
       .filter(spot => spot.slope <= STONES_MAX_SLOPE && spot.y >= low && spot.y <= high)
       .filter(spot =>
-        placedSoFar().every(
+        placed.every(
           other => Math.hypot(other.x - spot.x, other.z - spot.z) > FURNITURE_SEPARATION
         )
       )
@@ -151,21 +162,19 @@ export const pickScenerySites = (
         yaw: stonesYaw,
         count: stonesCount,
       }
+      placed.push(stones.center)
     }
   }
 
   // Scale bar: the next-quietest ground — always dealt when a spot exists,
   // like the compass; the pair completes the printed-map margin furniture.
-  const scaleSpot = quiet.find(spot => {
-    const placed = placedSoFar()
-    if (stones) placed.push(stones.center)
-    return placed.every(
-      other => Math.hypot(other.x - spot.x, other.z - spot.z) > FURNITURE_SEPARATION
-    )
-  })
+  const scaleSpot = quiet.find(spot =>
+    placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > FURNITURE_SEPARATION)
+  )
   const scaleBar = scaleSpot
     ? { center: new Vector3(scaleSpot.x, scaleSpot.y, scaleSpot.z), yaw: scaleBarYaw }
     : undefined
+  if (scaleBar) placed.push(scaleBar.center)
 
   // Basecamp: only under a dealt massif — the flattest spot in the annulus
   // just beyond the summit's claim, tent door facing the mountain. No RNG:
@@ -179,12 +188,9 @@ export const pickScenerySites = (
         const reach = Math.hypot(spot.x - summit.center.x, spot.z - summit.center.z)
         return reach >= inner && reach <= outer && spot.slope <= 0.09
       })
-      .filter(spot => {
-        const placed = [...placedSoFar()]
-        if (stones) placed.push(stones.center)
-        if (scaleBar) placed.push(scaleBar.center)
-        return placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > 10)
-      })
+      .filter(spot =>
+        placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > 10)
+      )
       .sort((a, b) => a.slope - b.slope)
     if (camped.length) {
       const spot = camped[0]
@@ -228,6 +234,8 @@ export const pickWaymarkSites = (
 ): WaymarkSite[] => {
   const { shelfPoints, spacing } = path
   const sites: WaymarkSite[] = []
+  // Loop-invariant: the standing furniture plus each post as it lands.
+  const placed = furniturePoints(furniture)
 
   const isOpen = (x: number, z: number): boolean => {
     if (Math.hypot(x, z) > EDGE_FADE_START - 2) return false
@@ -242,15 +250,7 @@ export const pickWaymarkSites = (
     }
     if (lake && lakeShoreDistance(lake, x, z) < 1.5) return false
     if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2) return false
-    const others = [
-      ...furniture.cairns,
-      ...(furniture.compass ? [furniture.compass] : []),
-      ...(furniture.stones ? [furniture.stones.center] : []),
-      ...(furniture.scaleBar ? [furniture.scaleBar.center] : []),
-      ...(furniture.basecamp ? [furniture.basecamp.center] : []),
-      ...sites.map(site => site.position),
-    ]
-    return others.every(other => Math.hypot(other.x - x, other.z - z) > 10)
+    return placed.every(other => Math.hypot(other.x - x, other.z - z) > 10)
   }
 
   for (const fraction of [1 / 3, 2 / 3]) {
@@ -285,10 +285,9 @@ export const pickWaymarkSites = (
         return Math.hypot(point.x - x, point.z - z) < spacing * 1.3
       })
       if (crowded) continue
-      sites.push({
-        position: new Vector3(x, sampler(x, z), z),
-        yaw: Math.atan2(tangentX, tangentZ),
-      })
+      const position = new Vector3(x, sampler(x, z), z)
+      sites.push({ position, yaw: Math.atan2(tangentX, tangentZ) })
+      placed.push(position)
       break
     }
   }

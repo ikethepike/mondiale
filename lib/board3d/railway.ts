@@ -14,12 +14,22 @@ import {
   Vector3,
 } from 'three'
 import { prefersReducedMotion } from '~~/lib/motion'
+import { clamp, clamp01 } from '~~/lib/number'
 import type { BoardBiome } from './biomes'
+import { BOARD_COLORS } from './colors'
 import { type LakeSite, lakeShoreDistance } from './lake'
+import {
+  lineCrossesItself,
+  loopCrossesItself,
+  polylinesIntersect,
+  segmentsIntersect,
+  smoothPolyline,
+} from './polyline'
+import { makeSmokePuffs } from './smoke'
 import type { TownSite } from './town'
 import type { TilePathResult } from './path'
 import type { RiverPath } from './river'
-import type { ScenerySites } from './scenery'
+import type { ScenerySites, WaymarkSite } from './scenery'
 import type { SummitSite } from './summit'
 import { EDGE_FADE_START, MAX_ELEVATION, type HeightSampler } from './terrain'
 import type { PondSite } from './water'
@@ -115,6 +125,75 @@ export interface RailwayBuild {
   drive: (time: number) => void
 }
 
+/** Everything a rail line yields to, besides the track itself. ONE list for
+ *  both route kinds — the loop treats 'river' as blocked, the traverse
+ *  bridges it. Cheap single-hypot checks; the caller runs its own (more
+ *  expensive) track-clearance test after this returns undefined. */
+interface RailObstacles {
+  pond?: PondSite
+  summit?: SummitSite
+  river?: RiverPath
+  scenery: ScenerySites
+  lake?: LakeSite
+  town?: TownSite
+  waymarks?: WaymarkSite[]
+  spacing: number
+}
+
+const railObstacleAt = (
+  features: RailObstacles
+): ((x: number, z: number) => 'hard' | 'river' | undefined) => {
+  const { pond, summit, river, scenery, lake, town, waymarks, spacing } = features
+  return (x, z) => {
+    if (pond && Math.hypot(pond.center.x - x, pond.center.z - z) < pond.basinRadius + 3)
+      return 'hard'
+    // ×1.05 matches the summit site's own clearance convention — shoulder
+    // peaks are sized against exactly that reach, so the line can never ride
+    // up a shoulder's foot.
+    if (
+      summit &&
+      Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing * 1.05
+    )
+      return 'hard'
+    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2.5)
+      return 'hard'
+    for (const cairn of scenery.cairns) {
+      if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return 'hard'
+    }
+    if (scenery.compass) {
+      const compass = scenery.compass
+      if (Math.hypot(compass.x - x, compass.z - z) < spacing * 3) return 'hard'
+    }
+    if (scenery.stones) {
+      const stones = scenery.stones.center
+      if (Math.hypot(stones.x - x, stones.z - z) < spacing * 1.5) return 'hard'
+    }
+    if (scenery.scaleBar) {
+      const scaleBar = scenery.scaleBar.center
+      if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return 'hard'
+    }
+    if (scenery.basecamp) {
+      const basecamp = scenery.basecamp.center
+      if (Math.hypot(basecamp.x - x, basecamp.z - z) < 4) return 'hard'
+    }
+    // Fingerposts stand INSIDE the loop's berth (harmless there), but the
+    // traverse's corridor floor reaches past them — the railway must know.
+    if (waymarks) {
+      for (const mark of waymarks) {
+        if (Math.hypot(mark.position.x - x, mark.position.z - z) < 2) return 'hard'
+      }
+    }
+    if (lake && lakeShoreDistance(lake, x, z) < 2.5) return 'hard'
+    if (river) {
+      const gap = river.width + 2.5
+      for (const point of river.points) {
+        if (Math.hypot(point.x - x, point.z - z) < gap) return 'river'
+      }
+    }
+    return undefined
+  }
+}
+
 /**
  * Survey for a closed contour loop clear of everything the board already
  * placed. Returns the smoothed ground-hugging loop, or undefined — a board
@@ -129,7 +208,8 @@ export const pickRailwayLoop = (
   scenery: ScenerySites,
   sampler: HeightSampler,
   lake?: LakeSite,
-  town?: TownSite
+  town?: TownSite,
+  waymarks?: WaymarkSite[]
 ): Vector3[] | undefined => {
   const random = Alea(`${seed}:railway`)
   if (random() > RAILWAY_CHANCE) return undefined
@@ -137,6 +217,16 @@ export const pickRailwayLoop = (
   const { shelfPoints, spacing } = path
   const clearance = TRACK_CLEARANCE * spacing
   const clearanceSquared = clearance * clearance
+  const obstacleAt = railObstacleAt({
+    pond,
+    summit,
+    river,
+    scenery,
+    lake,
+    town,
+    waymarks,
+    spacing,
+  })
 
   const clearForRail = (x: number, z: number): boolean => {
     if (Math.hypot(x, z) > EDGE_FADE_START - 4) return false
@@ -145,45 +235,8 @@ export const pickRailwayLoop = (
       const dz = point.z - z
       if (dx * dx + dz * dz < clearanceSquared) return false
     }
-    if (pond && Math.hypot(pond.center.x - x, pond.center.z - z) < pond.basinRadius + 3)
-      return false
-    // ×1.05 matches the summit site's own clearance convention — shoulder
-    // peaks are sized against exactly that reach, so the line can never ride
-    // up a shoulder's foot.
-    if (
-      summit &&
-      Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing * 1.05
-    )
-      return false
-    if (river) {
-      const gap = river.width + 2.5
-      for (const point of river.points) {
-        if (Math.hypot(point.x - x, point.z - z) < gap) return false
-      }
-    }
-    if (lake && lakeShoreDistance(lake, x, z) < 2.5) return false
-    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2.5)
-      return false
-    for (const cairn of scenery.cairns) {
-      if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return false
-    }
-    if (scenery.compass) {
-      const compass = scenery.compass
-      if (Math.hypot(compass.x - x, compass.z - z) < spacing * 3) return false
-    }
-    if (scenery.stones) {
-      const stones = scenery.stones.center
-      if (Math.hypot(stones.x - x, stones.z - z) < spacing * 1.5) return false
-    }
-    if (scenery.scaleBar) {
-      const scaleBar = scenery.scaleBar.center
-      if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return false
-    }
-    if (scenery.basecamp) {
-      const basecamp = scenery.basecamp.center
-      if (Math.hypot(basecamp.x - x, basecamp.z - z) < 4) return false
-    }
-    return true
+    // The loop never bridges: any obstacle, the river included, turns it.
+    return obstacleAt(x, z) === undefined
   }
 
   for (let probe = 0; probe < PROBES; probe++) {
@@ -276,44 +329,6 @@ export const pickRailwayLoop = (
   return undefined
 }
 
-const segmentSide = (
-  ax: number,
-  az: number,
-  bx: number,
-  bz: number,
-  cx: number,
-  cz: number
-) => Math.sign((bx - ax) * (cz - az) - (bz - az) * (cx - ax))
-
-const segmentsIntersect = (a: Vector3, b: Vector3, c: Vector3, d: Vector3): boolean =>
-  segmentSide(a.x, a.z, b.x, b.z, c.x, c.z) !== segmentSide(a.x, a.z, b.x, b.z, d.x, d.z) &&
-  segmentSide(c.x, c.z, d.x, d.z, a.x, a.z) !== segmentSide(c.x, c.z, d.x, d.z, b.x, b.z)
-
-/** Non-adjacent segment intersection over an OPEN polyline. */
-export const lineCrossesItself = (points: Vector3[]): boolean => {
-  for (let index = 0; index < points.length - 1; index++) {
-    for (let other = index + 2; other < points.length - 1; other++) {
-      if (segmentsIntersect(points[index], points[index + 1], points[other], points[other + 1]))
-        return true
-    }
-  }
-  return false
-}
-
-/** Any segment of the route crossing any segment of the track polyline —
- *  the absolute guarantee behind corridor threading. */
-const crossesTrack = (points: Vector3[], shelfPoints: Vector3[]): boolean => {
-  for (let index = 0; index < points.length - 1; index++) {
-    for (let shelf = 0; shelf < shelfPoints.length - 1; shelf++) {
-      if (
-        segmentsIntersect(points[index], points[index + 1], shelfPoints[shelf], shelfPoints[shelf + 1])
-      )
-        return true
-    }
-  }
-  return false
-}
-
 /**
  * The two-tier track rule for a candidate rail point. In open country the
  * full berth holds; between two flanking passes the hard floor takes over
@@ -329,17 +344,21 @@ const clearOfTrackTiered = (
   const { shelfPoints, spacing } = path
   const floor = CORRIDOR_FLOOR * spacing
   const berth = TRACK_CLEARANCE * spacing
-  const near = CORRIDOR_NEAR * spacing
+  // Fast pass: nearest distance only — most points stand in open country
+  // and never need the corridor examination.
   let nearest = Infinity
-  const flankers: Vector3[] = []
   for (const point of shelfPoints) {
     const distance = Math.hypot(point.x - x, point.z - z)
     if (distance < nearest) nearest = distance
-    if (distance < near) flankers.push(point)
   }
   if (nearest < floor) return false
   if (nearest >= berth) return true
   // Sub-berth: a genuine corridor only — track on BOTH sides.
+  const near = CORRIDOR_NEAR * spacing
+  const flankers: Vector3[] = []
+  for (const point of shelfPoints) {
+    if (Math.hypot(point.x - x, point.z - z) < near) flankers.push(point)
+  }
   let corridor = false
   for (let a = 0; a < flankers.length && !corridor; a++) {
     for (let b = a + 1; b < flankers.length && !corridor; b++) {
@@ -371,55 +390,32 @@ export const pickRailwayTraverse = (
   scenery: ScenerySites,
   sampler: HeightSampler,
   lake?: LakeSite,
-  town?: TownSite
+  town?: TownSite,
+  waymarks?: WaymarkSite[]
 ): { points: Vector3[]; bridges: RailwayRoute['bridges'] } | undefined => {
   const random = Alea(`${seed}:railway`)
   if (random() > RAILWAY_CHANCE) return undefined
 
   const { shelfPoints, spacing } = path
   const tileCenters = path.transforms.map(transform => transform.position)
+  const obstacleAt = railObstacleAt({
+    pond,
+    summit,
+    river,
+    scenery,
+    lake,
+    town,
+    waymarks,
+    spacing,
+  })
 
   // 'hard' ground the line can never take; the 'river' can be BRIDGED — a
-  // trestle viaduct where the crossing is near-square. Checked last, so a
-  // wet spot that is ALSO hard-blocked never invites a doomed bridge.
+  // trestle viaduct where the crossing is near-square. The cheap feature
+  // checks run before the shelf scan (its cost dominates the march).
   const blockedForRail = (x: number, z: number): 'hard' | 'river' | undefined => {
-    if (!clearOfTrackTiered(x, z, path, tileCenters)) return 'hard'
-    if (pond && Math.hypot(pond.center.x - x, pond.center.z - z) < pond.basinRadius + 3)
-      return 'hard'
-    if (
-      summit &&
-      Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing * 1.05
-    )
-      return 'hard'
-    for (const cairn of scenery.cairns) {
-      if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return 'hard'
-    }
-    if (scenery.compass) {
-      const compass = scenery.compass
-      if (Math.hypot(compass.x - x, compass.z - z) < spacing * 3) return 'hard'
-    }
-    if (scenery.stones) {
-      const stones = scenery.stones.center
-      if (Math.hypot(stones.x - x, stones.z - z) < spacing * 1.5) return 'hard'
-    }
-    if (scenery.scaleBar) {
-      const scaleBar = scenery.scaleBar.center
-      if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return 'hard'
-    }
-    if (scenery.basecamp) {
-      const basecamp = scenery.basecamp.center
-      if (Math.hypot(basecamp.x - x, basecamp.z - z) < 4) return 'hard'
-    }
-    if (lake && lakeShoreDistance(lake, x, z) < 2.5) return 'hard'
-    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2.5)
-      return 'hard'
-    if (river) {
-      const gap = river.width + 2.5
-      for (const point of river.points) {
-        if (Math.hypot(point.x - x, point.z - z) < gap) return 'river'
-      }
-    }
-    return undefined
+    const obstacle = obstacleAt(x, z)
+    if (obstacle) return obstacle
+    return clearOfTrackTiered(x, z, path, tileCenters) ? undefined : 'hard'
   }
   const clearForRail = (x: number, z: number): boolean => blockedForRail(x, z) === undefined
 
@@ -640,7 +636,6 @@ export const pickRailwayTraverse = (
         points[index].z - points[index - 1].z
       )
     }
-    const bridgedProbe = bridgesUsed.count > 0
     if (length < TRAVERSE_MIN_LENGTH) {
       continue
     }
@@ -654,15 +649,7 @@ export const pickRailwayTraverse = (
 
     // Cut-and-fill rounds (ends pinned — they hold the sheet exits; bridge
     // decks pinned too — a span was walked dead straight and stays so).
-    for (let round = 0; round < 4; round++) {
-      for (let index = 1; index < points.length - 1; index++) {
-        if (bridgeSet.has(points[index])) continue
-        points[index].x =
-          points[index].x * 0.5 + (points[index - 1].x + points[index + 1].x) * 0.25
-        points[index].z =
-          points[index].z * 0.5 + (points[index - 1].z + points[index + 1].z) * 0.25
-      }
-    }
+    smoothPolyline(points, 4, 'xz', point => bridgeSet.has(point))
 
     // Self-crowding: distant stretches of the line never crowd each other.
     const crowded = points.some((here, index) =>
@@ -682,7 +669,7 @@ export const pickRailwayTraverse = (
     if (!points.every(point => clearOfTrackTiered(point.x, point.z, path, tileCenters))) {
       continue
     }
-    if (crossesTrack(points, shelfPoints)) {
+    if (polylinesIntersect(points, shelfPoints)) {
       continue
     }
 
@@ -709,13 +696,7 @@ export const pickRailwayTraverse = (
       }
       runStart = runEnd
     }
-    for (let round = 0; round < 3; round++) {
-      for (let index = 1; index < points.length - 1; index++) {
-        if (bridgeSet.has(points[index])) continue
-        points[index].y =
-          points[index].y * 0.5 + (points[index - 1].y + points[index + 1].y) * 0.25
-      }
-    }
+    smoothPolyline(points, 3, 'y', point => bridgeSet.has(point))
     let floats = true
     for (const point of points) {
       const bridged = bridgeSet.has(point)
@@ -758,9 +739,11 @@ export const pickRailwayTraverse = (
 }
 
 /**
- * The railway deal: a separate kind coin (its own stream, so every shipped
- * loop board keeps its exact loop) picks the closed circuit or the
- * edge-to-edge traverse; each kind then surveys on the `:railway` stream.
+ * The railway deal: a separate kind coin (its own stream, so the loop
+ * survey's draws never move) sends a seed to the traverse first or the loop
+ * first. Boards whose coin lands 'loop' keep their shipped loop exactly;
+ * traverse-coin boards change by design — and fall BACK to the loop survey
+ * when no traverse sites, so the railway deal rate never drops below main's.
  */
 export const pickRailwayRoute = (
   seed: string,
@@ -771,7 +754,8 @@ export const pickRailwayRoute = (
   scenery: ScenerySites,
   sampler: HeightSampler,
   lake?: LakeSite,
-  town?: TownSite
+  town?: TownSite,
+  waymarks?: WaymarkSite[]
 ): RailwayRoute | undefined => {
   const traverse = Alea(`${seed}:railway-kind`)() < 0.5
   if (traverse) {
@@ -784,34 +768,26 @@ export const pickRailwayRoute = (
       scenery,
       sampler,
       lake,
-      town
+      town,
+      waymarks
     )
-    return line ? { points: line.points, closed: false, bridges: line.bridges } : undefined
+    if (line) return { points: line.points, closed: false, bridges: line.bridges }
   }
-  const points = pickRailwayLoop(seed, path, pond, summit, river, scenery, sampler, lake, town)
+  const points = pickRailwayLoop(
+    seed,
+    path,
+    pond,
+    summit,
+    river,
+    scenery,
+    sampler,
+    lake,
+    town,
+    waymarks
+  )
   return points ? { points, closed: true, bridges: [] } : undefined
 }
 
-/** Non-adjacent segment intersection over a closed XZ polygon. */
-export const loopCrossesItself = (points: Vector3[]): boolean => {
-  const side = (ax: number, az: number, bx: number, bz: number, cx: number, cz: number) =>
-    Math.sign((bx - ax) * (cz - az) - (bz - az) * (cx - ax))
-  return points.some((a, index) => {
-    const b = points[(index + 1) % points.length]
-    return points.some((c, otherIndex) => {
-      const gap = Math.min(
-        Math.abs(index - otherIndex),
-        points.length - Math.abs(index - otherIndex)
-      )
-      if (gap < 2) return false
-      const d = points[(otherIndex + 1) % points.length]
-      return (
-        side(a.x, a.z, b.x, b.z, c.x, c.z) !== side(a.x, a.z, b.x, b.z, d.x, d.z) &&
-        side(c.x, c.z, d.x, d.z, a.x, a.z) !== side(c.x, c.z, d.x, d.z, b.x, b.z)
-      )
-    })
-  })
-}
 
 /**
  * The railway made flesh: twin ink rails with perpendicular sleeper ticks in
@@ -837,7 +813,7 @@ export const buildRailway = (
   const at = (index: number) =>
     closed
       ? railSamples[(index + railSamples.length) % railSamples.length]
-      : railSamples[Math.min(Math.max(index, 0), railSamples.length - 1)]
+      : railSamples[clamp(index, 0, railSamples.length - 1)]
 
   // Twin rails: offset curves either side of the centerline.
   const ink = new MeshBasicMaterial({ color: biome.major })
@@ -915,18 +891,10 @@ export const buildRailway = (
   }
 
   // The train: an OLD STEAM engine — round boiler, tall funnel, rear cab,
-  // puffing smoke — hauling two wagons. On an open traverse every vehicle
-  // carries its OWN materials, so it can fade through the sheet edge; on
-  // the loop everything shares the rail ink exactly as before.
+  // puffing smoke — hauling two wagons. Every vehicle carries its OWN
+  // transparent materials — one code path; the loop simply never fades.
   const vehicleMaterials: MeshBasicMaterial[][] = []
   const vehicleMaterial = (bucket: MeshBasicMaterial[], color: string): MeshBasicMaterial => {
-    if (closed) {
-      // Shared where possible — the loop never fades.
-      if (color === biome.major) return ink
-      const material = new MeshBasicMaterial({ color })
-      bucket.push(material)
-      return material
-    }
     const material = new MeshBasicMaterial({ color, transparent: true })
     bucket.push(material)
     return material
@@ -935,7 +903,7 @@ export const buildRailway = (
   const makeLoco = () => {
     const bucket: MeshBasicMaterial[] = []
     const locoInk = vehicleMaterial(bucket, biome.major)
-    const locoAccent = vehicleMaterial(bucket, '#ec6247')
+    const locoAccent = vehicleMaterial(bucket, BOARD_COLORS.hiorAnge)
     const loco = new Group()
     const boiler = new Mesh(new CylinderGeometry(0.3, 0.3, 1.25, 12), locoInk)
     boiler.rotation.z = Math.PI / 2
@@ -961,19 +929,15 @@ export const buildRailway = (
     cabRoof.position.set(-0.62, 1.12, 0)
     loco.add(cabRoof)
     vehicleMaterials.push(bucket)
-    // The smoke: puffs cycling up out of the funnel (see drive). A neutral
-    // gray so they read against every biome's page tint.
-    const puffs: Mesh[] = []
-    for (let index = 0; index < 4; index++) {
-      const puff = new Mesh(
-        new SphereGeometry(0.2, 8, 6),
-        new MeshBasicMaterial({ color: '#9aa4ae', transparent: true, opacity: 0.8 })
-      )
-      puff.position.set(0.74, 1.4, 0)
-      loco.add(puff)
-      puffs.push(puff)
-    }
-    return { loco, puffs }
+    // The smoke: the shared puff idiom, cycling up out of the funnel and
+    // trailing back as the engine pulls away beneath it.
+    const smoke = makeSmokePuffs(4, new Vector3(0.74, 1.35, 0), new Vector3(-1.2, 1.6, 0), {
+      rate: 0.5,
+      radius: 0.2,
+      baseOpacity: 0.8,
+    })
+    smoke.puffs.forEach(puff => loco.add(puff))
+    return { loco, smoke }
   }
   const makeWagon = (body: string) => {
     const bucket: MeshBasicMaterial[] = []
@@ -987,8 +951,8 @@ export const buildRailway = (
     vehicleMaterials.push(bucket)
     return wagon
   }
-  const { loco, puffs } = makeLoco()
-  const vehicles = [loco, makeWagon('#ec6247'), makeWagon(biome.foliageColor)]
+  const { loco, smoke } = makeLoco()
+  const vehicles = [loco, makeWagon(BOARD_COLORS.hiorAnge), makeWagon(biome.foliageColor)]
   meshes.push(...vehicles)
 
   const gapParam = VEHICLE_GAP / railLength
@@ -1011,7 +975,7 @@ export const buildRailway = (
   const sheetFade = (t: number): number => {
     if (closed) return 1
     const edge = Math.min(t, 1 - t)
-    return Math.min(1, Math.max(0, edge / TRAVERSE_FADE))
+    return clamp01(edge / TRAVERSE_FADE)
   }
 
   const applyFade = (vehicleIndex: number, fade: number) => {
@@ -1038,16 +1002,8 @@ export const buildRailway = (
       // The chug: a tiny bob, out of phase per vehicle.
       vehicle.position.y += Math.sin(time * 9 + index * 1.7) * 0.025
     })
-    // Steam: each puff cycles up out of the funnel, swelling and thinning,
-    // trailing back as the engine pulls away beneath it — and thinning with
-    // its engine at the sheet edge.
-    puffs.forEach((puff, index) => {
-      const cycle = (time * 0.5 + index / puffs.length) % 1
-      puff.position.set(0.74 - cycle * 1.2, 1.35 + cycle * 1.6, 0)
-      const swell = 0.6 + cycle * 1.6
-      puff.scale.set(swell, swell, swell)
-      ;(puff.material as MeshBasicMaterial).opacity = 0.8 * (1 - cycle * cycle) * locoFade
-    })
+    // Steam thins with its engine at the sheet edge.
+    smoke.animate(time, locoFade)
   }
 
   return { meshes, drive }

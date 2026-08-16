@@ -51,8 +51,8 @@ export const pickBoatMooring = (
     return undefined
   }
 
+  // Beside the bridge, off its axis, on the seeded side.
   if (pond) {
-    // Beside the bridge, off its axis, on the seeded side.
     const side = random() < 0.5 ? 1 : -1
     const axis = Math.atan2(pond.tangent.x, pond.tangent.z)
     const x = pond.center.x + Math.sin(axis + Math.PI / 2) * side * spacing * 0.55

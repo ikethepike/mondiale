@@ -6,7 +6,7 @@ import type { TilePathResult } from './path'
 import type { PondSite } from './water'
 import type { RiverPath } from './river'
 import type { SummitSite } from './summit'
-import type { ScenerySites } from './scenery'
+import { furniturePoints, type ScenerySites } from './scenery'
 import { type LakeSite, lakeShoreDistance } from './lake'
 
 /**
@@ -72,6 +72,7 @@ export const pickTownSite = (
   const { shelfPoints, spacing } = path
   const radius = TOWN_RADIUS * spacing
   const trackClearance = spacing * 1.6 + radius
+  const furniture = furniturePoints(scenery)
   const trackClearanceSquared = trackClearance * trackClearance
 
   const centerIsOpen = (x: number, z: number): boolean => {
@@ -97,21 +98,18 @@ export const pickTownSite = (
       }
     }
     if (lake && lakeShoreDistance(lake, x, z) < radius * 0.55) return false
-    const furniture = [
-      ...scenery.cairns,
-      ...(scenery.compass ? [scenery.compass] : []),
-      ...(scenery.stones ? [scenery.stones.center] : []),
-      ...(scenery.scaleBar ? [scenery.scaleBar.center] : []),
-      ...(scenery.basecamp ? [scenery.basecamp.center] : []),
-    ]
     return furniture.every(other => Math.hypot(other.x - x, other.z - z) > radius + 4)
   }
 
+  // The waterside bonus maxes out below this reach — once any water is that
+  // close the exact figure changes nothing, so the scans stop early.
+  const WATER_BONUS_FLOOR = 3
   const nearWater = (x: number, z: number): number => {
     let distance = Infinity
     if (river) {
       for (const point of river.points) {
         distance = Math.min(distance, Math.hypot(point.x - x, point.z - z))
+        if (distance < WATER_BONUS_FLOOR) return distance
       }
     }
     if (lake) distance = Math.min(distance, lakeShoreDistance(lake, x, z))
@@ -157,14 +155,16 @@ export const pickTownSite = (
     const towerIndex = Math.floor(random() * houseCount)
     const opening = random() * Math.PI * 2
 
-    // The lane runs through the plot along the arc's opening.
-    const laneDirection = opening + Math.PI / 2
+    // The lane runs from the huddle's heart OUT through the arc's opening —
+    // the gap in the house ring is centered on the `opening` bearing, so the
+    // road leaves the village the way the houses left it room to.
     const lane: Vector3[] = []
-    const laneHalf = radius * 0.8
+    const laneInner = -radius * 0.25
+    const laneOuter = radius * 0.9
     for (let step = 0; step <= 8; step++) {
-      const along = -laneHalf + (laneHalf * 2 * step) / 8
-      const x = plot.x + Math.sin(laneDirection) * along
-      const z = plot.z + Math.cos(laneDirection) * along
+      const along = laneInner + ((laneOuter - laneInner) * step) / 8
+      const x = plot.x + Math.sin(opening) * along
+      const z = plot.z + Math.cos(opening) * along
       lane.push(new Vector3(x, sampler(x, z), z))
     }
 

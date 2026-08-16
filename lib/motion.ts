@@ -42,7 +42,12 @@ export const EASE = {
   exit: 'power2.in',
 } as const
 
+// Cached once: per-frame callers (the board's train, boat and smoke) must
+// not construct a fresh MediaQueryList every tick. `.matches` stays live.
+let reducedMotionQuery: MediaQueryList | undefined
+
 export const prefersReducedMotion = (): boolean => {
   if (typeof window === 'undefined') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  reducedMotionQuery ??= window.matchMedia('(prefers-reduced-motion: reduce)')
+  return reducedMotionQuery.matches
 }

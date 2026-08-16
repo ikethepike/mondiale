@@ -8,6 +8,7 @@ import {
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { BoardBiome } from './biomes'
+import { CONTOUR_MAJOR_EVERY, CONTOUR_STEP } from './contour-material'
 import { type LakeSite, lakeShoreDistance } from './lake'
 import type { TilePathResult } from './path'
 import type { TownSite } from './town'
@@ -24,18 +25,25 @@ import { EDGE_FADE_START, type HeightSampler, MAX_ELEVATION } from './terrain'
  * atlas and merged quads happen in `buildContourLabels`.
  */
 
-/** Matches the shader: uStep = MAX_ELEVATION / 8, majors every 5th line. */
-export const MAJOR_CONTOUR_STEP = (MAX_ELEVATION / 8) * 5
+/** The shader's own rhythm, re-exported at label pitch — retuning the print
+ *  in contour-material.ts moves lines and numbers together. */
+export const MAJOR_CONTOUR_STEP = CONTOUR_STEP * CONTOUR_MAJOR_EVERY
 
 /** A label site must sit ON its level, on a slope where lines actually draw
- *  (the shader's flatness window), and keep its distance from neighbours. */
+ *  (the shader's flatness window), and keep its distance from neighbours.
+ *  The gradient cap stays modest: the quad is FLAT, and on a steeper slope
+ *  the uphill half of the number sinks into the terrain. */
 const LEVEL_TOLERANCE = 0.1
 const GRADIENT_MIN = 0.05
-const GRADIENT_MAX = 0.5
+const GRADIENT_MAX = 0.3
+const LABEL_LIFT = 0.16
 const LABEL_SEPARATION = 24
 const LABEL_CAP = 14
 const SCAN_STEP = 5
 const SCAN_REACH = 78
+/** Labels keep off the standing furniture — a number stamped through the
+ *  stone ring or under the tent reads as a misprint. */
+const FURNITURE_GAP = 3.5
 
 export interface ContourLabelSite {
   x: number
@@ -57,6 +65,9 @@ export interface ContourLabelOptions {
   railway?: Vector3[]
   lake?: LakeSite
   town?: TownSite
+  /** Standing furniture (cairns, stones, scale bar, basecamp, waymarks,
+   *  boat) the numbers keep off of. */
+  furniture?: Vector3[]
   /** Lines fade into the snow wash — no label stands on snow. */
   snowlineY?: number
 }
@@ -71,7 +82,7 @@ export const pickContourLabels = (
   path: TilePathResult,
   options: ContourLabelOptions = {}
 ): ContourLabelPlan => {
-  const { pond, summit, river, railway, lake, town, snowlineY } = options
+  const { pond, summit, river, railway, lake, town, furniture, snowlineY } = options
   const { shelfPoints, spacing } = path
   const clearance = spacing * 0.95
   const clearanceSquared = clearance * clearance
@@ -106,6 +117,11 @@ export const pickContourLabels = (
     }
     if (lake && lakeShoreDistance(lake, x, z) < 1.5) return false
     if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 1) return false
+    if (furniture) {
+      for (const piece of furniture) {
+        if (Math.hypot(piece.x - x, piece.z - z) < FURNITURE_GAP) return false
+      }
+    }
     return true
   }
 
@@ -156,9 +172,10 @@ export const buildContourLabels = (
     // The survey fiction: world units read as hundreds of metres, rounded to
     // the printed tens.
     const text = `${Math.round((level * 100) / 10) * 10}`
-    // The halo is the page color, so the label visually BREAKS the line.
+    // The halo is the biome's valley ground — the tone its line sits on —
+    // so the label visually BREAKS the ink on every palette.
     context.lineWidth = 12
-    context.strokeStyle = '#fffaf5'
+    context.strokeStyle = biome.valley
     context.strokeText(text, CELL * index + CELL / 2, CELL / 2)
     context.fillStyle = biome.major
     context.fillText(text, CELL * index + CELL / 2, CELL / 2)
@@ -174,7 +191,7 @@ export const buildContourLabels = (
     }
     quad.rotateX(-Math.PI / 2)
     quad.rotateY(site.yaw)
-    quad.translate(site.x, site.y + 0.14, site.z)
+    quad.translate(site.x, site.y + LABEL_LIFT, site.z)
     quads.push(quad)
   }
   const labels = new Mesh(

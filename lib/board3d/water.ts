@@ -218,6 +218,9 @@ const buildIceCracks = (
     let x = center.x + (random() - 0.5) * waterRadius * 0.6
     let z = center.z + (random() - 0.5) * waterRadius * 0.6
     let heading = random() * Math.PI * 2
+    // A concave footprint (a C-shaped lake) can put the centroid — and a
+    // wander's start — over dry ground: a crack begins only on real ice.
+    if (waterY - sampler(x, z) < 0.05) continue
     for (let step = 0; step < 3; step++) {
       const length = waterRadius * (0.25 + random() * 0.2)
       const nextX = x + Math.sin(heading) * length
@@ -233,14 +236,15 @@ const buildIceCracks = (
       heading += (random() - 0.5) * 1.1
     }
   }
-  if (!segments.length) {
+  if (!segments.length && waterY - sampler(center.x, center.z) >= 0.05) {
     // Every wander hit the shallows at once — one short crack over the deep
-    // heart keeps the sheet readable (and mergeGeometries fed).
+    // heart keeps the sheet readable, when the heart is actually wet.
     const piece = new BoxGeometry(0.035, 0.012, waterRadius * 0.6)
     piece.rotateY(random() * Math.PI)
     piece.translate(center.x, waterY + 0.012, center.z)
     segments.push(piece)
   }
+  if (!segments.length) return new Mesh()
   const merged = mergeGeometries(segments)
   segments.forEach(segment => segment.dispose())
   return new Mesh(merged, new MeshBasicMaterial({ color: biome.minor }))
@@ -266,18 +270,24 @@ export const buildLakeMeshes = (
   water.rotateX(-Math.PI / 2)
   water.translate(center.x, waterY, center.z)
 
-  const nearMask = (x: number, z: number): boolean => {
-    const column = Math.round((x - grid.originX) / grid.step)
-    const row = Math.round((z - grid.originZ) / grid.step)
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const nr = row + dr
-        const nc = column + dc
-        if (nr < 0 || nr >= grid.rows || nc < 0 || nc >= grid.columns) continue
-        if (grid.mask[nr * grid.columns + nc]) return true
-      }
-    }
-    return false
+  // The flood mask read as a BILINEAR field, not a cell test: a hard
+  // per-cell gate cut the water along axis-aligned grid steps wherever the
+  // mask (not the depth) was the clipping edge, and lakes came out
+  // semi-rectilinear. Subtracting by the smooth field instead puts the
+  // shoreline on a diagonal-capable iso-line between cells.
+  const maskAt = (x: number, z: number): number => {
+    const gridX = (x - grid.originX) / grid.step
+    const gridZ = (z - grid.originZ) / grid.step
+    const column = Math.floor(gridX)
+    const row = Math.floor(gridZ)
+    if (column < 0 || row < 0 || column >= grid.columns - 1 || row >= grid.rows - 1) return 0
+    const fx = gridX - column
+    const fz = gridZ - row
+    const a = grid.mask[row * grid.columns + column]
+    const b = grid.mask[row * grid.columns + column + 1]
+    const c = grid.mask[(row + 1) * grid.columns + column]
+    const d = grid.mask[(row + 1) * grid.columns + column + 1]
+    return (a * (1 - fx) + b * fx) * (1 - fz) + (c * (1 - fx) + d * fx) * fz
   }
 
   const positions = water.attributes.position
@@ -285,11 +295,14 @@ export const buildLakeMeshes = (
   for (let index = 0; index < positions.count; index++) {
     const x = positions.getX(index)
     const z = positions.getZ(index)
-    depths[index] = nearMask(x, z) ? waterY - sampler(x, z) : -1
+    // Full mask: pure analytic depth. Off the mask, the deficit drowns the
+    // depth smoothly — an unconnected hollow inside the bounding box still
+    // never fills, but the cut follows the field, not the lattice.
+    depths[index] = waterY - sampler(x, z) - (1 - maskAt(x, z)) * 3
   }
   water.setAttribute('aDepth', new BufferAttribute(depths, 1))
 
-  if (biome.name === 'ice') {
+  if (biome.waterState === 'frozen') {
     return [
       new Mesh(water, createIceSheetMaterial(biome)),
       buildIceCracks(seed, center, waterY, boundingRadius * 0.6, sampler, biome),
@@ -331,7 +344,7 @@ export const buildPondMeshes = (
     pondDepths[index] = waterY - sampler(positions.getX(index), positions.getZ(index))
   }
   water.setAttribute('aDepth', new BufferAttribute(pondDepths, 1))
-  if (biome.name === 'ice') {
+  if (biome.waterState === 'frozen') {
     meshes.push(new Mesh(water, createIceSheetMaterial(biome)))
     meshes.push(buildIceCracks(seed, center, waterY, waterRadius, sampler, biome))
   } else {
