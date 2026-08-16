@@ -1413,10 +1413,13 @@ const buildRiverMeshes = (
     const px = poolPositions.getX(index)
     const pz = poolPositions.getZ(index)
     // The pool basin: a shallow scoop blended off the mouth, carved into the
-    // DEPTH FIELD only (visual water over the existing ground carve).
+    // DEPTH FIELD only (visual water over the existing ground carve). The
+    // whole term fades with the scoop: a mouth that ends mid-slope (fold
+    // guard, bank slides) must never flood the plane's square corner over
+    // lower ground downhill — that rendered as a giant straight-edged sheet.
     const reach = Math.hypot(px - mouth.x, pz - mouth.z)
     const scoop = Math.max(0, 1 - reach / POOL_REACH)
-    poolDepths[index] = Math.max(mouth.y - sampler(px, pz), 0) + scoop * 0.12 - 0.02
+    poolDepths[index] = (Math.max(mouth.y - sampler(px, pz), 0) + 0.12) * scoop - 0.02
   }
   pool.setAttribute('aDepth', new BufferAttribute(poolDepths, 1))
   meshes.push(new Mesh(pool, water))
