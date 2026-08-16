@@ -7,9 +7,9 @@ import {
   type MarkerType,
   TILE_RADIUS_RATIO,
   TILE_RIM_HEIGHT,
-  TILE_TOP_INSET,
+  TILE_TOP_LIFT,
 } from './board-builder'
-import { createTilePath } from './path'
+import { createTilePath, type TrackArchetype } from './path'
 import { createHeightSampler, withEdgeFalloff } from './terrain'
 import { individualChallengeAccessors } from '~~/types/challenges/individual-challenge.type'
 import type { Tile } from '~~/types/game.types'
@@ -28,28 +28,34 @@ import type { Tile } from '~~/types/game.types'
  * while the real chord runs 0.84–0.92 of it — so the offset overdrew exactly
  * where the board is most crowded.
  *
- * None of it was visible in /test-markers, which pitches markers 2.2x wider
- * than the board and stands them on top of the disc. So the check lives here,
- * against the real path.
+ * None of it was visible in the since-removed /test-markers workbench, which
+ * pitched markers 2.2x wider than the board and stood them on top of the
+ * disc. So the check lives here, against the real path.
  */
 
 const GATE_TYPES: MarkerType[] = [...individualChallengeAccessors]
 
-/** The board lengths the game actually deals. */
-const LENGTHS = [30, 45, 60, 90]
+/** The lengths the game deals (`TILE_COUNTS`: 40/65/90) plus 52, where the
+ *  serpentine's rows-per-count sawtooth pinches the row pitch tightest. */
+const LENGTHS = [40, 52, 65, 90]
 const SEEDS = ['alpha', 'bravo', 'charlie', 'delta']
 
-const pathFor = (seed: string, count: number) => {
+const pathFor = (seed: string, count: number, archetype?: TrackArchetype) => {
   const tiles: Tile[] = Array.from({ length: count }, (_, position) => ({
     position,
     type: 'normal' as const,
   }))
-  return createTilePath(seed, tiles, withEdgeFalloff(createHeightSampler(seed)))
+  return createTilePath(
+    seed,
+    tiles,
+    withEdgeFalloff(createHeightSampler(seed)),
+    archetype ? { archetype } : undefined
+  )
 }
 
 const boxOf = (type: MarkerType, spacing: number) => {
   const box = new Box3()
-  for (const part of markerPartsFor(type, spacing, undefined, 5)) {
+  for (const part of markerPartsFor(type, spacing)) {
     part.geometry.computeBoundingBox()
     if (part.geometry.boundingBox) box.union(part.geometry.boundingBox)
   }
@@ -58,15 +64,19 @@ const boxOf = (type: MarkerType, spacing: number) => {
 
 describe('the local chord, not the average spacing', () => {
   it('runs well under spacing through the turns that matter', () => {
+    // Serpentine-specific: its row turns are the tight spots this documents.
+    // (An unforced deal can draw a spiral, whose uniform gentle curvature
+    // keeps every chord near spacing — a different, valid geometry.)
     for (const seed of SEEDS) {
       for (const count of LENGTHS) {
-        const { chords, spacing } = pathFor(seed, count)
+        const { chords, spacing } = pathFor(seed, count, 'serpentine')
         const ratios = chords.slice(0, -1).map(chord => chord / spacing)
         // A straight, gently-climbing segment can match the average (the 3D
         // chord even tops it by a hair). The TURNS are the point: the tightest
-        // gap on any board is far under it, which is what a spacing-derived
-        // offset missed.
-        expect(Math.min(...ratios)).toBeLessThan(0.93)
+        // gap on any board is well under it, which is what a spacing-derived
+        // offset missed. Measured minima run 0.84–0.94 across the dealt
+        // lengths (65-tile boards sit highest).
+        expect(Math.min(...ratios)).toBeLessThan(0.95)
         for (const ratio of ratios) {
           expect(ratio).toBeLessThan(1.05)
           // A sanity floor: the path never doubles back on itself.
@@ -90,7 +100,7 @@ describe('a hurdle stands clear of the disc geometry', () => {
     // dipped below its own origin would sink back into the rim it was lifted
     // out of, which is the exact bug being fixed.
     for (const type of [...GATE_TYPES, 'final' as MarkerType]) {
-      for (const part of markerPartsFor(type, 10, undefined, 5)) {
+      for (const part of markerPartsFor(type, 10)) {
         part.geometry.computeBoundingBox()
         const box = part.geometry.boundingBox
         if (!box) continue
@@ -102,7 +112,7 @@ describe('a hurdle stands clear of the disc geometry', () => {
   it('clears the rim cylinder at every board length', () => {
     // Standing at the top face, a marker's foot is above every disc surface —
     // so an overhang is a marker passing OVER a tile, never through it.
-    const lift = TILE_RIM_HEIGHT + TILE_TOP_INSET
+    const lift = TILE_TOP_LIFT
     for (const count of LENGTHS) {
       const { spacing } = pathFor('alpha', count)
       for (const type of GATE_TYPES) {
@@ -164,7 +174,7 @@ describe('a hurdle sits in the gap it was measured for', () => {
           const box = boxOf(type, spacing)
           return {
             type,
-            parts: markerPartsFor(type, spacing, undefined, 5),
+            parts: markerPartsFor(type, spacing),
             depth: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
           }
         })
@@ -189,9 +199,7 @@ describe('a hurdle sits in the gap it was measured for', () => {
       for (const count of LENGTHS) {
         const { chords, spacing } = pathFor(seed, count)
         const tileRadius = spacing * TILE_RADIUS_RATIO
-        const parts = GATE_TYPES.map(
-          type => [type, markerPartsFor(type, spacing, undefined, 5)] as const
-        )
+        const parts = GATE_TYPES.map(type => [type, markerPartsFor(type, spacing)] as const)
         for (let index = 1; index < count - 1; index++) {
           const gap = markerGapFor(index, chords, tileRadius)
           for (const [type, geometry] of parts) {
@@ -205,7 +213,53 @@ describe('a hurdle sits in the gap it was measured for', () => {
   })
 
   it('leaves a marker that already fits at full size', () => {
-    expect(markerFitFactor(markerPartsFor('flag', 10, undefined, 5), 1000, 1000)).toBe(1)
+    expect(markerFitFactor(markerPartsFor('flag', 10), 1000, 1000)).toBe(1)
+  })
+})
+
+describe('every archetype keeps the hurdle invariants', () => {
+  // The suites above pin the serpentine (the default deal). The other track
+  // shapes must hold the same three placement invariants: the foot lands in
+  // open ground, nothing sprawls past a neighbour, nothing shrinks to a speck.
+  const OTHER_ARCHETYPES: TrackArchetype[] = ['spiral', 'horseshoe', 'ridge']
+
+  it('holds the foot, sprawl and speck invariants on every shape', () => {
+    for (const archetype of OTHER_ARCHETYPES) {
+      for (const seed of ['alpha', 'bravo']) {
+        for (const count of [40, 65, 90]) {
+          const { chords, transforms, spacing } = pathFor(seed, count, archetype)
+          const tileRadius = spacing * TILE_RADIUS_RATIO
+          const measured = GATE_TYPES.map(type => {
+            const box = boxOf(type, spacing)
+            return {
+              type,
+              parts: markerPartsFor(type, spacing),
+              depth: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
+            }
+          })
+
+          for (let index = 1; index < count - 1; index++) {
+            const gap = markerGapFor(index, chords, tileRadius)
+            const { position, tangent } = transforms[index]
+            const anchor = position.clone().addScaledVector(tangent, tileRadius + gap / 2)
+            const label = `${archetype}/${seed}/${count} at ${index}`
+
+            const toOwnEdge = anchor.distanceTo(position) - tileRadius
+            const toNextEdge = anchor.distanceTo(transforms[index + 1].position) - tileRadius
+            expect(toOwnEdge, `${label} foot inside its own disc`).toBeGreaterThanOrEqual(-1e-6)
+            expect(toNextEdge, `${label} foot inside the next disc`).toBeGreaterThan(0)
+
+            for (const { type, parts, depth } of measured) {
+              const fit = markerFitFactor(parts, tileRadius, gap)
+              expect(depth * fit, `${label} ${type} sprawls`).toBeLessThanOrEqual(
+                gap / 2 + tileRadius + 1e-6
+              )
+              expect(fit, `${label} ${type} is a speck`).toBeGreaterThan(0.5)
+            }
+          }
+        }
+      }
+    }
   })
 })
 
@@ -227,7 +281,7 @@ describe('a marker keeps its silhouette', () => {
     const { chords, spacing } = pathFor('bravo', 52)
     const tileRadius = spacing * TILE_RADIUS_RATIO
     const gap = markerGapFor(20, chords, tileRadius)
-    const fit = markerFitFactor(markerPartsFor('history', spacing, undefined, 5), tileRadius, gap)
+    const fit = markerFitFactor(markerPartsFor('history', spacing), tileRadius, gap)
 
     const size = boxOf('history', spacing).getSize(new Vector3())
     expect(size.z).toBeGreaterThan(0)

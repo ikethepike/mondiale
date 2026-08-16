@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { Timer } from 'three'
+import { afterEach, describe, expect, it } from 'vitest'
 import { installTimerVisibilityGuard } from './timer-guard'
 
 /** A document stand-in with a real listener list — vitest runs bare, no DOM. */
 const fakeDocument = () => {
   const listeners: { type: string; fn: EventListener }[] = []
   const doc = {
+    // Timer.connect gates on the Page Visibility API being present
+    hidden: false,
     addEventListener: (type: string, fn: EventListener) => {
       listeners.push({ type, fn })
     },
@@ -31,100 +34,69 @@ const fakeDocument = () => {
   }
 }
 
-/** three's handler, post-disconnect: `_document` has been nulled under it. */
-function handleVisibilityChange(this: { _document: { hidden: boolean } | null }) {
-  if (this._document!.hidden === false) return
-}
+let uninstall: (() => void) | undefined
 
-const orphaned = () => handleVisibilityChange.bind({ _document: null })
+afterEach(() => {
+  uninstall?.()
+  uninstall = undefined
+})
 
 describe('installTimerVisibilityGuard', () => {
-  it('swallows the orphaned timer handler instead of letting it throw', () => {
-    const { doc, fire } = fakeDocument()
-    installTimerVisibilityGuard(doc)
-
-    doc.addEventListener('visibilitychange', orphaned())
-
-    expect(fire('visibilitychange')).toEqual([])
-  })
-
-  it('still throws without the guard — the bug is real', () => {
-    const { doc, fire } = fakeDocument()
-    doc.addEventListener('visibilitychange', orphaned())
-
+  it('reproduces the leak without the guard — the bug is real', () => {
+    const { doc, listeners, fire } = fakeDocument()
+    const timer = new Timer()
+    timer.connect(doc)
+    timer.connect(doc)
+    // The double connect orphans the first handler...
+    expect(listeners).toHaveLength(2)
+    timer.disconnect()
+    expect(listeners).toHaveLength(1)
+    // ...and the orphan dereferences the nulled `_document` when fired.
     const thrown = fire('visibilitychange')
     expect(thrown).toHaveLength(1)
     expect(thrown[0]).toBeInstanceOf(TypeError)
   })
 
-  it('keeps removeEventListener working, so a guarded listener is not permanent', () => {
-    const { doc, listeners } = fakeDocument()
-    installTimerVisibilityGuard(doc)
+  it('turns a double connect into a reconnect — one listener, no orphan', () => {
+    const { doc, listeners, fire } = fakeDocument()
+    uninstall = installTimerVisibilityGuard()
 
-    const handler = orphaned()
-    doc.addEventListener('visibilitychange', handler)
+    const timer = new Timer()
+    timer.connect(doc)
+    timer.connect(doc)
     expect(listeners).toHaveLength(1)
 
-    // The library removes by the reference it passed in. If the wrapper were
-    // not findable from it, the guard would leak worse than the bug.
-    doc.removeEventListener('visibilitychange', handler)
+    timer.disconnect()
     expect(listeners).toHaveLength(0)
-  })
-
-  it('leaves every other listener untouched', () => {
-    const { doc, fire } = fakeDocument()
-    installTimerVisibilityGuard(doc)
-
-    const boom = () => {
-      throw new TypeError('someone else’s bug')
-    }
-    doc.addEventListener('visibilitychange', boom)
-    doc.addEventListener('click', boom)
-
-    // Not three's handler by name — must still surface.
-    expect(fire('visibilitychange')).toHaveLength(1)
-    expect(fire('click')).toHaveLength(1)
-  })
-
-  it('lets a real (connected) timer handler run normally', () => {
-    const { doc, fire } = fakeDocument()
-    installTimerVisibilityGuard(doc)
-
-    let ran = false
-    const live = handleVisibilityChange.bind({
-      get _document() {
-        ran = true
-        return { hidden: false }
-      },
-    })
-    doc.addEventListener('visibilitychange', live)
-
     expect(fire('visibilitychange')).toEqual([])
-    expect(ran).toBe(true)
   })
 
-  it('is idempotent — a board remount must not stack wrappers', () => {
+  it('leaves a connected timer working normally', () => {
     const { doc, listeners } = fakeDocument()
-    const first = installTimerVisibilityGuard(doc)
-    const patched = doc.addEventListener
-    installTimerVisibilityGuard(doc)
-    expect(doc.addEventListener).toBe(patched)
+    uninstall = installTimerVisibilityGuard()
 
-    const handler = orphaned()
-    doc.addEventListener('visibilitychange', handler)
-    doc.removeEventListener('visibilitychange', handler)
+    const timer = new Timer()
+    timer.connect(doc)
+    expect(listeners).toHaveLength(1)
+    // The live handler reads the document it is still connected to — no throw.
+    expect(() => listeners[0].fn(new Event('visibilitychange'))).not.toThrow()
+    timer.disconnect()
     expect(listeners).toHaveLength(0)
-
-    first()
-    expect(doc.addEventListener).not.toBe(patched)
   })
 
-  it('restores the original listeners on teardown', () => {
-    const { doc, fire } = fakeDocument()
-    const uninstall = installTimerVisibilityGuard(doc)
-    uninstall()
+  it('is idempotent — a board remount must not stack patches', () => {
+    uninstall = installTimerVisibilityGuard()
+    const patchedConnect = Timer.prototype.connect
+    const second = installTimerVisibilityGuard()
+    expect(Timer.prototype.connect).toBe(patchedConnect)
+    expect(second).toBe(uninstall)
+  })
 
-    doc.addEventListener('visibilitychange', orphaned())
-    expect(fire('visibilitychange')).toHaveLength(1)
+  it('restores the original connect on teardown', () => {
+    const original = Timer.prototype.connect
+    const teardown = installTimerVisibilityGuard()
+    expect(Timer.prototype.connect).not.toBe(original)
+    teardown()
+    expect(Timer.prototype.connect).toBe(original)
   })
 })

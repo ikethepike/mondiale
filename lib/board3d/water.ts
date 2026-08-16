@@ -2,14 +2,17 @@ import Alea from 'alea'
 import {
   BackSide,
   BoxGeometry,
+  BufferAttribute,
   type BufferGeometry,
-  CircleGeometry,
+  Color,
+  DoubleSide,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshToonMaterial,
+  PlaneGeometry,
   Quaternion,
-  RingGeometry,
+  ShaderMaterial,
   Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
@@ -19,6 +22,56 @@ import { BOARD_COLORS } from './colors'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import type { TilePathResult } from './path'
 import { type HeightSampler, smoothstep } from './terrain'
+import type { BoardBiome } from './biomes'
+
+/**
+ * The living-water material, proven in /test-terrain: per-vertex ANALYTIC
+ * depth (we carved the beds, so we know it — no depth textures, no mobile
+ * banding) drives a foam shore, depth-scaled transparency and a two-tone
+ * shallow→deep fall; `uTime` shimmers the foam edge. Rivers, falls and
+ * plunge pools all render through it.
+ */
+export const createWaterMaterial = (
+  biome: BoardBiome,
+  timeUniforms: { value: number }[]
+): ShaderMaterial => {
+  const material = new ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+    uniforms: {
+      uWater: { value: new Color(biome.water) },
+      uFoam: { value: new Color(biome.foam) },
+      uTime: { value: 0 },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aDepth;
+      varying float vDepth;
+      varying vec2 vXZ;
+      void main() {
+        vDepth = aDepth;
+        vXZ = position.xz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uWater; uniform vec3 uFoam; uniform float uTime;
+      varying float vDepth; varying vec2 vXZ;
+      void main() {
+        if (vDepth <= 0.0) discard;
+        float shimmer = sin(uTime * 1.1 + vXZ.x * 1.7 + vXZ.y * 1.3) * 0.045;
+        float foam = 1.0 - smoothstep(0.04, 0.2 + shimmer, vDepth);
+        float alpha = mix(0.3, 0.72, smoothstep(0.0, 1.1, vDepth));
+        vec3 color = mix(uWater, uWater * 0.55, smoothstep(0.3, 1.3, vDepth));
+        color = mix(color, uFoam, foam);
+        gl_FragColor = vec4(color, max(alpha, foam * 0.9));
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+  timeUniforms.push(material.uniforms.uTime as { value: number })
+  return material
+}
 
 /**
  * The decorative pond: a rare board treat, not a challenge. One plain tile
@@ -123,32 +176,30 @@ export const withPondBasin = (sampler: HeightSampler, site: PondSite): HeightSam
  * plank bridge whose apex matches the tile-top height — pawns land on the
  * deck exactly as they would on the disc it replaces.
  */
-export const buildPondMeshes = (site: PondSite, spacing: number, tileTopY: number): Mesh[] => {
+export const buildPondMeshes = (
+  site: PondSite,
+  spacing: number,
+  tileTopY: number,
+  biome: BoardBiome,
+  sampler: HeightSampler,
+  timeUniforms: { value: number }[]
+): Mesh[] => {
   const meshes: Mesh[] = []
   const { center, tangent, waterY, waterRadius } = site
 
-  const water = new CircleGeometry(waterRadius, 40)
+  // Living water: a grid with per-vertex analytic depth (water line minus
+  // the carved basin under each vertex) — the foam shoreline emerges where
+  // depth crosses zero, replacing the old flat disc and milk ripple rings.
+  const water = new PlaneGeometry(waterRadius * 2.6, waterRadius * 2.6, 28, 28)
   water.rotateX(-Math.PI / 2)
   water.translate(center.x, waterY, center.z)
-  meshes.push(new Mesh(water, new MeshBasicMaterial({ color: BOARD_COLORS.pondBlue })))
-
-  for (const reach of [0.38, 0.62]) {
-    const ripple = new RingGeometry(waterRadius * reach, waterRadius * (reach + 0.035), 36)
-    ripple.rotateX(-Math.PI / 2)
-    ripple.translate(center.x, waterY + 0.05, center.z)
-    meshes.push(
-      new Mesh(
-        ripple,
-        // depthWrite off: translucent overlay a hair above the water plane
-        new MeshBasicMaterial({
-          color: BOARD_COLORS.sourMilk,
-          transparent: true,
-          opacity: 0.45,
-          depthWrite: false,
-        })
-      )
-    )
+  const positions = water.attributes.position
+  const pondDepths = new Float32Array(positions.count)
+  for (let index = 0; index < positions.count; index++) {
+    pondDepths[index] = waterY - sampler(positions.getX(index), positions.getZ(index))
   }
+  water.setAttribute('aDepth', new BufferAttribute(pondDepths, 1))
+  meshes.push(new Mesh(water, createWaterMaterial(biome, timeUniforms)))
 
   // --- Bridge: planks arched along the path tangent -------------------------
   const matrix = new Matrix4()

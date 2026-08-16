@@ -410,7 +410,10 @@ const lakeName = (properties: Record<string, unknown>): string => {
   const escaped = english.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   if (!new RegExp(`\\b${escaped}\\b`, 'i').test(local)) return english
   // Everything `name` adds around the specific must be an English generic
-  const added = local.replace(new RegExp(`\\b${escaped}\\b`, 'i'), ' ').split(/\s+/).filter(Boolean)
+  const added = local
+    .replace(new RegExp(`\\b${escaped}\\b`, 'i'), ' ')
+    .split(/\s+/)
+    .filter(Boolean)
   return added.every(word => LAKE_GENERICS.test(word)) ? local : english
 }
 

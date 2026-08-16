@@ -1,14 +1,17 @@
 import {
   BoxGeometry,
   BufferAttribute,
-  type BufferGeometry,
+  BufferGeometry,
   CatmullRomCurve3,
   CircleGeometry,
   Color,
   ConeGeometry,
   CylinderGeometry,
+  DataTexture,
+  FloatType,
   Group,
   InstancedMesh,
+  LinearFilter,
   LatheGeometry,
   Matrix4,
   Mesh,
@@ -19,6 +22,8 @@ import {
   ExtrudeGeometry,
   PlaneGeometry,
   Quaternion,
+  RedFormat,
+  RingGeometry,
   Shape,
   SphereGeometry,
   TorusGeometry,
@@ -36,14 +41,40 @@ import { createNumberAtlas } from './atlas'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
-import { createTilePath, type TileTransform } from './path'
-import { BOARD_SIZE, createHeightSampler, withEdgeFalloff, withPathShelf } from './terrain'
-import { buildPondMeshes, pickPondSite, withPondBasin } from './water'
+import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
+import { type BoardBiome, pickBoardBiome } from './biomes'
+import { buildRailway, pickRailwayLoop } from './railway'
+import { pickRiverPath, type RiverPath, withRiverBed } from './river'
+import { pickScenerySites } from './scenery'
+import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
+import {
+  BOARD_SIZE,
+  createHeightSampler,
+  type HeightSampler,
+  withEdgeFalloff,
+  withPathShelf,
+} from './terrain'
+import { buildPondMeshes, createWaterMaterial, pickPondSite, withPondBasin } from './water'
+import { buildFlora } from './flora'
 
 export interface BoardBuild {
   group: Group
   transforms: TileTransform[]
   spacing: number
+  archetype: TrackArchetype
+  /** The board's landscape voice — game pieces never read it. */
+  biome: BoardBiome
+  /** Clocks of every animated landscape shader (wind, water, birds, clouds);
+   *  TopoScene advances them while the stage is visible. */
+  timeUniforms: { value: number }[]
+  /** Per-frame object animators (the railway's train) — driven by the same
+   *  ticker as the shader clocks, so everything pauses and stills together. */
+  animations: ((time: number) => void)[]
+  /** The finale massif, when this board dealt one — TopoScene climbs its
+   *  `climbAnchors` during the gauntlet. */
+  summit?: SummitSite
+  /** The railway loop, when this board dealt one — the dev camera pin. */
+  railway?: Vector3[]
   contourMaterial: ContourMaterial
   dispose(): void
 }
@@ -80,10 +111,23 @@ export const getBoardBuild = (
 // horizon so the world melts into the cream background.
 const TERRAIN_OVERHANG = 2.6
 
-/** Tile-disc proportions — shared with the /test-markers mock discs. */
-export const TILE_RADIUS_RATIO = 0.42
+/** Tile-disc proportions. The radius ratio lives in path.ts (the clearance
+ *  guard is defined in disc terms and path.ts must not import this module) —
+ *  re-exported here for the marker/test callers that always read it here. */
+export { TILE_RADIUS_RATIO }
 export const TILE_RIM_HEIGHT = 0.55
 export const TILE_TOP_INSET = 0.09
+
+/**
+ * The overlay ladder: y-lifts above a tile's ground point for everything that
+ * floats over a disc. Coplanar overlays z-fight into flickering speckles, so
+ * every rung keeps clear air to its neighbours — a new overlay takes a new
+ * rung here, never an inline literal.
+ */
+export const TILE_TOP_LIFT = TILE_RIM_HEIGHT + TILE_TOP_INSET // the disc's top face
+export const HIGHLIGHT_RING_LIFT = 0.68
+export const NUMBER_LABEL_LIFT = 0.71
+export const PATH_MARKER_LIFT = 0.75
 
 /**
  * Assemble the full static board: shelved contour terrain, the serpentine
@@ -93,9 +137,17 @@ export const TILE_TOP_INSET = 0.09
 const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): BoardBuild => {
   const group = new Group()
 
+  // The landscape's voice: ramps, inks and noise character. Game pieces
+  // (discs, markers, pawns) never read it — they stay cream-and-ink.
+  const biome = pickBoardBiome(seed)
+
+  // Every animated shader registers its clock here; TopoScene advances them
+  // only while the stage is on screen (the parked render loop stays parked).
+  const timeUniforms: { value: number }[] = []
+
   // Edge falloff wraps the base field so hills subside into the page at the
   // horizon; the track (radius < EDGE_FADE_START) never feels it.
-  const rawSampler = withEdgeFalloff(createHeightSampler(seed))
+  const rawSampler = withEdgeFalloff(createHeightSampler(seed, biome))
   const tilePath = createTilePath(seed, tiles, rawSampler)
   const { transforms, shelfPoints, spacing, chords } = tilePath
 
@@ -103,8 +155,25 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // bridge over basin-carved water. Purely visual — the tile stays 'normal'.
   const pondSite = pickPondSite(seed, tiles, tilePath)
 
+  // The finale massif: a terrain mountain beyond the final tile that the
+  // gauntlet climbs. Sited off-track by construction, so the shelf and the
+  // flank never fight and track elevation stays untouched.
+  const summitSite = pickSummitSite(
+    seed,
+    tilePath,
+    pondSite,
+    rawSampler,
+    GAUNTLET_LENGTH[difficulty]
+  )
+
+  // A decorative river: rises on open high ground, marches downhill, stops
+  // at the track's clearance. Carved into the bed the shader contours draw.
+  const riverPath = pickRiverPath(seed, tilePath, pondSite, summitSite, rawSampler)
+
   const shelved = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
-  const sampler = pondSite ? withPondBasin(shelved, pondSite) : shelved
+  const ponded = pondSite ? withPondBasin(shelved, pondSite) : shelved
+  const sculpted = summitSite ? withSummitMassif(ponded, summitSite, spacing) : ponded
+  const sampler = riverPath ? withRiverBed(sculpted, riverPath) : sculpted
 
   // --- Terrain -------------------------------------------------------------
   const segments = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
@@ -114,7 +183,28 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
 
   const positions = terrainGeometry.attributes.position
   const slopes = new Float32Array(positions.count)
+  const gradients = new Float32Array(positions.count * 2)
+  const curvatures = new Float32Array(positions.count)
+  const moistures = new Float32Array(positions.count)
   const epsilon = terrainSize / segments
+
+  // Analytic distance to the nearest water body — the moisture field that
+  // greens the banks (and the desert's oasis ring) in the shader.
+  const waterDistanceAt = (x: number, z: number) => {
+    let distance = Infinity
+    if (pondSite)
+      distance = Math.max(
+        0,
+        Math.hypot(pondSite.center.x - x, pondSite.center.z - z) - pondSite.waterRadius
+      )
+    if (riverPath) {
+      for (const point of riverPath.points) {
+        const d = Math.hypot(point.x - x, point.z - z)
+        if (d < distance) distance = d
+      }
+    }
+    return distance
+  }
 
   // One sampler tap per vertex: the grid pitch equals `epsilon`, so the
   // finite-difference taps land exactly on neighbouring lattice points —
@@ -143,20 +233,97 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       (heights[far * lattice + column] - heights[near * lattice + column]) /
       ((far - near) * epsilon)
     slopes[index] = Math.hypot(gradientX, gradientZ)
+    gradients[index * 2] = gradientX
+    gradients[index * 2 + 1] = gradientZ
+    // Laplacian: negative on ridgelines, positive in hollows — curvature ink.
+    curvatures[index] =
+      heights[row * lattice + right] +
+      heights[row * lattice + left] +
+      heights[far * lattice + column] +
+      heights[near * lattice + column] -
+      4 * heights[index]
+    const wet = waterDistanceAt(positions.getX(index), positions.getZ(index))
+    moistures[index] = wet === Infinity ? 0 : 1 - Math.min(1, wet / 9)
   }
   positions.needsUpdate = true
   terrainGeometry.setAttribute('aSlope', new BufferAttribute(slopes, 1))
+  terrainGeometry.setAttribute('aGradient', new BufferAttribute(gradients, 2))
+  terrainGeometry.setAttribute('aCurve', new BufferAttribute(curvatures, 1))
+  terrainGeometry.setAttribute('aMoisture', new BufferAttribute(moistures, 1))
 
-  const contourMaterial = createContourMaterial(spacing * 4)
+  // The height field again at texture resolution, finer than the mesh:
+  // fragment-space contours never crumble along triangle edges.
+  // One size everywhere: the phone's 384² tier made contour lines visibly
+  // softer than the rest of the ink, and the full field is a 1MB texture.
+  const fieldSize = 512
+  const fieldHalf = terrainSize / 2
+  const field = new Float32Array(fieldSize * fieldSize)
+  for (let row = 0; row < fieldSize; row++) {
+    for (let column = 0; column < fieldSize; column++) {
+      const x = (column / (fieldSize - 1)) * terrainSize - fieldHalf
+      const z = (row / (fieldSize - 1)) * terrainSize - fieldHalf
+      field[row * fieldSize + column] = sampler(x, z)
+    }
+  }
+  const heightMap = new DataTexture(field, fieldSize, fieldSize, RedFormat, FloatType)
+  heightMap.minFilter = LinearFilter
+  heightMap.magFilter = LinearFilter
+  heightMap.needsUpdate = true
+
+  const contourMaterial = createContourMaterial({
+    rippleRadius: spacing * 4,
+    biome,
+    heightMap,
+    heightHalf: fieldHalf,
+    snowlineY: summitSite?.snowlineY,
+  })
+  timeUniforms.push(contourMaterial.uniforms.uTime as { value: number })
   group.add(new Mesh(terrainGeometry, contourMaterial))
 
   // --- Track ribbon ----------------------------------------------------------
   const ribbonCurve = new CatmullRomCurve3(
     shelfPoints.map(point => new Vector3(point.x, point.y + 0.18, point.z))
   )
-  const ribbonGeometry = new TubeGeometry(ribbonCurve, tiles.length * 6, 0.16, 6, false)
+  const tubularSegments = tiles.length * 6
+  const ribbonGeometry = new TubeGeometry(ribbonCurve, tubularSegments, 0.16, 6, false)
+
+  // Approach telegraphing: the ribbon warms into each gate's wash over the
+  // last stretch of track before it, so a coming gauntlet reads at overview
+  // zoom where the marker itself is small. Per-vertex colors — TubeGeometry
+  // orders vertices ring-major, so ring i maps to curve parameter i/segments.
+  const APPROACH_TILES = 1.15
+  const ribbonBase = new Color(BOARD_COLORS.softBlue)
+  const ringColor = new Color()
+  const ribbonColors = new Float32Array(ribbonGeometry.attributes.position.count * 3)
+  const gateTints = tiles.flatMap(tile => {
+    if (tile.type === 'normal' || tile.type === 'start') return []
+    return {
+      position: tile.position,
+      tint: new Color(tile.type === 'final' ? BOARD_COLORS.hiorAnge : TILE_TOP_TINTS[tile.type]),
+    }
+  })
+  const ringsPerVertexRow = ribbonGeometry.attributes.position.count / (tubularSegments + 1)
+  for (let ring = 0; ring <= tubularSegments; ring++) {
+    const tileAt = (ring / tubularSegments) * (tiles.length - 1)
+    ringColor.copy(ribbonBase)
+    for (const gate of gateTints) {
+      const ahead = gate.position - tileAt
+      if (ahead >= 0 && ahead <= APPROACH_TILES) {
+        ringColor.lerp(gate.tint, 1 - ahead / APPROACH_TILES)
+        break
+      }
+    }
+    for (let around = 0; around < ringsPerVertexRow; around++) {
+      const vertex = ring * ringsPerVertexRow + around
+      ribbonColors[vertex * 3] = ringColor.r
+      ribbonColors[vertex * 3 + 1] = ringColor.g
+      ribbonColors[vertex * 3 + 2] = ringColor.b
+    }
+  }
+  ribbonGeometry.setAttribute('color', new BufferAttribute(ribbonColors, 3))
+
   const ribbonMaterial = new MeshBasicMaterial({
-    color: BOARD_COLORS.softBlue,
+    vertexColors: true,
     transparent: true,
     opacity: 0.35,
   })
@@ -167,9 +334,11 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const rimHeight = TILE_RIM_HEIGHT
 
   const unitDisc = new CylinderGeometry(1, 1, 1, 28)
+  // White base + per-instance colors: plain rims stay ink, gate rims carry a
+  // darkened theme tint — the second half of the approach telegraph.
   const rimMesh = new InstancedMesh(
     unitDisc,
-    new MeshBasicMaterial({ color: BOARD_COLORS.ink }),
+    new MeshBasicMaterial({ color: '#ffffff' }),
     tiles.length
   )
   const topMesh = new InstancedMesh(
@@ -181,6 +350,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const matrix = new Matrix4()
   const quaternion = new Quaternion()
   const topColor = new Color()
+  const rimColor = new Color()
+  const rimInk = new Color(BOARD_COLORS.ink)
   const climaxWarmth = new Color(BOARD_COLORS.warmSand)
 
   tiles.forEach((tile, index) => {
@@ -201,6 +372,15 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       new Vector3(tileRadius * emphasis, rimHeight, tileRadius * emphasis)
     )
     rimMesh.setMatrixAt(index, matrix)
+
+    // Gate rims wear their theme's wash pulled well toward ink — colored
+    // enough to flag "gate ahead" at overview zoom, dark enough to stay the
+    // disc's border in the outline language.
+    rimColor.copy(rimInk)
+    if (tile.type !== 'normal' && tile.type !== 'start' && tile.type !== 'final') {
+      rimColor.set(TILE_TOP_TINTS[tile.type]).lerp(rimInk, 0.55)
+    }
+    rimMesh.setColorAt(index, rimColor)
 
     matrix.compose(
       new Vector3(position.x, position.y + rimHeight / 2 + TILE_TOP_INSET, position.z),
@@ -232,6 +412,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   })
   rimMesh.instanceMatrix.needsUpdate = true
   topMesh.instanceMatrix.needsUpdate = true
+  if (rimMesh.instanceColor) rimMesh.instanceColor.needsUpdate = true
   if (topMesh.instanceColor) topMesh.instanceColor.needsUpdate = true
   group.add(rimMesh, topMesh)
 
@@ -249,7 +430,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
         uv.setXY(corner, u + uv.getX(corner) * width, v + uv.getY(corner) * height)
       }
       quad.rotateX(-Math.PI / 2)
-      quad.translate(position.x, position.y + rimHeight + 0.16, position.z)
+      quad.translate(position.x, position.y + NUMBER_LABEL_LIFT, position.z)
       return quad
     })
 
@@ -263,17 +444,72 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   }
 
   // --- Challenge markers: 3D gates at each challenge tile's exit edge -------
-  buildChallengeMarkers(tiles, transforms, spacing, tileRadius, difficulty, chords).forEach(mesh =>
+  if (summitSite) {
+    buildSummitCairn(summitSite, spacing).forEach(mesh => group.add(mesh))
+    buildClimbPlatforms(summitSite, spacing).forEach(mesh => group.add(mesh))
+  }
+
+  if (riverPath)
+    buildRiverMeshes(riverPath, biome, sampler, timeUniforms).forEach(mesh => group.add(mesh))
+
+  // Survey furniture on the open terrain: cairned hilltops and a compass-rose
+  // ink decal. Heights come from the final composed sampler, so everything
+  // sits exactly on the rendered ground.
+  const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler, riverPath)
+  scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
+  if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing, sampler))
+
+  // A decorative railway for certain seeds: a closed contour loop with an
+  // old steam train rounding it. Picked LAST among the placements, so it is
+  // always the feature that yields — the ticker drives it via `animations`.
+  const animations: ((time: number) => void)[] = []
+  const railwayLoop = pickRailwayLoop(
+    seed,
+    tilePath,
+    pondSite,
+    summitSite,
+    riverPath,
+    scenery,
+    sampler
+  )
+  if (railwayLoop) {
+    const railway = buildRailway(railwayLoop, biome)
+    railway.meshes.forEach(mesh => group.add(mesh))
+    animations.push(railway.drive)
+  }
+
+  // The living layer: blade grass, biome props, gull flocks — all wind-swayed
+  // in the vertex shader, all clear of the track, stilled by reduced motion.
+  buildFlora(
+    {
+      biome,
+      path: tilePath,
+      pond: pondSite,
+      summit: summitSite,
+      river: riverPath,
+      railway: railwayLoop,
+      sampler,
+      waterDistanceAt,
+      seed,
+      phone: typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX,
+    },
+    timeUniforms
+  ).forEach(mesh => group.add(mesh))
+
+  buildChallengeMarkers(tiles, transforms, spacing, tileRadius, chords).forEach(mesh =>
     group.add(mesh)
   )
 
   // --- Pond + bridge (when this board drew one) ------------------------------
   if (pondSite) {
     const tileTopY = pondSite.center.y + rimHeight + TILE_TOP_INSET
-    buildPondMeshes(pondSite, spacing, tileTopY).forEach(mesh => group.add(mesh))
+    buildPondMeshes(pondSite, spacing, tileTopY, biome, sampler, timeUniforms).forEach(mesh =>
+      group.add(mesh)
+    )
   }
 
   const dispose = () => {
+    heightMap.dispose()
     group.traverse(child => {
       if (child instanceof Mesh || child instanceof InstancedMesh) {
         child.geometry.dispose()
@@ -286,7 +522,19 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     })
   }
 
-  return { group, transforms, spacing, contourMaterial, dispose }
+  return {
+    group,
+    transforms,
+    spacing,
+    archetype: tilePath.archetype,
+    biome,
+    timeUniforms,
+    animations,
+    summit: summitSite,
+    railway: railwayLoop,
+    contourMaterial,
+    dispose,
+  }
 }
 
 export interface MarkerPart {
@@ -300,7 +548,7 @@ export interface MarkerPart {
 
 export type MarkerType = IndividualChallengeAccessorId | 'final'
 
-type MarkerRecipe = (s: number, stages?: number) => MarkerPart[]
+type MarkerRecipe = (s: number) => MarkerPart[]
 
 /**
  * Local-space marker shapes per gate theme (y up, origin at tile ground, +z
@@ -395,11 +643,14 @@ const lexiconPlume: MarkerRecipe = s => {
   back.quadraticCurveTo(-0.15, 0.5, -0.06, 0.36)
   back.quadraticCurveTo(-0.095, 0.5, -0.125, 0.66)
 
-  // Flat extrudes on purpose: a bevel folds over itself at reflex corners
-  const frontVane = new ExtrudeGeometry(front, { depth: 0.06, bevelEnabled: false })
-  frontVane.translate(0, 0, -0.03)
-  const backVane = new ExtrudeGeometry(back, { depth: 0.06, bevelEnabled: false })
-  backVane.translate(0, 0, -0.075)
+  // Flat extrudes on purpose: a bevel folds over itself at reflex corners.
+  // Vane depth 0.06 → 0.09 after the overview-zoom pass: the blade thinned
+  // to a hairline at framing distance. The back vane keeps its tuck-behind
+  // overlap (front spans −0.045…0.045, back −0.12…−0.03).
+  const frontVane = new ExtrudeGeometry(front, { depth: 0.09, bevelEnabled: false })
+  frontVane.translate(0, 0, -0.045)
+  const backVane = new ExtrudeGeometry(back, { depth: 0.09, bevelEnabled: false })
+  backVane.translate(0, 0, -0.12)
   for (const vane of [frontVane, backVane]) {
     vane.scale(s, s, s)
     vane.rotateY(QUILL_YAW)
@@ -444,13 +695,19 @@ const historyHourglass: MarkerRecipe = s => {
   sandUp.rotateX(Math.PI)
   sandUp.translate(0, 0.65 * s, 0)
 
-  return [
+  const parts: MarkerPart[] = [
     { geometry: base, color: BOARD_COLORS.darkBlue },
     { geometry: cap, color: BOARD_COLORS.darkBlue },
     ...posts.map(geometry => ({ geometry, color: BOARD_COLORS.darkBlue })),
     { geometry: sandDown, color: BOARD_COLORS.warmSand },
     { geometry: sandUp, color: BOARD_COLORS.warmSand },
   ]
+  // The heaviest silhouette in the set by ~2× (measured AABB mass 210 vs the
+  // 23–166 of everything else) — trimmed uniformly toward the pack so no one
+  // gate dominates the overview shot. Uniform about the foot, so the
+  // authored-from-origin invariant holds.
+  parts.forEach(part => part.geometry.scale(0.86, 0.86, 0.86))
+  return parts
 }
 
 // Cloth caught mid-ripple: an S-waved band drawn in plan and extruded
@@ -647,153 +904,13 @@ const capitalSkyline: MarkerRecipe = s => {
   return parts
 }
 
-// The main peak of the final mountain: a faceted frustum, so the summit is a
-// flat plateau a winner's pawn can actually stand on. Offset from the tile
-// centre so the massif reads asymmetric. Steep on purpose — a squat cone
-// reads as a lump, not a mountain.
-const MOUNTAIN_PEAK = { x: 0.06, z: -0.05, radius: 0.46, height: 1.5, top: 0.07 }
-/** Height where rock gives way to snow on the main peak. */
-const SNOWLINE = 1.02
-
-/**
- * Pawn-base anchors up the final mountain for an n-stage gauntlet: one flank
- * ledge per stage spiralling the main peak's +x face (the side the path
- * camera watches), then the summit plateau as the last entry. Local marker
- * space in spacing units. `finalMountain` carves a slab under each flank
- * anchor from this same list — sculpt and climb cannot drift.
- */
-const mountainLedges = (stages: number): [number, number, number][] => {
-  const flanks = Math.max(1, stages)
-  const anchors: [number, number, number][] = []
-  for (let step = 0; step < flanks; step++) {
-    const t = flanks === 1 ? 0.5 : step / (flanks - 1)
-    const y = 0.3 + 0.8 * t
-    const angle = -0.7 + 1.4 * t
-    const reach = MOUNTAIN_PEAK.radius * (1 - y / MOUNTAIN_PEAK.height) + 0.13
-    anchors.push([
-      MOUNTAIN_PEAK.x + Math.cos(angle) * reach,
-      y,
-      MOUNTAIN_PEAK.z + Math.sin(angle) * reach,
-    ])
-  }
-  anchors.push([MOUNTAIN_PEAK.x, 1.56, MOUNTAIN_PEAK.z])
-  return anchors
-}
-
-// Mount Olympus for the final tile: an asymmetric three-peak massif — snow
-// on the two tall peaks — with one carved ledge per gauntlet stage
-// spiralling the main face. TopoScene stands a challenger's pawn on the
-// ledge matching their cleared-stage count (finalClimbAnchor), so the whole
-// room watches the climb; the summit plateau is the victory stand.
-const finalMountain: MarkerRecipe = (s, stages = GAUNTLET_LENGTH.normal) => {
-  const parts: MarkerPart[] = []
-
-  const peak = new CylinderGeometry(
-    MOUNTAIN_PEAK.top * s,
-    MOUNTAIN_PEAK.radius * s,
-    MOUNTAIN_PEAK.height * s,
-    7
-  )
-  peak.translate(MOUNTAIN_PEAK.x * s, (MOUNTAIN_PEAK.height / 2) * s, MOUNTAIN_PEAK.z * s)
-  parts.push({ geometry: faceted(peak), color: BOARD_COLORS.warmSand })
-
-  // The snow CONTINUES the peak's own taper — computed from the rock's radius
-  // at the snowline plus a hair, so it caps the summit instead of flaring
-  // over it like a lampshade. Half a facet out of phase → the snowline
-  // zigzags. Its flat top is the summit plateau.
-  const snowBottom = MOUNTAIN_PEAK.radius * (1 - SNOWLINE / MOUNTAIN_PEAK.height) + 0.03
-  const snowHeight = MOUNTAIN_PEAK.height + 0.06 - SNOWLINE
-  const snow = new CylinderGeometry(
-    (MOUNTAIN_PEAK.top + 0.03) * s,
-    snowBottom * s,
-    snowHeight * s,
-    7
-  )
-  snow.rotateY(Math.PI / 7)
-  snow.translate(MOUNTAIN_PEAK.x * s, (SNOWLINE + snowHeight / 2) * s, MOUNTAIN_PEAK.z * s)
-  parts.push({ geometry: faceted(snow), color: BOARD_COLORS.sourMilk })
-
-  const shoulder = new ConeGeometry(0.3 * s, 0.95 * s, 6)
-  shoulder.translate(-0.38 * s, 0.475 * s, 0.16 * s)
-  parts.push({ geometry: faceted(shoulder), color: BOARD_COLORS.warmSand })
-  const shoulderSnow = new ConeGeometry(0.11 * s, 0.3 * s, 6)
-  shoulderSnow.translate(-0.38 * s, 0.83 * s, 0.16 * s)
-  parts.push({ geometry: faceted(shoulderSnow), color: BOARD_COLORS.sourMilk })
-
-  const foothill = new ConeGeometry(0.24 * s, 0.5 * s, 6)
-  foothill.translate(0.14 * s, 0.25 * s, -0.42 * s)
-  parts.push({ geometry: faceted(foothill), color: BOARD_COLORS.warmSand })
-
-  mountainLedges(stages)
-    .slice(0, -1)
-    .forEach(([x, y, z]) => {
-      const inward = Math.atan2(z - MOUNTAIN_PEAK.z, x - MOUNTAIN_PEAK.x)
-      const slab = new BoxGeometry(0.26 * s, 0.07 * s, 0.26 * s)
-      slab.rotateY(-inward)
-      slab.translate(
-        (x - Math.cos(inward) * 0.08) * s,
-        (y - 0.035) * s,
-        (z - Math.sin(inward) * 0.08) * s
-      )
-      parts.push({ geometry: slab, color: BOARD_COLORS.darkBlue })
-    })
-  return parts
-}
-
-/**
- * Where a climbing pawn stands after clearing `cleared` of `total` gauntlet
- * stages on a `stages`-ledge mountain: one ledge per stage when the deal is
- * full-length, a proportional ledge when a thin board dealt fewer, and the
- * summit at `cleared >= total` (victory). Local marker space — callers
- * rotate by the tile's path yaw and add the tile position. Returns undefined
- * while the shipping final marker has no ledges to stand on.
- */
-export const finalClimbAnchor = (
-  cleared: number,
-  total: number,
-  spacing: number,
-  stages: number
-): Vector3 | undefined => {
-  if (Object.keys(MARKER_VARIANTS.final)[0] !== 'mountain') return undefined
-  if (cleared <= 0 || total <= 0) return undefined
-
-  const anchors = mountainLedges(stages)
-  const flankCount = anchors.length - 1
-  const ledge =
-    cleared >= total
-      ? anchors[anchors.length - 1]
-      : anchors[Math.min(flankCount - 1, Math.ceil((cleared / total) * flankCount) - 1)]
-  return new Vector3(ledge[0], ledge[1], ledge[2]).multiplyScalar(spacing)
-}
-
-/** Candidate sculpts under review — the FIRST entry of each set is the
- *  production default; /test-markers flips between them live. Once a winner
- *  is picked it gets baked into its `markerPartsFor` case and its set leaves
- *  this map (picked 2026-08: lexicon plume, waving flag, capital skyline,
- *  landmarks camera, currency coin). `final` leads with the mountain so the
- *  gauntlet climb is live — see finalClimbAnchor. */
-export const MARKER_VARIANTS = {
-  // Checker-gate ships; the mountain stays as the lab alternate carrying the
-  // dormant gauntlet-climb feature (finalClimbAnchor only activates when the
-  // mountain leads this set).
-  final: {
-    'checker-gate': finalCheckerGate,
-    mountain: finalMountain,
-  },
-} as const
-
-export const markerPartsFor = (
-  type: MarkerType,
-  spacing: number,
-  variant?: string,
-  stages?: number
-): MarkerPart[] => {
+export const markerPartsFor = (type: MarkerType, spacing: number): MarkerPart[] => {
   const s = spacing
   switch (type) {
-    case 'final': {
-      const variants: Record<string, MarkerRecipe> = MARKER_VARIANTS[type]
-      return ((variant ? variants[variant] : undefined) ?? Object.values(variants)[0])(s, stages)
-    }
+    case 'final':
+      // The checkered arch — the finale massif (see summit.ts) replaced the
+      // old marker-mesh mountain, which could never read as one at gap scale.
+      return finalCheckerGate(s)
     case 'isoCode':
       return isoCompassRose(s)
     case 'government.leader':
@@ -821,12 +938,15 @@ export const markerPartsFor = (
       // ways — the swap made physical. Shares the ISO gate's post on purpose
       // (both are "a sign that names a place"); the tilt and the alert red,
       // which no other marker uses, are what tell them apart at board scale.
-      const pole = new CylinderGeometry(0.045 * s, 0.045 * s, 0.95 * s, 10)
+      // Thickened from 0.045/0.2/0.05 after the overview-zoom pass: the
+      // lightest silhouette in the set (AABB mass 23 vs the hourglass's 210)
+      // vanished at framing distance.
+      const pole = new CylinderGeometry(0.06 * s, 0.06 * s, 0.95 * s, 10)
       pole.translate(0, 0.475 * s, 0)
-      const lower = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      const lower = new BoxGeometry(0.52 * s, 0.24 * s, 0.09 * s)
       lower.rotateZ(-0.21)
       lower.translate(0, 0.5 * s, 0)
-      const upper = new BoxGeometry(0.5 * s, 0.2 * s, 0.05 * s)
+      const upper = new BoxGeometry(0.52 * s, 0.24 * s, 0.09 * s)
       upper.rotateZ(0.21)
       upper.translate(0, 0.8 * s, 0)
       return [
@@ -895,7 +1015,6 @@ const buildChallengeMarkers = (
   transforms: TileTransform[],
   spacing: number,
   tileRadius: number,
-  difficulty: GameDifficulty,
   chords: number[]
 ): Mesh[] => {
   const colorBuckets = new Map<string, BufferGeometry[]>()
@@ -910,12 +1029,7 @@ const buildChallengeMarkers = (
 
     const { position, tangent } = transforms[tile.position]
     const isFinal = tile.type === 'final'
-    const parts = markerPartsFor(
-      isFinal ? 'final' : tile.type,
-      spacing,
-      undefined,
-      GAUNTLET_LENGTH[difficulty]
-    )
+    const parts = markerPartsFor(isFinal ? 'final' : tile.type, spacing)
 
     // A gate is a HURDLE: it stands in the path itself, at the tile's exit
     // edge, so the pawn pulls up and is stopped by the thing barring its way.
@@ -923,7 +1037,7 @@ const buildChallengeMarkers = (
     //
     // It sits in the gap between this disc and the next, and that gap is the
     // whole budget. It used to be reasoned from `spacing` — the curve's
-    // AVERAGE arc length — but the real chord runs 0.84–0.92 of it, leaving
+    // AVERAGE arc length — but the real chord runs 0.84–0.94 of it, leaving
     // 0.4–2.2 world units where the old `tileRadius * 1.05` assumed far more:
     // the hourglass overhung the NEXT disc by ~3 units and reached back inside
     // its own. Centring the marker in the measured gap and scaling it to fit
@@ -942,32 +1056,52 @@ const buildChallengeMarkers = (
     // buried every base part 0.55–0.64 BELOW the disc's top face — inside the
     // rim cylinder. The gap floor is terrain, not disc, so a hurdle stands at
     // the same height as the tops it bars: level with the disc's top face.
-    anchor.y += TILE_RIM_HEIGHT + TILE_TOP_INSET
+    anchor.y += TILE_TOP_LIFT
     quaternion.setFromAxisAngle(up, Math.atan2(tangent.x, tangent.z))
     matrix.compose(anchor, quaternion, new Vector3(fit, fit, fit))
 
-    for (const part of parts) {
-      // mergeGeometries refuses a bucket where some geometries carry an index
-      // and others don't, and `faceted()` has to drop the index to give a part
-      // its own face normals. Normalising everything to non-indexed keeps the
-      // buckets mergeable; it duplicates vertices but carries the existing
-      // normals across, so nothing that wasn't faceted changes appearance.
-      const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
-      if (geometry !== part.geometry) part.geometry.dispose()
-
-      if (part.outline !== false) {
-        const outline = outlineOf(geometry, outlineWidth)
-        outline.applyMatrix4(matrix)
-        outlines.push(outline)
-      }
-
-      geometry.applyMatrix4(matrix)
-      const bucket = colorBuckets.get(part.color) ?? []
-      bucket.push(geometry)
-      colorBuckets.set(part.color, bucket)
-    }
+    bakeParts(parts, matrix, outlineWidth, colorBuckets, outlines)
   }
 
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** Transform a recipe's parts into world space and file them into the shared
+ *  color buckets (plus the one ink outline pile) for merged drawing. */
+const bakeParts = (
+  parts: MarkerPart[],
+  matrix: Matrix4,
+  outlineWidth: number,
+  colorBuckets: Map<string, BufferGeometry[]>,
+  outlines: BufferGeometry[]
+) => {
+  for (const part of parts) {
+    // mergeGeometries refuses a bucket where some geometries carry an index
+    // and others don't, and `faceted()` has to drop the index to give a part
+    // its own face normals. Normalising everything to non-indexed keeps the
+    // buckets mergeable; it duplicates vertices but carries the existing
+    // normals across, so nothing that wasn't faceted changes appearance.
+    const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry
+    if (geometry !== part.geometry) part.geometry.dispose()
+
+    if (part.outline !== false) {
+      const outline = outlineOf(geometry, outlineWidth)
+      outline.applyMatrix4(matrix)
+      outlines.push(outline)
+    }
+
+    geometry.applyMatrix4(matrix)
+    const bucket = colorBuckets.get(part.color) ?? []
+    bucket.push(geometry)
+    colorBuckets.set(part.color, bucket)
+  }
+}
+
+/** Merge the baked buckets: one mesh per color plus one ink outline mesh. */
+const bucketsToMeshes = (
+  colorBuckets: Map<string, BufferGeometry[]>,
+  outlines: BufferGeometry[]
+): Mesh[] => {
   const meshes: Mesh[] = []
   if (outlines.length) {
     meshes.push(
@@ -984,6 +1118,285 @@ const buildChallengeMarkers = (
   }
 
   return meshes
+}
+
+/**
+ * The summit cairn: stacked faceted stones and an orange pennant on the
+ * finale massif's plateau — the victory stand the gauntlet climb tops out
+ * at. Modest against the peak on purpose: the MOUNTAIN is the monument.
+ */
+const buildSummitCairn = (site: SummitSite, spacing: number): Mesh[] => {
+  // Trimmed and stepped back from the plateau center so the victory pawn
+  // (which stands toward the face) never touches the stones.
+  const s = spacing * 0.45
+  const parts: MarkerPart[] = []
+
+  let stackY = 0
+  for (const [radius, height] of [
+    [0.42, 0.3],
+    [0.3, 0.26],
+    [0.18, 0.22],
+  ]) {
+    const drum = new CylinderGeometry(radius * 0.72 * s, radius * s, height * s, 7)
+    drum.translate(0, (stackY + height / 2) * s, 0)
+    parts.push({ geometry: faceted(drum), color: BOARD_COLORS.warmSand })
+    stackY += height
+  }
+
+  const pole = new CylinderGeometry(0.035 * s, 0.035 * s, 1.1 * s, 8)
+  pole.translate(0, (stackY + 0.55) * s, 0)
+  parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
+  const pennant = new BoxGeometry(0.46 * s, 0.2 * s, 0.04 * s)
+  pennant.translate(0.26 * s, (stackY + 0.94) * s, 0)
+  parts.push({ geometry: pennant, color: BOARD_COLORS.hiorAnge })
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4().setPosition(
+    site.center.x - Math.sin(site.faceAngle) * 1.2,
+    site.center.y,
+    site.center.z - Math.cos(site.faceAngle) * 1.2
+  )
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/**
+ * One stage tile per gauntlet rung, seated on its bench: an ink-rimmed disc
+ * in the track tiles' own language — the bench cut makes each one read as a
+ * natural plateau up the wrap (Isaac's pick over the bracket-shelf try; the
+ * shelves never stopped reading as paper on the flank).
+ */
+const buildClimbPlatforms = (site: SummitSite, spacing: number): Mesh[] => {
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4()
+
+  for (const anchor of site.climbAnchors.slice(0, -1)) {
+    matrix.setPosition(anchor.x, anchor.y, anchor.z)
+    const parts: MarkerPart[] = []
+    // A tall pedestal: the top face stays AT the anchor (the pawn's stand),
+    // the shaft runs down through the deepened bench floor with margin.
+    const rim = new CylinderGeometry(0.3 * spacing, 0.3 * spacing, 1.2, 24)
+    rim.translate(0, -0.63, 0)
+    parts.push({ geometry: rim, color: BOARD_COLORS.ink })
+    const top = new CylinderGeometry(0.27 * spacing, 0.27 * spacing, 1.2, 24)
+    top.translate(0, -0.6, 0)
+    parts.push({ geometry: top, color: BOARD_COLORS.warmSand, outline: false })
+    bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  }
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/**
+ * The river's living water: a ribbon with per-vertex ANALYTIC depth (water
+ * line minus the carved bed under each vertex) rendered by the shared water
+ * shader — foam edges, two-tone depth — plus a cascade sheet and boiling
+ * plunge pool wherever the downhill clamp took a big step.
+ */
+const buildRiverMeshes = (
+  river: RiverPath,
+  biome: BoardBiome,
+  sampler: (x: number, z: number) => number,
+  timeUniforms: { value: number }[]
+): Mesh[] => {
+  const meshes: Mesh[] = []
+  const water = createWaterMaterial(biome, timeUniforms)
+
+  // Six columns across the fine spline — smooth foam shorelines, not the
+  // fractal facets the coarse four-column ribbon triangulated.
+  const ACROSS = [-1, -0.6, -0.25, 0.25, 0.6, 1]
+  const ribbon = new BufferGeometry()
+  const vertices: number[] = []
+  const depths: number[] = []
+  const indices: number[] = []
+  for (let index = 0; index < river.points.length; index++) {
+    const point = river.points[index]
+    const next = river.points[Math.min(index + 1, river.points.length - 1)]
+    const previous = river.points[Math.max(index - 1, 0)]
+    const tangent = new Vector3().subVectors(next, previous).setY(0).normalize()
+    const side = new Vector3(-tangent.z, 0, tangent.x)
+    for (const offset of ACROSS) {
+      const x = point.x + side.x * offset * river.width * 0.75
+      const z = point.z + side.z * offset * river.width * 0.75
+      vertices.push(x, point.y, z)
+      depths.push(point.y - sampler(x, z))
+    }
+  }
+  for (let segment = 0; segment < river.points.length - 1; segment++) {
+    const row = segment * ACROSS.length
+    for (let quad = 0; quad < ACROSS.length - 1; quad++) {
+      const a = row + quad
+      indices.push(a, a + ACROSS.length, a + 1, a + 1, a + ACROSS.length, a + ACROSS.length + 1)
+    }
+  }
+  ribbon.setIndex(indices)
+  ribbon.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
+  ribbon.setAttribute('aDepth', new BufferAttribute(new Float32Array(depths), 1))
+  meshes.push(new Mesh(ribbon, water))
+
+  const fallVertices: number[] = []
+  const fallDepths: number[] = []
+  const fallIndices: number[] = []
+  for (const { top, bottom } of river.falls) {
+    const tangent = new Vector3().subVectors(bottom, top).setY(0).normalize()
+    const side = new Vector3(-tangent.z, 0, tangent.x)
+    const lip = new Vector3().addVectors(top, tangent.clone().multiplyScalar(1.1))
+    const row = fallVertices.length / 3
+    for (const y of [top.y + 0.06, bottom.y - 0.15]) {
+      for (const offset of [-1, 1]) {
+        fallVertices.push(lip.x + side.x * offset * 1.15, y, lip.z + side.z * offset * 1.15)
+        fallDepths.push(0.12)
+      }
+    }
+    fallIndices.push(row, row + 2, row + 1, row + 1, row + 2, row + 3)
+
+    const pool = new Vector3().addVectors(bottom, tangent.clone().multiplyScalar(0.6))
+    const poolRow = fallVertices.length / 3
+    const POOL_SPOKES = 10
+    fallVertices.push(pool.x, bottom.y + 0.05, pool.z)
+    fallDepths.push(0.08)
+    for (let spoke = 0; spoke <= POOL_SPOKES; spoke++) {
+      const angle = (spoke / POOL_SPOKES) * Math.PI * 2
+      fallVertices.push(
+        pool.x + Math.cos(angle) * 1.7,
+        bottom.y + 0.05,
+        pool.z + Math.sin(angle) * 1.7
+      )
+      fallDepths.push(0.22)
+      if (spoke > 0) fallIndices.push(poolRow, poolRow + spoke, poolRow + spoke + 1)
+    }
+  }
+  if (fallIndices.length) {
+    const falls = new BufferGeometry()
+    falls.setIndex(fallIndices)
+    falls.setAttribute('position', new BufferAttribute(new Float32Array(fallVertices), 3))
+    falls.setAttribute('aDepth', new BufferAttribute(new Float32Array(fallDepths), 1))
+    meshes.push(new Mesh(falls, water))
+  }
+
+  // The terminal pool: rivers end where the water stops dropping, and the
+  // mouth spreads into a foam-edged pool — a depth grid like the pond's,
+  // whose shoreline emerges wherever depth crosses zero.
+  const mouth = river.points[river.points.length - 1]
+  const POOL_REACH = river.width * 2.2
+  const pool = new PlaneGeometry(POOL_REACH * 2, POOL_REACH * 2, 18, 18)
+  pool.rotateX(-Math.PI / 2)
+  pool.translate(mouth.x, mouth.y, mouth.z)
+  const poolPositions = pool.attributes.position
+  const poolDepths = new Float32Array(poolPositions.count)
+  for (let index = 0; index < poolPositions.count; index++) {
+    const px = poolPositions.getX(index)
+    const pz = poolPositions.getZ(index)
+    // The pool basin: a shallow scoop blended off the mouth, carved into the
+    // DEPTH FIELD only (visual water over the existing ground carve).
+    const reach = Math.hypot(px - mouth.x, pz - mouth.z)
+    const scoop = Math.max(0, 1 - reach / POOL_REACH)
+    poolDepths[index] = Math.max(mouth.y - sampler(px, pz), 0) + scoop * 0.12 - 0.02
+  }
+  pool.setAttribute('aDepth', new BufferAttribute(poolDepths, 1))
+  meshes.push(new Mesh(pool, water))
+
+  return meshes
+}
+
+/** A survey cairn on an off-track hilltop: two stacked stones and a slim
+ *  trig-point pole — the land reads as charted. */
+const buildHillCairn = (site: Vector3, spacing: number): Mesh[] => {
+  const s = spacing * 0.34
+  const parts: MarkerPart[] = []
+
+  let stackY = 0
+  for (const [radius, height] of [
+    [0.44, 0.3],
+    [0.28, 0.24],
+  ]) {
+    const drum = new CylinderGeometry(radius * 0.72 * s, radius * s, height * s, 7)
+    drum.translate(0, (stackY + height / 2) * s, 0)
+    parts.push({ geometry: faceted(drum), color: BOARD_COLORS.warmSand })
+    stackY += height
+  }
+  // A ball-finial pole, deliberately NOT a cross-arm: pole-plus-crossbar on
+  // a mound read as a roadside crucifix from board distance (Isaac spotted
+  // it immediately). The ball keeps the survey-marker story.
+  const pole = new CylinderGeometry(0.03 * s, 0.03 * s, 0.78 * s, 8)
+  pole.translate(0, (stackY + 0.39) * s, 0)
+  parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
+  const finial = new SphereGeometry(0.085 * s, 10, 8)
+  finial.translate(0, (stackY + 0.82) * s, 0)
+  parts.push({ geometry: faceted(finial), color: BOARD_COLORS.darkBlue })
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4().setPosition(site.x, site.y, site.z)
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** A compass-rose ink decal DRAPED onto the ground — every vertex sits on
+ *  the sampled terrain plus a small lift, and the blades are segmented so no
+ *  triangle bridges a rise (a flat decal on only-mostly-flat ground clipped
+ *  into every swell it crossed). North points at the default seat's top. */
+const buildCompassRose = (site: Vector3, spacing: number, sampler: HeightSampler): Mesh => {
+  const s = spacing * 0.62
+  const geometries: BufferGeometry[] = []
+
+  geometries.push(new RingGeometry(0.82 * s, 0.9 * s, 64))
+  geometries.push(new RingGeometry(0.36 * s, 0.4 * s, 48))
+
+  // Segmented blades: a tapering strip of quads per point, so the drape can
+  // follow the ground along the blade's whole length.
+  for (let index = 0; index < 8; index++) {
+    const cardinal = index % 2 === 0
+    const length = (cardinal ? 0.8 : 0.52) * s
+    const width = (cardinal ? 0.11 : 0.07) * s
+    const SEGMENTS = 5
+    const vertices: number[] = []
+    const indices: number[] = []
+    for (let step = 0; step <= SEGMENTS; step++) {
+      const t = step / SEGMENTS
+      const y = 0.12 * s + (length - 0.12 * s) * t
+      const w = width * (1 - t)
+      vertices.push(-w, y, 0, w, y, 0)
+      if (step > 0) {
+        const row = (step - 1) * 2
+        indices.push(row, row + 1, row + 2, row + 1, row + 3, row + 2)
+      }
+    }
+    const blade = new BufferGeometry()
+    blade.setIndex(indices)
+    blade.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
+    blade.rotateZ((index * Math.PI) / 4)
+    geometries.push(blade)
+  }
+
+  // Position-only across the board: the rings carry uv/normal attributes the
+  // hand-built blades don't, and mergeGeometries refuses mixed layouts.
+  const merged = mergeGeometries(
+    geometries.map(geometry => {
+      const uniform = geometry.toNonIndexed()
+      uniform.deleteAttribute('uv')
+      uniform.deleteAttribute('normal')
+      return uniform
+    })
+  )
+  geometries.forEach(geometry => geometry.dispose())
+  merged.rotateX(-Math.PI / 2)
+  merged.translate(site.x, 0, site.z)
+  const positions = merged.attributes.position
+  for (let index = 0; index < positions.count; index++) {
+    positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + 0.16)
+  }
+  positions.needsUpdate = true
+  return new Mesh(
+    merged,
+    new MeshBasicMaterial({
+      color: BOARD_COLORS.darkBlue,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+    })
+  )
 }
 
 /**

@@ -1,6 +1,10 @@
 import Alea from 'alea'
 import { createNoise2D } from 'simplex-noise'
 import type { Vector3 } from 'three'
+import type { BoardBiome } from './biomes'
+
+/** The slice of a biome that shapes the LAND (not its colors). */
+export type TerrainCharacter = Pick<BoardBiome, 'frequency' | 'stretch' | 'hilliness'>
 
 /** Side length of the square board in world units. */
 export const BOARD_SIZE = 100
@@ -21,13 +25,14 @@ export type HeightSampler = (x: number, z: number) => number
  * sees the same landscape without any server involvement.
  * Returns elevations in [0, MAX_ELEVATION].
  */
-export const createHeightSampler = (seed: string): HeightSampler => {
+export const createHeightSampler = (seed: string, character?: TerrainCharacter): HeightSampler => {
   const noise = createNoise2D(Alea(seed))
+  const { frequency: frequencyScale = 1, stretch = 1, hilliness = 1 } = character ?? {}
 
   const octaves = 4
   const lacunarity = 2
   const gain = 0.45
-  const baseFrequency = 2.0 / BOARD_SIZE
+  const baseFrequency = (2.0 / BOARD_SIZE) * frequencyScale
 
   return (x, z) => {
     let amplitude = 1
@@ -36,13 +41,14 @@ export const createHeightSampler = (seed: string): HeightSampler => {
     let normalization = 0
 
     for (let octave = 0; octave < octaves; octave++) {
-      sum += amplitude * noise(x * frequency, z * frequency)
+      // `stretch` elongates the noise along x — dune grain on desert boards.
+      sum += amplitude * noise((x * frequency) / stretch, z * frequency)
       normalization += amplitude
       amplitude *= gain
       frequency *= lacunarity
     }
 
-    return (sum / normalization) * 0.5 * MAX_ELEVATION + MAX_ELEVATION * 0.5
+    return (sum / normalization) * 0.5 * MAX_ELEVATION * hilliness + MAX_ELEVATION * 0.5
   }
 }
 

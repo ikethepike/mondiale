@@ -31,7 +31,7 @@
 <script lang="ts" setup>
 import { OrbitControls } from '@tresjs/cientos'
 import { gsap } from 'gsap'
-import { Mesh, MeshBasicMaterial, Quaternion, RingGeometry, Vector3 } from 'three'
+import { Mesh, MeshBasicMaterial, RingGeometry, Vector3 } from 'three'
 import type { Group, PerspectiveCamera } from 'three'
 import {
   type BoardBuild,
@@ -40,9 +40,12 @@ import {
   buildPawn,
   type CrownVariant,
   disposePawn,
-  finalClimbAnchor,
   getBoardBuild,
+  HIGHLIGHT_RING_LIFT,
+  PATH_MARKER_LIFT,
+  TILE_RADIUS_RATIO,
 } from '~~/lib/board3d/board-builder'
+import { summitClimbIndex } from '~~/lib/board3d/summit'
 import { spawnCheerSprite } from '~~/lib/board3d/cheer-sprite'
 import { BOARD_COLORS } from '~~/lib/board3d/colors'
 import type { TileTransform } from '~~/lib/board3d/path'
@@ -60,11 +63,11 @@ import {
   ARRIVAL_RIPPLE_MS,
   GATE_PUNCH_MS,
   MOVE_INTERSTITIAL_TOTAL_MS,
+  PAWN_HOP_MS,
   WALK_FRAME_MS,
   WALK_RESUME_FRAME_MS,
 } from '~~/lib/round-beats'
 import { GRAB_HOLD_MS } from '~~/lib/spectate'
-import { GAUNTLET_LENGTH } from '~~/types/challenges/final-challenge.type'
 import { compareStandings } from '~~/lib/player'
 import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
@@ -205,13 +208,20 @@ const knockPawn = (playerId: string) => {
  * identically, so the shot lives here once.
  */
 const punchInOn = (playerId: string, tile: TileTransform) => {
+  if (devFramePinned) return
   boardCamera?.frameOn(pawns.get(playerId)?.position ?? tile.position, {
     tiles: ALERT_TILES,
     durationMs: GATE_PUNCH_MS,
     ease: EASE.enter,
     commanding: true,
   })
+  // A commanding push-in owes a commanding pull-back: for a gesture-owner no
+  // routine frame will ever fire again, so without this the camera stayed
+  // stranded tight on the pawn after the gate resolved. Cancelled by a grab —
+  // a player who re-took the shot themselves is owed nothing.
+  punchZoomOwed = true
 }
+let punchZoomOwed = false
 
 /** One challenge-hit moment per blocked episode: coral ripple, knock, push-in. */
 const challengeAlerted = new Set<string>()
@@ -308,7 +318,7 @@ const syncHighlight = () => {
   if (!build || !own) return
 
   if (!highlightRing) {
-    const radius = build.spacing * 0.42
+    const radius = build.spacing * TILE_RADIUS_RATIO
     highlightRing = new Mesh(
       new RingGeometry(radius * 0.98, radius * 1.16, 32),
       new MeshBasicMaterial({
@@ -333,10 +343,13 @@ const syncHighlight = () => {
     }
   }
 
-  // 0.68 floats clear of the tile's top face (+0.64) and under the number
-  // labels (+0.71) — coplanar overlays z-fight into flickering speckles
   const tile = tileFor(displayPositionFor(own))
-  if (tile) highlightRing.position.set(tile.position.x, tile.position.y + 0.68, tile.position.z)
+  if (tile)
+    highlightRing.position.set(
+      tile.position.x,
+      tile.position.y + HIGHLIGHT_RING_LIFT,
+      tile.position.z
+    )
 }
 
 const syncPathPreview = () => {
@@ -354,7 +367,7 @@ const syncPathPreview = () => {
     if (index <= walked || index > target) retirePathMarker(index, true)
   }
 
-  const radius = build.spacing * 0.42
+  const radius = build.spacing * TILE_RADIUS_RATIO
   for (let index = walked + 1; index <= target; index++) {
     if (pathMarkers.has(index)) continue
     const tile = tileFor(index)
@@ -362,7 +375,7 @@ const syncPathPreview = () => {
 
     const marker = acquirePathMarker(radius)
     marker.material.color.set(gates.has(index) ? BOARD_COLORS.hiorAnge : BOARD_COLORS.warmSand)
-    marker.position.set(tile.position.x, tile.position.y + 0.75, tile.position.z)
+    marker.position.set(tile.position.x, tile.position.y + PATH_MARKER_LIFT, tile.position.z)
     pathMarkers.set(index, marker)
     build.group.add(marker)
   }
@@ -380,56 +393,112 @@ watch(
   () => syncPathPreview()
 )
 
-// --- Final-gauntlet climb: the mountain marker makes progress physical -----
+// --- Final-gauntlet climb: the finale massif makes progress physical -------
 // Gauntlet progress rides the public snapshot (moves[0].challenge), so every
 // client can stand a challenger's pawn on the ledge matching their cleared
 // count. The mover never fights this: position only changes on entry (its
 // own hop) and on knockout/victory, where the display position shifts and
-// its tween takes over from wherever the pawn stands.
+// its tween takes over from wherever the pawn stands. Boards that dealt no
+// massif (no open ground behind the final tile, or the seeded roll) keep the
+// pawn at the arch — the checkered gate alone carries the finale there.
 const gauntletFor = (player: Player) => {
   const challenge = player.moves[0]?.challenge
   return challenge?._type === 'final-challenge' ? challenge : undefined
 }
 
+/** The rung each climbing pawn last stood on (index into climbAnchors;
+ *  absent = still at the arch), so a stage clear HOPS the missing rungs
+ *  instead of gliding — a climb, not a float. */
+const climbRungs = new Map<string, number>()
+/** The last summit party seen — when it changes, everyone up top re-spaces. */
+let summitParty = ''
+
 const syncClimbs = () => {
   const build = board.value
-  if (!build) return
+  if (!build?.summit) return
+  const summit = build.summit
   const finalIndex = props.game.tiles.length - 1
+  const summitRung = summit.climbAnchors.length - 1
+
+  const atSummit = (player: Player) => {
+    if (displayPositionFor(player) !== finalIndex) return false
+    if (player.phase === 'victory') return true
+    const gauntlet = gauntletFor(player)
+    return Boolean(gauntlet && gauntlet.answeredCorrect >= gauntlet.totalCount)
+  }
+
+  // The summit is a PODIUM: winners fan around the plateau ring, ranked by
+  // id (the mover's shared-tile rule — deterministic on every client), so a
+  // crowd of victors poses around the cairn instead of standing inside one
+  // another. A new arrival re-spaces the whole party.
+  const party = Object.values(props.game.players)
+    .filter(player => pawns.has(player.id) && atSummit(player))
+    .map(player => player.id)
+    .sort()
+  const partyChanged = party.join('|') !== summitParty
+  summitParty = party.join('|')
+
+  const summitSpotFor = (playerId: string) => {
+    const rank = party.indexOf(playerId)
+    if (rank <= 0) return summit.climbAnchors[summitRung].clone()
+    const swing = (rank % 2 === 1 ? 1 : -1) * Math.ceil(rank / 2) * 0.75
+    const angle = summit.faceAngle + swing
+    return new Vector3(
+      summit.center.x + Math.sin(angle) * 2.9,
+      summit.center.y,
+      summit.center.z + Math.cos(angle) * 2.9
+    )
+  }
 
   for (const player of Object.values(props.game.players)) {
     const pawn = pawns.get(player.id)
-    if (!pawn || displayPositionFor(player) !== finalIndex) continue
+    if (!pawn) continue
+    if (displayPositionFor(player) !== finalIndex) {
+      climbRungs.delete(player.id)
+      continue
+    }
     const gauntlet = gauntletFor(player)
     const victor = player.phase === 'victory'
     if (!gauntlet && !victor) continue
 
-    const stages = GAUNTLET_LENGTH[props.game.difficulty]
-    const anchor = victor
-      ? finalClimbAnchor(1, 1, build.spacing, stages)
-      : finalClimbAnchor(gauntlet!.answeredCorrect, gauntlet!.totalCount, build.spacing, stages)
-    const tile = tileFor(finalIndex)
-    if (!anchor || !tile) continue
+    const target = victor
+      ? summitRung
+      : summitClimbIndex(summit, gauntlet!.answeredCorrect, gauntlet!.totalCount)
+    if (target === undefined) continue
+    const current = climbRungs.get(player.id) ?? -1
+    if (target === current && !(target === summitRung && partyChanged)) continue
+    climbRungs.set(player.id, target)
 
-    // Same yaw the marker was planted with — ledges are in its local space
-    anchor
-      .applyQuaternion(
-        new Quaternion().setFromAxisAngle(
-          new Vector3(0, 1, 0),
-          Math.atan2(tile.tangent.x, tile.tangent.z)
-        )
-      )
-      .add(tile.position)
-    if (prefersReducedMotion()) {
-      pawn.position.copy(anchor)
-    } else {
-      gsap.to(pawn.position, {
-        x: anchor.x,
-        y: anchor.y,
-        z: anchor.z,
-        duration: 0.7,
-        ease: 'power2.inOut',
-        overwrite: 'auto',
+    const resting = target === summitRung ? summitSpotFor(player.id) : summit.climbAnchors[target]
+
+    gsap.killTweensOf(pawn.position)
+    if (prefersReducedMotion() || target < current) {
+      pawn.position.copy(resting)
+      continue
+    }
+
+    // Hop rung by rung up the gorge — the walk's own hop language, one arc
+    // per carved step, chaining through any rungs a rejoin missed.
+    const hopHeight = build.spacing * 0.35
+    const timeline = gsap.timeline()
+    let from = pawn.position.clone()
+    for (let rung = current + 1; rung <= target; rung++) {
+      const start = from
+      const to = rung === target ? resting.clone() : summit.climbAnchors[rung].clone()
+      const progress = { t: 0 }
+      timeline.to(progress, {
+        t: 1,
+        duration: PAWN_HOP_MS / 1000,
+        ease: 'none',
+        onUpdate() {
+          pawn.position.set(
+            start.x + (to.x - start.x) * progress.t,
+            start.y + (to.y - start.y) * progress.t + Math.sin(progress.t * Math.PI) * hopHeight,
+            start.z + (to.z - start.z) * progress.t
+          )
+        },
       })
+      from = to
     }
   }
 }
@@ -562,6 +631,31 @@ const rebuild = () => {
   // After placement: a rebuild mid-gauntlet must put the climber back on
   // their ledge, not on the tile top
   syncClimbs()
+  frameDevSubject()
+}
+
+// Dev harness: `?frame=summit` pins the entry shot on the finale massif,
+// `?frame=railway` on the railway loop. Sculpt iteration was unverifiable
+// through blind orbit choreography — a named subject makes a screenshot loop
+// deterministic. Inert without the query, and a real gesture reclaims the
+// camera as always. Declared before the immediate rebuild watcher below,
+// which calls it.
+const devFrameQuery = String(useRoute().query.frame ?? '')
+const devFramePinned = devFrameQuery === 'summit' || devFrameQuery === 'railway'
+const frameDevSubject = () => {
+  if (!devFramePinned || !boardCamera) return
+  const summit = board.value?.summit
+  const railway = board.value?.railway
+  const subject =
+    devFrameQuery === 'summit'
+      ? summit?.center
+      : railway?.reduce((sum, point) => sum.add(point), new Vector3()).divideScalar(railway.length)
+  if (!subject) return
+  // Claim the entry beat AND the pending announce, or the show-pass sweep
+  // and the walk-announce frame each re-take the shot for the pawn.
+  hasFramed = true
+  framedAnnounce = announceTokenFor(props.game.players[cameraTargetId.value]) ?? framedAnnounce
+  boardCamera.frameOn(subject, { tiles: devFrameQuery === 'summit' ? 7 : 9, commanding: true })
 }
 
 // Fingerprint the tile types: with seeded gate rhythm, same-length boards
@@ -652,6 +746,8 @@ const frameSubject = (options: FrameOptions) => {
  * resume re-frames inside the short resume lead.
  */
 const syncCameraFraming = () => {
+  // A dev frame pin owns the camera outright — no automatic beats.
+  if (devFramePinned) return false
   if (!props.active || !boardCamera) return false
 
   const subject = props.game.players[cameraTargetId.value]
@@ -856,9 +952,22 @@ const syncStuckBeats = () => {
     if (blocked.has(playerId)) continue
     tween.kill()
     stuckTweens.delete(playerId)
-    challengeAlerted.delete(playerId)
     const pawn = pawns.get(playerId)
     if (pawn) gsap.to(pawn.rotation, { z: 0, duration: 0.25, ease: 'power2.out' })
+  }
+
+  // The blocked episode's end, tracked on the alert latch itself (not the
+  // wobble tweens — those never exist under reduced motion, and the latch
+  // must clear there too). This is where the punch-in's pull-back plays: a
+  // commanding restore to the walking shot, or the camera stays stranded
+  // tight on the pawn for every player who has ever touched the board.
+  for (const playerId of [...challengeAlerted]) {
+    if (blocked.has(playerId)) continue
+    challengeAlerted.delete(playerId)
+    if (punchZoomOwed && playerId === cameraTargetId.value) {
+      punchZoomOwed = false
+      frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS, commanding: true })
+    }
   }
 
   // A pawn that STARTS its turn already blocked (no landing hop to fire
@@ -994,6 +1103,8 @@ watch([cameraRef, controlsRef, board], () => {
     // Only a CONFIRMED drag reaches here, so a stray tap can no longer unpin
     // a rival the player chose to watch.
     onUserGrab: () => {
+      // The player re-took the shot — the punch-in's pull-back is owed nothing.
+      punchZoomOwed = false
       if (!boothMode.value) gameStore.board.spectateTargetId = undefined
     },
   })
@@ -1001,16 +1112,38 @@ watch([cameraRef, controlsRef, board], () => {
   // The walk-follow shot: glue the orbit centre to the followed pawn's LIVE
   // object, not its tile. Re-read per frame, so subject switches and rebuilds
   // need no re-wiring; a hidden stage yields undefined and the tick holds.
-  boardCamera.track(() => (props.active ? pawns.get(cameraTargetId.value)?.position : undefined))
+  // (When the dev summit frame is pinned, the tracker yields — it re-centers
+  // the rig on the pawn every frame and would drag any frameOn straight back.)
+  boardCamera.track(() =>
+    props.active && !devFramePinned ? pawns.get(cameraTargetId.value)?.position : undefined
+  )
 
   // The rig can be built while the stage is still hidden (it is, every game —
   // the persistent stage mounts on idle behind round 1), which is precisely
   // how the entry sweep used to be consumed off screen. Frame through the
   // sync instead: it holds until the board is actually on screen.
   syncCameraFraming()
+  frameDevSubject()
 })
 
+// The landscape's clock: wind, water foam, gulls and cloud drift each read a
+// per-material time uniform registered by the build. One ticker advances the
+// lot, only while the stage is on screen — the parked render loop draws no
+// frames anyway, and a hidden stage must not bank sky time. Reduced motion
+// freezes the clock outright (sway amplitudes are also zeroed at build).
+const advanceLandscape = () => {
+  if (!props.active || prefersReducedMotion()) return
+  const build = board.value
+  if (!build) return
+  for (const uniform of build.timeUniforms) uniform.value = gsap.ticker.time
+  // Object animators (the railway's train) ride the same clock, so the whole
+  // living layer pauses and stills together.
+  for (const animate of build.animations) animate(gsap.ticker.time)
+}
+gsap.ticker.add(advanceLandscape)
+
 onUnmounted(() => {
+  gsap.ticker.remove(advanceLandscape)
   // NOT spectateTargetId: a context-loss epoch remount unmounts this scene
   // while the booth lives on — clearing the follow target here dropped the
   // HUD and silently reset a racer's spectate. Its owners are the release

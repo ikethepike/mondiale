@@ -39,7 +39,12 @@ export const WATER_ALIASES: WaterAliasGroup[] = [
   { kind: 'lake', canonical: 'Lake Mweru', merge: [], alt: ['Mweru', 'Moero'] },
   { kind: 'lake', canonical: 'Lake Uvs', merge: [], alt: ['Uvs', 'Uvs Nuur', 'Uvs Nur'] },
   { kind: 'lake', canonical: 'Lake Srednye Kuyto', merge: [], alt: ['Srednye Kuyto'] },
-  { kind: 'lake', canonical: 'Vistula Lagoon', merge: [], alt: ['Zalew Wislany', 'Kaliningrad Bay'] },
+  {
+    kind: 'lake',
+    canonical: 'Vistula Lagoon',
+    merge: [],
+    alt: ['Zalew Wislany', 'Kaliningrad Bay'],
+  },
   {
     kind: 'lake',
     canonical: 'Lake General Carrera',
