@@ -339,6 +339,23 @@ export const buildPondMeshes = (
   }
 
   // --- Bridge: planks arched along the path tangent -------------------------
+  buildPlankBridge(center, tangent, spacing, tileTopY).forEach(mesh => meshes.push(mesh))
+
+  return meshes
+}
+
+/**
+ * The low arched plank bridge, extracted so the pond AND a river's track
+ * crossing build the same deck: planks arched along `tangent`, apex at
+ * `deckTopY` (the pawn's resting height), rails in ink. Track furniture —
+ * biome-blind cream-and-ink.
+ */
+export const buildPlankBridge = (
+  center: Vector3,
+  tangent: Vector3,
+  spacing: number,
+  deckTopY: number
+): Mesh[] => {
   const matrix = new Matrix4()
   const quaternion = new Quaternion().setFromAxisAngle(
     new Vector3(0, 1, 0),
@@ -354,11 +371,10 @@ export const buildPondMeshes = (
   const plankCount = 7
   const plankLength = (halfSpan * 2) / plankCount
   const plankThickness = 0.06 * spacing
-  const deckLocalY = tileTopY - center.y
+  const deckLocalY = deckTopY - center.y
   for (let index = 0; index < plankCount; index++) {
     const along = -halfSpan + plankLength * (index + 0.5)
-    // Parabolic arc: apex at the tile centre (the pawn's resting height),
-    // easing down toward both shores
+    // Parabolic arc: apex at the deck height, easing down toward both shores
     const dip = (along / halfSpan) ** 2 * 0.22 * spacing
     const plank = new BoxGeometry(0.6 * spacing, plankThickness, plankLength * 0.88)
     plank.translate(0, deckLocalY - plankThickness / 2 - dip, along)
@@ -376,15 +392,14 @@ export const buildPondMeshes = (
     outlines.push(outlineOf(part, spacing * OUTLINE_WIDTH_RATIO))
   }
 
-  meshes.push(
+  const meshes = [
     new Mesh(
       mergeGeometries(outlines),
       new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide })
     ),
     new Mesh(mergeGeometries(planks), new MeshToonMaterial({ color: BOARD_COLORS.warmSand })),
-    new Mesh(mergeGeometries(rails), new MeshToonMaterial({ color: BOARD_COLORS.darkBlue }))
-  )
+    new Mesh(mergeGeometries(rails), new MeshToonMaterial({ color: BOARD_COLORS.darkBlue })),
+  ]
   ;[...planks, ...rails, ...outlines].forEach(geometry => geometry.dispose())
-
   return meshes
 }

@@ -67,6 +67,7 @@ import {
 } from './terrain'
 import {
   buildLakeMeshes,
+  buildPlankBridge,
   buildPondMeshes,
   createWaterMaterial,
   pickPondSite,
@@ -486,8 +487,17 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     buildClimbPlatforms(summitSite, spacing).forEach(mesh => group.add(mesh))
   }
 
-  if (riverPath)
+  if (riverPath) {
     buildRiverMeshes(riverPath, biome, sampler, timeUniforms).forEach(mesh => group.add(mesh))
+    // A bridged track crossing wears the pond's plank deck: apex at the
+    // track's own resting height, run along the track's tangent.
+    for (const crossing of riverPath.crossings) {
+      const deckTopY = crossing.center.y + rimHeight + TILE_TOP_INSET
+      buildPlankBridge(crossing.center, crossing.tangent, spacing, deckTopY).forEach(mesh =>
+        group.add(mesh)
+      )
+    }
+  }
 
   if (lakeSite)
     buildLakeMeshes(seed, lakeSite, biome, sampler, timeUniforms).forEach(mesh =>
