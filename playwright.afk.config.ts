@@ -14,7 +14,7 @@ const PORT = 3102
 export default defineConfig({
   testDir: './e2e',
   testMatch: /afk-recovery\.spec\.ts/,
-  timeout: 240_000,
+  timeout: 300_000,
   ...(process.env.CI ? { retries: 1, workers: 1 } : {}),
   use: {
     baseURL: externalServer ?? `http://127.0.0.1:${PORT}`,

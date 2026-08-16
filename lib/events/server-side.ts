@@ -136,6 +136,11 @@ export const useServerSideEvents = ({
       io.in(eventTarget.gameId).emit(eventData.event, eventData, eventTarget)
     },
     async updateGameState(game: Game) {
+      // The one save home stamps the snapshot revision: every emit reuses the
+      // just-saved object, so the rev rides every wire snapshot for free. The
+      // per-game queue serializes saves on the owning machine; a handover race
+      // can at worst duplicate a rev, which the client treats as apply.
+      game.rev = (game.rev ?? 0) + 1
       // The upstash client (de)serializes JSON itself — store the object as-is
       await setWithGameTtl(redis, game.id, game)
     },

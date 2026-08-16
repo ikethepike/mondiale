@@ -32,7 +32,7 @@ export interface RearmOptions {
   armBriefingCaps: boolean
 }
 
-type ServerSide = ReturnType<typeof useServerSideEvents>
+export type ServerSide = ReturnType<typeof useServerSideEvents>
 
 /**
  * Run `task` through the per-game queue after `delayMs`, with a fresh game

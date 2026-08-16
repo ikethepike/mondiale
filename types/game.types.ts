@@ -16,6 +16,11 @@ import type { Player } from './player.type'
 export interface Game {
   id: string
   host: string
+  /** Monotonic save counter, stamped by `updateGameState` on every write.
+   *  The client drops any snapshot whose rev is strictly below the one it
+   *  holds — a stale full replace must never regress rounds or pawns. Absent
+   *  on games saved before the field existed: missing means always-apply. */
+  rev?: number
   tiles: Tile[]
   rounds: Round[]
   started: boolean

@@ -152,7 +152,11 @@ import { createChainSimulator } from '~~/lib/harness/chain-simulator'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { BEAT_VERDICT_HOLD_MS, isClassicGroupRound } from '~~/lib/round-beats'
+import {
+  BEAT_VERDICT_HOLD_MS,
+  isClassicGroupRound,
+  TIMELINE_BROWSE_CAP_MS,
+} from '~~/lib/round-beats'
 import { settleGroupRound } from '~~/lib/harness/settle-group-round'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import type {
@@ -244,6 +248,9 @@ const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
       if (state.card >= state.deck.length - 1) {
         state.finished = true
         state.revealing = false
+        // The browsable reveal: settle waits on the table (or the cap).
+        state.revealDone = []
+        state.deadline = Date.now() + TIMELINE_BROWSE_CAP_MS
         return
       }
       state.revealing = false
@@ -252,6 +259,17 @@ const simulateTimelinePlacement = (eventData: Record<string, unknown>) => {
       state.deadline = Date.now() + challenge.turnSeconds * 1000
     }, challenge.revealSeconds * 1000)
   }, SIM_LATENCY_MS)
+}
+
+/** The reveal's Continue: bank ME as read-on so the button flips to the
+ *  waiting label. The harness's rivals never ack, so the cap is the exit —
+ *  exactly the partially-read table the real engine backstops. */
+const simulateTimelineRevealDone = () => {
+  const game = gameStore.game
+  const challenge = game ? latestChallengeOfType(game, 'timeline-challenge') : undefined
+  if (!challenge?.state.finished) return
+  const done = (challenge.state.revealDone ??= [])
+  if (!done.includes(ME)) done.push(ME)
 }
 
 /**
@@ -572,6 +590,9 @@ const installStubSocket = () => {
   const record = (event: string, eventData: Record<string, unknown>) => {
     lastEvent.value = `${event} ${JSON.stringify(eventData ?? {}).slice(0, 160)}`
     if (event === 'submit-timeline-placement') simulateTimelinePlacement(eventData ?? {})
+    if (event === 'timeline-reveal-done') simulateTimelineRevealDone()
+    // gate-reveal-done: no sim — the shell's own beat fallback still ends the
+    // preview beat, which is exactly the cap path the button exists to beat.
     if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
     if (event === 'chain-ready') chainSim().ready()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
@@ -1479,8 +1500,9 @@ const scenarios: Scenario[] = [
             order: [RIVAL, ME, THIRD],
             activeIndex: 0,
             turn: 5,
-            deadline: Date.now(),
+            deadline: Date.now() + 60000,
             finished: true,
+            revealDone: [RIVAL],
             placements: [
               {
                 playerId: RIVAL,

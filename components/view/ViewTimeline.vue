@@ -38,6 +38,8 @@
           :challenge="challenge"
           :players="gameStore.game?.players ?? {}"
           :player-id="gameStore.seatId"
+          :spectating="gameStore.watching"
+          @done="sendRevealDone"
         />
 
         <!-- The teaching beat: the card's year, story and photo, told to the
@@ -139,28 +141,43 @@
               <span v-else class="tick" aria-hidden="true" />
             </template>
             <template v-else>
-              <img
-                v-if="timelineEvent(item.slug!)?.image"
-                class="stop-photo"
-                :src="timelineEvent(item.slug!)!.image"
-                :alt="timelineEvent(item.slug!)!.name"
-              />
-              <span class="stop-year">
-                {{ formatEventYear(timelineEvent(item.slug!)?.year ?? 0) }}
-              </span>
-              <span class="stop-name">{{ timelineEvent(item.slug!)?.name ?? item.slug }}</span>
+              <!-- A placed card's year is public, so its STORY is fair game:
+                   the stop opens the dossier — the waiting player's reading
+                   room. Inert while a card is in flight (a drop must never
+                   fight a dialog). -->
+              <button
+                type="button"
+                class="stop-open"
+                :disabled="cardInFlight"
+                :aria-label="`Read the story of ${timelineEvent(item.slug!)?.name ?? item.slug}`"
+                @click="openStopDossier(item.slug!)"
+              >
+                <img
+                  v-if="timelineEvent(item.slug!)?.image"
+                  class="stop-photo"
+                  :src="timelineEvent(item.slug!)!.image"
+                  :alt="timelineEvent(item.slug!)!.name"
+                />
+                <span class="stop-year">
+                  {{ formatEventYear(timelineEvent(item.slug!)?.year ?? 0) }}
+                </span>
+                <span class="stop-name">{{ timelineEvent(item.slug!)?.name ?? item.slug }}</span>
+              </button>
             </template>
           </li>
         </TransitionGroup>
         <span class="direction">{{ isPhone ? '↓ Later' : 'Later →' }}</span>
       </div>
     </footer>
+
+    <TimelineDossier v-model:open="stopDossierOpen" :slug="stopDossierSlug" />
   </div>
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import TimelineDossier from '~/components/challenge/TimelineDossier.vue'
 import TimelineReveal from '~/components/challenge/TimelineReveal.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
@@ -201,6 +218,31 @@ const canPlace = computed(() => myTurn.value && !showInterstitial.value)
 
 const drawnSlug = computed(() => (state.value ? drawnCard(state.value) : undefined))
 const drawnEvent = computed(() => (drawnSlug.value ? timelineEvent(drawnSlug.value) : undefined))
+
+// The waiting player's reading room: any PLACED stop opens its story. The
+// drawn card never reaches this — its year is the question.
+const stopDossierOpen = ref(false)
+const stopDossierSlug = ref<string>()
+const openStopDossier = (slug: string) => {
+  stopDossierSlug.value = slug
+  stopDossierOpen.value = true
+}
+// The finished report is its own dialog — a dossier left open would stack
+// two aria-modals contending for Escape and focus.
+watch(finished, done => {
+  if (done) stopDossierOpen.value = false
+})
+
+/** The reveal's Continue: latch + ack-reopen (the ready-gate idiom). `iAmDone`
+ *  itself derives from state in the reveal, so a rejoined tab reads true. */
+const revealDoneSent = ref(false)
+const sendRevealDone = () => {
+  if (gameStore.watching || revealDoneSent.value) return
+  revealDoneSent.value = true
+  void update({ event: 'timeline-reveal-done' }).then(delivered => {
+    if (!delivered) revealDoneSent.value = false
+  })
+}
 const lastPlacement = computed(() => state.value?.placements[state.value.placements.length - 1])
 /** The just-filed card, highlighted on the line through the story hold. */
 const freshSlug = computed(() =>
@@ -764,6 +806,24 @@ footer {
   border-bottom-width: 0.3rem;
   transition: border-color var(--motion-base) var(--ease-out-expressive);
 
+  // The stop IS a button now (its story opens on tap) — the card chrome
+  // stays on the li, the button just fills it.
+  .stop-open {
+    all: unset;
+    width: 100%;
+    display: flex;
+    cursor: pointer;
+    flex-flow: column nowrap;
+
+    &:disabled {
+      cursor: default;
+    }
+    &:focus-visible {
+      outline: 0.2rem solid var(--soft-blue);
+      outline-offset: -0.2rem;
+    }
+  }
+
   .stop-photo {
     width: 100%;
     height: 4.6rem;
@@ -1044,11 +1104,18 @@ footer {
 
   .stop {
     width: 100%;
-    display: grid;
-    align-items: center;
-    // auto photo column collapses cleanly when a card has no picture.
-    grid-template-columns: auto auto 1fr;
-    gap: 0 0.8rem;
+
+    // The button IS the content container now — the phone ledger row lays
+    // out inside it, or the three pieces stack vertically in the column
+    // default and the scroller shows two cards where it showed six.
+    .stop-open {
+      width: 100%;
+      display: grid;
+      align-items: center;
+      // auto photo column collapses cleanly when a card has no picture.
+      grid-template-columns: auto auto 1fr;
+      gap: 0 0.8rem;
+    }
 
     .stop-photo {
       width: 4.4rem;

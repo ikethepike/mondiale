@@ -212,6 +212,10 @@ export const joinEventHandler: EventHandler = async ({
     // walker back to their scorecard on every mid-walk reconnect.) A
     // surviving step chain beside this heal is deduped by the single-stepper
     // latch. No walkSeq — the heal targets whatever generation is current.
+    // A seat mid-result-beat is NOT wedged: the movement handler's
+    // stale-tick guard drops this tick while `resultBeatUntil` is live, so a
+    // reconnect can never walk a chronicle reader off their record —
+    // `rearmSeatExits` below re-arms the beat's own remaining window.
     scheduleMovementPhase(1500, { io, redis, socket, eventTarget }, { continuation: true })
   }
 

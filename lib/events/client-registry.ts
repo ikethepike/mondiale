@@ -29,16 +29,33 @@ export type ClientSideEventHandler = (data: {
 export const CLIENT_SIDE_EVENT_HANDLERS: {
   [key in ServerEventData['event']]: {
     handler: ClientSideEventHandler
+    /**
+     * How the rev-ordering gate treats this event's snapshot.
+     *
+     * `authoritative`: NEVER dropped — a join full-sync is the recovery
+     * moment by definition, and it is the one emit that can carry a
+     * RECREATED game (same room id, rev restarted at 1); gating it would
+     * wedge every rejoining client forever. `seat-slice`: never dropped
+     * either — the applier copies one seat out of a full-breadth payload,
+     * and dropping an older slice for a DIFFERENT seat after adopting a
+     * newer rev could discard that seat's only phase flip (slices are FIFO
+     * per seat on the socket, so applying is always at least as fresh).
+     * Absent: a full replace, dropped when strictly older than the store.
+     */
+    snapshotScope?: 'authoritative' | 'seat-slice'
   }
 } = {
   'player-joined': {
     handler: genericUpdateEvent,
+    snapshotScope: 'authoritative',
   },
   'name-set': {
     handler: playerUpdateEvent,
+    snapshotScope: 'seat-slice',
   },
   'color-set': {
     handler: playerUpdateEvent,
+    snapshotScope: 'seat-slice',
   },
   'game-started': {
     handler: genericUpdateEvent,
@@ -57,6 +74,7 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   },
   update: {
     handler: playerUpdateEvent,
+    snapshotScope: 'seat-slice',
   },
   // Whole-table change with no mode event of its own — full replace, like
   // the engines' '*-updated' family below.
@@ -68,6 +86,7 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   },
   'group-challenge-scored': {
     handler: groupChallengeScoredEvent,
+    snapshotScope: 'seat-slice',
   },
   // Whole-table state (turn cursor, eliminations, final scoring) — full replace
   'chain-updated': {
@@ -103,6 +122,7 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // `playerTurns[].blocked` record, which the bare seat slice drops.
   'individual-challenge-checked': {
     handler: groupChallengeScoredEvent,
+    snapshotScope: 'seat-slice',
   },
   'index-update': {
     handler: indexUpdateEvent,
@@ -112,6 +132,7 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // slice dropped it and the pawn never played its fall off the mountain.
   'final-challenge-checked': {
     handler: groupChallengeScoredEvent,
+    snapshotScope: 'seat-slice',
   },
   'player-guessing': {
     handler: playerGuessingEvent,

@@ -55,7 +55,7 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
 
   // The freeze this exists to catch: the round must settle the dead seat
   // (zero banked at deadline + hold + slack ≈ 36s) and the scorecard cap
-  // must walk it (+45s), after which the table stages round 2 and the host
+  // must walk it (+90s), after which the table stages round 2 and the host
   // sees a NEW claim stage — with no client left to ask for anything.
   const closeScores = host.getByRole('button', { name: 'Close Scores' })
   await expect(closeScores).toBeVisible({ timeout: 60_000 })
@@ -68,8 +68,8 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
 
   // …then the real proof: round 2 (FORCE_ROUND_TYPE deals two-truths again)
   // goes live even though the dead seat never sent another event. Budget:
-  // settle ≈36s after the first tutorial close + scores cap 45s + staging.
-  await expect(host.locator('.claim-stage')).toBeVisible({ timeout: 150_000 })
+  // settle ≈36s after the first tutorial close + scores cap 90s + staging.
+  await expect(host.locator('.claim-stage')).toBeVisible({ timeout: 210_000 })
 
   // The transition grammar across the whole run: the sequencing is only
   // rock solid if no view ever flashed. 'none' (no resolvable view) may
@@ -97,6 +97,16 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
     if (previous.key === 'group-scores') {
       expect(entry.key, `group-scores must hand over to the board, not ${entry.key}`).toBe('board')
     }
+
+    // No challenge ever swaps DIRECTLY into another challenge — a board or
+    // scores beat always intervenes. A direct adjacency is the next-prompt
+    // flash the dispatch verify timer exists to suppress.
+    const challengeKey = (key: string) =>
+      key.startsWith('group-') && key !== 'group-scores'
+        ? true
+        : key === 'individual-challenge' || key === 'final-challenge'
+    const adjacency = challengeKey(previous.key) && challengeKey(entry.key)
+    expect(adjacency, `challenge→challenge adjacency: ${previous.key}→${entry.key}`).toBe(false)
 
     // The arrival beat: a board → gate swap is held so the final hop, knock
     // and ripple play out — a shorter dwell means the hold was cut.

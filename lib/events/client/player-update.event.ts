@@ -1,5 +1,6 @@
 import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
+import { adoptRevision } from '~~/lib/events/client/snapshot-revision'
 
 export const playerUpdateEvent: ClientSideEventHandler = async ({
   gameStore,
@@ -18,4 +19,5 @@ export const playerUpdateEvent: ClientSideEventHandler = async ({
   }
 
   gameStore.game.players[playerId] = game.players[playerId]
+  adoptRevision(gameStore.game, game)
 }

@@ -210,6 +210,18 @@ export type ClientEventData =
       event: 'sweep-ready'
     }
   | {
+      /** Timeline: done reading the finished round's chronicle. Settle fires
+       *  when every seat has acked, or the browse cap does. No turn echo —
+       *  `finished` is terminal, and `revealDone` makes retries idempotent. */
+      event: 'timeline-reveal-done'
+    }
+  | {
+      /** A browsable gate reveal's explicit exit (Chronicle): resume the walk
+       *  now instead of waiting out the browse cap. Only meaningful while the
+       *  seat's `resolving` latch is up — the result beat's server token. */
+      event: 'gate-reveal-done'
+    }
+  | {
       /** Clean Sweep: claim a slot off the shared board. Unlike its blind
        *  siblings the pick is PUBLIC — it lands on the snapshot and paints the
        *  board for the room. Serialized by the per-game queue, so two seats
@@ -316,6 +328,8 @@ export const CRITICAL_CLIENT_EVENTS = [
   'unique-ready',
   'chain-ready',
   'sweep-ready',
+  'timeline-reveal-done',
+  'gate-reveal-done',
   'submit-unique-answer',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]

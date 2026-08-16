@@ -38,6 +38,14 @@
   height: min(58dvh, 40rem);
 }
 
+// Prose subjects (the timeline dossier) size the frame to their CONTENT —
+// a fixed-height frame left tall content spilling past the box while the
+// close button stayed anchored to the box's corner, floating mid-subject.
+// The consumer bounds its own height and owns any internal scroll.
+.dock-frame.fit {
+  height: auto;
+}
+
 .dock-close {
   top: -1.4rem;
   right: -0.6rem;
