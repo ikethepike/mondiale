@@ -6,7 +6,7 @@ import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+import { gateResultHoldMsFor } from '~~/lib/round-beats'
 
 /**
  * A blocked gate: the record lands before the moves are forfeited — without
@@ -97,13 +97,15 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     server.emit({ event: 'individual-challenge-checked', game }, eventTarget)
 
     // Let the player bask in the result, then continue their movement.
-    // The pause runs OUTSIDE the per-game queue — holding the lock for five
-    // seconds would stall every other player's events — and the follow-up
+    // The pause runs OUTSIDE the per-game queue — holding the lock for the
+    // beat would stall every other player's events — and the follow-up
     // re-enters through the queue with a fresh game fetch. It is the walk's
     // own resumption, so it travels as a continuation under the current walk
-    // generation.
+    // generation. Browsable variants (Chronicle's storied record) get the
+    // browse cap instead of the bask, and may leave early via
+    // 'gate-reveal-done' — this continuation then lands as a designed no-op.
     scheduleMovementPhase(
-      GATE_RESULT_HOLD_MS,
+      gateResultHoldMsFor(currentMove.challenge.variant),
       { io, redis, socket, eventTarget },
       { continuation: true, walkSeq: player.walkSeq }
     )

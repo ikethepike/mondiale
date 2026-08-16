@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
+import { isStaleSnapshot } from '~~/lib/events/client/snapshot-revision'
 import { useGameStore } from '~~/store/game.store'
-import type { ServerEventData } from '~~/types/events.types'
+import { hasGame, type ServerEventData } from '~~/types/events.types'
 
 export type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
@@ -70,6 +71,15 @@ export default defineNuxtPlugin(() => {
     console.log(`Setting up client listener for: ${eventKey}`)
     socket.on(eventKey, (payload, eventTarget) => {
       console.info(`Received client event: ${eventKey}`)
+
+      // The ordering gate: a snapshot older than the one on screen is a
+      // deferred task's stale fetch, and applying it would walk pawns
+      // backward or resurface a staged round. One check here covers every
+      // applier, present and future; game-less events pass through.
+      if (hasGame(payload) && isStaleSnapshot(gameStore.game, payload.game)) {
+        console.info(`Dropped stale ${eventKey} (rev ${payload.game.rev})`)
+        return
+      }
 
       return configuration.handler({
         eventKey: eventKey as ServerEventData['event'],

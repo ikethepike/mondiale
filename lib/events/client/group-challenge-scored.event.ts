@@ -1,5 +1,6 @@
 import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
+import { adoptRevision } from '~~/lib/events/client/snapshot-revision'
 
 /**
  * Seat + that seat's round slice: the acting player's record, answer and
@@ -41,4 +42,5 @@ export const groupChallengeScoredEvent: ClientSideEventHandler = async ({
     game.rounds[roundIndex].groupAnswers[playerId]
   gameStore.game.rounds[roundIndex].playerTurns[playerId] =
     game.rounds[roundIndex].playerTurns[playerId]
+  adoptRevision(gameStore.game, game)
 }

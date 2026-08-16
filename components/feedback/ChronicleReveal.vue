@@ -8,6 +8,13 @@
         :style="{ '--row-index': index }"
         :class="{ missed: !row.placedRight }"
       >
+        <img
+          v-if="row.event.image"
+          class="row-photo"
+          :src="row.event.image"
+          :alt="row.event.name"
+        />
+        <span v-else class="row-photo blank" aria-hidden="true" />
         <span class="row-year">{{ formatEventYear(row.event.year) }}</span>
         <span class="row-body">
           <span class="row-name">{{ row.event.name }}</span>
@@ -18,11 +25,14 @@
     </ol>
     <span class="span-line">
       {{ formatNumber(spanYears) }} years of {{ countryName(challenge.country) }}, in order.
+      <SourceInfo :attributions="sources" label="Sources" />
     </span>
   </span>
 </template>
 <script lang="ts" setup>
+import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { EVENTS } from '~~/data/events.gen'
+import { datasetAttribution } from '~~/lib/attribution'
 import { chronicleSolution, chronicleSpanYears } from '~~/lib/chronicle'
 import { countryName } from '~~/lib/country'
 import { formatNumber } from '~~/lib/number'
@@ -48,6 +58,7 @@ const rows = computed(() => {
     .filter((row): row is typeof row & { event: NonNullable<typeof row.event> } => !!row.event)
 })
 const spanYears = computed(() => chronicleSpanYears(props.challenge.chronicle?.events ?? []))
+const sources = datasetAttribution('events')
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -81,6 +92,20 @@ const spanYears = computed(() => chronicleSpanYears(props.challenge.chronicle?.e
   align-items: baseline;
   animation: row-land 0.5s backwards;
   animation-delay: calc(var(--row-index) * 0.35s);
+}
+
+.row-photo {
+  flex: none;
+  width: 5.2rem;
+  height: 3.8rem;
+  object-fit: cover;
+  border-radius: 0.4rem;
+  align-self: flex-start;
+
+  &.blank {
+    display: block;
+    background: ink(0.08);
+  }
 }
 
 .row-year {

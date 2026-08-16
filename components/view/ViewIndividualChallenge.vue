@@ -29,6 +29,17 @@
         >
           <component :is="reveal.component" v-if="reveal" v-bind="reveal.props" />
           <span v-else-if="gateLesson">{{ gateLesson }}</span>
+          <!-- A browsable reveal (Chronicle's storied record) holds the walk
+               until the reader is done — or the browse cap. The beat is solo,
+               so Continue delays nobody else. -->
+          <div v-if="browseReveal && !gameStore.watching" class="browse-continue">
+            <ButtonFilled @click="finishBeat">
+              <span v-if="browseSecondsLeft <= BROWSE_HINT_S">
+                Continuing in {{ browseSecondsLeft }}s
+              </span>
+              <span v-else>Continue</span>
+            </ButtonFilled>
+          </div>
         </ChallengeResult>
       </Transition>
     </ChallengePrompt>
@@ -63,6 +74,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import { GATE_VIEWS, gateRevealFor } from '~/components/challenge/individual/dispatch'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
@@ -85,6 +97,7 @@ import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { formatAmount } from '~~/lib/number'
 import { listJoin } from '~~/lib/strings'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { provideGateChallenge } from '~~/lib/use-gate-challenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { processReplacements } from '~~/lib/values'
@@ -109,8 +122,16 @@ const {
   trendDuelOutcomes,
   atlasChain,
   chronicleOrder,
+  browseReveal,
+  beatDeadline,
+  finishBeat,
   relatch,
 } = provideGateChallenge()
+
+// The browsable reveal's countdown: the backstop the Continue button beats.
+const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(() => beatDeadline.value)
+/** Label flips to the countdown inside the final stretch (trend-race's hint). */
+const BROWSE_HINT_S = 10
 
 const details = computed(() =>
   challenge.value ? getChallengeDetails(challenge.value.id) : undefined
@@ -552,6 +573,18 @@ header .result {
 header .result {
   pointer-events: auto;
   overscroll-behavior: contain;
+}
+
+// The browsable reveal's exit, docked under the record. The widest label
+// owns the width so the countdown flip never walks the layout.
+.browse-continue {
+  display: flex;
+  margin-top: 1.2rem;
+  justify-content: center;
+
+  :deep(.button) {
+    min-width: 22rem;
+  }
 }
 
 // The provenance ⓘ hangs off the prompt's true corner (top:0 right:0), which

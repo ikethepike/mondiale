@@ -36,7 +36,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { createRedeliver, useClientEvents } from './events/client-side'
-import { GATE_RESULT_FALLBACK_MS } from './round-beats'
+import { gateResultFallbackMsFor, isBrowsableGateVariant } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { clamp01 } from './number'
 
@@ -87,6 +87,13 @@ export interface GateChallengeContext {
   /** The chronicle gate's submitted order (event slugs), kept for the same
    *  reason — the reveal ghosts where each card had been placed. */
   chronicleOrder: Ref<string[]>
+  /** The variant's reveal is browsable (round-beats' one home decides): the
+   *  result beat runs the browse cap and the view offers `finishBeat`. */
+  browseReveal: Ref<boolean>
+  /** When the result beat's fallback ends — the view's countdown clock. */
+  beatDeadline: Ref<number>
+  /** The browsable reveal's explicit exit: resume the walk now. */
+  finishBeat: () => void
   submitAnswer: (isoCode: ISOCountryCode, options?: GateSubmitOptions) => void
   /** Hand the gate back when its clock expires — see `giveUp` below. */
   giveUp: (hintsUsed?: number) => void
@@ -166,6 +173,9 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
   let disposed = false
   /** The result beat's fallback end — armed by the ANSWER, see `armBeatFallback`. */
   let beatTimer: ReturnType<typeof setTimeout> | undefined
+  /** When the result beat's fallback ends — the browsable reveal's countdown. */
+  const beatDeadline = ref(0)
+  const browseReveal = computed(() => isBrowsableGateVariant(variant.value))
   const stopBeatTimer = () => {
     if (beatTimer) clearTimeout(beatTimer)
     beatTimer = undefined
@@ -193,16 +203,33 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
    */
   const armBeatFallback = () => {
     if (beatTimer || disposed) return
+    // Variant-aware: a browsable reveal (Chronicle) runs the browse cap; the
+    // countdown ref lets the view's Continue label count the backstop down.
+    const fallbackMs = gateResultFallbackMsFor(variant.value)
+    beatDeadline.value = Date.now() + fallbackMs
     beatTimer = setTimeout(() => {
       beatTimer = undefined
       // The server resumed the walk a wire-hop ago, so anything it was going
       // to unmount is already gone: this shell is the no-walk case.
       status.value = undefined
       relatch()
-    }, GATE_RESULT_FALLBACK_MS)
+    }, fallbackMs)
   }
   const deliver = (payload: Parameters<typeof update>[0]) =>
     redeliver.deliver(() => update(payload))
+
+  /** The browsable reveal's explicit exit: ask the server to resume the walk
+   *  now. One send per beat (the redeliver home owns retries); the server
+   *  refuses it unless the seat's `resolving` latch is up, so a stray press
+   *  outside a result beat is inert. Watchers hold no vote. */
+  let beatDoneSent = false
+  const finishBeat = () => {
+    if (gameStore.watching || disposed) return
+    if (beatDoneSent || !status.value) return
+    beatDoneSent = true
+    deliver({ event: 'gate-reveal-done' })
+  }
+
   onScopeDispose(() => {
     disposed = true
     redeliver.dispose()
@@ -326,6 +353,7 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     trendDuelOutcomes.value = []
     atlasChain.value = []
     chronicleOrder.value = []
+    beatDoneSent = false
     gateSeq.value++
     showInterstitial.value = true
   }
@@ -347,6 +375,9 @@ export const provideGateChallenge = (): GateChallengeContext & { relatch: () => 
     trendDuelOutcomes,
     atlasChain,
     chronicleOrder,
+    browseReveal,
+    beatDeadline,
+    finishBeat,
     submitAnswer,
     giveUp,
   }

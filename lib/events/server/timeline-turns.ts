@@ -10,12 +10,17 @@ import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
-import { FIRST_TURN_GRACE_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import {
+  FIRST_TURN_GRACE_MS,
+  REVEAL_HOLD_MS,
+  roundBeats,
+  TIMEOUT_SLACK_MS,
+} from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   scheduleDeadlineTask,
   scheduleEngineTask,
-  scheduleRevealTask,
+  type ServerSide,
   settleRoundScores,
 } from './round-engine'
 import { armGroupScoresCaps } from './seat-exits'
@@ -140,9 +145,15 @@ const advanceTimelineTurn = async (ctx: ChainContext, game: Game, challenge: Tim
   scheduleTimelineTimeout(ctx, challenge)
 }
 
+/** The finished chronicle's browse allowance — the one player-paced beat. */
+const timelineBrowseCapMs = (challenge: TimelineChallenge): number =>
+  roundBeats(challenge).browseCapMs ?? REVEAL_HOLD_MS
+
 /**
- * Deck exhausted: freeze the finished line for the reveal beat, then bank
- * every player's points through the same conversion the submit path uses.
+ * Deck exhausted: freeze the finished line for the BROWSABLE reveal — every
+ * event's story is on the table and worth reading, so settle waits for each
+ * seat's reveal-done ack (or the browse cap), then banks every player's
+ * points through the same conversion the submit path uses.
  */
 const finishTimelineRound = async (ctx: ChainContext, game: Game, challenge: TimelineChallenge) => {
   const { state } = challenge
@@ -150,54 +161,91 @@ const finishTimelineRound = async (ctx: ChainContext, game: Game, challenge: Tim
 
   state.finished = true
   state.revealing = false
+  state.revealDone = []
+  // The shared browse clock: clients count the cap down from this.
+  state.deadline = Date.now() + timelineBrowseCapMs(challenge)
 
   await server.updateGameState(game)
   server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
 
-  scheduleTimelineSettle(ctx)
+  scheduleTimelineSettle(ctx, challenge)
 }
 
-/** Arm the finished round's settle follow-up. Everything is re-derived from
- *  fresh state inside the task, so re-arming (rejoin recovery) is safe: the
- *  `groupAnswers` latch makes any duplicate a no-op. */
-const scheduleTimelineSettle = (ctx: ChainContext) => {
-  scheduleRevealTask(ctx, async (fresh, freshServer) => {
-    const current = currentTimeline(fresh)
-    if (!current?.state.finished) return
+/**
+ * The table-atomic settle both exits share: the browse cap firing, and the
+ * last seat's reveal-done ack. The `groupAnswers` latch makes the race
+ * harmless — whichever lands second is a no-op.
+ */
+const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: ServerSide) => {
+  const current = currentTimeline(fresh)
+  if (!current?.state.finished) return
 
-    const round = latestRound(fresh)
-    // The reveal follow-up fires exactly once: scoring marks the round.
-    if (!round || Object.keys(round.groupAnswers).length) return
+  const round = latestRound(fresh)
+  // The reveal follow-up fires exactly once: scoring marks the round.
+  if (!round || Object.keys(round.groupAnswers).length) return
 
-    const advanced = await settleRoundScores({
-      game: fresh,
-      round,
-      order: current.state.order,
-      scores: scoreTimeline(current),
-      maximumPoints: current.maximumPoints,
-      answerFor: playerId => {
-        const mine = current.state.placements.filter(entry => entry.playerId === playerId)
-        return {
-          submitted: mine.flatMap(entry => {
-            const country = timelineEvent(entry.slug)?.country
-            return country ? [country] : []
-          }),
-          correct: mine.flatMap(entry => {
-            const country = timelineEvent(entry.slug)?.country
-            return entry.correct && country ? [country] : []
-          }),
-        }
-      },
-    })
-
-    await freshServer.updateGameState(fresh)
-    // Not 'group-challenge-scored': its client handler applies only the
-    // target player's slice, and this scoring lands for the whole table.
-    freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
-    // The advanced seats now owe the table a movement request only a click
-    // sends — one cohort cap so a dead tab can't freeze the room here.
-    armGroupScoresCaps(ctx, fresh, advanced)
+  const advanced = await settleRoundScores({
+    game: fresh,
+    round,
+    order: current.state.order,
+    scores: scoreTimeline(current),
+    maximumPoints: current.maximumPoints,
+    answerFor: playerId => {
+      const mine = current.state.placements.filter(entry => entry.playerId === playerId)
+      return {
+        submitted: mine.flatMap(entry => {
+          const country = timelineEvent(entry.slug)?.country
+          return country ? [country] : []
+        }),
+        correct: mine.flatMap(entry => {
+          const country = timelineEvent(entry.slug)?.country
+          return entry.correct && country ? [country] : []
+        }),
+      }
+    },
   })
+
+  await freshServer.updateGameState(fresh)
+  // Not 'group-challenge-scored': its client handler applies only the
+  // target player's slice, and this scoring lands for the whole table.
+  freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
+  // The advanced seats now owe the table a movement request only a click
+  // sends — one cohort cap so a dead tab can't freeze the room here.
+  armGroupScoresCaps(ctx, fresh, advanced)
+}
+
+/** Arm the browse cap's settle backstop against the PERSISTED deadline —
+ *  a restart re-arms the remaining window, never a fresh full cap. Safe to
+ *  arm twice: the settle dies on the `groupAnswers` latch. */
+const scheduleTimelineSettle = (ctx: ChainContext, challenge: TimelineChallenge) => {
+  scheduleDeadlineTask(ctx, challenge.state.deadline, (fresh, freshServer) =>
+    settleTimeline(ctx, fresh, freshServer)
+  )
+}
+
+/**
+ * A seat finished reading the chronicle. Idempotent (critical-event retries
+ * re-send it), refuses watchers and late acks — once the settle has marked
+ * the round, the scorecard owns every seat.
+ */
+export const handleTimelineRevealDone = async (ctx: ChainContext, game: Game, playerId: string) => {
+  const challenge = currentTimeline(game)
+  if (!challenge?.state.finished) return
+  const round = latestRound(game)
+  if (!round || Object.keys(round.groupAnswers).length) return
+
+  const { state } = challenge
+  if (!state.order.includes(playerId)) return
+  const done = (state.revealDone ??= [])
+  if (done.includes(playerId)) return
+  done.push(playerId)
+
+  const server = useServerSideEvents(ctx)
+  if (state.order.every(id => done.includes(id))) {
+    return settleTimeline(ctx, game, server)
+  }
+  await server.updateGameState(game)
+  server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
 }
 
 /**
@@ -210,8 +258,9 @@ const scheduleTimelineSettle = (ctx: ChainContext) => {
 export const rearmTimeline = (ctx: ChainContext, game: Game) => {
   const challenge = currentTimeline(game)
   if (!challenge) return
-  // Finished but unsettled — the reveal hold died before banking the table.
-  if (challenge.state.finished) return scheduleTimelineSettle(ctx)
+  // Finished but unsettled — the browse backstop died before banking the
+  // table. Re-arms against the persisted deadline: the remaining window.
+  if (challenge.state.finished) return scheduleTimelineSettle(ctx, challenge)
   if (challenge.state.revealing) return scheduleTimelineReveal(ctx, challenge)
   // A zero deadline is the staged-but-unrevealed shape (the clock stamps at
   // the reveal) — arming against it would time out turn 0 before anyone saw it.

@@ -39,7 +39,7 @@ import { loadFlags } from '~~/lib/country'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition } from '~~/lib/phase-transitions'
-import { BOARD_TO_CHALLENGE_HOLD_MS } from '~~/lib/round-beats'
+import { BOARD_TO_CHALLENGE_HOLD_MS, CHALLENGE_SWAP_VERIFY_MS } from '~~/lib/round-beats'
 
 // ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
 // followed seat, so a latecomer watcher HAS a `player` while following — a
@@ -150,6 +150,25 @@ watch(activeView, next => {
       holdTimer = undefined
       presentedView.value = activeView.value
     }, BOARD_TO_CHALLENGE_HOLD_MS)
+    return
+  }
+
+  // No legitimate phase sequence swaps one challenge DIRECTLY into another —
+  // a board or scores beat always intervenes. Such a resolution is a
+  // transient (a snapshot burst caught mid-flight between phase and round
+  // updates), and applying it flashes the NEXT round's prompt before the
+  // walk. Park it on a short verify timer instead: reading the LIVE
+  // activeView when it fires self-heals a transient and still lands a real
+  // change.
+  const challengeToChallenge =
+    presentedView.value?.kind === 'challenge' &&
+    next?.kind === 'challenge' &&
+    presentedView.value.key !== next.key
+  if (challengeToChallenge) {
+    holdTimer = setTimeout(() => {
+      holdTimer = undefined
+      presentedView.value = activeView.value
+    }, CHALLENGE_SWAP_VERIFY_MS)
     return
   }
 

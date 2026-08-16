@@ -762,6 +762,10 @@ export interface TimelineState {
   revealing?: boolean
   /** Set when the deck runs out; freezes the clock and starts the reveal. */
   finished?: boolean
+  /** Seats done reading the finished round's chronicle — settle fires when
+   *  every seat in `order` has acked, or the browse cap does. Absent on
+   *  rounds dealt before the browsable reveal shipped: treat as []. */
+  revealDone?: string[]
 }
 
 /**

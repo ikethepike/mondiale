@@ -95,11 +95,13 @@ test('Continue click during a disconnect gap still advances the round', async ({
   // The event must survive the reconnect: board or gate appears, scores gone.
   // Generous window: setOffline doesn't reset the established WebSocket, so
   // socket.io only notices the dead transport after ping timeout (~45s); a
-  // real server restart resets TCP and reconnects in ~1s.
+  // real server restart resets TCP and reconnects in ~1s. With the scores cap
+  // at 90s the cap can no longer accidentally rescue a failed redeliver inside
+  // this window — the redelivered click alone must produce the advance.
   await expect(
     host.locator('.individual-challenge, .board3d, .board-fallback').first()
   ).toBeVisible({
-    timeout: 90_000,
+    timeout: 120_000,
   })
   await expect(host.getByRole('button', { name: 'Close Scores' })).toHaveCount(0)
 

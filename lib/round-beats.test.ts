@@ -3,6 +3,7 @@ import {
   ARRIVAL_PAD_MS,
   ARRIVAL_RIPPLE_MS,
   BOARD_TO_CHALLENGE_HOLD_MS,
+  BRIEFING_CAP_MS,
   CLASSIC_SETTLE_SLACK_MS,
   GATE_RESULT_FALLBACK_MS,
   GATE_RESULT_HOLD_MS,
@@ -288,5 +289,15 @@ describe('round beats', () => {
       expect(cap).toBeGreaterThan(0)
       expect(Number.isFinite(cap)).toBe(true)
     }
+  })
+
+  it('grants the reading states their grace (Aug 2026 doubling)', () => {
+    // The parked/reading caps were the SHORTEST timers in the system while
+    // being invisible to the player — a scorecard walked itself away after
+    // 45s with no warning. Doubled deliberately; a retune below these floors
+    // is a product decision, not a cleanup.
+    expect(BRIEFING_CAP_MS).toBeGreaterThanOrEqual(60000)
+    expect(GROUP_SCORES_CAP_MS).toBeGreaterThanOrEqual(90000)
+    expect(TUTORIAL_CAP_MS).toBeGreaterThanOrEqual(90000)
   })
 })

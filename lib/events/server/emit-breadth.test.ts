@@ -6,6 +6,7 @@ import { armGroupScoresCaps, armIndividualGateCap } from './seat-exits'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { playerUpdateEvent } from '~~/lib/events/client/player-update.event'
+import { adoptRevision, isStaleSnapshot } from '~~/lib/events/client/snapshot-revision'
 import {
   STEP_INTERVAL_MS,
   WALK_LEAD_MS,
@@ -56,10 +57,14 @@ const SEAT_ROUND_SLICE_EVENTS = new Set(
 
 type Emit = { event: string; game: Game; targetId: string }
 
-/** Apply one emit the way the client's handlers would. */
+/** Apply one emit the way the client's handlers would — including the
+ *  ordering gate, through the REAL exports the plugin uses, so this harness
+ *  and the client cannot drift on what "stale" means. */
 const applyToClient = (client: Game, { event, game, targetId }: Emit): Game => {
+  if (isStaleSnapshot(client, game)) return client
   if (SEAT_SLICE_EVENTS.has(event)) {
     client.players[targetId] = game.players[targetId]
+    adoptRevision(client, game)
     return client
   }
   if (SEAT_ROUND_SLICE_EVENTS.has(event)) {
@@ -69,6 +74,7 @@ const applyToClient = (client: Game, { event, game, targetId }: Emit): Game => {
     const index = client.rounds.length - 1
     client.rounds[index].groupAnswers[targetId] = game.rounds[index].groupAnswers[targetId]
     client.rounds[index].playerTurns[targetId] = game.rounds[index].playerTurns[targetId]
+    adoptRevision(client, game)
     return client
   }
   // Everything else carrying a game is a full replace (genericUpdateEvent).
@@ -239,6 +245,19 @@ describe('every emit leaves the simulated client equal to server truth', () => {
     expect(client.players.a.phase).toBe('group-scores')
     expect(client.players.b.phase).toBe('group-scores')
     expect(client.rounds[0].playerTurns.b.points.scored).toBe(0)
+
+    // Wire-order: re-deliver EVERY captured emit after the stream ended — a
+    // deferred task's stale fetch landing late. Every save bumped `rev`, so
+    // each replay is either strictly older (dropped at the gate) or the
+    // final snapshot itself (idempotent). The client must not move: no
+    // restored moves, no regressed position, no resurfaced round.
+    const truth = structuredClone(client)
+    let replayed = client
+    for (const stale of emits) {
+      replayed = applyToClient(replayed, stale)
+    }
+    const divergent = diffPaths(replayed, truth)
+    expect(divergent, `stale replays moved the client at: ${divergent.join(', ')}`).toEqual([])
   })
 
   it('drops a group answer whose round echo is stale — no grade, no emit', async () => {

@@ -13,6 +13,7 @@
              edge their correction earned. -->
         <section class="pane-content chronicle-block">
           <span class="eyebrow">The Finished Line</span>
+          <span class="read-hint">Tap any card to read its story.</span>
           <ol class="chronicle" aria-label="The finished timeline">
             <li
               v-for="(stop, index) in chronicle"
@@ -21,10 +22,17 @@
               :class="{ missed: stop.missed }"
               :style="{ '--stop-delay': `${index * 90}ms`, '--player-color': stop.color }"
             >
-              <img v-if="stop.image" class="chronicle-photo" :src="stop.image" :alt="stop.name" />
-              <span v-else class="chronicle-photo blank" aria-hidden="true" />
-              <span class="chronicle-year">{{ stop.year }}</span>
-              <span class="chronicle-name">{{ stop.name }}</span>
+              <button
+                type="button"
+                class="stop-open"
+                :aria-label="`Read the story of ${stop.name}`"
+                @click="openDossier(stop)"
+              >
+                <img v-if="stop.image" class="chronicle-photo" :src="stop.image" :alt="stop.name" />
+                <span v-else class="chronicle-photo blank" aria-hidden="true" />
+                <span class="chronicle-year">{{ stop.year }}</span>
+                <span class="chronicle-name">{{ stop.name }}</span>
+              </button>
             </li>
           </ol>
         </section>
@@ -65,15 +73,37 @@
           </li>
         </ol>
       </section>
+
+      <!-- The player-paced exit: settle waits for the table (or the cap).
+           Watchers read along but hold no vote. -->
+      <footer v-if="!spectating" class="report-footer pane-content">
+        <ButtonFilled class="continue-button" :disabled="iAmDone" @click="emit('done')">
+          <span v-if="iAmDone">Waiting for the table ({{ doneCount }}/{{ tableCount }})</span>
+          <span v-else-if="secondsOnClock <= BROWSE_HINT_S">
+            Continuing in {{ secondsOnClock }}s
+          </span>
+          <span v-else>Continue</span>
+        </ButtonFilled>
+      </footer>
     </article>
+
+    <TimelineDossier
+      v-model:open="dossierOpen"
+      :slug="dossierStop?.slug"
+      :placer-line="dossierStop?.placerLine"
+      :missed="dossierStop?.missed"
+    />
   </ModalWrapper>
 </template>
 <script lang="ts" setup>
+import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import TimelineDossier from '~/components/challenge/TimelineDossier.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { formatEventYear, placedYears, scoreTimeline, timelineEvent } from '~~/lib/timeline'
 import { formatNumber } from '~~/lib/number'
 import { seatLabel } from '~~/lib/player'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
@@ -81,9 +111,37 @@ const props = defineProps<{
   challenge: TimelineChallenge
   players: { [playerId: string]: Player }
   playerId: string
+  /** Watchers read along but hold no vote over the table's settle. */
+  spectating?: boolean
 }>()
 
+const emit = defineEmits<{ done: [] }>()
+
 const state = computed(() => props.challenge.state)
+
+// The browse clock: `deadline` is restamped at finish to the cap, so the
+// Continue label can count the backstop down without a second clock.
+const { secondsOnClock } = useDeadlineClock(() => state.value.deadline)
+/** Label flips to the countdown inside the final stretch (trend-race's hint). */
+const BROWSE_HINT_S = 10
+
+const iAmDone = computed(() => !!state.value.revealDone?.includes(props.playerId))
+const doneCount = computed(() => state.value.revealDone?.length ?? 0)
+const tableCount = computed(() => state.value.order.length)
+
+/** The tapped stop, blown up to read. */
+type ChronicleStop = {
+  slug: string
+  name: string
+  missed: boolean
+  placerLine?: string
+}
+const dossierOpen = ref(false)
+const dossierStop = ref<ChronicleStop>()
+const openDossier = (stop: ChronicleStop) => {
+  dossierStop.value = stop
+  dossierOpen.value = true
+}
 
 const sources = datasetAttribution('events')
 
@@ -137,6 +195,9 @@ const chronicle = computed(() =>
   state.value.placed.map(slug => {
     const event = timelineEvent(slug)
     const placement = state.value.placements.find(entry => entry.slug === slug)
+    const placer = placement
+      ? seatLabel(props.players, placement.playerId, props.playerId)
+      : undefined
     return {
       slug,
       name: event?.name ?? slug,
@@ -144,6 +205,11 @@ const chronicle = computed(() =>
       image: event?.image,
       missed: !!placement && !placement.correct,
       color: placement ? props.players[placement.playerId]?.color : undefined,
+      placerLine: placer
+        ? placement?.correct
+          ? `${placer} placed it right first try.`
+          : `${placer} misjudged this one — history corrected the filing.`
+        : 'The card that opened the line.',
     }
   })
 )
@@ -222,6 +288,46 @@ const lesson = computed(() => {
   .eyebrow {
     display: block;
     margin-bottom: 1.2rem;
+  }
+}
+
+.read-hint {
+  display: block;
+  opacity: 0.6;
+  margin: -0.8rem 0 1rem;
+  font-size: 1.15rem;
+}
+
+// The stop is the button: the whole column opens the story, so a finger
+// never has to hit a 1rem caption.
+.stop-open {
+  all: unset;
+  gap: 0.35rem;
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  flex-flow: column nowrap;
+
+  &:focus-visible {
+    outline: 0.2rem solid var(--soft-blue);
+    outline-offset: 0.3rem;
+    border-radius: 0.4rem;
+  }
+}
+
+// The exit spans the whole report: the one action left when the reading is
+// done, docked under both columns.
+.report-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  padding-top: 1.6rem;
+  justify-content: center;
+  border-top: 0.1rem solid $hairline;
+
+  // The widest label owns the width, so the flip to "Waiting for the
+  // table" never walks the layout (the Government lock-row lesson).
+  .continue-button {
+    min-width: 28rem;
   }
 }
 
