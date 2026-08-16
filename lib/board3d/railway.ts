@@ -88,11 +88,25 @@ const TRESTLE_MIN_GAP = 0.4
 /** Vehicles fade over this leading/trailing fraction of an open line — the
  *  train leaves the map the way a railway leaves the sheet. */
 const TRAVERSE_FADE = 0.06
+/** River bridging: the march may APPROACH the water this obliquely (|cos|
+ *  of rail direction vs river tangent) — the span itself then snaps to the
+ *  river's exact perpendicular, the way a line turns to take its viaduct
+ *  square. Rails and rivers both follow valleys, so square approaches
+ *  almost never happen on their own. */
+const BRIDGE_DOT_MAX = 0.75
+const BRIDGE_MAX_SPAN = 14
+const BRIDGE_STRIDE = 1.25
+const MAX_BRIDGES = 2
+/** Over a bridged span the rails may float higher than over a dry dip —
+ *  the carved bed below is what the trestles stand in. */
+const BRIDGE_FLOAT_CAP = 2.4
 
 export interface RailwayRoute {
   points: Vector3[]
   /** Closed contour loop, or an edge-to-edge traverse off the sheet. */
   closed: boolean
+  /** Trestle viaducts where a traverse takes the river (empty for loops). */
+  bridges: { center: Vector3; halfLength: number }[]
 }
 
 export interface RailwayBuild {
@@ -358,51 +372,169 @@ export const pickRailwayTraverse = (
   sampler: HeightSampler,
   lake?: LakeSite,
   town?: TownSite
-): Vector3[] | undefined => {
+): { points: Vector3[]; bridges: RailwayRoute['bridges'] } | undefined => {
   const random = Alea(`${seed}:railway`)
   if (random() > RAILWAY_CHANCE) return undefined
 
   const { shelfPoints, spacing } = path
   const tileCenters = path.transforms.map(transform => transform.position)
 
-  const clearForRail = (x: number, z: number): boolean => {
-    if (!clearOfTrackTiered(x, z, path, tileCenters)) return false
+  // 'hard' ground the line can never take; the 'river' can be BRIDGED — a
+  // trestle viaduct where the crossing is near-square. Checked last, so a
+  // wet spot that is ALSO hard-blocked never invites a doomed bridge.
+  const blockedForRail = (x: number, z: number): 'hard' | 'river' | undefined => {
+    if (!clearOfTrackTiered(x, z, path, tileCenters)) return 'hard'
     if (pond && Math.hypot(pond.center.x - x, pond.center.z - z) < pond.basinRadius + 3)
-      return false
+      return 'hard'
     if (
       summit &&
       Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing * 1.05
     )
-      return false
-    if (river) {
-      const gap = river.width + 2.5
-      for (const point of river.points) {
-        if (Math.hypot(point.x - x, point.z - z) < gap) return false
-      }
-    }
+      return 'hard'
     for (const cairn of scenery.cairns) {
-      if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return false
+      if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return 'hard'
     }
     if (scenery.compass) {
       const compass = scenery.compass
-      if (Math.hypot(compass.x - x, compass.z - z) < spacing * 3) return false
+      if (Math.hypot(compass.x - x, compass.z - z) < spacing * 3) return 'hard'
     }
     if (scenery.stones) {
       const stones = scenery.stones.center
-      if (Math.hypot(stones.x - x, stones.z - z) < spacing * 1.5) return false
+      if (Math.hypot(stones.x - x, stones.z - z) < spacing * 1.5) return 'hard'
     }
     if (scenery.scaleBar) {
       const scaleBar = scenery.scaleBar.center
-      if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return false
+      if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return 'hard'
     }
     if (scenery.basecamp) {
       const basecamp = scenery.basecamp.center
-      if (Math.hypot(basecamp.x - x, basecamp.z - z) < 4) return false
+      if (Math.hypot(basecamp.x - x, basecamp.z - z) < 4) return 'hard'
     }
-    if (lake && lakeShoreDistance(lake, x, z) < 2.5) return false
+    if (lake && lakeShoreDistance(lake, x, z) < 2.5) return 'hard'
     if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2.5)
+      return 'hard'
+    if (river) {
+      const gap = river.width + 2.5
+      for (const point of river.points) {
+        if (Math.hypot(point.x - x, point.z - z) < gap) return 'river'
+      }
+    }
+    return undefined
+  }
+  const clearForRail = (x: number, z: number): boolean => blockedForRail(x, z) === undefined
+
+  /** The rail direction crossing the water for real: the chord from the
+   *  near bank to the far bank must cut the river's own polyline. */
+  const chordCutsRiver = (a: Vector3, b: Vector3): boolean => {
+    if (!river) return false
+    for (let index = 0; index < river.points.length - 1; index++) {
+      if (segmentsIntersect(a, b, river.points[index], river.points[index + 1])) return true
+    }
+    return false
+  }
+
+  /** Take the river on a straight trestle span: near-square to the flow,
+   *  bounded length, everything else still honoured mid-span. Returns the
+   *  span's points (wet ones registered as bridge deck) and the far bank. */
+  const tryBridge = (
+    fromX: number,
+    fromZ: number,
+    directionX: number,
+    directionZ: number,
+    bridgeSet: Set<Vector3>
+  ):
+    | {
+        span: Vector3[]
+        exitX: number
+        exitZ: number
+        exitDirectionX: number
+        exitDirectionZ: number
+      }
+    | undefined => {
+    if (!river) return undefined
+    let nearest = Infinity
+    let anchor = 0
+    river.points.forEach((point, index) => {
+      const distance = (point.x - fromX) ** 2 + (point.z - fromZ) ** 2
+      if (distance < nearest) {
+        nearest = distance
+        anchor = index
+      }
+    })
+    const upstream = river.points[Math.max(anchor - 2, 0)]
+    const downstream = river.points[Math.min(anchor + 2, river.points.length - 1)]
+    const flow = new Vector3(downstream.x - upstream.x, 0, downstream.z - upstream.z)
+    if (flow.lengthSq() < 1e-6) return undefined
+    flow.normalize()
+    if (Math.abs(directionX * flow.x + directionZ * flow.z) > BRIDGE_DOT_MAX) {
+      return undefined
+    }
+    // Snap the span to the flow's perpendicular, signed to point AT the
+    // water (the march's own sign can run parallel to the bank forever).
+    const toRiver = river.points[anchor]
+    const across =
+      Math.sign((toRiver.x - fromX) * -flow.z + (toRiver.z - fromZ) * flow.x) || 1
+    const spanX = -flow.z * across
+    const spanZ = flow.x * across
+
+    const gap = river.width + 2.5
+    const inGap = (x: number, z: number): boolean => {
+      for (const point of river.points) {
+        if (Math.hypot(point.x - x, point.z - z) < gap) return true
+      }
       return false
-    return true
+    }
+
+    const span: Vector3[] = []
+    let x = fromX
+    let z = fromZ
+    let spanLength = 0
+    let approach = 0
+    let wet = false
+    for (let walk = 0; walk < Math.ceil((BRIDGE_MAX_SPAN * 2.2) / BRIDGE_STRIDE); walk++) {
+      x += spanX * BRIDGE_STRIDE
+      z += spanZ * BRIDGE_STRIDE
+      if (blockedForRail(x, z) === 'hard') {
+        return undefined
+      }
+      const point = new Vector3(x, 0, z)
+      if (inGap(x, z)) {
+        wet = true
+        spanLength += BRIDGE_STRIDE
+        if (spanLength > BRIDGE_MAX_SPAN) {
+          return undefined
+        }
+        span.push(point)
+        bridgeSet.add(point)
+        continue
+      }
+      if (!wet) {
+        // Dry ground BEFORE the water is just the approach — keep walking.
+        approach += BRIDGE_STRIDE
+        if (approach > 6) {
+          return undefined
+        }
+        span.push(point)
+        continue
+      }
+      span.push(point)
+      if (!chordCutsRiver(new Vector3(fromX, 0, fromZ), point)) {
+        return undefined
+      }
+      // Two more clear strides onto the far bank, so the resumed march
+      // stands properly OFF the water — an exit hugging the gap edge used
+      // to graze straight back in and burn the second bridge returning.
+      for (let clear = 0; clear < 2; clear++) {
+        const clearX = x + spanX * BRIDGE_STRIDE
+        const clearZ = z + spanZ * BRIDGE_STRIDE
+        if (blockedForRail(clearX, clearZ) !== undefined) break
+        x = clearX
+        z = clearZ
+        span.push(new Vector3(x, 0, z))
+      }
+      return { span, exitX: x, exitZ: z, exitDirectionX: spanX, exitDirectionZ: spanZ }
+    }
+    return undefined
   }
 
   /** One direction of the march; returns the walked points (start excluded)
@@ -411,13 +543,16 @@ export const pickRailwayTraverse = (
     startX: number,
     startZ: number,
     bearingX: number,
-    bearingZ: number
+    bearingZ: number,
+    bridgeSet: Set<Vector3>,
+    bridgesUsed: { count: number }
   ): Vector3[] | undefined => {
     const points: Vector3[] = []
     let x = startX
     let z = startZ
     let directionX = bearingX
     let directionZ = bearingZ
+    let sinceBridge = Infinity
     for (let step = 0; step < TRAVERSE_MAX_STEPS; step++) {
       const gradientX = (sampler(x + 1, z) - sampler(x - 1, z)) / 2
       const gradientZ = (sampler(x, z + 1) - sampler(x, z - 1)) / 2
@@ -448,15 +583,33 @@ export const pickRailwayTraverse = (
         if (Math.abs(sampler(nextX, nextZ) - sampler(x, z)) > TRAVERSE_MAX_RISE)
           return undefined
       }
-      x = nextX
-      z = nextZ
-      directionX = stepX / magnitude
-      directionZ = stepZ / magnitude
-      if (Math.hypot(x, z) > TRAVERSE_EXIT) {
-        points.push(new Vector3(x, 0, z))
+      const stepDirectionX = stepX / magnitude
+      const stepDirectionZ = stepZ / magnitude
+      if (Math.hypot(nextX, nextZ) > TRAVERSE_EXIT) {
+        points.push(new Vector3(nextX, 0, nextZ))
         return points
       }
-      if (!clearForRail(x, z)) return undefined
+      const block = blockedForRail(nextX, nextZ)
+      // A fresh bridge needs open country behind it — never a zigzag of
+      // spans stitched straight back over the same water.
+      if (block === 'river' && bridgesUsed.count < MAX_BRIDGES && sinceBridge > 8) {
+        const crossed = tryBridge(x, z, stepDirectionX, stepDirectionZ, bridgeSet)
+        if (!crossed) return undefined
+        bridgesUsed.count++
+        points.push(...crossed.span)
+        x = crossed.exitX
+        z = crossed.exitZ
+        directionX = crossed.exitDirectionX
+        directionZ = crossed.exitDirectionZ
+        sinceBridge = 0
+        continue
+      }
+      if (block) return undefined
+      x = nextX
+      z = nextZ
+      directionX = stepDirectionX
+      directionZ = stepDirectionZ
+      sinceBridge += TRAVERSE_STEP
       points.push(new Vector3(x, 0, z))
     }
     return undefined
@@ -472,9 +625,11 @@ export const pickRailwayTraverse = (
     const bearingX = Math.sin(bearing)
     const bearingZ = Math.cos(bearing)
 
-    const ahead = marchOut(startX, startZ, bearingX, bearingZ)
+    const bridgeSet = new Set<Vector3>()
+    const bridgesUsed = { count: 0 }
+    const ahead = marchOut(startX, startZ, bearingX, bearingZ, bridgeSet, bridgesUsed)
     if (!ahead) continue
-    const behind = marchOut(startX, startZ, -bearingX, -bearingZ)
+    const behind = marchOut(startX, startZ, -bearingX, -bearingZ, bridgeSet, bridgesUsed)
     if (!behind) continue
 
     const points = [...behind.reverse(), new Vector3(startX, 0, startZ), ...ahead]
@@ -485,16 +640,23 @@ export const pickRailwayTraverse = (
         points[index].z - points[index - 1].z
       )
     }
-    if (length < TRAVERSE_MIN_LENGTH) continue
+    const bridgedProbe = bridgesUsed.count > 0
+    if (length < TRAVERSE_MIN_LENGTH) {
+      continue
+    }
     // Distinct sides: the two sheet exits stand far apart, or the "span"
     // is just a hairpin out and back through the same margin.
     const first = points[0]
     const last = points[points.length - 1]
-    if (Math.hypot(first.x - last.x, first.z - last.z) < EDGE_FADE_START * 1.1) continue
+    if (Math.hypot(first.x - last.x, first.z - last.z) < EDGE_FADE_START * 1.1) {
+      continue
+    }
 
-    // Cut-and-fill rounds (ends pinned — they hold the sheet exits).
+    // Cut-and-fill rounds (ends pinned — they hold the sheet exits; bridge
+    // decks pinned too — a span was walked dead straight and stays so).
     for (let round = 0; round < 4; round++) {
       for (let index = 1; index < points.length - 1; index++) {
+        if (bridgeSet.has(points[index])) continue
         points[index].x =
           points[index].x * 0.5 + (points[index - 1].x + points[index + 1].x) * 0.25
         points[index].z =
@@ -509,38 +671,88 @@ export const pickRailwayTraverse = (
         return Math.hypot(here.x - there.x, here.z - there.z) < CROWD_DISTANCE
       })
     )
-    if (crowded) continue
-    if (lineCrossesItself(points)) continue
+    if (crowded) {
+      continue
+    }
+    if (lineCrossesItself(points)) {
+      continue
+    }
     // Smoothing may have drifted a corridor point onto the floor — verify,
     // and hold the absolute never-cross guarantee against the track itself.
-    if (!points.every(point => clearOfTrackTiered(point.x, point.z, path, tileCenters)))
+    if (!points.every(point => clearOfTrackTiered(point.x, point.z, path, tileCenters))) {
       continue
-    if (crossesTrack(points, shelfPoints)) continue
+    }
+    if (crossesTrack(points, shelfPoints)) {
+      continue
+    }
 
     // The rail line's height: terrain-following, then ironed along its
     // length so dips read as trestlework instead of rollercoaster — floats
-    // capped, or the route is refused.
+    // capped, or the route is refused. Bridge decks take a straight grade
+    // between their two banks instead of following the carved bed.
     for (const point of points) {
-      point.y = sampler(point.x, point.z) + 0.1
+      if (!bridgeSet.has(point)) point.y = sampler(point.x, point.z) + 0.1
+    }
+    let runStart = 0
+    while (runStart < points.length) {
+      if (!bridgeSet.has(points[runStart])) {
+        runStart++
+        continue
+      }
+      let runEnd = runStart
+      while (runEnd < points.length && bridgeSet.has(points[runEnd])) runEnd++
+      const nearBankY = points[Math.max(runStart - 1, 0)].y
+      const farBankY = points[Math.min(runEnd, points.length - 1)].y
+      for (let index = runStart; index < runEnd; index++) {
+        const t = (index - runStart + 1) / (runEnd - runStart + 1)
+        points[index].y = nearBankY + (farBankY - nearBankY) * t
+      }
+      runStart = runEnd
     }
     for (let round = 0; round < 3; round++) {
       for (let index = 1; index < points.length - 1; index++) {
+        if (bridgeSet.has(points[index])) continue
         points[index].y =
           points[index].y * 0.5 + (points[index - 1].y + points[index + 1].y) * 0.25
       }
     }
     let floats = true
     for (const point of points) {
+      const bridged = bridgeSet.has(point)
       const ground = sampler(point.x, point.z) + 0.1
-      if (point.y < ground) point.y = ground
-      if (point.y - ground > TRAVERSE_MAX_FLOAT) {
+      if (!bridged && point.y < ground) point.y = ground
+      if (point.y - ground > (bridged ? BRIDGE_FLOAT_CAP : TRAVERSE_MAX_FLOAT)) {
         floats = false
         break
       }
     }
-    if (!floats) continue
+    if (!floats) {
+      continue
+    }
 
-    return points
+    // Bridge metadata off the deck runs, for the build and the tests.
+    const bridges: RailwayRoute['bridges'] = []
+    let bridgeStart = -1
+    for (let index = 0; index <= points.length; index++) {
+      const onBridge = index < points.length && bridgeSet.has(points[index])
+      if (onBridge && bridgeStart < 0) bridgeStart = index
+      if (!onBridge && bridgeStart >= 0) {
+        const first = points[bridgeStart]
+        const last = points[index - 1]
+        bridges.push({
+          center: new Vector3(
+            (first.x + last.x) / 2,
+            (first.y + last.y) / 2,
+            (first.z + last.z) / 2
+          ),
+          halfLength:
+            Math.hypot(last.x - first.x, last.z - first.z) / 2 + BRIDGE_STRIDE,
+        })
+        bridgeStart = -1
+      }
+    }
+
+    return { points, bridges }
   }
   return undefined
 }
@@ -563,7 +775,7 @@ export const pickRailwayRoute = (
 ): RailwayRoute | undefined => {
   const traverse = Alea(`${seed}:railway-kind`)() < 0.5
   if (traverse) {
-    const points = pickRailwayTraverse(
+    const line = pickRailwayTraverse(
       seed,
       path,
       pond,
@@ -574,10 +786,10 @@ export const pickRailwayRoute = (
       lake,
       town
     )
-    return points ? { points, closed: false } : undefined
+    return line ? { points: line.points, closed: false, bridges: line.bridges } : undefined
   }
   const points = pickRailwayLoop(seed, path, pond, summit, river, scenery, sampler, lake, town)
-  return points ? { points, closed: true } : undefined
+  return points ? { points, closed: true, bridges: [] } : undefined
 }
 
 /** Non-adjacent segment intersection over a closed XZ polygon. */

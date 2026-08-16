@@ -195,6 +195,87 @@ describe('pickRailwayLoop', () => {
     expect(found).toBeGreaterThan(0)
   })
 
+  it('takes the river on a straight trestle span, square to the flow, deck above the water', () => {
+    let bridged = 0
+    for (let index = 0; index < 800 && bridged < 2; index++) {
+      const seed = `railway-bridge-${index}`
+      const tiles: Tile[] = Array.from({ length: 65 }, (_, position) => ({
+        position,
+        type: 'normal' as const,
+      }))
+      const rawSampler = withEdgeFalloff(createHeightSampler(seed))
+      const path = createTilePath(seed, tiles, rawSampler)
+      const river = pickRiverPath(seed, path, undefined, undefined, rawSampler)
+      if (!river) continue
+      const sampler = withRiverBed(
+        withPathShelf(rawSampler, path.shelfPoints, path.spacing * 1.05),
+        river
+      )
+      const route = pickRailwayRoute(
+        seed,
+        path,
+        undefined,
+        undefined,
+        river,
+        { cairns: [] },
+        sampler
+      )
+      if (!route || route.closed || !route.bridges.length) continue
+      bridged++
+      for (const bridge of route.bridges) {
+        expect(bridge.halfLength).toBeLessThanOrEqual(8)
+        // The deck's points: near the bridge center, floating over the
+        // carved bed, above the river's water line there.
+        const deck = route.points.filter(
+          point =>
+            Math.hypot(point.x - bridge.center.x, point.z - bridge.center.z) <
+            bridge.halfLength
+        )
+        expect(deck.length).toBeGreaterThan(0)
+        let nearestWater = Infinity
+        let waterY = 0
+        for (const point of river.points) {
+          const distance = Math.hypot(point.x - bridge.center.x, point.z - bridge.center.z)
+          if (distance < nearestWater) {
+            nearestWater = distance
+            waterY = point.y
+          }
+        }
+        for (const point of deck) {
+          expect(point.y).toBeGreaterThan(waterY)
+        }
+        // Square to the flow: the deck chord vs the river tangent nearby.
+        if (deck.length >= 2) {
+          const chordX = deck[deck.length - 1].x - deck[0].x
+          const chordZ = deck[deck.length - 1].z - deck[0].z
+          const chordMagnitude = Math.hypot(chordX, chordZ) || 1
+          let anchor = 0
+          let nearest = Infinity
+          river.points.forEach((point, at) => {
+            const distance = Math.hypot(
+              point.x - bridge.center.x,
+              point.z - bridge.center.z
+            )
+            if (distance < nearest) {
+              nearest = distance
+              anchor = at
+            }
+          })
+          const upstream = river.points[Math.max(anchor - 2, 0)]
+          const downstream = river.points[Math.min(anchor + 2, river.points.length - 1)]
+          const flowX = downstream.x - upstream.x
+          const flowZ = downstream.z - upstream.z
+          const flowMagnitude = Math.hypot(flowX, flowZ) || 1
+          const dot =
+            ((chordX / chordMagnitude) * flowX + (chordZ / chordMagnitude) * flowZ) /
+            flowMagnitude
+          expect(Math.abs(dot)).toBeLessThan(0.75)
+        }
+      }
+    }
+    expect(bridged).toBeGreaterThan(0)
+  })
+
   it('keeps the loop clear of a dealt town', () => {
     // The conjunction is rare (railway ~1-in-12 × town ~1-in-5) — scan wide
     // and assert non-vacuously on whatever pairs turn up.
