@@ -71,6 +71,8 @@
 
     <CheerToast />
 
+    <NoticeToast />
+
     <ReconnectToast />
 
     <RoundHistoryDrawer v-if="showStatusPanel && game" :game="game" />

@@ -155,6 +155,16 @@
       </section>
       <section class="player-lobby pane-content">
         <header>
+          <!-- Bots are the secondary mode — a quiet text affordance, never a
+               card or panel; the roster and Start Game keep the stage. -->
+          <button
+            v-if="isPlayerHost && playersByPhase.all.length < MAX_PLAYERS"
+            type="button"
+            class="add-bot"
+            @click="addBot"
+          >
+            + add a bot
+          </button>
           <p ref="playerCounter">{{ playersByPhase.all.length }}/{{ MAX_PLAYERS }}</p>
         </header>
 
@@ -164,13 +174,14 @@
             :key="lobbyPlayer.id"
             :player="lobbyPlayer"
           >
+            <span v-if="lobbyPlayer.bot" class="bot-marker">bot</span>
             <button
               v-if="isPlayerHost && lobbyPlayer.id !== player?.id"
               type="button"
               class="kick-button"
               :aria-label="`Remove ${playerDisplayName(lobbyPlayer)} from the game`"
               :title="`Remove ${playerDisplayName(lobbyPlayer)}`"
-              @click="kickPlayer(lobbyPlayer.id)"
+              @click="lobbyPlayer.bot ? removeBot(lobbyPlayer.id) : kickPlayer(lobbyPlayer.id)"
             ></button>
             <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
@@ -498,6 +509,14 @@ const kickPlayer = (targetId: string) => {
   update({ event: 'kick-player', targetId })
 }
 
+const addBot = () => {
+  update({ event: 'add-bot' })
+}
+
+const removeBot = (targetId: string) => {
+  update({ event: 'remove-bot', targetId })
+}
+
 const startGame = () => {
   if (!isPlayerHost) {
     return // For those real dumb hackers
@@ -652,10 +671,43 @@ const startGame = () => {
 
 .player-lobby {
   > header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: 1.2rem;
     opacity: 0.5;
     text-align: right;
     margin-bottom: 1rem;
   }
+
+  // The secondary mode's whole UI: a muted text affordance in the counter
+  // line. Inherits the header's wash; only wakes slightly on hover.
+  .add-bot {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 0.3em;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// A small, quiet tag on a bot's roster row — the seat reads as occupied
+// first, computer-controlled second.
+.bot-marker {
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  border: 0.1rem solid var(--black);
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.5rem;
 }
 
 // Configuration

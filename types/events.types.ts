@@ -460,6 +460,27 @@ export type ServerEventData =
       entryId: string
       at: number
     }
+  /** Ephemeral table announcement (the autopilot's comings and goings) —
+   *  no game payload; clients compose the copy from the seat's name and show
+   *  it on the always-mounted notice toast. */
+  | {
+      event: 'table-notice'
+      kind: 'autopilot-engaged' | 'autopilot-reclaimed'
+      playerId: string
+      entryId: string
+      at: number
+    }
+  /** The returning player's catch-up: what the autopilot did with their seat.
+   *  Broadcast like everything else, but only the named player renders it —
+   *  the numbers are already public on the round history. */
+  | {
+      event: 'autopilot-summary'
+      playerId: string
+      /** Rounds the autopilot answered for the seat. */
+      rounds: number
+      /** Points it banked over that span. */
+      scored: number
+    }
 
 /** The server events that carry a full game snapshot. */
 export type GameServerEvent = Extract<ServerEventData, { game: Game }>

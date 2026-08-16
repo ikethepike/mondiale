@@ -50,6 +50,7 @@ import {
 } from '~~/lib/events/server/player-guessing.handler'
 import { kickPlayerHandler } from '~~/lib/events/server/kick-player.handler'
 import { addBotHandler, removeBotHandler } from '~~/lib/events/server/add-bot.handler'
+import { armAfkTakeover } from '~~/lib/events/server/bot-brain'
 import { setSpectatorAccessHandler } from '~~/lib/events/server/set-spectator-access.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
@@ -387,6 +388,20 @@ export default defineEventHandler(({ node }) => {
         forgetCheerBucket(socket.id)
         forgetTauntBucket(socket.id)
         pruneSpectatorOnDisconnect(io, redis, socket)
+        // A seated player's exit mid-race arms the AFK takeover. The drain
+        // guard is essential: a deploy disconnects EVERY socket at once, and
+        // without it each deploy would hand the whole table to the autopilot.
+        if (!isDraining() && socket.data.gameId && socket.data.playerId) {
+          armAfkTakeover(
+            {
+              io,
+              redis,
+              socket,
+              eventTarget: { gameId: socket.data.gameId, playerId: socket.data.playerId },
+            },
+            socket.id
+          )
+        }
       })
 
       bindReconnectIdentity(socket).catch(error => {

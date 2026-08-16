@@ -39,6 +39,16 @@ export interface CheerEntry {
   at: number
 }
 
+/** One table announcement in flight (the autopilot's comings and goings),
+ *  as broadcast by `table-notice`. Ephemeral like cheers. */
+export interface TableNoticeEntry {
+  entryId: string
+  kind: 'autopilot-engaged' | 'autopilot-reclaimed'
+  /** The seat the notice is about. */
+  playerId: string
+  at: number
+}
+
 interface GameStoreState {
   game?: Game
   playerId: string
@@ -48,6 +58,12 @@ interface GameStoreState {
    * new round arrives; detectives never see this populated.
    */
   manhunt?: { trail: ISOCountryCode[]; turn: number }
+  /**
+   * The autopilot held this player's seat and they just reclaimed it —
+   * the catch-up interstitial's data, from the targeted `autopilot-summary`
+   * emit. Cleared by the interstitial when its hold ends.
+   */
+  reclaim?: { rounds: number; scored: number; at: number }
   map: {
     reveal?: ISOCountryCode
     /** Educational stat shown on the reveal card ("Women in parliament · 61%"). */
@@ -151,6 +167,8 @@ interface GameStoreState {
     spectateTargetId?: string
     /** Live emoji cheers, self-expiring like liveGuesses. */
     cheers: CheerEntry[]
+    /** Table announcements (autopilot takeover/return), self-expiring. */
+    notices: TableNoticeEntry[]
     /** Status panel fold override; undefined = auto (folded on phones). */
     panelFolded?: boolean
     /** Round-history drawer visibility (board phases only). */
@@ -260,6 +278,7 @@ export const useGameStore = defineStore('game', {
     board: {
       spectateTargetId: undefined,
       cheers: [],
+      notices: [],
       panelFolded: undefined,
       historyOpen: false,
       stageActive: false,

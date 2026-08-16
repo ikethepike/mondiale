@@ -23,6 +23,19 @@
       :tone="announcement.tone"
       @done="dismiss"
     />
+
+    <!-- The returning player's catch-up beat: the autopilot just released
+         their seat. Same overlay home as every announcement; mounted here so
+         it plays whatever view the reclaimed phase resolves to. -->
+    <Interstitial
+      v-else-if="gameStore.reclaim"
+      kicker="Welcome back"
+      title="Autopilot stood in"
+      :stakes="reclaimStakes"
+      tone="info"
+      :hold-for="AUTOPILOT_RECLAIM_HOLD_MS / 1000"
+      @done="gameStore.reclaim = undefined"
+    />
   </div>
 </template>
 <script lang="ts" setup>
@@ -39,7 +52,11 @@ import { loadFlags } from '~~/lib/country'
 import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition } from '~~/lib/phase-transitions'
-import { BOARD_TO_CHALLENGE_HOLD_MS, CHALLENGE_SWAP_VERIFY_MS } from '~~/lib/round-beats'
+import {
+  AUTOPILOT_RECLAIM_HOLD_MS,
+  BOARD_TO_CHALLENGE_HOLD_MS,
+  CHALLENGE_SWAP_VERIFY_MS,
+} from '~~/lib/round-beats'
 
 // ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
 // followed seat, so a latecomer watcher HAS a `player` while following — a
@@ -55,6 +72,13 @@ if (import.meta.client) void loadFlags()
 // Mounted here, above the view switch: inside a view it would remount on every
 // phase change, lose the previous-phase map, and announce the same moment again.
 const { announcement, dismiss } = useGameAnnouncements()
+
+const reclaimStakes = computed(() => {
+  const reclaim = gameStore.reclaim
+  if (!reclaim?.rounds) return 'Your seat was held — nothing was missed'
+  const rounds = reclaim.rounds === 1 ? 'one round' : `${reclaim.rounds} rounds`
+  return `It played ${rounds} for you and banked ${reclaim.scored} points`
+})
 
 // The dispatch's ResolvedView IS the page's view shape — one home, no drift
 type ActiveView = ResolvedView

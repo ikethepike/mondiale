@@ -5,6 +5,7 @@ import { playableWorldCountries } from '~~/lib/game-rules'
 import type { LatLng } from '~~/lib/geo'
 import { clamp01 } from '~~/lib/number'
 import {
+  AUTOPILOT_GRACE_MS,
   BOT_CLASSIC_WINDOW,
   BOT_PUMP_MS,
   BOT_SCORES_MS,
@@ -386,12 +387,94 @@ const classicAnswerDelay = (round: Round): number => {
   return remaining * (from + Math.random() * (to - from))
 }
 
+// --- The AFK autopilot: the same brain, borrowed for a vacated human seat ---
+
+/**
+ * A player's socket dropped mid-race. After the grace window — long enough
+ * that a refresh or a train tunnel never triggers it — the autopilot takes
+ * the seat: the latch rides the snapshot (the table sees the badge), the
+ * pump starts playing the seat, and the player's rejoin releases it.
+ * Armed from the socket server's disconnect hook, drain-guarded there.
+ */
+export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string) => {
+  const { gameId, playerId } = ctx.eventTarget
+  scheduleGameTask({ redis: ctx.redis, gameId }, AUTOPILOT_GRACE_MS, async () => {
+    const server = useServerSideEvents(ctx)
+    const game = await server.fetchGame(gameId)
+    if (!game?.started) return
+    const seat = game.players[playerId]
+    if (!seat || seat.bot || seat.autopilot) return
+    if (['victory', 'kicked'].includes(seat.phase)) return
+    // Still gone? A reconnected tab holds a NEW socket bound to the same id.
+    const sockets = await ctx.io.in(gameId).fetchSockets()
+    const returned = sockets.some(
+      other => other.data.playerId === playerId && other.id !== disconnectedSocketId
+    )
+    if (returned) return
+    console.warn(`Autopilot taking over ${playerId} in ${gameId}`)
+    seat.autopilot = { sinceRound: game.rounds.length - 1 }
+    await server.updateGameState(game)
+    server.emit({ event: 'update', game }, ctx.eventTarget)
+    server.emit(
+      {
+        event: 'table-notice',
+        kind: 'autopilot-engaged',
+        playerId,
+        entryId: `autopilot:${playerId}:${Date.now()}`,
+        at: Date.now(),
+      },
+      ctx.eventTarget
+    )
+    armBotPump(ctx, game)
+  })
+}
+
+/**
+ * The player is back (join is the ONE caller): clear the latch so every
+ * pending bot act dies on its brain-seat guard, announce the return, and
+ * hand the player their catch-up numbers. Mutates the join's own game copy —
+ * the join's save carries it.
+ */
+export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) => {
+  if (!seat.autopilot) return
+  const { sinceRound } = seat.autopilot
+  delete seat.autopilot
+  const covered = game.rounds.slice(sinceRound)
+  const scored = covered.reduce(
+    (sum, round) => sum + (round.playerTurns[seat.id]?.points?.scored ?? 0),
+    0
+  )
+  const server = useServerSideEvents(ctx)
+  console.warn(`Autopilot released for ${seat.id} in ${game.id} (${covered.length} rounds)`)
+  server.emit(
+    {
+      event: 'table-notice',
+      kind: 'autopilot-reclaimed',
+      playerId: seat.id,
+      entryId: `autopilot:${seat.id}:${Date.now()}`,
+      at: Date.now(),
+    },
+    ctx.eventTarget
+  )
+  server.emit(
+    { event: 'autopilot-summary', playerId: seat.id, rounds: covered.length, scored },
+    ctx.eventTarget
+  )
+}
+
 // --- Acts: each one is its own queued task with a fresh fetch, and every ---
-// --- mutation re-validates the state it was planned against.             ---
+// --- mutation re-validates the state it was planned against — including  ---
+// --- that the seat is STILL brain-played: a human reclaiming their seat  ---
+// --- between plan and act kills the pending action here.                 ---
+
+const brainSeat = (game: Game, playerId: string): Player | undefined => {
+  const seat = game.players[playerId]
+  return seat && isBrainSeat(seat) ? seat : undefined
+}
 
 const dispatchCloseTutorial = (ctx: EngineContext) => {
   scheduleEngineTask(ctx, 0, async fresh => {
-    const seat = fresh.players[ctx.eventTarget.playerId]
+    const seat = brainSeat(fresh, ctx.eventTarget.playerId)
     if (seat?.phase !== 'tutorial') return
     await closeTutorialHandler({
       io: ctx.io,
@@ -408,7 +491,7 @@ const dispatchClassicAnswer = (ctx: EngineContext, roundIndex: number, playerId:
   scheduleEngineTask(ctx, 0, async (fresh, server) => {
     if (fresh.rounds.length - 1 !== roundIndex) return
     const round = latestRound(fresh)
-    const seat = fresh.players[playerId]
+    const seat = brainSeat(fresh, playerId)
     if (!round || !seat || seat.phase !== 'group-challenge') return
     if (!isClassicGroupRound(round.groupChallenge) || round.groupAnswers[playerId]) return
 
@@ -446,7 +529,7 @@ const dispatchClassicAnswer = (ctx: EngineContext, roundIndex: number, playerId:
 
 const dispatchScoresExit = (ctx: EngineContext, playerId: string, walkSeq: number | undefined) => {
   scheduleEngineTask(ctx, 0, async (fresh, server) => {
-    const seat = fresh.players[playerId]
+    const seat = brainSeat(fresh, playerId)
     if (!seat || seat.phase !== 'group-scores' || seat.walkSeq !== walkSeq) return
     // The scorecard cap's shape (seat-exits.ts), one seat, sooner.
     seat.phase = 'moving'
@@ -458,6 +541,7 @@ const dispatchScoresExit = (ctx: EngineContext, playerId: string, walkSeq: numbe
 
 const dispatchChainReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const border = currentBorderChain(fresh)
     if (border) return handleBorderChainReady(ctx, fresh, playerId)
     const atlas = currentAtlasChain(fresh)
@@ -467,6 +551,7 @@ const dispatchChainReady = (ctx: EngineContext, playerId: string) => {
 
 const dispatchChainMove = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const share = jitteredShare(botShare(fresh, playerId))
     const border = currentBorderChain(fresh)
     if (border) {
@@ -508,7 +593,8 @@ const dispatchGateAnswer = (ctx: EngineContext, game: Game, seat: Player, gateTi
     : (sample(challenge.options?.filter(option => option !== challenge.country) ?? []) ??
       wrongPick(game, [challenge.country]) ??
       challenge.country)
-  scheduleEngineTask(ctx, 0, async () => {
+  scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, seat.id)) return
     try {
       await submitIndividualChallengeAnswersHandler({
         io: ctx.io,
@@ -536,6 +622,7 @@ const dispatchGateAnswer = (ctx: EngineContext, game: Game, seat: Player, gateTi
 
 const dispatchTimelinePlacement = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentTimeline(fresh)
     if (!challenge) return
     const { state } = challenge
@@ -560,12 +647,14 @@ const dispatchTimelinePlacement = (ctx: EngineContext, playerId: string, turn: n
 
 const dispatchTimelineAck = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     await handleTimelineRevealDone(ctx, fresh, playerId)
   })
 }
 
 const dispatchHeritagePin = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentHeritageHunt(fresh)
     if (!challenge) return
     const { state } = challenge
@@ -583,6 +672,7 @@ const dispatchHeritagePin = (ctx: EngineContext, playerId: string) => {
 
 const dispatchUniqueReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentUniqueOrBust(fresh)
     if (challenge) await applyUniqueReady(ctx, fresh, challenge, playerId)
   })
@@ -590,6 +680,7 @@ const dispatchUniqueReady = (ctx: EngineContext, playerId: string) => {
 
 const dispatchUniqueAnswer = (ctx: EngineContext, playerId: string, category: UniqueCategoryId) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentUniqueOrBust(fresh)
     if (!challenge || challenge.state.briefing || challenge.state.finished) return
     if (challenge.state.locked[playerId]?.includes(category)) return
@@ -624,6 +715,7 @@ const dispatchUniqueAnswer = (ctx: EngineContext, playerId: string, category: Un
 
 const dispatchSweepReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentCleanSweep(fresh)
     if (challenge) await applySweepReady(ctx, fresh, challenge, playerId)
   })
@@ -631,6 +723,7 @@ const dispatchSweepReady = (ctx: EngineContext, playerId: string) => {
 
 const dispatchSweepClaim = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentCleanSweep(fresh)
     if (!challenge) return
     const free = sweepUnclaimed(challenge)
@@ -649,6 +742,7 @@ const dispatchSweepClaim = (ctx: EngineContext, playerId: string) => {
 
 const dispatchGovernmentPick = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentGovernment(fresh)
     if (!challenge) return
     const { state } = challenge
@@ -701,6 +795,7 @@ const dispatchGovernmentPick = (ctx: EngineContext, playerId: string, turn: numb
 
 const dispatchManhuntReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentManhunt(fresh)
     if (!challenge) return
     // applyManhuntReady trusts its caller on participation — replicate the
@@ -714,6 +809,7 @@ const dispatchManhuntReady = (ctx: EngineContext, playerId: string) => {
 
 const dispatchManhuntMove = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentManhunt(fresh)
     if (!challenge || challenge.despotId !== playerId) return
     const { state } = challenge
@@ -730,6 +826,7 @@ const dispatchManhuntMove = (ctx: EngineContext, playerId: string, turn: number)
 
 const dispatchManhuntMarker = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     const challenge = currentManhunt(fresh)
     if (!challenge || !challenge.state.detectives.includes(playerId)) return
     const { state } = challenge
@@ -760,7 +857,8 @@ const dispatchFinalAnswer = (ctx: EngineContext, game: Game, playerId: string, t
   const share = jitteredShare(botShare(game, playerId))
   const submittedAnswer = finalAnswerFor(question, Math.random() < share, game)
   if (!submittedAnswer) return
-  scheduleEngineTask(ctx, 0, async () => {
+  scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
     try {
       await submitFinalChallengeAnswerHandler({
         io: ctx.io,
@@ -854,10 +952,13 @@ export const composeClassicSubmission = async (
       submission: ABSENT_SUBMISSION,
       absent: true,
     })
+    // A round that never dealt to this seat grades absent as a potless 0/0
+    // (the late-joiner shape) — a REAL submission would throw, so compose
+    // nothing and let the settle bank the absence.
+    if (!probe.scoring.maximum && !(probe.answer.correct ?? []).length) return undefined
     correct = probe.answer.correct ?? []
   } catch {
-    // A round that never dealt to this seat (a ranking round's late joiner):
-    // nothing to compose; the settle banks the absence.
+    // Same seat, harder shape: the probe itself refused. Nothing to compose.
     return undefined
   }
 

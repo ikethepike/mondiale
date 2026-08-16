@@ -4,6 +4,7 @@ import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
 import { isBotId } from '~~/lib/bots'
+import { releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
@@ -171,6 +172,14 @@ export const joinEventHandler: EventHandler = async ({
   // safe to repeat — it clears the latch and re-lands the player on their
   // gate or resumes their walk.
   const rejoining = game.players[playerId]
+
+  // The autopilot's release moment: the player is back, so the brain lets go
+  // — every pending bot act dies on its brain-seat guard — and the catch-up
+  // summary goes out. The join's save below carries the cleared latch.
+  if (game.started && rejoining.autopilot) {
+    releaseAutopilot({ io, redis, socket, eventTarget }, game, rejoining)
+  }
+
   const orphanedInChallenge =
     ['individual-challenge', 'final-challenge'].includes(rejoining.phase) &&
     (rejoining.moves.length === 0 || rejoining.resolving === true)
