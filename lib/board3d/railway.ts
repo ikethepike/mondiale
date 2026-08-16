@@ -116,6 +116,14 @@ export const pickRailwayLoop = (
       const compass = scenery.compass
       if (Math.hypot(compass.x - x, compass.z - z) < spacing * 3) return false
     }
+    if (scenery.stones) {
+      const stones = scenery.stones.center
+      if (Math.hypot(stones.x - x, stones.z - z) < spacing * 1.5) return false
+    }
+    if (scenery.scaleBar) {
+      const scaleBar = scenery.scaleBar.center
+      if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return false
+    }
     return true
   }
 

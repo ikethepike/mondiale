@@ -46,7 +46,12 @@ import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchet
 import { type BoardBiome, pickBoardBiome } from './biomes'
 import { buildRailway, pickRailwayLoop } from './railway'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
-import { pickScenerySites } from './scenery'
+import {
+  pickScenerySites,
+  pickWaymarkSites,
+  type ScenerySites,
+  type WaymarkSite,
+} from './scenery'
 import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import {
   BOARD_SIZE,
@@ -469,6 +474,12 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler, riverPath)
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
   if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing, sampler))
+  if (scenery.stones)
+    buildStandingStones(scenery.stones, spacing, sampler).forEach(mesh => group.add(mesh))
+  if (scenery.scaleBar) group.add(buildScaleBar(scenery.scaleBar, sampler))
+  pickWaymarkSites(tilePath, pondSite, summitSite, riverPath, scenery, sampler).forEach(site =>
+    buildWaymark(site, spacing).forEach(mesh => group.add(mesh))
+  )
 
   // A decorative railway for certain seeds: a closed contour loop with an
   // old steam train rounding it. Picked LAST among the placements, so it is
@@ -1417,6 +1428,151 @@ const buildCompassRose = (site: Vector3, spacing: number, sampler: HeightSampler
       color: BOARD_COLORS.darkBlue,
       transparent: true,
       opacity: 0.34,
+      depthWrite: false,
+    })
+  )
+}
+
+/** A ring of standing stones on its saddle: rough-hewn tapered monoliths,
+ *  uprights only — no lintels (a crossbar silhouette is banned board-wide).
+ *  Survey furniture like the cairns, so biome-blind cream-and-ink. */
+const buildStandingStones = (
+  stones: NonNullable<ScenerySites['stones']>,
+  spacing: number,
+  sampler: HeightSampler
+): Mesh[] => {
+  const { center, yaw, count } = stones
+  const parts: MarkerPart[] = []
+  const ringRadius = spacing * 0.55
+  for (let index = 0; index < count; index++) {
+    // Deterministic per-stone character without touching any RNG stream.
+    const wobble = Math.sin(index * 12.9898 + yaw * 78.233)
+    const angle = yaw + (index * Math.PI * 2) / count + wobble * 0.22
+    const x = Math.sin(angle) * ringRadius
+    const z = Math.cos(angle) * ringRadius
+    const height = spacing * (0.3 + Math.abs(Math.sin(index * 4.7 + yaw)) * 0.12)
+    const monolith = new CylinderGeometry(
+      spacing * (0.055 + Math.abs(wobble) * 0.012),
+      spacing * (0.085 + Math.abs(wobble) * 0.015),
+      height,
+      4
+    )
+    monolith.rotateZ(wobble * 0.08)
+    monolith.rotateY(angle + wobble)
+    // Each stone stands on ITS ground — the saddle is only mostly flat.
+    const ground = sampler(center.x + x, center.z + z)
+    monolith.translate(x, ground - center.y - 0.08 + height / 2, z)
+    parts.push({ geometry: faceted(monolith), color: BOARD_COLORS.warmSand })
+  }
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4().setPosition(center.x, center.y, center.z)
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** A fingerpost: one darkBlue post, ONE pointed warmSand board angled along
+ *  the route — never a second arm (crossbar silhouettes are banned). */
+const buildWaymark = (site: WaymarkSite, spacing: number): Mesh[] => {
+  const s = spacing
+  const parts: MarkerPart[] = []
+
+  const post = new CylinderGeometry(0.022 * s, 0.028 * s, 0.5 * s, 8)
+  post.translate(0, 0.25 * s, 0)
+  parts.push({ geometry: post, color: BOARD_COLORS.darkBlue })
+
+  // The pointing board: a slat running +z (the arm's heading) with a chisel
+  // tip — built at the post top, nudged forward so it reads side-mounted.
+  const slat = new BoxGeometry(0.03 * s, 0.085 * s, 0.3 * s)
+  slat.translate(0, 0.44 * s, 0.17 * s)
+  parts.push({ geometry: slat, color: BOARD_COLORS.warmSand })
+  const tip = new CylinderGeometry(0.0425 * s, 0.0425 * s, 0.03 * s, 4)
+  tip.rotateZ(Math.PI / 2)
+  tip.rotateX(Math.PI / 4)
+  tip.translate(0, 0.44 * s, 0.345 * s)
+  parts.push({ geometry: faceted(tip), color: BOARD_COLORS.warmSand })
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4()
+    .makeRotationY(site.yaw)
+    .setPosition(site.position.x, site.position.y - 0.04, site.position.z)
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  return bucketsToMeshes(colorBuckets, outlines)
+}
+
+/** The printed scale bar: alternating filled segments inside a hairline
+ *  frame with quarter ticks — a draped ink decal like the compass rose,
+ *  yawed to a seeded cardinal. The purest "this is a living map" statement
+ *  on the board. */
+const buildScaleBar = (
+  scaleBar: NonNullable<ScenerySites['scaleBar']>,
+  sampler: HeightSampler
+): Mesh => {
+  const { center, yaw } = scaleBar
+  const LENGTH = 4.2
+  const HALF_WIDTH = 0.14
+  const RAIL = 0.035
+  const geometries: BufferGeometry[] = []
+
+  // A draped quad strip along +Y (the compass-blade recipe): segmented so
+  // the decal follows the ground.
+  const strip = (
+    fromY: number,
+    toY: number,
+    halfWidth: number,
+    offsetX = 0,
+    steps = 4
+  ): BufferGeometry => {
+    const vertices: number[] = []
+    const indices: number[] = []
+    for (let step = 0; step <= steps; step++) {
+      const y = fromY + ((toY - fromY) * step) / steps
+      vertices.push(offsetX - halfWidth, y, 0, offsetX + halfWidth, y, 0)
+      if (step > 0) {
+        const row = (step - 1) * 2
+        indices.push(row, row + 1, row + 2, row + 1, row + 3, row + 2)
+      }
+    }
+    const geometry = new BufferGeometry()
+    geometry.setIndex(indices)
+    geometry.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
+    return geometry
+  }
+
+  const half = LENGTH / 2
+  // Filled first and third quarters — the classic alternating bar.
+  geometries.push(strip(-half, -half / 2, HALF_WIDTH))
+  geometries.push(strip(0, half / 2, HALF_WIDTH))
+  // The hairline frame: two side rails and the two end caps.
+  geometries.push(strip(-half, half, RAIL / 2, -HALF_WIDTH - RAIL / 2, 8))
+  geometries.push(strip(-half, half, RAIL / 2, HALF_WIDTH + RAIL / 2, 8))
+  geometries.push(strip(-half - RAIL, -half, HALF_WIDTH + RAIL, 0, 1))
+  geometries.push(strip(half, half + RAIL, HALF_WIDTH + RAIL, 0, 1))
+  // Quarter ticks reaching past the frame.
+  for (const at of [-half, -half / 2, 0, half / 2, half]) {
+    geometries.push(strip(at - RAIL / 2, at + RAIL / 2, HALF_WIDTH + 0.14, 0, 1))
+  }
+
+  const merged = mergeGeometries(
+    geometries.map(geometry => geometry.toNonIndexed())
+  )
+  geometries.forEach(geometry => geometry.dispose())
+  merged.rotateZ(yaw)
+  merged.rotateX(-Math.PI / 2)
+  merged.translate(center.x, 0, center.z)
+  const positions = merged.attributes.position
+  for (let index = 0; index < positions.count; index++) {
+    positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + 0.16)
+  }
+  positions.needsUpdate = true
+  return new Mesh(
+    merged,
+    new MeshBasicMaterial({
+      color: BOARD_COLORS.darkBlue,
+      transparent: true,
+      opacity: 0.5,
       depthWrite: false,
     })
   )
