@@ -18,6 +18,7 @@ import {
   TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import { applyGateAck } from './briefing-gate'
 import {
   scheduleDeadlineTask,
   scheduleEngineTask,
@@ -231,28 +232,28 @@ const scheduleTimelineSettle = (ctx: ChainContext, challenge: TimelineChallenge)
 }
 
 /**
- * A seat finished reading the chronicle. Idempotent (critical-event retries
- * re-send it), refuses watchers and late acks — once the settle has marked
- * the round, the scorecard owns every seat.
+ * A seat finished reading the chronicle — the shared gate collector owns the
+ * rules (idempotent, participant-only, last ack completes, whole-table
+ * repaint short of it); this supplies only the timeline's shapes: the settle
+ * latch as the gate, `revealDone` as the ack array, the settle as the exit.
  */
 export const handleTimelineRevealDone = async (ctx: ChainContext, game: Game, playerId: string) => {
   const challenge = currentTimeline(game)
   if (!challenge?.state.finished) return
   const round = latestRound(game)
-  if (!round || Object.keys(round.groupAnswers).length) return
-
-  const { state } = challenge
-  if (!state.order.includes(playerId)) return
-  const done = (state.revealDone ??= [])
-  if (done.includes(playerId)) return
-  done.push(playerId)
+  if (!round) return
 
   const server = useServerSideEvents(ctx)
-  if (state.order.every(id => done.includes(id))) {
-    return settleTimeline(ctx, game, server)
-  }
-  await server.updateGameState(game)
-  server.emit({ event: 'timeline-updated', game }, ctx.eventTarget)
+  await applyGateAck({
+    ctx,
+    game,
+    playerId,
+    participants: challenge.state.order,
+    event: 'timeline-updated',
+    open: () => !Object.keys(round.groupAnswers).length,
+    acked: (challenge.state.revealDone ??= []),
+    complete: () => settleTimeline(ctx, game, server),
+  })
 }
 
 /**
