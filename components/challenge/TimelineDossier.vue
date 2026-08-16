@@ -1,6 +1,12 @@
 <template>
   <ExpandDock v-model:open="open" fit :label="event?.name" close-title="Close the story">
-    <article v-if="event" class="timeline-dossier">
+    <article
+      v-if="event"
+      ref="body"
+      class="timeline-dossier"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      @scroll.passive="syncScrollEdges"
+    >
       <figure v-if="event.image" class="dossier-photo">
         <img :src="event.image" :alt="event.name" />
         <figcaption v-if="credit" class="credit">{{ credit }}</figcaption>
@@ -34,6 +40,7 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { EVENT_KIND_COPY, formatEventYear, timelineEvent } from '~~/lib/timeline'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 
 const props = defineProps<{
   slug?: string
@@ -48,9 +55,16 @@ const open = defineModel<boolean>('open', { default: false })
 const sources = datasetAttribution('events')
 const event = computed(() => (props.slug ? timelineEvent(props.slug) : undefined))
 const credit = computed(() => (event.value ? mediaCreditLine(event.value, 'commons-media') : ''))
+
+// A long story scrolls inside the card on phones; the shared edge fades say
+// "more below" instead of cutting a line (or the ⓘ) in half at the clip edge.
+const body = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => body.value)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
+@use '~/assets/scss/rules/breakpoints' as *;
 
 .timeline-dossier {
   gap: 1.6rem;
@@ -58,10 +72,20 @@ const credit = computed(() => (event.value ? mediaCreditLine(event.value, 'commo
   max-width: 52rem;
   flex-flow: column nowrap;
   // The dossier owns its height inside the fit frame: a long story scrolls
-  // here, never past the frame (and the close button keeps its corner).
+  // here, never past the frame (and the close button keeps its corner). The
+  // shared edge fades carry the "more below" affordance when it does.
   max-height: min(74dvh, 58rem);
   overflow-y: auto;
   overscroll-behavior: contain;
+  @include scroll-fade;
+}
+
+// Phones: the photo yields to the story — a 26rem hero left one line of
+// description above the clip edge.
+@media screen and (max-width: $tablet) {
+  .dossier-photo img {
+    max-height: 17rem;
+  }
 }
 
 .dossier-photo {
