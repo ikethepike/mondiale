@@ -77,13 +77,12 @@
       <!-- The player-paced exit: settle waits for the table (or the cap).
            Watchers read along but hold no vote. -->
       <footer v-if="!spectating" class="report-footer pane-content">
-        <ButtonFilled class="continue-button" :disabled="iAmDone" @click="emit('done')">
-          <span v-if="iAmDone">Waiting for the table ({{ doneCount }}/{{ tableCount }})</span>
-          <span v-else-if="secondsOnClock <= BROWSE_HINT_S">
-            Continuing in {{ secondsOnClock }}s
-          </span>
-          <span v-else>Continue</span>
-        </ButtonFilled>
+        <BrowseContinue
+          :seconds-left="secondsOnClock"
+          :waiting="iAmDone"
+          :waiting-label="`Waiting for the table (${doneCount}/${tableCount})`"
+          @continue="emit('done')"
+        />
       </footer>
     </article>
 
@@ -96,14 +95,13 @@
   </ModalWrapper>
 </template>
 <script lang="ts" setup>
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import BrowseContinue from '~/components/challenge/BrowseContinue.vue'
 import TimelineDossier from '~/components/challenge/TimelineDossier.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { formatEventYear, placedYears, scoreTimeline, timelineEvent } from '~~/lib/timeline'
 import { formatNumber } from '~~/lib/number'
 import { seatLabel } from '~~/lib/player'
-import { BROWSE_HINT_S } from '~~/lib/round-beats'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
@@ -318,12 +316,6 @@ const lesson = computed(() => {
   padding-top: 1.6rem;
   justify-content: center;
   border-top: 0.1rem solid $hairline;
-
-  // The widest label owns the width, so the flip to "Waiting for the
-  // table" never walks the layout (the Government lock-row lesson).
-  .continue-button {
-    min-width: 28rem;
-  }
 }
 
 .chronicle {

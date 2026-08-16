@@ -33,12 +33,7 @@
                until the reader is done — or the browse cap. The beat is solo,
                so Continue delays nobody else. -->
           <div v-if="browseReveal && !gameStore.watching" class="browse-continue">
-            <ButtonFilled @click="finishBeat">
-              <span v-if="browseSecondsLeft <= BROWSE_HINT_S">
-                Continuing in {{ browseSecondsLeft }}s
-              </span>
-              <span v-else>Continue</span>
-            </ButtonFilled>
+            <BrowseContinue :seconds-left="browseSecondsLeft" @continue="finishBeat" />
           </div>
         </ChallengeResult>
       </Transition>
@@ -74,7 +69,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import BrowseContinue from '~/components/challenge/BrowseContinue.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import { GATE_VIEWS, gateRevealFor } from '~/components/challenge/individual/dispatch'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
@@ -97,7 +92,6 @@ import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { formatAmount } from '~~/lib/number'
 import { listJoin } from '~~/lib/strings'
-import { BROWSE_HINT_S } from '~~/lib/round-beats'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { provideGateChallenge } from '~~/lib/use-gate-challenge'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -574,16 +568,12 @@ header .result {
   overscroll-behavior: contain;
 }
 
-// The browsable reveal's exit, docked under the record. The widest label
-// owns the width so the countdown flip never walks the layout.
+// The browsable reveal's exit, docked under the record; the shared button
+// owns its own width discipline.
 .browse-continue {
   display: flex;
   margin-top: 1.2rem;
   justify-content: center;
-
-  :deep(.button) {
-    min-width: 22rem;
-  }
 }
 
 // The provenance ⓘ hangs off the prompt's true corner (top:0 right:0), which

@@ -88,18 +88,18 @@
         </li>
       </TransitionGroup>
       <Transition name="caption">
-        <ButtonFilled v-if="revealed" class="continue-button" @click="finish">
-          <span v-if="browseSecondsLeft > BROWSE_HINT_S">Continue</span>
-          <!-- Button copy, not view chrome — the round clock above is the shared
-               radial; a dial inside a button label wouldn't read. -->
-          <span v-else>Continuing in {{ browseSecondsLeft }}s</span>
-        </ButtonFilled>
+        <BrowseContinue
+          v-if="revealed"
+          class="continue-button"
+          :seconds-left="browseSecondsLeft"
+          @continue="finish"
+        />
       </Transition>
     </section>
   </div>
 </template>
 <script lang="ts" setup>
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import BrowseContinue from '~/components/challenge/BrowseContinue.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
@@ -111,7 +111,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { trendAttribution } from '~~/lib/attribution'
-import { BROWSE_HINT_S, ROUND_BEATS } from '~~/lib/round-beats'
+import { ROUND_BEATS } from '~~/lib/round-beats'
 import { countryName, getCountry } from '~~/lib/country'
 import { prefersReducedMotion, REVEAL_BEAT_MS } from '~~/lib/motion'
 import { TREND_METRICS } from '~~/lib/trends'
