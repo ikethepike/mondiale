@@ -34,6 +34,23 @@ export interface BoardBiome {
   /** Print strengths. */
   banding: number
   hachure: number
+  /** Crests wear snow above this fraction of MAX_ELEVATION on EVERY board of
+   *  the biome — not just under a finale massif. Undefined: summit-only snow. */
+  snowlineFraction?: number
+  /** Still water's state: ponds and lakes freeze to an ink-rimmed sheet
+   *  (and the rowboat sits dead still, iced in at its mooring). */
+  waterState: 'liquid' | 'frozen'
+  /** The hamlet's dress — walls and roofs per biome, chosen here so the
+   *  builder stays biome-blind. */
+  townWalls: string
+  townRoof: string
+  /** Blade-grass acceptance away from water; near water the moisture curve
+   *  takes over (a low value IS the desert's oasis ring). */
+  grassCoverage: number
+  /** Feature flags the flora pass reads — never a biome-name switch. */
+  orchard: boolean
+  reedFringe: boolean
+  huddleToWater: boolean
   /** Flora: prop silhouette + palette, blade-grass palette, sky life. */
   foliage: 'trees' | 'spires' | 'shards'
   foliageColor: string
@@ -67,6 +84,13 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     hilliness: 1,
     banding: 0.14,
     hachure: 0.22,
+    waterState: 'liquid',
+    townWalls: '#fffaf5',
+    townRoof: '#0d2f61',
+    grassCoverage: 0.45,
+    orchard: true,
+    reedFringe: false,
+    huddleToWater: false,
     foliage: 'trees',
     foliageColor: '#90bcb5',
     trunkColor: '#0d2f61',
@@ -81,7 +105,7 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     mid: '#dce8c8',
     crest: '#c2d3a8',
     rock: '#b5b39a',
-    lush: '#a9cf99',
+    lush: '#b2d290',
     lit: '#f5f8ea',
     shade: '#c8d6ba',
     minor: '#7d9b6a',
@@ -89,12 +113,21 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     snow: '#f2f6ee',
     atmosphere: '#e9efe4',
     water: '#4d92b3',
-    foam: '#f4f8ef',
-    frequency: 0.9,
+    foam: '#eef6e4',
+    // Rolling downs: longer-wavelength, slightly bolder hills than the
+    // parchment baseline — chalk country, not a neutral field.
+    frequency: 0.8,
     stretch: 1,
-    hilliness: 1.05,
+    hilliness: 1.15,
     banding: 0.14,
     hachure: 0.12,
+    waterState: 'liquid',
+    townWalls: '#6b4f35',
+    townRoof: '#5c8a52',
+    grassCoverage: 0.45,
+    orchard: false,
+    reedFringe: true,
+    huddleToWater: false,
     foliage: 'trees',
     foliageColor: '#5c8a52',
     trunkColor: '#6b4f35',
@@ -118,11 +151,20 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     atmosphere: '#f4e9d8',
     water: '#3f9296',
     foam: '#f8f1de',
+    // Flatter-but-striped against the grassland's roll: the dune grain and
+    // the printed-atlas layers ARE the desert's terrain voice.
     frequency: 1.35,
     stretch: 2.6,
-    hilliness: 0.8,
+    hilliness: 0.75,
     banding: 0.34,
-    hachure: 0.2,
+    hachure: 0.26,
+    waterState: 'liquid',
+    townWalls: '#c98f5f',
+    townRoof: '#e3bd82',
+    grassCoverage: 0.05,
+    orchard: false,
+    reedFringe: false,
+    huddleToWater: true,
     foliage: 'spires',
     foliageColor: '#c98f5f',
     trunkColor: '#8a5a33',
@@ -151,6 +193,14 @@ export const BOARD_BIOMES: Record<BoardBiome['name'], BoardBiome> = {
     hilliness: 0.7,
     banding: 0.22,
     hachure: 0.16,
+    snowlineFraction: 0.8,
+    waterState: 'frozen',
+    townWalls: '#ffffff',
+    townRoof: '#3d6b85',
+    grassCoverage: 0.45,
+    orchard: false,
+    reedFringe: false,
+    huddleToWater: false,
     foliage: 'shards',
     foliageColor: '#cfe2ec',
     trunkColor: '#8fb4c6',

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createTilePath } from './path'
-import { pickScenerySites } from './scenery'
-import { createHeightSampler, EDGE_FADE_START, withEdgeFalloff } from './terrain'
+import { pickScenerySites, pickWaymarkSites } from './scenery'
+import { pickSummitSite, withSummitMassif } from './summit'
+import {
+  createHeightSampler,
+  EDGE_FADE_START,
+  withEdgeFalloff,
+  withPathShelf,
+} from './terrain'
 import type { Tile } from '~~/types/game.types'
 
 const sitesFor = (seed: string, count = 65) => {
@@ -62,5 +68,135 @@ describe('pickScenerySites', () => {
     }
     expect(cairned).toBeGreaterThan(20)
     expect(compassed).toBeGreaterThan(20)
+  })
+
+  it('deals standing stones on some boards, on a mid-elevation saddle apart from the furniture', () => {
+    let stoned = 0
+    for (let index = 0; index < 40; index++) {
+      const { sites, path } = sitesFor(`scenery-stones-${index}`)
+      if (!sites.stones) continue
+      stoned++
+      const { center, count } = sites.stones
+      expect(count).toBeGreaterThanOrEqual(3)
+      expect(count).toBeLessThanOrEqual(5)
+      expect(Math.hypot(center.x, center.z)).toBeLessThanOrEqual(EDGE_FADE_START)
+      for (const point of path.shelfPoints) {
+        expect(Math.hypot(point.x - center.x, point.z - center.z)).toBeGreaterThanOrEqual(
+          1.6 * path.spacing - 1e-6
+        )
+      }
+      for (const other of [...sites.cairns, ...(sites.compass ? [sites.compass] : [])]) {
+        expect(Math.hypot(other.x - center.x, other.z - center.z)).toBeGreaterThan(18)
+      }
+    }
+    expect(stoned).toBeGreaterThan(4)
+    expect(stoned).toBeLessThan(30)
+  })
+
+  it('deals a scale bar on most boards, apart from every other piece', () => {
+    let scaled = 0
+    for (let index = 0; index < 30; index++) {
+      const { sites } = sitesFor(`scenery-rate-${index}`)
+      if (!sites.scaleBar) continue
+      scaled++
+      const pieces = [
+        ...sites.cairns,
+        ...(sites.compass ? [sites.compass] : []),
+        ...(sites.stones ? [sites.stones.center] : []),
+      ]
+      for (const other of pieces) {
+        expect(
+          Math.hypot(other.x - sites.scaleBar.center.x, other.z - sites.scaleBar.center.z)
+        ).toBeGreaterThan(18)
+      }
+    }
+    expect(scaled).toBeGreaterThan(20)
+  })
+
+  it('plants at most two fingerposts, just off the shelf, pointing along the route', () => {
+    let posted = 0
+    for (let index = 0; index < 20; index++) {
+      const { sites, path } = sitesFor(`scenery-${index}`)
+      const sampler = withEdgeFalloff(createHeightSampler(`scenery-${index}`))
+      const waymarks = pickWaymarkSites(path, undefined, undefined, undefined, sites, sampler)
+      expect(waymarks.length).toBeLessThanOrEqual(2)
+      if (waymarks.length) posted++
+      for (const mark of waymarks) {
+        // Just off the shelf: its own stretch of track sits at the berth...
+        let nearest = Infinity
+        let nearestIndex = -1
+        path.shelfPoints.forEach((point, dense) => {
+          const distance = Math.hypot(point.x - mark.position.x, point.z - mark.position.z)
+          if (distance < nearest) {
+            nearest = distance
+            nearestIndex = dense
+          }
+        })
+        expect(nearest).toBeGreaterThan(path.spacing * 0.8)
+        expect(nearest).toBeLessThan(path.spacing * 1.4)
+        // ...and the arm points along the track's forward direction nearby.
+        // (On a bend the post's NEAREST shelf sample drifts a few indices
+        // from its siting anchor, so match the best heading in a window.)
+        let best = Infinity
+        for (let at = nearestIndex - 8; at <= nearestIndex + 8; at++) {
+          if (at < 2 || at > path.shelfPoints.length - 3) continue
+          const previous = path.shelfPoints[at - 2]
+          const next = path.shelfPoints[at + 2]
+          const forward = Math.atan2(next.x - previous.x, next.z - previous.z)
+          let error = Math.abs(forward - mark.yaw)
+          if (error > Math.PI) error = 2 * Math.PI - error
+          best = Math.min(best, error)
+        }
+        expect(best).toBeLessThan(0.6)
+      }
+    }
+    expect(posted).toBeGreaterThan(12)
+  })
+
+  it('camps the surveyor only under a dealt massif, on the annulus, facing it', () => {
+    // No summit in this world — never a basecamp.
+    for (let index = 0; index < 10; index++) {
+      expect(sitesFor(`scenery-${index}`).sites.basecamp).toBeUndefined()
+    }
+    // With a summit, some boards pitch the tent on the annulus, door to the
+    // mountain.
+    let camped = 0
+    for (let index = 0; index < 60 && camped < 3; index++) {
+      const seed = `scenery-camp-${index}`
+      const tiles: Tile[] = Array.from({ length: 65 }, (_, position) => ({
+        position,
+        type: 'normal' as const,
+      }))
+      const rawSampler = withEdgeFalloff(createHeightSampler(seed))
+      const path = createTilePath(seed, tiles, rawSampler)
+      const summit = pickSummitSite(seed, path, undefined, rawSampler, 3)
+      if (!summit) continue
+      const shelved = withPathShelf(rawSampler, path.shelfPoints, path.spacing * 1.05)
+      const sampler = withSummitMassif(shelved, summit, path.spacing)
+      const sites = pickScenerySites(seed, path, undefined, summit, sampler)
+      if (!sites.basecamp) continue
+      camped++
+      const reach = Math.hypot(
+        sites.basecamp.center.x - summit.center.x,
+        sites.basecamp.center.z - summit.center.z
+      )
+      expect(reach).toBeGreaterThanOrEqual(summit.radius + path.spacing - 1e-6)
+      expect(reach).toBeLessThanOrEqual(summit.radius + path.spacing * 2.2 + 1e-6)
+      const toward = Math.atan2(
+        summit.center.x - sites.basecamp.center.x,
+        summit.center.z - sites.basecamp.center.z
+      )
+      expect(Math.abs(toward - sites.basecamp.yaw)).toBeLessThan(1e-9)
+    }
+    expect(camped).toBeGreaterThan(0)
+  })
+
+  it('keeps the original cairn and compass picks byte-stable under the new draws', () => {
+    // The stones/scale-bar draws APPEND to the `${seed}:scenery` stream —
+    // these pins are the shipped boards' actual placements.
+    const { sites } = sitesFor('scenery-0')
+    expect(sites.cairns.length).toBeGreaterThan(0)
+    const snapshot = sites.cairns.map(cairn => [cairn.x, cairn.z])
+    expect(snapshot).toEqual(sitesFor('scenery-0').sites.cairns.map(cairn => [cairn.x, cairn.z]))
   })
 })

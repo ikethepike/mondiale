@@ -23,6 +23,7 @@ import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import type { TilePathResult } from './path'
 import { type HeightSampler, smoothstep } from './terrain'
 import type { BoardBiome } from './biomes'
+import type { LakeSite } from './lake'
 
 /**
  * The living-water material, proven in /test-terrain: per-vertex ANALYTIC
@@ -171,12 +172,154 @@ export const withPondBasin = (sampler: HeightSampler, site: PondSite): HeightSam
   }
 }
 
+/** The frozen sheet: opaque snow-white, a thin ink rim where depth crosses
+ *  zero — the pond drawn as a map symbol rather than lit as water. Static by
+ *  nature, so it registers no clock. */
+const createIceSheetMaterial = (biome: BoardBiome): ShaderMaterial =>
+  new ShaderMaterial({
+    uniforms: {
+      uSheet: { value: new Color(biome.snow) },
+      uRim: { value: new Color(biome.minor) },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aDepth;
+      varying float vDepth;
+      void main() {
+        vDepth = aDepth;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSheet; uniform vec3 uRim;
+      varying float vDepth;
+      void main() {
+        if (vDepth <= 0.0) discard;
+        float rim = 1.0 - smoothstep(0.03, 0.16, vDepth);
+        gl_FragColor = vec4(mix(uSheet, uRim, rim * 0.85), 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+/** Hairline cracks wandering out from the sheet's heart: 2–3 kinked ink
+ *  polylines, each segment ending before the shoreline shallows. */
+const buildIceCracks = (
+  seed: string,
+  center: Vector3,
+  waterY: number,
+  waterRadius: number,
+  sampler: HeightSampler,
+  biome: BoardBiome
+): Mesh => {
+  const random = Alea(`${seed}:pond-ice`)
+  const segments: BufferGeometry[] = []
+  const crackCount = 2 + Math.floor(random() * 2)
+  for (let crack = 0; crack < crackCount; crack++) {
+    let x = center.x + (random() - 0.5) * waterRadius * 0.6
+    let z = center.z + (random() - 0.5) * waterRadius * 0.6
+    let heading = random() * Math.PI * 2
+    // A concave footprint (a C-shaped lake) can put the centroid — and a
+    // wander's start — over dry ground: a crack begins only on real ice.
+    if (waterY - sampler(x, z) < 0.05) continue
+    for (let step = 0; step < 3; step++) {
+      const length = waterRadius * (0.25 + random() * 0.2)
+      const nextX = x + Math.sin(heading) * length
+      const nextZ = z + Math.cos(heading) * length
+      // Stop at the shallows: a crack tip on dry land breaks the fiction.
+      if (waterY - sampler(nextX, nextZ) < 0.05) break
+      const piece = new BoxGeometry(0.035, 0.012, length)
+      piece.rotateY(heading)
+      piece.translate((x + nextX) / 2, waterY + 0.012, (z + nextZ) / 2)
+      segments.push(piece)
+      x = nextX
+      z = nextZ
+      heading += (random() - 0.5) * 1.1
+    }
+  }
+  if (!segments.length && waterY - sampler(center.x, center.z) >= 0.05) {
+    // Every wander hit the shallows at once — one short crack over the deep
+    // heart keeps the sheet readable, when the heart is actually wet.
+    const piece = new BoxGeometry(0.035, 0.012, waterRadius * 0.6)
+    piece.rotateY(random() * Math.PI)
+    piece.translate(center.x, waterY + 0.012, center.z)
+    segments.push(piece)
+  }
+  if (!segments.length) return new Mesh()
+  const merged = mergeGeometries(segments)
+  segments.forEach(segment => segment.dispose())
+  return new Mesh(merged, new MeshBasicMaterial({ color: biome.minor }))
+}
+
+/**
+ * The lake's water: one clipped grid over the discovered footprint. Depth is
+ * analytic like the pond's, but a cell OUTSIDE the flood mask is forced dry
+ * even when it dips under the water line — a second unconnected hollow
+ * inside the bounding box must not fill. Frozen solid on ice boards.
+ */
+export const buildLakeMeshes = (
+  seed: string,
+  lake: LakeSite,
+  biome: BoardBiome,
+  sampler: HeightSampler,
+  timeUniforms: { value: number }[]
+): Mesh[] => {
+  const { center, waterY, boundingRadius, grid } = lake
+  const size = boundingRadius * 2 + 2
+  const segments = Math.min(96, Math.max(24, Math.ceil(size / 1.1)))
+  const water = new PlaneGeometry(size, size, segments, segments)
+  water.rotateX(-Math.PI / 2)
+  water.translate(center.x, waterY, center.z)
+
+  // The flood mask read as a BILINEAR field, not a cell test: a hard
+  // per-cell gate cut the water along axis-aligned grid steps wherever the
+  // mask (not the depth) was the clipping edge, and lakes came out
+  // semi-rectilinear. Subtracting by the smooth field instead puts the
+  // shoreline on a diagonal-capable iso-line between cells.
+  const maskAt = (x: number, z: number): number => {
+    const gridX = (x - grid.originX) / grid.step
+    const gridZ = (z - grid.originZ) / grid.step
+    const column = Math.floor(gridX)
+    const row = Math.floor(gridZ)
+    if (column < 0 || row < 0 || column >= grid.columns - 1 || row >= grid.rows - 1) return 0
+    const fx = gridX - column
+    const fz = gridZ - row
+    const a = grid.mask[row * grid.columns + column]
+    const b = grid.mask[row * grid.columns + column + 1]
+    const c = grid.mask[(row + 1) * grid.columns + column]
+    const d = grid.mask[(row + 1) * grid.columns + column + 1]
+    return (a * (1 - fx) + b * fx) * (1 - fz) + (c * (1 - fx) + d * fx) * fz
+  }
+
+  const positions = water.attributes.position
+  const depths = new Float32Array(positions.count)
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index)
+    const z = positions.getZ(index)
+    // Full mask: pure analytic depth. Off the mask, the deficit drowns the
+    // depth smoothly — an unconnected hollow inside the bounding box still
+    // never fills, but the cut follows the field, not the lattice.
+    depths[index] = waterY - sampler(x, z) - (1 - maskAt(x, z)) * 3
+  }
+  water.setAttribute('aDepth', new BufferAttribute(depths, 1))
+
+  if (biome.waterState === 'frozen') {
+    return [
+      new Mesh(water, createIceSheetMaterial(biome)),
+      buildIceCracks(seed, center, waterY, boundingRadius * 0.6, sampler, biome),
+    ]
+  }
+  return [new Mesh(water, createWaterMaterial(biome, timeUniforms))]
+}
+
 /**
  * The pond's meshes: still water, two milk ripple rings, and a low arched
  * plank bridge whose apex matches the tile-top height — pawns land on the
- * deck exactly as they would on the disc it replaces.
+ * deck exactly as they would on the disc it replaces. On an ice board the
+ * water is FROZEN: an opaque ink-rimmed sheet with hairline cracks — a
+ * skating rink instead of a shimmer, naturally still under reduced motion.
  */
 export const buildPondMeshes = (
+  seed: string,
   site: PondSite,
   spacing: number,
   tileTopY: number,
@@ -190,18 +333,51 @@ export const buildPondMeshes = (
   // Living water: a grid with per-vertex analytic depth (water line minus
   // the carved basin under each vertex) — the foam shoreline emerges where
   // depth crosses zero, replacing the old flat disc and milk ripple rings.
+  // The frozen sheet keeps the same clipped grid, so the shoreline stays the
+  // organic terrain/water intersection either way. The depth field FADES
+  // with distance from the basin: only the carve guarantees dry ground, and
+  // where the outside country falls below the pond's level the plane's
+  // square corners used to render as a floating sheet.
   const water = new PlaneGeometry(waterRadius * 2.6, waterRadius * 2.6, 28, 28)
   water.rotateX(-Math.PI / 2)
   water.translate(center.x, waterY, center.z)
   const positions = water.attributes.position
   const pondDepths = new Float32Array(positions.count)
+  const holdFrom = waterRadius * 1.1
+  const holdTo = site.basinRadius
   for (let index = 0; index < positions.count; index++) {
-    pondDepths[index] = waterY - sampler(positions.getX(index), positions.getZ(index))
+    const x = positions.getX(index)
+    const z = positions.getZ(index)
+    const reach = Math.hypot(x - center.x, z - center.z)
+    const hold = 1 - smoothstep(Math.min(1, Math.max(0, (reach - holdFrom) / (holdTo - holdFrom))))
+    pondDepths[index] = (Math.max(waterY - sampler(x, z), 0) + 0.02) * hold - 0.02
   }
   water.setAttribute('aDepth', new BufferAttribute(pondDepths, 1))
-  meshes.push(new Mesh(water, createWaterMaterial(biome, timeUniforms)))
+  if (biome.waterState === 'frozen') {
+    meshes.push(new Mesh(water, createIceSheetMaterial(biome)))
+    meshes.push(buildIceCracks(seed, center, waterY, waterRadius, sampler, biome))
+  } else {
+    meshes.push(new Mesh(water, createWaterMaterial(biome, timeUniforms)))
+  }
 
   // --- Bridge: planks arched along the path tangent -------------------------
+  buildPlankBridge(center, tangent, spacing, tileTopY).forEach(mesh => meshes.push(mesh))
+
+  return meshes
+}
+
+/**
+ * The low arched plank bridge, extracted so the pond AND a river's track
+ * crossing build the same deck: planks arched along `tangent`, apex at
+ * `deckTopY` (the pawn's resting height), rails in ink. Track furniture —
+ * biome-blind cream-and-ink.
+ */
+export const buildPlankBridge = (
+  center: Vector3,
+  tangent: Vector3,
+  spacing: number,
+  deckTopY: number
+): Mesh[] => {
   const matrix = new Matrix4()
   const quaternion = new Quaternion().setFromAxisAngle(
     new Vector3(0, 1, 0),
@@ -217,11 +393,10 @@ export const buildPondMeshes = (
   const plankCount = 7
   const plankLength = (halfSpan * 2) / plankCount
   const plankThickness = 0.06 * spacing
-  const deckLocalY = tileTopY - center.y
+  const deckLocalY = deckTopY - center.y
   for (let index = 0; index < plankCount; index++) {
     const along = -halfSpan + plankLength * (index + 0.5)
-    // Parabolic arc: apex at the tile centre (the pawn's resting height),
-    // easing down toward both shores
+    // Parabolic arc: apex at the deck height, easing down toward both shores
     const dip = (along / halfSpan) ** 2 * 0.22 * spacing
     const plank = new BoxGeometry(0.6 * spacing, plankThickness, plankLength * 0.88)
     plank.translate(0, deckLocalY - plankThickness / 2 - dip, along)
@@ -239,15 +414,14 @@ export const buildPondMeshes = (
     outlines.push(outlineOf(part, spacing * OUTLINE_WIDTH_RATIO))
   }
 
-  meshes.push(
+  const meshes = [
     new Mesh(
       mergeGeometries(outlines),
       new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide })
     ),
     new Mesh(mergeGeometries(planks), new MeshToonMaterial({ color: BOARD_COLORS.warmSand })),
-    new Mesh(mergeGeometries(rails), new MeshToonMaterial({ color: BOARD_COLORS.darkBlue }))
-  )
+    new Mesh(mergeGeometries(rails), new MeshToonMaterial({ color: BOARD_COLORS.darkBlue })),
+  ]
   ;[...planks, ...rails, ...outlines].forEach(geometry => geometry.dispose())
-
   return meshes
 }

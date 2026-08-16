@@ -35,6 +35,11 @@ export interface ContourMaterialOptions {
  * Success feedback is unchanged: `uRippleCenter` + `uRippleProgress` drive
  * the expanding annulus that tints lines around a landing tile.
  */
+/** The print's contour rhythm — the ONE pair the shader uniforms and the
+ *  elevation labels both read, so a retune moves lines and numbers together. */
+export const CONTOUR_STEP = MAX_ELEVATION / 8
+export const CONTOUR_MAJOR_EVERY = 5
+
 export const createContourMaterial = (options: ContourMaterialOptions): ContourMaterial => {
   const { rippleRadius, biome, heightMap, heightHalf, snowlineY = 1e6 } = options
   const material = new ShaderMaterial({
@@ -55,8 +60,8 @@ export const createContourMaterial = (options: ContourMaterialOptions): ContourM
       uPage: { value: new Color('#fffaf5') },
       uBanding: { value: biome.banding },
       uHachure: { value: biome.hachure },
-      uStep: { value: MAX_ELEVATION / 8 },
-      uMajorEvery: { value: 5 },
+      uStep: { value: CONTOUR_STEP },
+      uMajorEvery: { value: CONTOUR_MAJOR_EVERY },
       uLineWidth: { value: 0.9 },
       uMaxElevation: { value: MAX_ELEVATION },
       uSnowline: { value: snowlineY },
