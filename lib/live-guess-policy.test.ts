@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { placedCount, probeDistance } from '~~/lib/events/server/player-guessing.handler'
-import { guessPolicyFor } from '~~/lib/live-guess-policy'
+import { guessPolicyFor, placedTotalFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import { CRITICAL_CLIENT_EVENTS, isCriticalClientEvent } from '~~/types/events.types'
 import type { Game } from '~~/types/game.types'
 
@@ -28,9 +28,9 @@ describe('guessPolicyFor', () => {
   it('reaches government through BASE_POLICY, not the options accident', () => {
     // Government's required party list once tripped the bare `options`
     // truthiness check, silently overriding its BASE_POLICY row.
-    expect(guessPolicyFor(liveGame, challenge({ _type: 'government-challenge', options: [] }))).toBe(
-      'presence'
-    )
+    expect(
+      guessPolicyFor(liveGame, challenge({ _type: 'government-challenge', options: [] }))
+    ).toBe('presence')
     expect(
       guessPolicyFor(liveGame, challenge({ _type: 'government-challenge', options: [{}] }))
     ).toBe('presence')
@@ -49,7 +49,8 @@ describe('guessPolicyFor', () => {
   })
 
   it('races the silent arrange rounds instead of muting them', () => {
-    // Legacy ranking challenges carry no _type at all.
+    // The ranking round's own stamp — and the legacy no-_type shape it grew from.
+    expect(guessPolicyFor(liveGame, challenge({ _type: 'group-challenge' }))).toBe('presence')
     expect(guessPolicyFor(liveGame, challenge({ countries: ['FR'] }))).toBe('presence')
     expect(guessPolicyFor(liveGame, challenge({ _type: 'sketch-challenge' }))).toBe('presence')
   })
@@ -58,6 +59,13 @@ describe('guessPolicyFor', () => {
     for (const _type of ['timeline-challenge', 'border-chain-challenge', 'atlas-challenge']) {
       expect(guessPolicyFor(liveGame, challenge({ _type }))).toBe('none')
     }
+  })
+
+  it('fails CLOSED for an unwired challenge kind', () => {
+    // roundChallengeKind falls back to 'ranking' for a _type its switch does
+    // not know. That fallback must not inherit ranking's presence row — an
+    // unassessed mode broadcasts nothing until someone wires it deliberately.
+    expect(guessPolicyFor(liveGame, challenge({ _type: 'future-mode-challenge' }))).toBe('none')
   })
 
   it('honours the table switching live guesses off', () => {
@@ -79,7 +87,33 @@ describe('placedCount for government benches', () => {
   })
 
   it('stays empty for modes without a race', () => {
-    expect(placedCount(challenge({ _type: 'sketch-challenge' }), { placed: { seated: 1, total: 1 } })).toEqual({})
+    expect(
+      placedCount(challenge({ _type: 'sketch-challenge' }), { placed: { seated: 1, total: 1 } })
+    ).toEqual({})
+  })
+})
+
+describe('placedTotalFor (the one home for a race’s full hand)', () => {
+  it('reads each racing mode’s own deal', () => {
+    expect(
+      placedTotalFor(challenge({ _type: 'pyramid-scheme-challenge', countries: ['DE', 'JP'] }))
+    ).toBe(2)
+    expect(
+      placedTotalFor(challenge({ _type: 'government-challenge', sorted: ['A', 'B', 'C'] }))
+    ).toBe(3)
+  })
+  it('is undefined for modes without a race', () => {
+    expect(placedTotalFor(challenge({ _type: 'sketch-challenge' }))).toBeUndefined()
+    expect(placedTotalFor(undefined)).toBeUndefined()
+  })
+})
+
+describe('probeCarriesIso (one wire rule for both ends)', () => {
+  it('lets only the distance-computing kind carry a probe isoCode', () => {
+    expect(probeCarriesIso(challenge({ _type: 'hot-cold-challenge' }))).toBe(true)
+    expect(probeCarriesIso(challenge({ _type: 'ghost-state-challenge' }))).toBe(false)
+    expect(probeCarriesIso(challenge({ _type: 'no-mans-land-challenge' }))).toBe(false)
+    expect(probeCarriesIso(undefined)).toBe(false)
   })
 })
 

@@ -3,6 +3,7 @@ import { STRAITS } from '~~/data/straits.gen'
 import type {
   BorderChainState,
   ChainTurnChallenge,
+  ChainTurnOutcome,
   ChainTurnState,
   ClosedDoor,
 } from '~~/types/challenges/group-modes.type'
@@ -39,6 +40,71 @@ export const walkColor = (index: number, count: number, head = false): string =>
 
 export const liveChain = (state: ChainTurnState<unknown>): ISOCountryCode[] =>
   state.chains[state.chains.length - 1] ?? []
+
+/** The table beats a narration watcher diffs between two snapshots. */
+export interface ChainBeats {
+  links: number
+  eliminated: number
+  strikes: { [playerId: string]: number }
+}
+
+export const chainBeats = (state: ChainTurnState<unknown>): ChainBeats => ({
+  links: state.chains.reduce((total, walkedChain) => total + walkedChain.length, 0),
+  eliminated: state.eliminated.length,
+  // A copy, not the live record — the diff must survive the state mutating.
+  strikes: { ...state.strikesLeft },
+})
+
+/**
+ * The one beat-diff both turn-chain views narrate from — Atlas and Border
+ * Chain differ only in copy, which they pass in. One line per snapshot, by
+ * priority: an elimination outranks a strike outranks a move (the rail is the
+ * durable record; the toast is a single channel). Own beats return nothing —
+ * the ticker never mirrors the viewer's own moves.
+ *
+ * A trap redeal grows `links` without anyone moving (`resumeFromTrap` pushes a
+ * fresh seed chain and leaves `lastMoverId` stale), so a one-country live
+ * chain is a deal, not a move, and stays silent. Strikes diff per key — a
+ * serialized comparison would fire on key order alone.
+ */
+export const chainNarration = (
+  state: ChainTurnState<unknown>,
+  before: ChainBeats,
+  now: ChainBeats,
+  copy: {
+    seatId: string
+    seatName: (playerId: string) => string
+    /** The elimination line's tail — 'the clock ran dry' vs the mode's own miss. */
+    fate: (outcome: ChainTurnOutcome | undefined) => string
+    /** The move line — the mode supplies verb and flourish. */
+    move: (name: string, to: ISOCountryCode, from: ISOCountryCode) => string
+  }
+): string | undefined => {
+  if (state.briefing || state.finished || state.trap) return undefined
+
+  if (now.eliminated > before.eliminated) {
+    const outId = state.eliminated[state.eliminated.length - 1]
+    if (!outId || outId === copy.seatId) return undefined // the turn line already says so
+    return `${copy.seatName(outId)} is out — ${copy.fate(state.outcomes[outId])}`
+  }
+
+  const burner = Object.keys(now.strikes).find(
+    playerId => (now.strikes[playerId] ?? 0) < (before.strikes[playerId] ?? 0)
+  )
+  if (burner) {
+    if (burner === copy.seatId) return undefined
+    return `${copy.seatName(burner)} burns a strike`
+  }
+
+  if (now.links > before.links && state.lastMoverId && state.lastMoverId !== copy.seatId) {
+    const moved = liveChain(state)
+    const [from, to] = [moved[moved.length - 2], moved[moved.length - 1]]
+    if (!from || !to) return undefined // a redealt seed, not a move
+    return copy.move(copy.seatName(state.lastMoverId), to, from)
+  }
+
+  return undefined
+}
 
 export const chainHead = (state: ChainTurnState<unknown>): ISOCountryCode | undefined => {
   const chain = liveChain(state)

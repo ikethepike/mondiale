@@ -137,7 +137,16 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
-import { activePlayerId, isStraitHop, liveChain, openMoves, walkColor } from '~~/lib/chain'
+import {
+  activePlayerId,
+  type ChainBeats,
+  chainBeats,
+  chainNarration,
+  isStraitHop,
+  liveChain,
+  openMoves,
+  walkColor,
+} from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
@@ -172,7 +181,10 @@ const readySent = ref(false)
 const sendReady = () => {
   if (readySent.value) return
   readySent.value = true
-  update({ event: 'chain-ready' })
+  // A failed ack re-opens the button — a lost ready must not strand the seat.
+  void update({ event: 'chain-ready' }).then(delivered => {
+    if (!delivered) readySent.value = false
+  })
 }
 const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
@@ -288,47 +300,30 @@ watch(
 )
 
 // --- Ephemeral narration -----------------------------------------------------
-// Mirrors ViewAtlas: table beats derive from consecutive snapshots — nothing
-// rides the wire and nothing is stored. The first snapshot has no diff base,
-// so a rejoiner lands on the current state silently instead of replaying stale
-// toasts. Own moves stay silent: the chain rail already tells the player.
-let seenBeats: { links: number; eliminated: number; strikes: string } | undefined
+// Table beats derive from consecutive snapshots through lib/chain's shared
+// beat-diff (Atlas rides the same one) — nothing rides the wire and nothing is
+// stored. The first snapshot has no diff base, so a rejoiner lands on the
+// current state silently instead of replaying stale toasts. Own moves stay
+// silent: the chain rail already tells the player.
+let seenBeats: ChainBeats | undefined
 watch(
   challenge,
   current => {
     const s = current?.state
     if (!s) return
-    const snapshot = {
-      links: s.chains.reduce((total, walkedChain) => total + walkedChain.length, 0),
-      eliminated: s.eliminated.length,
-      strikes: JSON.stringify(s.strikesLeft),
-    }
+    const snapshot = chainBeats(s)
     const before = seenBeats
     seenBeats = snapshot
-    if (!before || s.briefing || s.finished || s.trap) return
+    if (!before) return
 
-    if (snapshot.eliminated > before.eliminated) {
-      const outId = s.eliminated[s.eliminated.length - 1]
-      if (outId === gameStore.seatId) return // the turn line already says so
-      const fate = s.outcomes[outId] === 'timeout' ? 'the clock ran dry' : 'walked off the map'
-      return announce({ hint: `${seatName(outId)} is out — ${fate}` })
-    }
-    if (snapshot.strikes !== before.strikes) {
-      const prior: Record<string, number> = JSON.parse(before.strikes)
-      const burner = Object.keys(s.strikesLeft).find(
-        playerId => (s.strikesLeft[playerId] ?? 0) < (prior[playerId] ?? 0)
-      )
-      if (!burner || burner === gameStore.seatId) return
-      return announce({ hint: `${seatName(burner)} burns a strike` })
-    }
-    if (snapshot.links > before.links && s.lastMoverId && s.lastMoverId !== gameStore.seatId) {
-      const moved = liveChain(s)
-      const [from, to] = [moved[moved.length - 2], moved[moved.length - 1]]
-      const flourish = from && to && isStraitHop(from, to) ? ' — across the strait' : ''
-      if (to) {
-        announce({ hint: `${seatName(s.lastMoverId)} walks on to ${countryName(to)}${flourish}` })
-      }
-    }
+    const line = chainNarration(s, before, snapshot, {
+      seatId: gameStore.seatId,
+      seatName,
+      fate: outcome => (outcome === 'timeout' ? 'the clock ran dry' : 'walked off the map'),
+      move: (name, to, from) =>
+        `${name} walks on to ${countryName(to)}${isStraitHop(from, to) ? ' — across the strait' : ''}`,
+    })
+    if (line) announce({ hint: line })
   },
   { immediate: true, deep: true }
 )

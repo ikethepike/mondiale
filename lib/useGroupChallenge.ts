@@ -1,15 +1,12 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
-import { guessPolicyFor } from '~~/lib/live-guess-policy'
+import { guessPolicyFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import { clamp01 } from '~~/lib/number'
 import { clockRidesRoundDeadline } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
-import {
-  type RoundChallenge,
-  roundChallengeKind,
-} from '~~/types/challenges/traversal-challenge.type'
+import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, GuessKind, HintTone } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -213,17 +210,20 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     }
 
     if (!kind) return
-    const policy = guessPolicyFor(gameStore.game, currentRound.value?.round.groupChallenge)
+    const roundChallenge = currentRound.value?.round.groupChallenge
+    const policy = guessPolicyFor(gameStore.game, roundChallenge)
     if (policy === 'none') return
     const named = policy === 'label' ? { isoCode, label } : {}
 
     // A hot-cold probe carries its country to the server even under presence:
     // the server measures the distance to the hidden target and broadcasts
     // that alone, never echoing the isoCode. The room sees a radius, not a
-    // bearing. No other kind computes anything, so nothing else rides along.
-    const roundChallenge = currentRound.value?.round.groupChallenge
-    const distanceComputes = roundChallenge && roundChallengeKind(roundChallenge) === 'hot-cold'
-    const wire = policy !== 'label' && kind === 'probe' && distanceComputes ? { isoCode } : named
+    // bearing. Which kinds may ride is `probeCarriesIso` — the same rule the
+    // server computes with, so the two ends cannot drift.
+    const wire =
+      policy !== 'label' && kind === 'probe' && probeCarriesIso(roundChallenge)
+        ? { isoCode }
+        : named
     update({ event: 'player-guessing', kind, ...wire, ...(placed ? { placed } : {}) })
   }
 

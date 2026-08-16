@@ -128,12 +128,21 @@ export const guessPolicyFor = (
   if (!game || game.liveGuesses === false) return 'none'
   if (!challenge) return 'none'
 
+  const kind = roundChallengeKind(challenge)
+  // `roundChallengeKind` resolves 'ranking' three ways: the legacy no-`_type`
+  // deal, the ranking round's own 'group-challenge' `_type`, and its default
+  // arm for any `_type` it does not know. Only the first two are ranking. An
+  // unwired mode has an unassessed leak profile, so it broadcasts nothing —
+  // the safe default must not ride ranking's own row.
+  if (kind === 'ranking' && '_type' in challenge && challenge._type !== 'group-challenge') {
+    return 'none'
+  }
+
   // Outside hard mode the option variants offer a small flag table, so naming
   // a wrong pick eliminates a share of the field. Hard mode free-types the
   // whole world. Scoped to exactly these kinds: other challenges carry an
   // `options` field too (government's party list, trend-race's cards), and a
   // bare truthiness check silently overrode their BASE_POLICY rows.
-  const kind = roundChallengeKind(challenge)
   if (
     (kind === 'capital-guess' || kind === 'flashpoint') &&
     'options' in challenge &&
@@ -143,4 +152,27 @@ export const guessPolicyFor = (
   }
 
   return BASE_POLICY[kind]
+}
+
+/**
+ * The kinds whose server handler derives a measure from a probe's isoCode —
+ * today only Hot & Cold's rounded distance. BOTH ends read this: the client
+ * puts the isoCode on the wire only for these kinds, and the server computes
+ * only for them, so the two cannot drift (a client-only entry would leak an
+ * un-redacted country; a server-only entry would be dead code).
+ */
+const PROBE_MEASURE_KINDS = new Set<RoundChallengeKind>(['hot-cold'])
+export const probeCarriesIso = (challenge: RoundChallenge | undefined): boolean =>
+  !!challenge && PROBE_MEASURE_KINDS.has(roundChallengeKind(challenge))
+
+/**
+ * The modes with a progress race, and what a full hand counts. The total
+ * comes from the round's own deal — the server clamps every broadcast count
+ * into it, and views read it here too, so the two ends agree by construction.
+ */
+export const placedTotalFor = (challenge: RoundChallenge | undefined): number | undefined => {
+  if (!challenge || !('_type' in challenge)) return undefined
+  if (challenge._type === 'pyramid-scheme-challenge') return challenge.countries.length
+  if (challenge._type === 'government-challenge') return challenge.sorted.length
+  return undefined
 }

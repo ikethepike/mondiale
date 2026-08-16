@@ -140,6 +140,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
+import { placedTotalFor } from '~~/lib/live-guess-policy'
 import { DRAG_SOURCE_OPTIONS, DROP_TARGET_OPTIONS } from '~~/lib/drag-list'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { PYRAMID_YEARS, pyramidPeakShare, pyramidScar, pyramidYearAt } from '~~/lib/pyramids'
@@ -271,7 +272,7 @@ const place = (event: DragMoveEvent, slot: number | undefined) => {
   const seated = next.filter(Boolean).length
   announce({
     kind: slot === undefined ? 'taken' : 'presence',
-    placed: { seated, total: subjects.value.length },
+    placed: { seated, total: placedTotalFor(challenge.value) ?? subjects.value.length },
   })
 }
 

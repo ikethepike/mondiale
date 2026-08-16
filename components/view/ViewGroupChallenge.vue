@@ -98,8 +98,16 @@ import { type Country, type ISOCountryCode, isValidISOCode } from '~~/types/geog
 
 // The board stays visible behind the ranking form (solo: false); the shared
 // scaffolding still owns the interstitial and the submit latch + redelivery.
-const { gameStore, currentRound, showInterstitial, submitted, begin, submitOnce, announce, entries } =
-  useGroupChallenge('group-challenge', { solo: false })
+const {
+  gameStore,
+  currentRound,
+  showInterstitial,
+  submitted,
+  begin,
+  submitOnce,
+  announce,
+  entries,
+} = useGroupChallenge('group-challenge', { solo: false })
 const countries = ref<Country[]>(
   gameStore.currentGroupChallengeForPlayer?.map(isoCode => COUNTRIES[isoCode]) || []
 )
@@ -142,7 +150,9 @@ const updateRanking = (event: Event) => {
 }
 
 const submitRanking = () => {
-  // A reorder names nothing, so the room hears only the race: who has locked in.
+  // The latch first: a second Enter press must not re-announce a submit that
+  // never happens. A reorder names nothing, so the room hears only the race.
+  if (submitted.value) return
   announce({ kind: 'presence' })
   submitOnce(ranking.value)
 }

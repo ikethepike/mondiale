@@ -57,12 +57,22 @@ const buildGame = (players: Player[]): Game =>
   }) as unknown as Game
 
 const store = new Map<string, Game>()
-const emitted: string[] = []
+// Keyed by game id, NOT one shared list: a settle chain from an earlier test
+// can be parked on a real dynamic import that fake timers cannot flush (the
+// gauntlet pre-warm above narrows but cannot close this), and on a slow
+// runner it completes DURING a later test — its late emits must land in its
+// own game's list, never the running test's assertion.
+const emittedByGame = new Map<string, string[]>()
+const emittedFor = (gameId: string): string[] => {
+  const list = emittedByGame.get(gameId) ?? []
+  emittedByGame.set(gameId, list)
+  return list
+}
 
 const context = (game: Game): EngineContext => {
   store.set(game.id, game)
   return {
-    io: { in: () => ({ emit: (event: string) => emitted.push(event) }) },
+    io: { in: () => ({ emit: (event: string) => emittedFor(game.id).push(event) }) },
     redis: {
       get: async (key: string) => store.get(key),
       set: async (key: string, value: Game) => void store.set(key, value),
@@ -76,7 +86,7 @@ const context = (game: Game): EngineContext => {
 beforeEach(() => {
   vi.useFakeTimers()
   store.clear()
-  emitted.length = 0
+  emittedByGame.clear()
 })
 
 afterEach(() => vi.useRealTimers())
@@ -122,7 +132,7 @@ describe('armGroupScoresCap', () => {
     await vi.advanceTimersByTimeAsync(GROUP_SCORES_CAP_MS + 100)
     await vi.runAllTicks()
 
-    expect(emitted).toEqual([])
+    expect(emittedFor(game.id)).toEqual([])
   })
 })
 
@@ -144,7 +154,7 @@ describe('armIndividualGateCap', () => {
     const fresh = store.get(game.id)!
     expect(fresh.players.a.moves).toEqual([])
     expect(fresh.rounds[0].playerTurns.a.blocked).toEqual({ atTile: 5, forfeitedSteps: 5 })
-    expect(emitted).toContain('individual-challenge-checked')
+    expect(emittedFor(game.id)).toContain('individual-challenge-checked')
   })
 
   it('leaves a gate whose answer is mid-flight alone', async () => {
@@ -187,7 +197,7 @@ describe('armFinalQuestionCap', () => {
     const gauntlet = store.get(game.id)!.players.a.moves[0]!.challenge
     expect(gauntlet).toMatchObject({ turn: 3, lives: 0 })
     expect((gauntlet as { challenges: unknown[] }).challenges).toHaveLength(1)
-    expect(emitted).toContain('final-challenge-checked')
+    expect(emittedFor(game.id)).toContain('final-challenge-checked')
   })
 
   it('dies on the turn token once the question was answered', async () => {

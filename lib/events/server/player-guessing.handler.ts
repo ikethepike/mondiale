@@ -1,5 +1,6 @@
 import { countryLatLng, haversineKm } from '~~/lib/geo'
-import { guessPolicyFor } from '~~/lib/live-guess-policy'
+import { guessPolicyFor, placedTotalFor, probeCarriesIso } from '~~/lib/live-guess-policy'
+import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { isValidISOCode } from '~~/types/geography.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createTokenBucket } from './rate-limit'
@@ -66,29 +67,21 @@ export const playerGuessingHandler: EventHandler = async ({
   )
 }
 
-/** The modes with a progress race, and what a full hand counts. The total
- *  comes from the round's own deal, NEVER the payload. */
-const placedTotal = (challenge: Parameters<typeof guessPolicyFor>[1]): number | undefined => {
-  if (challenge?._type === 'pyramid-scheme-challenge') return challenge.countries.length
-  if (challenge?._type === 'government-challenge') return challenge.sorted.length
-  return undefined
-}
-
 /**
  * A progress count: how many of the round's subjects a player has seated —
  * Pyramid Scheme's placements, Government's filed benches. The TOTAL comes
- * from the challenge, never the payload, and the seated figure is clamped
- * into it — a client claiming "9 of 4" only ever reaches the room as a number
- * the round could actually produce.
+ * from `placedTotalFor` (the deal, shared with the views), never the payload,
+ * and the seated figure is clamped into it — a client claiming "9 of 4" only
+ * ever reaches the room as a number the round could actually produce.
  *
  * Survives under `presence` for the same reason a probe radius does: it says
  * how far along someone is without saying what they decided.
  */
 export const placedCount = (
-  challenge: Parameters<typeof guessPolicyFor>[1],
+  challenge: RoundChallenge | undefined,
   eventData: { placed?: { seated: number; total: number } }
 ): { placed?: { seated: number; total: number } } => {
-  const total = placedTotal(challenge)
+  const total = placedTotalFor(challenge)
   if (total === undefined) return {}
   const seated = eventData.placed?.seated
   if (typeof seated !== 'number' || !Number.isFinite(seated)) return {}
@@ -100,11 +93,14 @@ export const placedCount = (
  * Distance from a Hot & Cold probe to the hidden target, rounded to 100 km to
  * match the prober's own feedback line and blunt multi-probe triangulation.
  * Empty object for any other mode, so it drops cleanly into the emit spread.
+ * The which-kinds decision is `probeCarriesIso` — shared with the client's
+ * wire rule; the `_type` check below only narrows to the target field.
  */
 export const probeDistance = (
-  challenge: Parameters<typeof guessPolicyFor>[1],
+  challenge: RoundChallenge | undefined,
   eventData: { isoCode?: string }
 ): { distanceKm?: number } => {
+  if (!probeCarriesIso(challenge)) return {}
   if (challenge?._type !== 'hot-cold-challenge') return {}
   if (!isValidISOCode(eventData.isoCode)) return {}
 
