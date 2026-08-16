@@ -315,6 +315,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'manhunt-ready',
   'unique-ready',
   'chain-ready',
+  'sweep-ready',
   'submit-unique-answer',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]

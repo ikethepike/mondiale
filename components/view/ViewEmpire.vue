@@ -437,7 +437,7 @@ const onCountryGuess = (country: Country) => {
     return
   }
   // Presence only: a named guess would hand the room the extent.
-  announce({ kind: 'probe', isoCode: country.isoCode })
+  announce({ kind: 'probe' })
   toggle(country.isoCode)
 }
 

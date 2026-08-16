@@ -3,6 +3,11 @@
     <ChallengePrompt :attributions="promptSources">
       <h1 class="map-caption">{{ heading }}</h1>
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
+      <GuessTicker
+        v-if="!finished"
+        :entries="entries"
+        :players="gameStore.game?.players ?? {}"
+      />
     </ChallengePrompt>
 
     <!-- Beat 3 stows them on a phone: the seat maths is beat 2's subject, and
@@ -242,6 +247,7 @@
 <script setup lang="ts">
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
@@ -264,7 +270,8 @@ import type { GovernmentState } from '~~/types/challenges/group-modes.type'
  * timer here would eventually disagree with the grade.
  */
 
-const { challenge, gameStore, update } = useGroupChallenge('government-challenge')
+const { challenge, gameStore, update, announce, entries } =
+  useGroupChallenge('government-challenge')
 
 // Timers keep evaluating for a beat after the round advances, so the state
 // must never dereference undefined.
@@ -340,15 +347,31 @@ const send = (pick: { party?: string; seats?: number; sides?: typeof mySides.val
 
 const pickParty = (name: string) => {
   if (myParty.value) return
+  // The room hears that a pick landed, never which logo it was.
+  announce({ kind: 'presence' })
   void send({ party: name })
 }
 const pickSeats = (block: number) => {
   if (mySeats.value !== undefined) return
+  announce({ kind: 'presence' })
   void send({ seats: block })
 }
 const fileBench = (name: string, side: BenchSide) => {
   if (sidesLocked.value) return
+  // The race, not the ruling: only a NEW bench grows the count — re-filing one
+  // says nothing worth a chip, and skipping it spares the emit rate limit on a
+  // nine-bench chamber.
+  const grew = mySides.value[name] === undefined
   mySides.value = { ...mySides.value, [name]: side }
+  if (grew) {
+    announce({
+      kind: 'presence',
+      placed: {
+        seated: Object.keys(mySides.value).length,
+        total: challenge.value?.sorted.length ?? 0,
+      },
+    })
+  }
 }
 const submitSides = () => {
   if (sidesLocked.value || !allFiled.value) return

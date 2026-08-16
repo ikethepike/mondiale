@@ -6,7 +6,10 @@ import { clamp01 } from '~~/lib/number'
 import { clockRidesRoundDeadline } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import type { GuessTickerEntry } from '~~/store/game.store'
-import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
+import {
+  type RoundChallenge,
+  roundChallengeKind,
+} from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, GuessKind, HintTone } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -22,8 +25,6 @@ export type SubmitExtras = Omit<
   'event' | 'ranking' | 'clientScore' | 'buzzAt'
 >
 
-/** Our own chips are capped separately from the store's incoming cap. */
-const MAX_OWN_ENTRIES = 6
 const PRUNE_INTERVAL_MS = 250
 
 /**
@@ -182,9 +183,6 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    */
   const hintTone = ref<HintTone>('neutral')
   let hintTimer: ReturnType<typeof setTimeout> | undefined
-  /** The player's own chips. The room broadcast echoes back but is filtered as
-   *  a self-echo, so they never arrive through the store. */
-  const ownGuesses = ref<GuessTickerEntry[]>([])
 
   const announce = ({
     hint: text,
@@ -219,39 +217,27 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     if (policy === 'none') return
     const named = policy === 'label' ? { isoCode, label } : {}
 
-    ownGuesses.value = [
-      ...ownGuesses.value.slice(-(MAX_OWN_ENTRIES - 1)),
-      {
-        entryId: crypto.randomUUID(),
-        playerId: gameStore.playerId,
-        kind,
-        ...named,
-        ...(placed ? { placed } : {}),
-        at: Date.now(),
-      },
-    ]
-    // A probe carries its country to the server even under presence: the server
-    // measures the distance to the hidden target and broadcasts that alone,
-    // never echoing the isoCode. The room sees a radius, not a bearing.
-    const wire = policy !== 'label' && kind === 'probe' ? { isoCode } : named
+    // A hot-cold probe carries its country to the server even under presence:
+    // the server measures the distance to the hidden target and broadcasts
+    // that alone, never echoing the isoCode. The room sees a radius, not a
+    // bearing. No other kind computes anything, so nothing else rides along.
+    const roundChallenge = currentRound.value?.round.groupChallenge
+    const distanceComputes = roundChallenge && roundChallengeKind(roundChallenge) === 'hot-cold'
+    const wire = policy !== 'label' && kind === 'probe' && distanceComputes ? { isoCode } : named
     update({ event: 'player-guessing', kind, ...wire, ...(placed ? { placed } : {}) })
   }
 
-  /** Opponents' chips plus our own, oldest first, each expiring on its own. */
-  const entries = computed(() =>
-    [...gameStore.map.liveGuesses, ...ownGuesses.value].sort((a, b) => a.at - b.at)
-  )
+  /** Opponents' chips, oldest first — the ticker never mirrors the player's
+   *  own moves; the view's own feedback surfaces carry those. */
+  const entries = computed(() => gameStore.map.liveGuesses)
 
-  // One pruner for both lists — entries carry their own timestamp, so expiry is
-  // a filter rather than a timer per chip. Dwell is per kind: a taunt is a
-  // sentence and outstays a verdict chip.
+  // Entries carry their own timestamp, so expiry is a filter rather than a
+  // timer per chip. Dwell is per kind: a taunt is a sentence and outstays a
+  // verdict chip.
   const dwellFor = (entry: GuessTickerEntry) => (entry.kind === 'taunt' ? DWELL.taunt : DWELL.hint)
   const expired = (entry: GuessTickerEntry, now: number) => entry.at + dwellFor(entry) <= now
   const pruner = setInterval(() => {
     const now = Date.now()
-    if (ownGuesses.value.some(entry => expired(entry, now))) {
-      ownGuesses.value = ownGuesses.value.filter(entry => !expired(entry, now))
-    }
     if (gameStore.map.liveGuesses.some(entry => expired(entry, now))) {
       gameStore.map.liveGuesses = gameStore.map.liveGuesses.filter(entry => !expired(entry, now))
     }

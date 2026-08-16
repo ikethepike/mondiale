@@ -10,7 +10,8 @@ const MAX_ENTRIES = 24
  */
 export const playerGuessingEvent: ClientSideEventHandler = ({ payload, gameStore, playerId }) => {
   if (payload.event !== 'player-guessing') return
-  // The room broadcast echoes to the sender; own chips come from local state.
+  // The room broadcast echoes to the sender, but the ticker is others-only by
+  // design — a player's own moves are told by the view itself, never echoed.
   if (payload.playerId === playerId) return
 
   const next = [

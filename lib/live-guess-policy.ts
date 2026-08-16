@@ -40,8 +40,9 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // sends presence for a correct name (useCollectSetRound's rule), so a
   // player who lights a star hands the room tension, not the answer.
   'star-chart': 'label',
-  // Benches are dragged, not named, so there is no guess to broadcast.
-  government: 'none',
+  // Benches are dragged and options are tapped, never named — but each pick is
+  // a race beat, and beat 3's bench count rides `placed` like Pyramid Scheme's.
+  government: 'presence',
   // The room shares one failing atlas, but a NAMED guess here is always a
   // wrong one — the composable sends hits as bare presence — and a wrong name
   // says only "that country is still on the map", which is true of nearly two
@@ -105,12 +106,14 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // minute, and it is the one mode with real intermediate state to broadcast.
   'pyramid-scheme': 'presence',
 
-  // No guess stream to speak of: turn-based, every move is already public.
+  // Turn-based: every move is already public, and the views narrate the turns.
   'border-chain': 'none',
   atlas: 'none',
   timeline: 'none',
-  sketch: 'none',
-  ranking: 'none',
+  // A reorder names nothing; the race is who has locked in.
+  ranking: 'presence',
+  // Nothing to race but the submit — a stroke says nothing worth a chip.
+  sketch: 'presence',
 }
 
 /**
@@ -125,12 +128,19 @@ export const guessPolicyFor = (
   if (!game || game.liveGuesses === false) return 'none'
   if (!challenge) return 'none'
 
-  // Outside hard mode the option variants (capital-guess, flashpoint) offer a
-  // small flag table, so naming a wrong pick eliminates a share of the field.
-  // Hard mode free-types the whole world.
-  if ('_type' in challenge && 'options' in challenge && challenge.options) {
+  // Outside hard mode the option variants offer a small flag table, so naming
+  // a wrong pick eliminates a share of the field. Hard mode free-types the
+  // whole world. Scoped to exactly these kinds: other challenges carry an
+  // `options` field too (government's party list, trend-race's cards), and a
+  // bare truthiness check silently overrode their BASE_POLICY rows.
+  const kind = roundChallengeKind(challenge)
+  if (
+    (kind === 'capital-guess' || kind === 'flashpoint') &&
+    'options' in challenge &&
+    challenge.options
+  ) {
     return 'presence'
   }
 
-  return BASE_POLICY[roundChallengeKind(challenge)]
+  return BASE_POLICY[kind]
 }
