@@ -3,6 +3,7 @@ import type { Player } from '~~/types/player.type'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
+import { isBotId } from '~~/lib/bots'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
@@ -38,6 +39,16 @@ export const joinEventHandler: EventHandler = async ({
   const server = useServerSideEvents({ socket, redis, io })
 
   const { gameId, playerId } = eventTarget
+
+  // Bot seats are server-played and have no bearer secret — without this
+  // refusal, a tab presenting a bot's public id would land in 'claim' below
+  // and walk off with the seat.
+  if (isBotId(playerId)) {
+    console.warn(`Refusing socket claiming bot id ${playerId} in ${gameId}`)
+    socket.emit('game-already-started', { event: 'game-already-started' }, eventTarget)
+    socket.disconnect(false)
+    return
+  }
 
   // Bind-time authorization: the presented secret (from the handshake, never
   // the broadcast) must match the one on file for this id, or this is an

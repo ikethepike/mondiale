@@ -49,6 +49,7 @@ import {
   playerGuessingHandler,
 } from '~~/lib/events/server/player-guessing.handler'
 import { kickPlayerHandler } from '~~/lib/events/server/kick-player.handler'
+import { addBotHandler, removeBotHandler } from '~~/lib/events/server/add-bot.handler'
 import { setSpectatorAccessHandler } from '~~/lib/events/server/set-spectator-access.handler'
 import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
 
@@ -177,6 +178,12 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'kick-player': {
     handler: kickPlayerHandler,
+  },
+  'add-bot': {
+    handler: addBotHandler,
+  },
+  'remove-bot': {
+    handler: removeBotHandler,
   },
 }
 

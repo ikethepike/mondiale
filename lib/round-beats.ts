@@ -239,6 +239,28 @@ export const CLASSIC_SETTLE_SLACK_MS = 8000
 /** Empire's beat-1 → beat-2 memorize hold (the sweep freezing at the peak). */
 export const EMPIRE_INTERBEAT_HOLD_MS = 1800
 
+/** The bot brain's cadence: how often a game with brain-played seats re-reads
+ *  state to see if any of them owes an action. Coarse on purpose — per-act
+ *  timing rides the rolled act-at stamps, not the tick. */
+export const BOT_PUMP_MS = 1500
+/** A bot "reads" its rules card this long before closing it. */
+export const BOT_TUTORIAL_MS = 5000
+/** A bot "reads" its scorecard this long before walking on. */
+export const BOT_SCORES_MS = 6000
+/** A turn-engine bot's think beat before its move, plus up to this much
+ *  jitter — near the harness chain-simulator's rival beat, slower than a
+ *  buzzer so a human never feels raced by a machine. */
+export const BOT_TURN_THINK_MS = 2200
+export const BOT_TURN_JITTER_MS = 2600
+/** Where in a classic round's play window a bot's answer lands, as fractions
+ *  of the budget — never first-instant, never at the buzzer. */
+export const BOT_CLASSIC_WINDOW: readonly [number, number] = [0.3, 0.75]
+/** A vanished socket must stay gone this long mid-race before the autopilot
+ *  takes the seat over — a refresh or a tunnel must not trigger a takeover. */
+export const AUTOPILOT_GRACE_MS = 25000
+/** The returning player's catch-up interstitial hold. */
+export const AUTOPILOT_RECLAIM_HOLD_MS = 6000
+
 /**
  * Flashpoint's two schedules. The dot waves land first, then the hint ladder
  * unlocks one rung at a time — so the round's length is a function of BOTH,

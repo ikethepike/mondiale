@@ -350,7 +350,12 @@ const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallen
   if (initialManhuntCandidates(game).length < MINIMUM_MANHUNT_POOL) return undefined
 
   const tuning = MANHUNT_TUNING[game.difficulty]
-  const despotId = sample(contenders)!
+  // The despot is the round's starring role — deal it to a human whenever
+  // one is standing. A bot despot works (the brain reads its own side key)
+  // but the cat-and-mouse is the humans' to play; an all-bot table still
+  // gets a bot despot so the round deals at all.
+  const humanContenders = contenders.filter(playerId => !game.players[playerId]?.bot)
+  const despotId = sample(humanContenders.length ? humanContenders : contenders)!
   const detectives = shuffleArray(contenders.filter(playerId => playerId !== despotId))
   return {
     _type: 'manhunt-challenge',

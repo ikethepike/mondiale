@@ -38,6 +38,16 @@ export interface Player {
    *  move!" beat. Between-gates resumes carry false — their announcement is
    *  the gate verdict the player just watched. */
   walkIntro?: boolean
+  /** A computer-controlled seat, added by the host in the lobby. Rides the
+   *  snapshot on purpose (clients render the bot badge); the seat has no
+   *  bearer secret and the join door refuses its id, so no socket can ever
+   *  bind to it. The bot brain (bot-brain.ts) plays it server-side. */
+  bot?: true
+  /** The bot brain is covering this HUMAN seat while its player is away.
+   *  Set by the AFK takeover (socket gone past the grace window mid-race),
+   *  cleared by the player's rejoin. `sinceRound` bounds the catch-up
+   *  summary the returning player is shown. */
+  autopilot?: { sinceRound: number }
 }
 
 export type PlayerPhase =

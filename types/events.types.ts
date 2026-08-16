@@ -278,6 +278,17 @@ export type ClientEventData =
       targetId: string
     }
   | {
+      /** Host seats a computer-controlled player pre-start. Fire-and-forget
+       *  like the other lobby edits — a lost click is re-clicked. */
+      event: 'add-bot'
+    }
+  | {
+      /** Host removes a bot seat pre-start. Bot-only — human seats go
+       *  through kick-player and its denylist. */
+      event: 'remove-bot'
+      targetId: string
+    }
+  | {
       /** Ephemeral live guess during a group round — broadcast to the room so
        *  everyone sees opponents' picks land in real time. Writes no permanent
        *  state (like update-by-index). `isoCode`/`label` are omitted under a

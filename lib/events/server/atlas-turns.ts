@@ -31,21 +31,20 @@ export const currentAtlasChain = (game: Game): AtlasChallenge | undefined =>
 const usedOf = (challenge: AtlasChallenge) => challenge.state.chains.flat()
 const rule = (challenge: AtlasChallenge) => ({ overlaps: challenge.overlaps })
 
+/** The mode's legal extensions — the spec's link rule, shared with the bot
+ *  brain so a bot's options and the engine's verdicts can never drift. */
+export const atlasOpenMoves = (challenge: AtlasChallenge, game: Game) => {
+  const head = chainHead(challenge.state)
+  if (!head) return []
+  return atlasContinuations(head, usedOf(challenge), playableWorldCountries(game), rule(challenge))
+}
+
 /** Lazy for the same cycle reason as chain-turns — see its note. */
 let instance: ChainEngine<AtlasChallenge> | undefined
 const engine = (): ChainEngine<AtlasChallenge> =>
   (instance ??= createChainEngine<AtlasChallenge>({
     current: currentAtlasChain,
-    openMoves: (challenge, game) => {
-      const head = chainHead(challenge.state)
-      if (!head) return []
-      return atlasContinuations(
-        head,
-        usedOf(challenge),
-        playableWorldCountries(game),
-        rule(challenge)
-      )
-    },
+    openMoves: atlasOpenMoves,
     buildTrap: (challenge, game, trappedId, byPlayerId) => {
       const head = chainHead(challenge.state)!
       const used = new Set(usedOf(challenge))

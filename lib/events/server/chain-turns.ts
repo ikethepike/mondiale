@@ -26,11 +26,16 @@ export const currentBorderChain = (game: Game): BorderChainChallenge | undefined
  * an eval-time call — a module mid-cycle would invoke createChainEngine
  * before it exists. First use is always long after every module settled.
  */
+/** The mode's legal extensions — the spec's link rule, shared with the bot
+ *  brain so a bot's options and the engine's verdicts can never drift. */
+export const borderChainOpenMoves = (challenge: BorderChainChallenge, game: Game) =>
+  openMoves(challenge.state, game)
+
 let instance: ChainEngine<BorderChainChallenge> | undefined
 const engine = (): ChainEngine<BorderChainChallenge> =>
   (instance ??= createChainEngine<BorderChainChallenge>({
     current: currentBorderChain,
-    openMoves: (challenge, game) => openMoves(challenge.state, game),
+    openMoves: borderChainOpenMoves,
     buildTrap: (challenge, game, trappedId, byPlayerId) => ({
       playerId: trappedId,
       head: chainHead(challenge.state)!,

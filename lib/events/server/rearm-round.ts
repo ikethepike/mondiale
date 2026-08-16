@@ -1,6 +1,7 @@
 import type { Game } from '~~/types/game.types'
 import type { EngineContext, RearmOptions } from './round-engine'
 import { rearmAtlasChain } from './atlas-turns'
+import { armBotPump } from './bot-brain'
 import { rearmBorderChain } from './chain-turns'
 import { rearmClassicRound } from './classic-rounds'
 import { rearmHeritageHunt } from './heritage-beats'
@@ -60,4 +61,7 @@ export const rearmLiveRound = (
   // Not a round engine: the parked-seat exits (scorecards, tutorials, gates,
   // the gauntlet) and the resolving-latch recovery.
   rearmSeatExits(ctx, game)
+  // Bot seats ride an in-memory pump like every other timer — a rejoin is
+  // its recovery moment too (idempotent while a live pump runs).
+  armBotPump(ctx, game)
 }
