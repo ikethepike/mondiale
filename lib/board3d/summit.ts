@@ -55,16 +55,20 @@ const PLATEAU_RADIUS = 5
  *  owns the tight-ring moiré now, so the crown can stay small. */
 const SNOWLINE_FRACTION = 0.9
 
-/** The bench cut under each climb anchor (×spacing): DEAD FLAT out to the
- *  platform deck's whole footprint (its half-diagonal is 0.41), then a
- *  transition back to the flank — so terrain can never rise through a deck,
- *  and the uphill side reads as an honest carved scarp behind it. */
-const LEDGE_FLAT_RATIO = 0.46
+/** The bench cut under each climb anchor (×spacing): DEAD FLAT well past the
+ *  platform deck's footprint (disc radius 0.3), then a transition back to the
+ *  flank. The margin is sized against the TERRAIN MESH, not just the analytic
+ *  field: vertices sit ~0.87 units apart, and between a bench vertex and a
+ *  steep-shoulder vertex the rendered triangle cuts the corner ABOVE the
+ *  analytic surface — 0.46 left the blend close enough for that corner-cut to
+ *  lap snow over the disc rims on a hard board's steeper dome. */
+const LEDGE_FLAT_RATIO = 0.58
 const LEDGE_RADIUS_RATIO = 0.85
 /** The carved shelf sits this far BELOW the anchor: the slab platform
- *  board-builder stands on each ledge rises exactly this proud of the ground,
- *  and the pawn stands on the slab's top face (the anchor itself). */
-export const LEDGE_SLAB_INSET = 0.14
+ *  board-builder stands on each ledge rises exactly this proud of the ground
+ *  (a visible stone deck, taller than any mesh corner-cut), and the pawn
+ *  stands on the slab's top face (the anchor itself). */
+export const LEDGE_SLAB_INSET = 0.42
 
 /** The peak may reach into the contour fade band (its far flank dissolving
  *  into the page is the aesthetic), but its center stays inside it. */
@@ -258,7 +262,7 @@ const climbAnchorsFor = (site: SummitSite, sampler: HeightSampler, stages: numbe
     const reach = site.radius * 0.84 + (site.plateauRadius * 1.45 - site.radius * 0.84) * t
     const x = site.center.x + Math.sin(angle) * reach
     const z = site.center.z + Math.cos(angle) * reach
-    const y = sampler(x, z) + site.height * summitMask(site, x, z)
+    const y = massifHeightAt(site, sampler, x, z)
     // Base-noise bumps must never let a gorge ledge out-climb the summit:
     // each stays under it by a margin that shrinks toward the top.
     const ceiling = site.center.y - 0.8 * (flanks - step)
@@ -280,8 +284,23 @@ const climbAnchorsFor = (site: SummitSite, sampler: HeightSampler, stages: numbe
 }
 
 /**
+ * The massif's height at a point — THE one formula `withSummitMassif` carves
+ * and `climbAnchorsFor` reads, so sculpt and climb cannot drift. The peak
+ * FLATTENS ITS UNDERLAY as the mask rises: base fBm noise fades toward the
+ * site's own base level, so the plateau is genuinely flat. Without this a
+ * base-terrain hill under the summit rode straight through the mask-1 zone
+ * as a dome ON the plateau — burying the cairn to its neck and sinking the
+ * top benches into craters (Isaac's hard-mode screenshot, 2026-08-16).
+ */
+const massifHeightAt = (site: SummitSite, sampler: HeightSampler, x: number, z: number): number => {
+  const mask = summitMask(site, x, z)
+  const grounded = sampler(x, z) * (1 - mask) + (site.center.y - site.height) * mask
+  return grounded + site.height * mask
+}
+
+/**
  * Compose the massif into the height field: the peak's smoothstep profile on
- * top of the base terrain, then a flat shelf carved under each climb anchor.
+ * a noise-flattened underlay, then a flat shelf carved under each climb anchor.
  */
 export const withSummitMassif = (
   sampler: HeightSampler,
@@ -291,7 +310,7 @@ export const withSummitMassif = (
   const ledgeFlat = LEDGE_FLAT_RATIO * spacing
   const ledgeRadius = LEDGE_RADIUS_RATIO * spacing
   return (x, z) => {
-    let y = sampler(x, z) + site.height * summitMask(site, x, z)
+    let y = massifHeightAt(site, sampler, x, z)
     site.climbAnchors.forEach((anchor, index) => {
       const distance = Math.hypot(x - anchor.x, z - anchor.z)
       if (distance >= ledgeRadius) return

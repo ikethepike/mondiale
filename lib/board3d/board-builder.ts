@@ -1175,11 +1175,13 @@ const buildClimbPlatforms = (site: SummitSite, spacing: number): Mesh[] => {
   for (const anchor of site.climbAnchors.slice(0, -1)) {
     matrix.setPosition(anchor.x, anchor.y, anchor.z)
     const parts: MarkerPart[] = []
-    const rim = new CylinderGeometry(0.3 * spacing, 0.3 * spacing, 0.5, 24)
-    rim.translate(0, -0.28, 0)
+    // Tall enough to stay rooted under the deepened bench floor
+    // (LEDGE_SLAB_INSET below the anchor) with margin.
+    const rim = new CylinderGeometry(0.3 * spacing, 0.3 * spacing, 0.9, 24)
+    rim.translate(0, -0.48, 0)
     parts.push({ geometry: rim, color: BOARD_COLORS.ink })
-    const top = new CylinderGeometry(0.27 * spacing, 0.27 * spacing, 0.5, 24)
-    top.translate(0, -0.25, 0)
+    const top = new CylinderGeometry(0.27 * spacing, 0.27 * spacing, 0.9, 24)
+    top.translate(0, -0.45, 0)
     parts.push({ geometry: top, color: BOARD_COLORS.warmSand, outline: false })
     bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
   }
