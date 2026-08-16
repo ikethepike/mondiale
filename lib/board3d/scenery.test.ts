@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createTilePath } from './path'
 import { pickScenerySites, pickWaymarkSites } from './scenery'
-import { createHeightSampler, EDGE_FADE_START, withEdgeFalloff } from './terrain'
+import { pickSummitSite, withSummitMassif } from './summit'
+import {
+  createHeightSampler,
+  EDGE_FADE_START,
+  withEdgeFalloff,
+  withPathShelf,
+} from './terrain'
 import type { Tile } from '~~/types/game.types'
 
 const sitesFor = (seed: string, count = 65) => {
@@ -145,6 +151,44 @@ describe('pickScenerySites', () => {
       }
     }
     expect(posted).toBeGreaterThan(12)
+  })
+
+  it('camps the surveyor only under a dealt massif, on the annulus, facing it', () => {
+    // No summit in this world — never a basecamp.
+    for (let index = 0; index < 10; index++) {
+      expect(sitesFor(`scenery-${index}`).sites.basecamp).toBeUndefined()
+    }
+    // With a summit, some boards pitch the tent on the annulus, door to the
+    // mountain.
+    let camped = 0
+    for (let index = 0; index < 60 && camped < 3; index++) {
+      const seed = `scenery-camp-${index}`
+      const tiles: Tile[] = Array.from({ length: 65 }, (_, position) => ({
+        position,
+        type: 'normal' as const,
+      }))
+      const rawSampler = withEdgeFalloff(createHeightSampler(seed))
+      const path = createTilePath(seed, tiles, rawSampler)
+      const summit = pickSummitSite(seed, path, undefined, rawSampler, 3)
+      if (!summit) continue
+      const shelved = withPathShelf(rawSampler, path.shelfPoints, path.spacing * 1.05)
+      const sampler = withSummitMassif(shelved, summit, path.spacing)
+      const sites = pickScenerySites(seed, path, undefined, summit, sampler)
+      if (!sites.basecamp) continue
+      camped++
+      const reach = Math.hypot(
+        sites.basecamp.center.x - summit.center.x,
+        sites.basecamp.center.z - summit.center.z
+      )
+      expect(reach).toBeGreaterThanOrEqual(summit.radius + path.spacing - 1e-6)
+      expect(reach).toBeLessThanOrEqual(summit.radius + path.spacing * 2.2 + 1e-6)
+      const toward = Math.atan2(
+        summit.center.x - sites.basecamp.center.x,
+        summit.center.z - sites.basecamp.center.z
+      )
+      expect(Math.abs(toward - sites.basecamp.yaw)).toBeLessThan(1e-9)
+    }
+    expect(camped).toBeGreaterThan(0)
   })
 
   it('keeps the original cairn and compass picks byte-stable under the new draws', () => {

@@ -102,6 +102,7 @@ export const pickTownSite = (
       ...(scenery.compass ? [scenery.compass] : []),
       ...(scenery.stones ? [scenery.stones.center] : []),
       ...(scenery.scaleBar ? [scenery.scaleBar.center] : []),
+      ...(scenery.basecamp ? [scenery.basecamp.center] : []),
     ]
     return furniture.every(other => Math.hypot(other.x - x, other.z - z) > radius + 4)
   }

@@ -131,6 +131,10 @@ export const pickRailwayLoop = (
       const scaleBar = scenery.scaleBar.center
       if (Math.hypot(scaleBar.x - x, scaleBar.z - z) < 4) return false
     }
+    if (scenery.basecamp) {
+      const basecamp = scenery.basecamp.center
+      if (Math.hypot(basecamp.x - x, basecamp.z - z) < 4) return false
+    }
     return true
   }
 

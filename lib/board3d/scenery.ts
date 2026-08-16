@@ -25,6 +25,8 @@ export interface ScenerySites {
   stones?: { center: Vector3; yaw: number; count: number }
   /** The printed scale bar on quiet ground, yawed to a seeded cardinal. */
   scaleBar?: { center: Vector3; yaw: number }
+  /** The surveyor's basecamp under a dealt massif — tent facing the climb. */
+  basecamp?: { center: Vector3; yaw: number }
 }
 
 /** How far scenery keeps from every track sample (×spacing) — outside the
@@ -165,7 +167,35 @@ export const pickScenerySites = (
     ? { center: new Vector3(scaleSpot.x, scaleSpot.y, scaleSpot.z), yaw: scaleBarYaw }
     : undefined
 
-  return { cairns, compass, stones, scaleBar }
+  // Basecamp: only under a dealt massif — the flattest spot in the annulus
+  // just beyond the summit's claim, tent door facing the mountain. No RNG:
+  // the mountain and the ground decide.
+  let basecamp: ScenerySites['basecamp']
+  if (summit) {
+    const inner = summit.radius + spacing
+    const outer = summit.radius + spacing * 2.2
+    const camped = spots
+      .filter(spot => {
+        const reach = Math.hypot(spot.x - summit.center.x, spot.z - summit.center.z)
+        return reach >= inner && reach <= outer && spot.slope <= 0.09
+      })
+      .filter(spot => {
+        const placed = [...placedSoFar()]
+        if (stones) placed.push(stones.center)
+        if (scaleBar) placed.push(scaleBar.center)
+        return placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > 10)
+      })
+      .sort((a, b) => a.slope - b.slope)
+    if (camped.length) {
+      const spot = camped[0]
+      basecamp = {
+        center: new Vector3(spot.x, spot.y, spot.z),
+        yaw: Math.atan2(summit.center.x - spot.x, summit.center.z - spot.z),
+      }
+    }
+  }
+
+  return { cairns, compass, stones, scaleBar, basecamp }
 }
 
 /** A fingerpost stands just off the shelf edge, pointing the way ahead. */
@@ -217,6 +247,7 @@ export const pickWaymarkSites = (
       ...(furniture.compass ? [furniture.compass] : []),
       ...(furniture.stones ? [furniture.stones.center] : []),
       ...(furniture.scaleBar ? [furniture.scaleBar.center] : []),
+      ...(furniture.basecamp ? [furniture.basecamp.center] : []),
       ...sites.map(site => site.position),
     ]
     return others.every(other => Math.hypot(other.x - x, other.z - z) > 10)

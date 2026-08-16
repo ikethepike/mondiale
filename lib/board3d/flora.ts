@@ -32,8 +32,15 @@ import type { TownSite } from './town'
  * and grounds the birds at build time.
  */
 
-/** Wind-swayed flat-color material shared by props and their trunks. */
-const windMaterial = (color: string, sway: number, timeUniforms: { value: number }[]) => {
+/** Wind-swayed flat-color material shared by props and their trunks (and
+ *  the basecamp's pennant — anything on the wind clock). Instancing-only:
+ *  the shader reads instanceMatrix, so even a single flag rides an
+ *  InstancedMesh of count 1. */
+export const windMaterial = (
+  color: string,
+  sway: number,
+  timeUniforms: { value: number }[]
+) => {
   const material = new ShaderMaterial({
     side: DoubleSide,
     uniforms: { uColor: { value: new Color(color) }, uTime: { value: 0 }, uSway: { value: sway } },

@@ -10,6 +10,7 @@ import {
   DataTexture,
   FloatType,
   Group,
+  InstancedBufferAttribute,
   InstancedMesh,
   LinearFilter,
   LatheGeometry,
@@ -71,7 +72,8 @@ import {
   pickPondSite,
   withPondBasin,
 } from './water'
-import { buildFlora } from './flora'
+import { buildFlora, windMaterial } from './flora'
+import { type BoatMooring, pickBoatMooring } from './boat'
 
 export interface BoardBuild {
   group: Group
@@ -509,8 +511,18 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   if (scenery.stones)
     buildStandingStones(scenery.stones, spacing, sampler).forEach(mesh => group.add(mesh))
   if (scenery.scaleBar) group.add(buildScaleBar(scenery.scaleBar, sampler))
+  if (scenery.basecamp)
+    buildBasecamp(scenery.basecamp, spacing, timeUniforms).forEach(mesh => group.add(mesh))
 
   const animations: ((time: number) => void)[] = []
+
+  // A rowboat moored on the board's still water — lake first, else pond.
+  const mooring = pickBoatMooring(seed, pondSite, lakeSite, spacing, sampler)
+  if (mooring) {
+    const boat = buildRowboat(mooring, spacing)
+    group.add(boat.group)
+    animations.push(boat.animate)
+  }
 
   // The hamlet: a huddle of houses and one tower around a lane, dressed in
   // the biome's palette. Sited after the survey furniture, before the
@@ -1642,6 +1654,105 @@ const buildScaleBar = (
       depthWrite: false,
     })
   )
+}
+
+/** The surveyor's basecamp: an A-frame ridge tent of two leaning canvas
+ *  slabs (open silhouette, no cross-arms) and an ink pennant pole riding the
+ *  flora wind clock — the cairns-and-compass surveying story, completed. */
+const buildBasecamp = (
+  basecamp: NonNullable<ScenerySites['basecamp']>,
+  spacing: number,
+  timeUniforms: { value: number }[]
+): (Mesh | InstancedMesh)[] => {
+  const { center, yaw } = basecamp
+  const parts: MarkerPart[] = []
+
+  const LEAN = 0.62
+  for (const side of [-1, 1]) {
+    const slab = new BoxGeometry(1.05, 0.05, 0.72)
+    slab.rotateX(side * LEAN)
+    slab.translate(0, 0.42, side * 0.26)
+    parts.push({ geometry: slab, color: BOARD_COLORS.warmSand })
+  }
+  const pole = new CylinderGeometry(0.025, 0.03, 0.95, 8)
+  pole.translate(0.85, 0.475, 0)
+  parts.push({ geometry: pole, color: BOARD_COLORS.darkBlue })
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  const matrix = new Matrix4()
+    .makeRotationY(yaw)
+    .setPosition(center.x, center.y - 0.04, center.z)
+  bakeParts(parts, matrix, spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  const meshes: (Mesh | InstancedMesh)[] = bucketsToMeshes(colorBuckets, outlines)
+
+  // The pennant: a two-triangle flag on the wind clock (count-1 instancing —
+  // the wind shader reads instanceMatrix).
+  const flag = new BufferGeometry()
+  // prettier-ignore
+  const flagVertices = new Float32Array([
+    0, 0.95, 0,   0, 0.78, 0,   0.34, 0.86, 0,
+  ])
+  flag.setAttribute('position', new BufferAttribute(flagVertices, 3))
+  flag.setAttribute('aPhase', new InstancedBufferAttribute(new Float32Array([0.7]), 1))
+  const pennant = new InstancedMesh(
+    flag,
+    windMaterial(BOARD_COLORS.hiorAnge, prefersReducedMotion() ? 0 : 0.05, timeUniforms),
+    1
+  )
+  const pennantMatrix = new Matrix4()
+    .makeRotationY(yaw)
+    .setPosition(center.x + Math.cos(yaw) * 0.85, center.y - 0.04, center.z - Math.sin(yaw) * 0.85)
+  pennant.setMatrixAt(0, pennantMatrix)
+  meshes.push(pennant)
+  return meshes
+}
+
+/** The moored rowboat: lapped hull strakes, pointed prow and stern, two
+ *  thwarts — cream and ink like the bridge it often neighbours. Returned as
+ *  a Group so the mooring bob can ride it whole. */
+const buildRowboat = (
+  mooring: BoatMooring,
+  spacing: number
+): { group: Group; animate: (time: number) => void } => {
+  const parts: MarkerPart[] = []
+  for (const [width, lift, breadth] of [
+    [0.86, 0.05, 0.3],
+    [1.0, 0.12, 0.38],
+    [1.14, 0.19, 0.46],
+  ]) {
+    const strake = new BoxGeometry(width, 0.075, breadth)
+    strake.translate(0, lift, 0)
+    parts.push({ geometry: strake, color: BOARD_COLORS.warmSand })
+  }
+  for (const end of [-1, 1]) {
+    const prow = new CylinderGeometry(0.001, 0.23, 0.34, 4)
+    prow.rotateZ(end * (Math.PI / 2))
+    prow.translate(end * 0.72, 0.12, 0)
+    parts.push({ geometry: faceted(prow), color: BOARD_COLORS.warmSand })
+  }
+  for (const at of [-0.22, 0.24]) {
+    const thwart = new BoxGeometry(0.08, 0.035, 0.42)
+    thwart.translate(at, 0.21, 0)
+    parts.push({ geometry: thwart, color: BOARD_COLORS.darkBlue })
+  }
+
+  const colorBuckets = new Map<string, BufferGeometry[]>()
+  const outlines: BufferGeometry[] = []
+  bakeParts(parts, new Matrix4(), spacing * OUTLINE_WIDTH_RATIO, colorBuckets, outlines)
+  const group = new Group()
+  bucketsToMeshes(colorBuckets, outlines).forEach(mesh => group.add(mesh))
+  group.rotation.y = mooring.yaw
+  group.position.copy(mooring.position)
+  group.position.y = mooring.position.y - 0.02
+
+  const animate = (time: number) => {
+    if (prefersReducedMotion()) return
+    group.position.y = mooring.position.y - 0.02 + Math.sin(time * 0.9) * 0.02
+    group.rotation.z = Math.sin(time * 0.7 + 1.3) * 0.02
+    group.rotation.x = Math.sin(time * 0.55) * 0.015
+  }
+  return { group, animate }
 }
 
 /** What the hamlet wears per biome — scenery reads the palette the way the
