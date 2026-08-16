@@ -171,12 +171,88 @@ export const withPondBasin = (sampler: HeightSampler, site: PondSite): HeightSam
   }
 }
 
+/** The frozen sheet: opaque snow-white, a thin ink rim where depth crosses
+ *  zero — the pond drawn as a map symbol rather than lit as water. Static by
+ *  nature, so it registers no clock. */
+const createIceSheetMaterial = (biome: BoardBiome): ShaderMaterial =>
+  new ShaderMaterial({
+    uniforms: {
+      uSheet: { value: new Color(biome.snow) },
+      uRim: { value: new Color(biome.minor) },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aDepth;
+      varying float vDepth;
+      void main() {
+        vDepth = aDepth;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSheet; uniform vec3 uRim;
+      varying float vDepth;
+      void main() {
+        if (vDepth <= 0.0) discard;
+        float rim = 1.0 - smoothstep(0.03, 0.16, vDepth);
+        gl_FragColor = vec4(mix(uSheet, uRim, rim * 0.85), 1.0);
+        #include <colorspace_fragment>
+      }
+    `,
+  })
+
+/** Hairline cracks wandering out from the sheet's heart: 2–3 kinked ink
+ *  polylines, each segment ending before the shoreline shallows. */
+const buildIceCracks = (
+  seed: string,
+  site: PondSite,
+  sampler: HeightSampler,
+  biome: BoardBiome
+): Mesh => {
+  const random = Alea(`${seed}:pond-ice`)
+  const { center, waterY, waterRadius } = site
+  const segments: BufferGeometry[] = []
+  const crackCount = 2 + Math.floor(random() * 2)
+  for (let crack = 0; crack < crackCount; crack++) {
+    let x = center.x + (random() - 0.5) * waterRadius * 0.6
+    let z = center.z + (random() - 0.5) * waterRadius * 0.6
+    let heading = random() * Math.PI * 2
+    for (let step = 0; step < 3; step++) {
+      const length = waterRadius * (0.25 + random() * 0.2)
+      const nextX = x + Math.sin(heading) * length
+      const nextZ = z + Math.cos(heading) * length
+      // Stop at the shallows: a crack tip on dry land breaks the fiction.
+      if (waterY - sampler(nextX, nextZ) < 0.05) break
+      const piece = new BoxGeometry(0.035, 0.012, length)
+      piece.rotateY(heading)
+      piece.translate((x + nextX) / 2, waterY + 0.012, (z + nextZ) / 2)
+      segments.push(piece)
+      x = nextX
+      z = nextZ
+      heading += (random() - 0.5) * 1.1
+    }
+  }
+  if (!segments.length) {
+    // Every wander hit the shallows at once — one short crack over the deep
+    // heart keeps the sheet readable (and mergeGeometries fed).
+    const piece = new BoxGeometry(0.035, 0.012, waterRadius * 0.6)
+    piece.rotateY(random() * Math.PI)
+    piece.translate(center.x, waterY + 0.012, center.z)
+    segments.push(piece)
+  }
+  const merged = mergeGeometries(segments)
+  segments.forEach(segment => segment.dispose())
+  return new Mesh(merged, new MeshBasicMaterial({ color: biome.minor }))
+}
+
 /**
  * The pond's meshes: still water, two milk ripple rings, and a low arched
  * plank bridge whose apex matches the tile-top height — pawns land on the
- * deck exactly as they would on the disc it replaces.
+ * deck exactly as they would on the disc it replaces. On an ice board the
+ * water is FROZEN: an opaque ink-rimmed sheet with hairline cracks — a
+ * skating rink instead of a shimmer, naturally still under reduced motion.
  */
 export const buildPondMeshes = (
+  seed: string,
   site: PondSite,
   spacing: number,
   tileTopY: number,
@@ -190,6 +266,8 @@ export const buildPondMeshes = (
   // Living water: a grid with per-vertex analytic depth (water line minus
   // the carved basin under each vertex) — the foam shoreline emerges where
   // depth crosses zero, replacing the old flat disc and milk ripple rings.
+  // The frozen sheet keeps the same clipped grid, so the shoreline stays the
+  // organic terrain/water intersection either way.
   const water = new PlaneGeometry(waterRadius * 2.6, waterRadius * 2.6, 28, 28)
   water.rotateX(-Math.PI / 2)
   water.translate(center.x, waterY, center.z)
@@ -199,7 +277,12 @@ export const buildPondMeshes = (
     pondDepths[index] = waterY - sampler(positions.getX(index), positions.getZ(index))
   }
   water.setAttribute('aDepth', new BufferAttribute(pondDepths, 1))
-  meshes.push(new Mesh(water, createWaterMaterial(biome, timeUniforms)))
+  if (biome.name === 'ice') {
+    meshes.push(new Mesh(water, createIceSheetMaterial(biome)))
+    meshes.push(buildIceCracks(seed, site, sampler, biome))
+  } else {
+    meshes.push(new Mesh(water, createWaterMaterial(biome, timeUniforms)))
+  }
 
   // --- Bridge: planks arched along the path tangent -------------------------
   const matrix = new Matrix4()

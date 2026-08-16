@@ -283,10 +283,48 @@ export const buildFlora = (
   // --- Biome props: trees / desert spires / ice shards ----------------------
   const propTarget = Math.round(biome.foliageCount * (phone ? 0.6 : 1))
   const propSpots: { x: number; z: number; y: number }[] = []
+
+  // Surveyed orchard (parchment): a minority of the trees stand in one small
+  // seeded grid on flat clear ground — hand-drawn maps mark orchards exactly
+  // this way. The rest of the population scatters as always.
+  if (biome.name === 'parchment') {
+    const ROWS = 2
+    const COLS = 5
+    const PITCH = 2.2
+    for (let attempt = 0; attempt < 40 && !propSpots.length; attempt++) {
+      const centerX = (prng() - 0.5) * 110
+      const centerZ = (prng() - 0.5) * 110
+      const yaw = prng() * Math.PI
+      const grid: { x: number; z: number; y: number }[] = []
+      let low = Infinity
+      let high = -Infinity
+      for (let row = 0; row < ROWS; row++) {
+        for (let column = 0; column < COLS; column++) {
+          const along = (column - (COLS - 1) / 2) * PITCH
+          const across = (row - (ROWS - 1) / 2) * PITCH
+          const x = centerX + Math.cos(yaw) * along - Math.sin(yaw) * across
+          const z = centerZ + Math.sin(yaw) * along + Math.cos(yaw) * across
+          if (!clearOfTrack(x, z, spacing * 1.6)) break
+          const y = sampler(x, z)
+          low = Math.min(low, y)
+          high = Math.max(high, y)
+          grid.push({ x, z, y })
+        }
+      }
+      // The whole plot must be clear AND level — an orchard on a hillside
+      // reads as scattered trees, not a survey mark.
+      if (grid.length === ROWS * COLS && high - low < 0.5) propSpots.push(...grid)
+    }
+  }
+  const orchardCount = propSpots.length
+
   for (let attempt = 0; attempt < propTarget * 12 && propSpots.length < propTarget; attempt++) {
     const x = (prng() - 0.5) * 150
     const z = (prng() - 0.5) * 150
     if (!clearOfTrack(x, z, spacing * 1.6)) continue
+    // Desert spires huddle around water — the open erg stays empty, which is
+    // the desert's real signature (its oasis ring made structural).
+    if (biome.name === 'desert' && waterDistanceAt(x, z) > 12 && prng() < 0.6) continue
     propSpots.push({ x, z, y: sampler(x, z) })
   }
   if (propSpots.length) {
@@ -302,8 +340,13 @@ export const buildFlora = (
       windMaterial(biome.foliageColor, still ? 0 : 0.03, timeUniforms),
       propSpots.length
     )
-    const trunk = new CylinderGeometry(0.14, 0.18, 1.1, 6)
-    trunk.translate(0, 0.55, 0)
+    // Trees stand on trunks; ice shards on squat hex slabs (rooted ice, not
+    // floating cones); desert spires rise straight from the sand.
+    const trunk =
+      biome.foliage === 'shards'
+        ? new CylinderGeometry(0.5, 0.62, 0.22, 6)
+        : new CylinderGeometry(0.14, 0.18, 1.1, 6)
+    trunk.translate(0, biome.foliage === 'shards' ? 0.11 : 0.55, 0)
     const trunkMesh = new InstancedMesh(
       trunk,
       windMaterial(biome.trunkColor, 0, timeUniforms),
@@ -311,7 +354,9 @@ export const buildFlora = (
     )
     const phases = new Float32Array(propSpots.length)
     propSpots.forEach((spot, index) => {
-      const scale = 0.75 + prng() * 0.7
+      // Orchard rows stand at one size — uniformity is what marks the grid
+      // as surveyed rather than accidental.
+      const scale = index < orchardCount ? 0.9 : 0.75 + prng() * 0.7
       matrix.makeScale(scale, scale, scale)
       matrix.setPosition(spot.x, spot.y, spot.z)
       canopyMesh.setMatrixAt(index, matrix)
@@ -320,7 +365,7 @@ export const buildFlora = (
     })
     canopy.setAttribute('aPhase', new InstancedBufferAttribute(phases, 1))
     trunk.setAttribute('aPhase', new InstancedBufferAttribute(phases, 1))
-    if (biome.foliage !== 'trees') trunkMesh.count = 0
+    if (biome.foliage === 'spires') trunkMesh.count = 0
     meshes.push(canopyMesh, trunkMesh)
   }
 
@@ -352,6 +397,75 @@ export const buildFlora = (
     }
     birds.setAttribute('aFlight', new InstancedBufferAttribute(flights, 3))
     meshes.push(birdMesh)
+  }
+
+  // --- Reed fringe (grassland): dark blades crowding the water margins ------
+  // Drawn AFTER every other population on the same stream, so existing
+  // boards' grass, props and birds land exactly where they always did.
+  if (biome.name === 'grassland' && (river || pond)) {
+    const reedTarget = Math.round(140 * (phone ? 0.5 : 1))
+    const reedSpots: { x: number; z: number }[] = []
+    for (
+      let attempt = 0;
+      attempt < reedTarget * 4 && reedSpots.length < reedTarget;
+      attempt++
+    ) {
+      // Sample ALONG the water instead of over the whole page — the band is
+      // thin, and a blind sweep would starve it.
+      let x: number
+      let z: number
+      if (river && (!pond || prng() < 0.75)) {
+        const at = river.points[Math.floor(prng() * river.points.length)]
+        const angle = prng() * Math.PI * 2
+        const reach = river.width + 1.2 + prng() * 1.8
+        x = at.x + Math.sin(angle) * reach
+        z = at.z + Math.cos(angle) * reach
+      } else if (pond) {
+        const angle = prng() * Math.PI * 2
+        const reach = pond.waterRadius + 1.2 + prng() * 1.8
+        x = pond.center.x + Math.sin(angle) * reach
+        z = pond.center.z + Math.cos(angle) * reach
+      } else {
+        continue
+      }
+      const wet = waterDistanceAt(x, z)
+      if (wet < 1.2 || wet > 3.0) continue
+      if (!clearOfTrack(x, z, spacing * 0.95)) continue
+      reedSpots.push({ x, z })
+    }
+    if (reedSpots.length) {
+      const REEDS_PER_CLUMP = 4
+      const count = reedSpots.length * REEDS_PER_CLUMP
+      const root = new Color(biome.lush).lerp(new Color(biome.major), 0.45)
+      const tip = new Color(biome.stippleColor).lerp(new Color(biome.major), 0.55)
+      const reeds = new InstancedMesh(
+        bladeGeometry(),
+        bladeMaterial(root, tip, still ? 0 : 0.22, timeUniforms),
+        count
+      )
+      const phases = new Float32Array(count)
+      let reed = 0
+      for (const spot of reedSpots) {
+        for (let sprout = 0; sprout < REEDS_PER_CLUMP; sprout++) {
+          const angle = prng() * Math.PI * 2
+          const spread = Math.sqrt(prng()) * 0.7
+          const x = spot.x + Math.sin(angle) * spread
+          const z = spot.z + Math.cos(angle) * spread
+          quaternion.setFromAxisAngle(up, prng() * Math.PI * 2)
+          matrix.compose(
+            new Vector3(x, sampler(x, z) - 0.04, z),
+            quaternion,
+            // Tall and narrow against the carpet's squat blades.
+            new Vector3(0.55 + prng() * 0.2, 1.4 + prng() * 0.5, 1)
+          )
+          reeds.setMatrixAt(reed, matrix)
+          phases[reed] = prng() * Math.PI * 2
+          reed++
+        }
+      }
+      reeds.geometry.setAttribute('aPhase', new InstancedBufferAttribute(phases, 1))
+      meshes.push(reeds)
+    }
   }
 
   return meshes

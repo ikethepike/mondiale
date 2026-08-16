@@ -51,6 +51,7 @@ import {
   BOARD_SIZE,
   createHeightSampler,
   type HeightSampler,
+  MAX_ELEVATION,
   withEdgeFalloff,
   withPathShelf,
 } from './terrain'
@@ -270,12 +271,21 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   heightMap.magFilter = LinearFilter
   heightMap.needsUpdate = true
 
+  // The snowline: a finale massif brings its own; an ice board carries a
+  // standing one on every crest. Both dealt — the lower line wins.
+  const biomeSnowline =
+    biome.snowlineFraction === undefined ? undefined : MAX_ELEVATION * biome.snowlineFraction
+  const snowlineY =
+    summitSite && biomeSnowline !== undefined
+      ? Math.min(summitSite.snowlineY, biomeSnowline)
+      : (summitSite?.snowlineY ?? biomeSnowline)
+
   const contourMaterial = createContourMaterial({
     rippleRadius: spacing * 4,
     biome,
     heightMap,
     heightHalf: fieldHalf,
-    snowlineY: summitSite?.snowlineY,
+    snowlineY,
   })
   timeUniforms.push(contourMaterial.uniforms.uTime as { value: number })
   group.add(new Mesh(terrainGeometry, contourMaterial))
@@ -503,8 +513,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // --- Pond + bridge (when this board drew one) ------------------------------
   if (pondSite) {
     const tileTopY = pondSite.center.y + rimHeight + TILE_TOP_INSET
-    buildPondMeshes(pondSite, spacing, tileTopY, biome, sampler, timeUniforms).forEach(mesh =>
-      group.add(mesh)
+    buildPondMeshes(seed, pondSite, spacing, tileTopY, biome, sampler, timeUniforms).forEach(
+      mesh => group.add(mesh)
     )
   }
 
