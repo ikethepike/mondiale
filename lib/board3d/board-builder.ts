@@ -40,6 +40,7 @@ import { CLIMAX_TILES } from '~~/lib/tiles'
 import { createNumberAtlas } from './atlas'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
+import { buildContourLabels, pickContourLabels } from './contour-labels'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
 import { type BoardBiome, pickBoardBiome } from './biomes'
@@ -487,6 +488,18 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     railway.meshes.forEach(mesh => group.add(mesh))
     animations.push(railway.drive)
   }
+
+  // Elevation labels along the major contour lines — sited after the rails
+  // so no number ends up under a sleeper.
+  const labelPlan = pickContourLabels(sampler, tilePath, {
+    pond: pondSite,
+    summit: summitSite,
+    river: riverPath,
+    railway: railwayLoop,
+    snowlineY,
+  })
+  const contourLabels = buildContourLabels(labelPlan, biome)
+  if (contourLabels) group.add(contourLabels)
 
   // The living layer: blade grass, biome props, gull flocks — all wind-swayed
   // in the vertex shader, all clear of the track, stilled by reduced motion.

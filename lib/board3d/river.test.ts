@@ -58,6 +58,29 @@ describe('pickRiverPath', () => {
       }
     }
   })
+
+  it('bends gently — the lateral low-pass keeps kinks out of the ribbon', () => {
+    let checked = 0
+    for (let index = 0; index < 30; index++) {
+      const { river } = riverFor(`river-flow-${index}`)
+      if (!river) continue
+      checked++
+      // The tail curls into its arrival pool by design (the stagnation cut
+      // fires only once the water has stopped dropping) — the gentle-bend
+      // guarantee covers the ribbon's RUNNING length.
+      for (let point = 1; point < river.points.length - 6; point++) {
+        const before = river.points[point - 1]
+        const here = river.points[point]
+        const after = river.points[point + 1]
+        const inHeading = Math.atan2(here.x - before.x, here.z - before.z)
+        const outHeading = Math.atan2(after.x - here.x, after.z - here.z)
+        let turn = Math.abs(outHeading - inHeading)
+        if (turn > Math.PI) turn = 2 * Math.PI - turn
+        expect(turn).toBeLessThan(1.0)
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
 })
 
 describe('withRiverBed', () => {

@@ -132,11 +132,35 @@ export const pickRiverPath = (
         falls.push({ top: coarse[index].clone(), bottom: coarse[index + 1].clone() })
     }
 
+    // The march can turn hard where the downhill direction flips across a
+    // gully — and the spline faithfully reproduces every hairpin. Iron the
+    // coarse polyline first (ends pinned; y re-clamps below), so the fine
+    // resample inherits a graded line the way the railway's cut-and-fill does.
+    for (let round = 0; round < 2; round++) {
+      for (let index = 1; index < coarse.length - 1; index++) {
+        coarse[index].x =
+          coarse[index].x * 0.5 + (coarse[index - 1].x + coarse[index + 1].x) * 0.25
+        coarse[index].z =
+          coarse[index].z * 0.5 + (coarse[index - 1].z + coarse[index + 1].z) * 0.25
+      }
+    }
+
     // Fine resample through a spline, then re-clamp: the smooth centerline is
     // what keeps the bed carve and the foam shoreline from scalloping.
     const spline = new CatmullRomCurve3(coarse, false, 'centripetal')
     const fineCount = Math.max(coarse.length * 2, Math.ceil(spline.getLength() / 1.2))
     const points = spline.getSpacedPoints(fineCount)
+    // Two lateral low-pass rounds over the fine points (ends pinned): the
+    // spline still carries the march's kinks through rough bed stretches,
+    // and the ribbon renders every one of them.
+    for (let round = 0; round < 2; round++) {
+      for (let index = 1; index < points.length - 1; index++) {
+        points[index].x =
+          points[index].x * 0.5 + (points[index - 1].x + points[index + 1].x) * 0.25
+        points[index].z =
+          points[index].z * 0.5 + (points[index - 1].z + points[index + 1].z) * 0.25
+      }
+    }
     let fineLevel = Infinity
     for (const point of points) {
       fineLevel = Math.min(fineLevel, point.y)
@@ -155,6 +179,9 @@ export const pickRiverPath = (
  */
 export const withRiverBed = (sampler: HeightSampler, river: RiverPath): HeightSampler => {
   const { points, width } = river
+  // The blend runs a shoulder wider than the carve's nominal reach — the
+  // tighter falloff cut a visible crease along rough bank stretches.
+  const shoulder = width * 1.25
   return (x, z) => {
     const bank = sampler(x, z)
     let nearestSquared = Infinity
@@ -168,8 +195,8 @@ export const withRiverBed = (sampler: HeightSampler, river: RiverPath): HeightSa
         waterY = point.y
       }
     }
-    if (nearestSquared >= width * width) return bank
-    const t = smoothstep(Math.sqrt(nearestSquared) / width)
+    if (nearestSquared >= shoulder * shoulder) return bank
+    const t = smoothstep(Math.sqrt(nearestSquared) / shoulder)
     const bed = Math.min(bank, waterY - (BED_DROP - WATER_DROP))
     return bed * (1 - t) + bank * t
   }
