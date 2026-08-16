@@ -46,7 +46,7 @@ import { buildContourLabels, pickContourLabels } from './contour-labels'
 import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
 import { type BoardBiome, pickBoardBiome } from './biomes'
-import { buildRailway, pickRailwayLoop } from './railway'
+import { buildRailway, pickRailwayRoute } from './railway'
 import { lakeShoreDistance, pickLakeSite, withLakeBed } from './lake'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import {
@@ -564,10 +564,11 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     townSite
   ).forEach(site => buildWaymark(site, spacing).forEach(mesh => group.add(mesh)))
 
-  // A decorative railway for certain seeds: a closed contour loop with an
-  // old steam train rounding it. Picked LAST among the placements, so it is
-  // always the feature that yields — the ticker drives it via `animations`.
-  const railwayLoop = pickRailwayLoop(
+  // A decorative railway for certain seeds: a closed contour loop OR an
+  // edge-to-edge traverse off the sheet, with an old steam train riding it.
+  // Picked LAST among the placements, so it is always the feature that
+  // yields — the ticker drives it via `animations`.
+  const railwayRoute = pickRailwayRoute(
     seed,
     tilePath,
     pondSite,
@@ -578,8 +579,9 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     lakeSite,
     townSite
   )
-  if (railwayLoop) {
-    const railway = buildRailway(railwayLoop, biome)
+  const railwayLoop = railwayRoute?.points
+  if (railwayRoute) {
+    const railway = buildRailway(railwayRoute, biome, sampler)
     railway.meshes.forEach(mesh => group.add(mesh))
     animations.push(railway.drive)
   }

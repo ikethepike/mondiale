@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Vector3 } from 'three'
 import { pickLakeSite, withLakeBed } from './lake'
 import { createTilePath } from './path'
-import { loopCrossesItself, pickRailwayLoop } from './railway'
+import { lineCrossesItself, loopCrossesItself, pickRailwayLoop, pickRailwayRoute } from './railway'
 import { pickRiverPath, withRiverBed } from './river'
 import { pickScenerySites } from './scenery'
 import { pickSummitSite, withSummitMassif } from './summit'
@@ -108,6 +108,91 @@ describe('pickRailwayLoop', () => {
         expect(point.y).toBeCloseTo(sampler(point.x, point.z) + 0.1, 6)
       }
     }
+  })
+
+  it('deals both route kinds across seeds, deterministically', () => {
+    const kinds = { loop: 0, traverse: 0 }
+    for (let index = 0; index < 400 && (kinds.loop < 2 || kinds.traverse < 2); index++) {
+      const seed = `railway-kind-${index}`
+      const world = worldFor(seed)
+      const route = pickRailwayRoute(
+        seed,
+        world.path,
+        undefined,
+        undefined,
+        undefined,
+        { cairns: [] },
+        world.sampler
+      )
+      if (!route) continue
+      const again = pickRailwayRoute(
+        seed,
+        world.path,
+        undefined,
+        undefined,
+        undefined,
+        { cairns: [] },
+        world.sampler
+      )
+      expect(again?.closed).toBe(route.closed)
+      expect(again?.points.length).toBe(route.points.length)
+      kinds[route.closed ? 'loop' : 'traverse']++
+    }
+    expect(kinds.loop).toBeGreaterThan(1)
+    expect(kinds.traverse).toBeGreaterThan(1)
+  })
+
+  it('runs a traverse off both sheet edges, gently graded, never crossing the track', () => {
+    let found = 0
+    for (let index = 0; index < 400 && found < 3; index++) {
+      const seed = `railway-kind-${index}`
+      const world = worldFor(seed)
+      const route = pickRailwayRoute(
+        seed,
+        world.path,
+        undefined,
+        undefined,
+        undefined,
+        { cairns: [] },
+        world.sampler
+      )
+      if (!route || route.closed) continue
+      found++
+      const { points } = route
+      const { path, sampler } = world
+
+      // Both ends off the sheet, far apart.
+      expect(Math.hypot(points[0].x, points[0].z)).toBeGreaterThan(EDGE_FADE_START)
+      const last = points[points.length - 1]
+      expect(Math.hypot(last.x, last.z)).toBeGreaterThan(EDGE_FADE_START)
+      expect(Math.hypot(points[0].x - last.x, points[0].z - last.z)).toBeGreaterThan(
+        EDGE_FADE_START
+      )
+
+      // Two-tier clearance: hard floor everywhere, and no segment of the
+      // route ever crosses the track polyline.
+      for (const point of points) {
+        let nearest = Infinity
+        for (const shelf of path.shelfPoints) {
+          nearest = Math.min(nearest, Math.hypot(shelf.x - point.x, shelf.z - point.z))
+        }
+        expect(nearest).toBeGreaterThanOrEqual(path.spacing * 0.8 - 1e-6)
+      }
+      expect(lineCrossesItself(points)).toBe(false)
+
+      // Gentle rail grade, bounded float over dips (the trestle budget).
+      for (let at = 1; at < points.length; at++) {
+        const run = Math.hypot(points[at].x - points[at - 1].x, points[at].z - points[at - 1].z)
+        if (run < 1e-6) continue
+        expect(Math.abs(points[at].y - points[at - 1].y) / run).toBeLessThan(0.33)
+      }
+      for (const point of points) {
+        const ground = sampler(point.x, point.z) + 0.1
+        expect(point.y).toBeGreaterThanOrEqual(ground - 1e-6)
+        expect(point.y - ground).toBeLessThanOrEqual(1.1 + 1e-6)
+      }
+    }
+    expect(found).toBeGreaterThan(0)
   })
 
   it('keeps the loop clear of a dealt town', () => {
