@@ -70,7 +70,7 @@ describe('pickLakeSite', () => {
 
   it('floods a real basin: deep enough, sized within bounds, fully underwater', () => {
     for (const { lake, sampler } of dealtWorlds('lake-shape', 4)) {
-      expect(lake.depth).toBeGreaterThanOrEqual(0.5)
+      expect(lake.depth).toBeGreaterThanOrEqual(0.85)
       const { grid, waterY } = lake
       let cells = 0
       for (let row = 0; row < grid.rows; row++) {

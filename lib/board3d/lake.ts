@@ -53,8 +53,10 @@ const GRID_STEP = 2
 /** Flooded area bounds (world units²). */
 const MIN_AREA = 120
 const MAX_AREA = 450
-/** The deep point must sit at least this far under the surface. */
-const MIN_DEPTH = 0.5
+/** The deep point must sit at least this far under the surface — a lake is
+ *  a DROWNED basin, not a sheen on a dip (shallow fills read as puddle
+ *  spam, Isaac's call on the first live board). */
+const MIN_DEPTH = 0.85
 /** Trial levels rise in these increments until the basin leaks. */
 const LEVEL_STEP = 0.08
 const MAX_FILL = 1.7
