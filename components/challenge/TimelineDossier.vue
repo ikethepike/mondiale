@@ -1,5 +1,5 @@
 <template>
-  <ExpandDock v-model:open="open" :label="event?.name" close-title="Close the story">
+  <ExpandDock v-model:open="open" fit :label="event?.name" close-title="Close the story">
     <article v-if="event" class="timeline-dossier">
       <figure v-if="event.image" class="dossier-photo">
         <img :src="event.image" :alt="event.name" />
@@ -57,6 +57,11 @@ const credit = computed(() => (event.value ? mediaCreditLine(event.value, 'commo
   display: flex;
   max-width: 52rem;
   flex-flow: column nowrap;
+  // The dossier owns its height inside the fit frame: a long story scrolls
+  // here, never past the frame (and the close button keeps its corner).
+  max-height: min(74dvh, 58rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dossier-photo {

@@ -5,7 +5,7 @@
         <div class="dock-scrim" aria-hidden="true" @click="close" />
         <div
           class="dock-frame"
-          :class="{ tall }"
+          :class="{ tall, fit }"
           role="dialog"
           aria-modal="true"
           :aria-label="label"
@@ -44,8 +44,11 @@ withDefaults(
     label?: string
     closeTitle?: string
     tall?: boolean
+    /** Size the frame to its content (prose dossiers) instead of the fixed
+     *  subject band — the consumer bounds its own height and scroll. */
+    fit?: boolean
   }>(),
-  { label: 'Expanded view', closeTitle: 'Close', tall: false }
+  { label: 'Expanded view', closeTitle: 'Close', tall: false, fit: false }
 )
 
 const open = defineModel<boolean>('open', { default: false })
