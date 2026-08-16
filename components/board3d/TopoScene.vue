@@ -215,7 +215,13 @@ const punchInOn = (playerId: string, tile: TileTransform) => {
     ease: EASE.enter,
     commanding: true,
   })
+  // A commanding push-in owes a commanding pull-back: for a gesture-owner no
+  // routine frame will ever fire again, so without this the camera stayed
+  // stranded tight on the pawn after the gate resolved. Cancelled by a grab —
+  // a player who re-took the shot themselves is owed nothing.
+  punchZoomOwed = true
 }
+let punchZoomOwed = false
 
 /** One challenge-hit moment per blocked episode: coral ripple, knock, push-in. */
 const challengeAlerted = new Set<string>()
@@ -946,9 +952,22 @@ const syncStuckBeats = () => {
     if (blocked.has(playerId)) continue
     tween.kill()
     stuckTweens.delete(playerId)
-    challengeAlerted.delete(playerId)
     const pawn = pawns.get(playerId)
     if (pawn) gsap.to(pawn.rotation, { z: 0, duration: 0.25, ease: 'power2.out' })
+  }
+
+  // The blocked episode's end, tracked on the alert latch itself (not the
+  // wobble tweens — those never exist under reduced motion, and the latch
+  // must clear there too). This is where the punch-in's pull-back plays: a
+  // commanding restore to the walking shot, or the camera stays stranded
+  // tight on the pawn for every player who has ever touched the board.
+  for (const playerId of [...challengeAlerted]) {
+    if (blocked.has(playerId)) continue
+    challengeAlerted.delete(playerId)
+    if (punchZoomOwed && playerId === cameraTargetId.value) {
+      punchZoomOwed = false
+      frameSubject({ tiles: FRAME_TILES, durationMs: WALK_FRAME_MS, commanding: true })
+    }
   }
 
   // A pawn that STARTS its turn already blocked (no landing hop to fire
@@ -1084,6 +1103,8 @@ watch([cameraRef, controlsRef, board], () => {
     // Only a CONFIRMED drag reaches here, so a stray tap can no longer unpin
     // a rival the player chose to watch.
     onUserGrab: () => {
+      // The player re-took the shot — the punch-in's pull-back is owed nothing.
+      punchZoomOwed = false
       if (!boothMode.value) gameStore.board.spectateTargetId = undefined
     },
   })

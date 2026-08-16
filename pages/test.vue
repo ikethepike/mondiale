@@ -1,43 +1,45 @@
 <template>
   <div class="test-page">
-    <nav class="controls">
-      <button @click="step('mock-player-1', 1)">Hop P1 +1</button>
-      <button @click="step('mock-player-1', 3)">Hop P1 +3</button>
-      <button @click="step('mock-player-2', 2)">Hop P2 +2</button>
-      <button @click="win('mock-player-1')">Win P1</button>
-      <button @click="win('mock-player-2')">Win P2</button>
-      <button @click="reseed">Reseed terrain</button>
-      <select v-model="length" @change="regenerate">
-        <option v-for="option in gameLengths" :key="option" :value="option">{{ option }}</option>
-      </select>
-      <!-- Difficulty sizes the massif and the gauntlet ladder (2/3/5 stages);
+    <div class="controls-dock">
+      <nav class="controls">
+        <button @click="step('mock-player-1', 1)">Hop P1 +1</button>
+        <button @click="step('mock-player-1', 3)">Hop P1 +3</button>
+        <button @click="step('mock-player-2', 2)">Hop P2 +2</button>
+        <button @click="win('mock-player-1')">Win P1</button>
+        <button @click="win('mock-player-2')">Win P2</button>
+        <button @click="reseed">Reseed terrain</button>
+        <select v-model="length" @change="regenerate">
+          <option v-for="option in gameLengths" :key="option" :value="option">{{ option }}</option>
+        </select>
+        <!-- Difficulty sizes the massif and the gauntlet ladder (2/3/5 stages);
            the build key watches it, so switching rebuilds the mountain live -->
-      <select v-model="mockGame.difficulty">
-        <option value="easy">easy</option>
-        <option value="normal">normal</option>
-        <option value="hard">hard</option>
-      </select>
-    </nav>
-    <!-- Pawn-replay repro: the persistent stage hides for challenge views
+        <select v-model="mockGame.difficulty">
+          <option value="easy">easy</option>
+          <option value="normal">normal</option>
+          <option value="hard">hard</option>
+        </select>
+      </nav>
+      <!-- Pawn-replay repro: the persistent stage hides for challenge views
          (active=false holds the position watcher), and the gate resolves
          while it is hidden. These drive that lifecycle; the remount button
          covers the context-loss escape hatch. -->
-    <nav class="controls replay-controls">
-      <button @click="walkToGate">Walk P1 to gate</button>
-      <button @click="dealWalk(4)">Deal new walk</button>
-      <button @click="boardVisible = false">Hide board</button>
-      <button @click="loseGate">Lose gate (hidden)</button>
-      <button @click="winGate">Win gate (hidden)</button>
-      <button @click="boardVisible = true">Show board</button>
-      <button @click="boardEpoch++">Remount board</button>
-    </nav>
-    <!-- Final-gauntlet climb: drive P1 up the mountain marker stage by stage. -->
-    <nav class="controls gauntlet-controls">
-      <button @click="startGauntlet">Start gauntlet P1</button>
-      <button @click="climbMassif">Climb massif P1</button>
-      <button @click="clearStage">Clear stage</button>
-      <button @click="missStage">Miss stage</button>
-    </nav>
+      <nav class="controls replay-controls">
+        <button @click="walkToGate">Walk P1 to gate</button>
+        <button @click="dealWalk(4)">Deal new walk</button>
+        <button @click="boardVisible = false">Hide board</button>
+        <button @click="loseGate">Lose gate (hidden)</button>
+        <button @click="winGate">Win gate (hidden)</button>
+        <button @click="boardVisible = true">Show board</button>
+        <button @click="boardEpoch++">Remount board</button>
+      </nav>
+      <!-- Final-gauntlet climb: drive P1 up the mountain marker stage by stage. -->
+      <nav class="controls gauntlet-controls">
+        <button @click="startGauntlet">Start gauntlet P1</button>
+        <button @click="climbMassif">Climb massif P1</button>
+        <button @click="clearStage">Clear stage</button>
+        <button @click="missStage">Miss stage</button>
+      </nav>
+    </div>
     <Board3D
       v-show="boardVisible"
       :key="boardEpoch"
@@ -283,6 +285,8 @@ const reseed = () => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
+
 .test-page {
   z-index: 3000;
   height: var(--viewport-height);
@@ -290,30 +294,45 @@ const reseed = () => {
   background: var(--background-color);
 }
 
-.controls {
+/* One flowing column: fixed per-nav tops overlapped the moment a row wrapped
+   on a narrow screen. The dock and navs pass pointer events through so orbit
+   drags across the top band still reach the board — only the widgets catch. */
+.controls-dock {
   top: 1rem;
   left: 1rem;
-  gap: 0.6rem;
+  right: 1rem;
+  gap: 0.5rem;
   z-index: 10;
   display: flex;
-  flex-wrap: wrap;
   position: absolute;
+  flex-direction: column;
+  pointer-events: none;
+}
 
-  button {
+.controls {
+  gap: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+
+  button,
+  select {
     cursor: pointer;
+    pointer-events: auto;
     padding: 0.6rem 1.2rem;
     border-radius: 0.6rem;
     background: var(--background-color);
     border: 0.1rem solid var(--text-color);
   }
-}
 
-/* Its own row: overlapping the first nav made those buttons unclickable. */
-.replay-controls {
-  top: 4.5rem;
-}
+  @media (max-width: $phone) {
+    gap: 0.4rem;
 
-.gauntlet-controls {
-  top: 8rem;
+    button,
+    select {
+      font-size: 0.75rem;
+      padding: 0.4rem 0.7rem;
+      border-radius: 0.5rem;
+    }
+  }
 }
 </style>

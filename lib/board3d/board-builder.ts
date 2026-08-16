@@ -253,7 +253,9 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
 
   // The height field again at texture resolution, finer than the mesh:
   // fragment-space contours never crumble along triangle edges.
-  const fieldSize = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 384 : 512
+  // One size everywhere: the phone's 384² tier made contour lines visibly
+  // softer than the rest of the ink, and the full field is a 1MB texture.
+  const fieldSize = 512
   const fieldHalf = terrainSize / 2
   const field = new Float32Array(fieldSize * fieldSize)
   for (let row = 0; row < fieldSize; row++) {

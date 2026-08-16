@@ -3,7 +3,7 @@
     <TresCanvas
       v-if="resolvedGame && resolvedPlayerId"
       clear-color="#fffaf5"
-      :dpr="isPhone ? [1, 1.5] : [1, 2]"
+      :dpr="[1, 2]"
       power-preference="high-performance"
       antialias
     >
@@ -16,7 +16,6 @@
 import { TresCanvas } from '@tresjs/core'
 import { installTimerVisibilityGuard } from '~~/lib/board3d/timer-guard'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { useIsPhone } from '~~/lib/use-viewport'
 import type { Game } from '~~/types/game.types'
 import RenderLoopGate from './RenderLoopGate.vue'
 import TopoScene from './TopoScene.vue'
@@ -52,9 +51,10 @@ const { game: storeGame, gameStore } = useClientEvents()
 const resolvedGame = computed(() => props.game ?? storeGame.value)
 const resolvedPlayerId = computed(() => props.playerId ?? gameStore.seatId)
 
-// Phones cap device-pixel-ratio at 1.5 — a full-retina 3x canvas costs more
-// GPU than the small screen can show.
-const isPhone = useIsPhone()
+// DPR capped at 2 everywhere: a 3x canvas is 2.25× the pixels for sharpness
+// the eye can't find in this ink-line look, while 1.5 (the old phone cap)
+// visibly blurred the outlines. Measured 2026-08: the full landscape holds
+// the frame cap with wide margin even at phone size under 6× CPU throttle.
 
 // The stage's real readiness signal: the first frame actually drawn (mount
 // completion used to stand in for this and lied by the whole asset build).
