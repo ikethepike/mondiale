@@ -334,14 +334,23 @@ export const buildPondMeshes = (
   // the carved basin under each vertex) — the foam shoreline emerges where
   // depth crosses zero, replacing the old flat disc and milk ripple rings.
   // The frozen sheet keeps the same clipped grid, so the shoreline stays the
-  // organic terrain/water intersection either way.
+  // organic terrain/water intersection either way. The depth field FADES
+  // with distance from the basin: only the carve guarantees dry ground, and
+  // where the outside country falls below the pond's level the plane's
+  // square corners used to render as a floating sheet.
   const water = new PlaneGeometry(waterRadius * 2.6, waterRadius * 2.6, 28, 28)
   water.rotateX(-Math.PI / 2)
   water.translate(center.x, waterY, center.z)
   const positions = water.attributes.position
   const pondDepths = new Float32Array(positions.count)
+  const holdFrom = waterRadius * 1.1
+  const holdTo = site.basinRadius
   for (let index = 0; index < positions.count; index++) {
-    pondDepths[index] = waterY - sampler(positions.getX(index), positions.getZ(index))
+    const x = positions.getX(index)
+    const z = positions.getZ(index)
+    const reach = Math.hypot(x - center.x, z - center.z)
+    const hold = 1 - smoothstep(Math.min(1, Math.max(0, (reach - holdFrom) / (holdTo - holdFrom))))
+    pondDepths[index] = (Math.max(waterY - sampler(x, z), 0) + 0.02) * hold - 0.02
   }
   water.setAttribute('aDepth', new BufferAttribute(pondDepths, 1))
   if (biome.waterState === 'frozen') {
