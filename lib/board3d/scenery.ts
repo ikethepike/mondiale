@@ -6,6 +6,7 @@ import type { TilePathResult } from './path'
 import type { RiverPath } from './river'
 import type { PondSite } from './water'
 import type { SummitSite } from './summit'
+import { type LakeSite, lakeShoreDistance } from './lake'
 
 /**
  * Seeded, purely-visual furniture on the open terrain the track leaves empty:
@@ -48,7 +49,8 @@ export const pickScenerySites = (
   pond: PondSite | undefined,
   summit: SummitSite | undefined,
   sampler: HeightSampler,
-  river?: RiverPath
+  river?: RiverPath,
+  lake?: LakeSite
 ): ScenerySites => {
   const random = Alea(`${seed}:scenery`)
   const { shelfPoints, spacing } = path
@@ -76,6 +78,7 @@ export const pickScenerySites = (
         if (Math.hypot(point.x - x, point.z - z) < gap) return false
       }
     }
+    if (lake && lakeShoreDistance(lake, x, z) < 2 + margin) return false
     return true
   }
 
@@ -188,7 +191,8 @@ export const pickWaymarkSites = (
   summit: SummitSite | undefined,
   river: RiverPath | undefined,
   furniture: ScenerySites,
-  sampler: HeightSampler
+  sampler: HeightSampler,
+  lake?: LakeSite
 ): WaymarkSite[] => {
   const { shelfPoints, spacing } = path
   const sites: WaymarkSite[] = []
@@ -204,6 +208,7 @@ export const pickWaymarkSites = (
         if (Math.hypot(point.x - x, point.z - z) < river.width + 1.5) return false
       }
     }
+    if (lake && lakeShoreDistance(lake, x, z) < 1.5) return false
     const others = [
       ...furniture.cairns,
       ...(furniture.compass ? [furniture.compass] : []),

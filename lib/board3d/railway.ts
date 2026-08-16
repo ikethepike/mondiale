@@ -15,6 +15,7 @@ import {
 } from 'three'
 import { prefersReducedMotion } from '~~/lib/motion'
 import type { BoardBiome } from './biomes'
+import { type LakeSite, lakeShoreDistance } from './lake'
 import type { TilePathResult } from './path'
 import type { RiverPath } from './river'
 import type { ScenerySites } from './scenery'
@@ -77,7 +78,8 @@ export const pickRailwayLoop = (
   summit: SummitSite | undefined,
   river: RiverPath | undefined,
   scenery: ScenerySites,
-  sampler: HeightSampler
+  sampler: HeightSampler,
+  lake?: LakeSite
 ): Vector3[] | undefined => {
   const random = Alea(`${seed}:railway`)
   if (random() > RAILWAY_CHANCE) return undefined
@@ -109,6 +111,7 @@ export const pickRailwayLoop = (
         if (Math.hypot(point.x - x, point.z - z) < gap) return false
       }
     }
+    if (lake && lakeShoreDistance(lake, x, z) < 2.5) return false
     for (const cairn of scenery.cairns) {
       if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return false
     }

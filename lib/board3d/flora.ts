@@ -20,6 +20,7 @@ import type { TilePathResult } from './path'
 import type { PondSite } from './water'
 import type { SummitSite } from './summit'
 import type { RiverPath } from './river'
+import type { LakeSite } from './lake'
 
 /**
  * The board's living layer, proven in /test-terrain: blade grass grown as a
@@ -189,6 +190,7 @@ export interface FloraOptions {
   pond?: PondSite
   summit?: SummitSite
   river?: RiverPath
+  lake?: LakeSite
   /** The railway loop, when this board dealt one — props keep off the rails. */
   railway?: Vector3[]
   /** The FINAL composed sampler — flora sits exactly on rendered ground. */
@@ -203,8 +205,19 @@ export const buildFlora = (
   options: FloraOptions,
   timeUniforms: { value: number }[]
 ): InstancedMesh[] => {
-  const { biome, path, pond, summit, river, railway, sampler, waterDistanceAt, seed, phone } =
-    options
+  const {
+    biome,
+    path,
+    pond,
+    summit,
+    river,
+    lake,
+    railway,
+    sampler,
+    waterDistanceAt,
+    seed,
+    phone,
+  } = options
   const { shelfPoints, spacing } = path
   const prng = Alea(`${seed}:flora`)
   const still = prefersReducedMotion()
@@ -224,7 +237,7 @@ export const buildFlora = (
       return false
     if (summit && Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + 1)
       return false
-    if (river && waterDistanceAt(x, z) < 1.2) return false
+    if ((river || lake) && waterDistanceAt(x, z) < 1.2) return false
     if (railway) {
       // 2.6 covers the worst case: a spot midway between two ~2.5-apart loop
       // samples, a max-scale canopy (1.6), and the sleeper tips (0.5).
@@ -402,7 +415,7 @@ export const buildFlora = (
   // --- Reed fringe (grassland): dark blades crowding the water margins ------
   // Drawn AFTER every other population on the same stream, so existing
   // boards' grass, props and birds land exactly where they always did.
-  if (biome.name === 'grassland' && (river || pond)) {
+  if (biome.name === 'grassland' && (river || pond || lake)) {
     const reedTarget = Math.round(140 * (phone ? 0.5 : 1))
     const reedSpots: { x: number; z: number }[] = []
     for (
@@ -414,7 +427,15 @@ export const buildFlora = (
       // thin, and a blind sweep would starve it.
       let x: number
       let z: number
-      if (river && (!pond || prng() < 0.75)) {
+      const draw = prng()
+      if (lake && draw < (river || pond ? 0.45 : 1)) {
+        const at = lake.shore[Math.floor(prng() * lake.shore.length)]
+        // Outward from the shore cell, away from the water's heart.
+        const away = Math.atan2(at.x - lake.center.x, at.z - lake.center.z)
+        const reach = 1.2 + prng() * 1.8
+        x = at.x + Math.sin(away) * reach
+        z = at.z + Math.cos(away) * reach
+      } else if (river && (!pond || prng() < 0.75)) {
         const at = river.points[Math.floor(prng() * river.points.length)]
         const angle = prng() * Math.PI * 2
         const reach = river.width + 1.2 + prng() * 1.8

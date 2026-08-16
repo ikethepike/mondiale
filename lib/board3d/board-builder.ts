@@ -45,6 +45,7 @@ import { OUTLINE_WIDTH_RATIO, outlineOf } from './ink-outline'
 import { createTilePath, TILE_RADIUS_RATIO, type TileTransform, type TrackArchetype } from './path'
 import { type BoardBiome, pickBoardBiome } from './biomes'
 import { buildRailway, pickRailwayLoop } from './railway'
+import { lakeShoreDistance, pickLakeSite, withLakeBed } from './lake'
 import { pickRiverPath, type RiverPath, withRiverBed } from './river'
 import {
   pickScenerySites,
@@ -61,7 +62,13 @@ import {
   withEdgeFalloff,
   withPathShelf,
 } from './terrain'
-import { buildPondMeshes, createWaterMaterial, pickPondSite, withPondBasin } from './water'
+import {
+  buildLakeMeshes,
+  buildPondMeshes,
+  createWaterMaterial,
+  pickPondSite,
+  withPondBasin,
+} from './water'
 import { buildFlora } from './flora'
 
 export interface BoardBuild {
@@ -180,7 +187,13 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   const shelved = withPathShelf(rawSampler, shelfPoints, spacing * 1.05)
   const ponded = pondSite ? withPondBasin(shelved, pondSite) : shelved
   const sculpted = summitSite ? withSummitMassif(ponded, summitSite, spacing) : ponded
-  const sampler = riverPath ? withRiverBed(sculpted, riverPath) : sculpted
+  const rivered = riverPath ? withRiverBed(sculpted, riverPath) : sculpted
+
+  // A discovered lake: a natural depression flood-filled to just under its
+  // spill saddle. Sited over the composed terrain, then its bed assist joins
+  // the chain — the discovered shoreline itself never moves.
+  const lakeSite = pickLakeSite(seed, tilePath, pondSite, summitSite, riverPath, rivered)
+  const sampler = lakeSite ? withLakeBed(rivered, lakeSite) : rivered
 
   // --- Terrain -------------------------------------------------------------
   const segments = typeof window !== 'undefined' && window.innerWidth <= PHONE_MAX_PX ? 220 : 300
@@ -209,6 +222,10 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
         const d = Math.hypot(point.x - x, point.z - z)
         if (d < distance) distance = d
       }
+    }
+    if (lakeSite) {
+      const d = lakeShoreDistance(lakeSite, x, z)
+      if (d < distance) distance = d
     }
     return distance
   }
@@ -468,18 +485,37 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   if (riverPath)
     buildRiverMeshes(riverPath, biome, sampler, timeUniforms).forEach(mesh => group.add(mesh))
 
+  if (lakeSite)
+    buildLakeMeshes(seed, lakeSite, biome, sampler, timeUniforms).forEach(mesh =>
+      group.add(mesh)
+    )
+
   // Survey furniture on the open terrain: cairned hilltops and a compass-rose
   // ink decal. Heights come from the final composed sampler, so everything
   // sits exactly on the rendered ground.
-  const scenery = pickScenerySites(seed, tilePath, pondSite, summitSite, sampler, riverPath)
+  const scenery = pickScenerySites(
+    seed,
+    tilePath,
+    pondSite,
+    summitSite,
+    sampler,
+    riverPath,
+    lakeSite
+  )
   scenery.cairns.forEach(site => buildHillCairn(site, spacing).forEach(mesh => group.add(mesh)))
   if (scenery.compass) group.add(buildCompassRose(scenery.compass, spacing, sampler))
   if (scenery.stones)
     buildStandingStones(scenery.stones, spacing, sampler).forEach(mesh => group.add(mesh))
   if (scenery.scaleBar) group.add(buildScaleBar(scenery.scaleBar, sampler))
-  pickWaymarkSites(tilePath, pondSite, summitSite, riverPath, scenery, sampler).forEach(site =>
-    buildWaymark(site, spacing).forEach(mesh => group.add(mesh))
-  )
+  pickWaymarkSites(
+    tilePath,
+    pondSite,
+    summitSite,
+    riverPath,
+    scenery,
+    sampler,
+    lakeSite
+  ).forEach(site => buildWaymark(site, spacing).forEach(mesh => group.add(mesh)))
 
   // A decorative railway for certain seeds: a closed contour loop with an
   // old steam train rounding it. Picked LAST among the placements, so it is
@@ -492,7 +528,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     summitSite,
     riverPath,
     scenery,
-    sampler
+    sampler,
+    lakeSite
   )
   if (railwayLoop) {
     const railway = buildRailway(railwayLoop, biome)
@@ -507,6 +544,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     summit: summitSite,
     river: riverPath,
     railway: railwayLoop,
+    lake: lakeSite,
     snowlineY,
   })
   const contourLabels = buildContourLabels(labelPlan, biome)
@@ -521,6 +559,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       pond: pondSite,
       summit: summitSite,
       river: riverPath,
+      lake: lakeSite,
       railway: railwayLoop,
       sampler,
       waterDistanceAt,
