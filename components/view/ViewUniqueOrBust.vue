@@ -163,6 +163,7 @@ import {
   type UniqueEntry,
 } from '~~/lib/unique-or-bust'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { UniqueCategoryId, UniqueOrBustState } from '~~/types/challenges/group-modes.type'
 import { isValidISOCode } from '~~/types/geography.types'
@@ -206,15 +207,7 @@ const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
 const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
-const readySent = ref(false)
-const sendReady = () => {
-  if (readySent.value) return
-  readySent.value = true
-  // A failed ack re-opens the button — a lost ready must not strand the seat.
-  void update({ event: 'unique-ready' }).then(delivered => {
-    if (!delivered) readySent.value = false
-  })
-}
+const { send: sendReady } = useAckOnce(() => ({ event: 'unique-ready' }))
 
 const boardLine = computed(() =>
   (challenge.value?.categories ?? [])

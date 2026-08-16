@@ -192,6 +192,7 @@ import {
 } from '~~/lib/timeline'
 import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
@@ -233,16 +234,9 @@ watch(finished, done => {
   if (done) stopDossierOpen.value = false
 })
 
-/** The reveal's Continue: latch + ack-reopen (the ready-gate idiom). `iAmDone`
+/** The reveal's Continue rides the shared ack-once discipline; `iAmDone`
  *  itself derives from state in the reveal, so a rejoined tab reads true. */
-const revealDoneSent = ref(false)
-const sendRevealDone = () => {
-  if (gameStore.watching || revealDoneSent.value) return
-  revealDoneSent.value = true
-  void update({ event: 'timeline-reveal-done' }).then(delivered => {
-    if (!delivered) revealDoneSent.value = false
-  })
-}
+const { send: sendRevealDone } = useAckOnce(() => ({ event: 'timeline-reveal-done' }))
 const lastPlacement = computed(() => state.value?.placements[state.value.placements.length - 1])
 /** The just-filed card, highlighted on the line through the story hold. */
 const freshSlug = computed(() =>

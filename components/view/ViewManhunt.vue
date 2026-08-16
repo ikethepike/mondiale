@@ -241,6 +241,7 @@ import {
   pursuitNeighboursOf,
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sample } from '~~/lib/arrays'
 import { playableCountries, unplayableCountries } from '~~/lib/game-rules'
@@ -435,15 +436,7 @@ const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
 )
 const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
-const readySent = ref(false)
-const sendReady = () => {
-  if (readySent.value) return
-  readySent.value = true
-  // A failed ack re-opens the button — a lost ready must not strand the seat.
-  void update({ event: 'manhunt-ready' }).then(delivered => {
-    if (!delivered) readySent.value = false
-  })
-}
+const { send: sendReady } = useAckOnce(() => ({ event: 'manhunt-ready' }))
 
 const tauntCooling = ref(false)
 let tauntTimer: ReturnType<typeof setTimeout> | undefined

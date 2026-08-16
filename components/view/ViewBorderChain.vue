@@ -151,6 +151,7 @@ import { countryName, getCountry } from '~~/lib/country'
 import { unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
@@ -177,15 +178,7 @@ const {
 const state = computed(() => challenge.value?.state)
 const briefing = computed(() => !!state.value?.briefing)
 const iAmReady = computed(() => !!state.value?.ready.includes(gameStore.seatId))
-const readySent = ref(false)
-const sendReady = () => {
-  if (readySent.value) return
-  readySent.value = true
-  // A failed ack re-opens the button — a lost ready must not strand the seat.
-  void update({ event: 'chain-ready' }).then(delivered => {
-    if (!delivered) readySent.value = false
-  })
-}
+const { send: sendReady } = useAckOnce(() => ({ event: 'chain-ready' }))
 const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
