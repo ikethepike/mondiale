@@ -412,7 +412,12 @@ export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string)
     )
     if (returned) return
     console.warn(`Autopilot taking over ${playerId} in ${gameId}`)
-    seat.autopilot = { sinceRound: game.rounds.length - 1 }
+    // The covered span starts with the first round the PLAYER didn't answer:
+    // crediting the brain with a round the human banked before vanishing
+    // would read as a lie on the catch-up card.
+    const roundIndex = game.rounds.length - 1
+    const answered = !!latestRound(game)?.groupAnswers[playerId]
+    seat.autopilot = { sinceRound: answered ? game.rounds.length : Math.max(0, roundIndex) }
     await server.updateGameState(game)
     server.emit({ event: 'update', game }, ctx.eventTarget)
     server.emit(

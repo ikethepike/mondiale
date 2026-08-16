@@ -172,14 +172,6 @@ export const joinEventHandler: EventHandler = async ({
   // safe to repeat — it clears the latch and re-lands the player on their
   // gate or resumes their walk.
   const rejoining = game.players[playerId]
-
-  // The autopilot's release moment: the player is back, so the brain lets go
-  // — every pending bot act dies on its brain-seat guard — and the catch-up
-  // summary goes out. The join's save below carries the cleared latch.
-  if (game.started && rejoining.autopilot) {
-    releaseAutopilot({ io, redis, socket, eventTarget }, game, rejoining)
-  }
-
   const orphanedInChallenge =
     ['individual-challenge', 'final-challenge'].includes(rejoining.phase) &&
     (rejoining.moves.length === 0 || rejoining.resolving === true)
@@ -258,6 +250,15 @@ export const joinEventHandler: EventHandler = async ({
   }
 
   await socket.join(gameId)
+
+  // The autopilot's release moment: the player is back, so the brain lets go
+  // — every pending bot act dies on its brain-seat guard — and the catch-up
+  // summary goes out. AFTER socket.join, or the returning tab (the one
+  // client the summary is FOR) is not yet in the room to receive it; the
+  // save below carries the cleared latch.
+  if (game.started && rejoining.autopilot) {
+    releaseAutopilot({ io, redis, socket, eventTarget }, game, rejoining)
+  }
 
   // Bind this socket to the player id it just claimed. The dispatch layer
   // rejects any later event whose eventTarget.playerId doesn't match, so one
