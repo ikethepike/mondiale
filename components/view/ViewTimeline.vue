@@ -122,7 +122,12 @@
           tag="ol"
           name="line"
           class="line scrollport"
-          :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+          :class="{
+            'fade-top': scrollableUp,
+            'fade-bottom': scrollableDown,
+            'fade-left': scrollableLeft,
+            'fade-right': scrollableRight,
+          }"
           @scroll.passive="syncScrollEdges"
         >
           <li
@@ -545,9 +550,11 @@ if (import.meta.client && !gameStore.watching) {
 // TransitionGroup ref resolves to the component; its $el is the <ol>.
 const lineEl = ref<{ $el?: HTMLElement } | null>(null)
 
-// The ledger's edges. Vertical on a phone, where the line stands upright; on a
-// wider board it rails sideways and both flags simply stay false.
-const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => lineEl.value?.$el)
+// The ledger's edges, both axes: it stands upright on a phone and rails
+// sideways on a board, and the pair for whichever axis cannot scroll stays
+// false on its own.
+const { scrollableUp, scrollableDown, scrollableLeft, scrollableRight, syncScrollEdges } =
+  useScrollEdges(() => lineEl.value?.$el)
 
 /** Centre a stop or slot in the line, scrolling ONLY the line — never
  *  scrollIntoView, whose ancestor walk can shift the whole shell. Layout
@@ -786,6 +793,8 @@ footer {
     color: var(--dark-blue);
     text-transform: uppercase;
     writing-mode: horizontal-tb;
+    // The labels stand on bare map either side of the ledger.
+    @include caption-halo;
   }
 }
 
@@ -804,6 +813,23 @@ footer {
   pointer-events: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  // Railing, the ledger loses cards off its SIDES: a long line on a board cut
+  // the leading stop flat against the direction label. Same recipe as the
+  // upright cut, turned ninety degrees, and the inset comes from the
+  // unconditional pair so it cannot chase the flag that sets it.
+  @include scroll-mask-x;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--scroll-fade-inset-left, 0px) var(--scroll-fade-inset-right, 0px);
+
+  > li {
+    scroll-snap-align: start;
+  }
+}
+
+// A card in flight must not re-park the rail under the finger — the phone block
+// says the same for the upright ledger.
+.timeline-round.dragging .line {
+  scroll-snap-type: none;
 }
 
 .stop {

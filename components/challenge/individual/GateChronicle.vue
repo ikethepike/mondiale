@@ -215,10 +215,13 @@ const submitOrder = () => resolve()
   }
 }
 
-// Over the mist the cards travel under.
+// Over the mist the cards travel under, and legible on bare land: the poles
+// stand ON the map at any width the column does not fill, where a coastline
+// under the arrow glyph swallowed it.
 .pole {
   position: relative;
   z-index: 2;
+  @include caption-halo;
 }
 
 // The rail's marginalia and the card column share one box: a gutter each
