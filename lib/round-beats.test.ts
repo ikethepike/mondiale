@@ -36,6 +36,7 @@ import {
   isClassicGroupRound,
   PLAY_GATE_CAP_MS,
   playGateMsFor,
+  remainingFractionOn,
   revealHoldMsFor,
   ROUND_BEATS,
   TUTORIAL_CAP_MS,
@@ -299,5 +300,31 @@ describe('round beats', () => {
     expect(BRIEFING_CAP_MS).toBeGreaterThanOrEqual(60000)
     expect(GROUP_SCORES_CAP_MS).toBeGreaterThanOrEqual(90000)
     expect(TUTORIAL_CAP_MS).toBeGreaterThanOrEqual(90000)
+  })
+})
+
+describe('remainingFractionOn', () => {
+  it('reads full only when there is no window to be early in', () => {
+    expect(remainingFractionOn(Date.now() + 10_000, undefined)).toBe(1)
+    expect(remainingFractionOn(Date.now() + 10_000, 0)).toBe(1)
+  })
+
+  it('reads EMPTY on an unstamped deadline, never full', () => {
+    // The trap this pins: a round staged but not yet stamped must not report a
+    // brimming clock. `secondsOnDeadline` answers 0 for the same input, and a
+    // composable that says "no seconds left" and "all of the clock left" at
+    // once is how a progress bar ends up inverted.
+    expect(remainingFractionOn(undefined, 30)).toBe(0)
+    expect(remainingFractionOn(0, 30)).toBe(0)
+  })
+
+  it('clamps to the window at both ends', () => {
+    const now = Date.now()
+    expect(remainingFractionOn(now + 30_000, 30)).toBeCloseTo(1, 1)
+    expect(remainingFractionOn(now + 15_000, 30)).toBeCloseTo(0.5, 1)
+    // Past the deadline is empty, not negative — it feeds a score curve.
+    expect(remainingFractionOn(now - 5_000, 30)).toBe(0)
+    // A deadline beyond its own window cannot pay more than the whole pot.
+    expect(remainingFractionOn(now + 90_000, 30)).toBe(1)
   })
 })

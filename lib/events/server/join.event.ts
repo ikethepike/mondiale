@@ -3,6 +3,8 @@ import type { Player } from '~~/types/player.type'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
+import { isBotId } from '~~/lib/bots'
+import { armBotPump, noteSeatPresence, releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
@@ -38,6 +40,17 @@ export const joinEventHandler: EventHandler = async ({
   const server = useServerSideEvents({ socket, redis, io })
 
   const { gameId, playerId } = eventTarget
+
+  // Bot seats are server-played and have no bearer secret — without this
+  // refusal, a tab presenting a bot's public id would land in 'claim' below
+  // and walk off with the seat. 'removed-from-room' is the honest terminal
+  // card for both game states; "already started" would lie about a lobby.
+  if (isBotId(playerId)) {
+    console.warn(`Refusing socket claiming bot id ${playerId} in ${gameId}`)
+    socket.emit('removed-from-room', { event: 'removed-from-room' }, eventTarget)
+    socket.disconnect(false)
+    return
+  }
 
   // Bind-time authorization: the presented secret (from the handshake, never
   // the broadcast) must match the one on file for this id, or this is an
@@ -235,9 +248,25 @@ export const joinEventHandler: EventHandler = async ({
   const tutorialsUp = Object.values(game.players).some(entry => entry.phase === 'tutorial')
   if (game.started && !game.pendingRoundStart) {
     rearmLiveRound({ io, redis, socket, eventTarget }, game, { armBriefingCaps: !tutorialsUp })
+  } else if (game.started) {
+    // Mid-staging rejoins skip the engine rearm (there is no live round to
+    // revive) but MUST still wake the pump: it stands itself down when the
+    // room empties, and `rearmLiveRound` is its only other recovery. Without
+    // this, a table that emptied during a round transition comes back to
+    // frozen bots. Idempotent — a live pump refuses the duplicate.
+    armBotPump({ io, redis, socket, eventTarget }, game)
   }
 
   await socket.join(gameId)
+
+  // The autopilot's release moment: the player is back, so the brain lets go
+  // — every pending bot act dies on its brain-seat guard — and the catch-up
+  // summary goes out. AFTER socket.join, or the returning tab (the one
+  // client the summary is FOR) is not yet in the room to receive it; the
+  // save below carries the cleared latch.
+  if (game.started && rejoining.autopilot) {
+    releaseAutopilot({ io, redis, socket, eventTarget }, game, rejoining)
+  }
 
   // Bind this socket to the player id it just claimed. The dispatch layer
   // rejects any later event whose eventTarget.playerId doesn't match, so one
@@ -245,6 +274,19 @@ export const joinEventHandler: EventHandler = async ({
   // move, knock out). `join` is the only handler allowed to establish this.
   socket.data.playerId = eventTarget.playerId
   socket.data.gameId = gameId
+
+  // The AFK takeover's "reconnected since I armed?" stamp: without it, a
+  // player who came back mid-grace and happened to be mid-refresh at fire
+  // time read as still gone (no live socket) and lost their seat to the
+  // autopilot one second into an ordinary reload.
+  //
+  // Stamped AFTER the rearm above ON PURPOSE. `rearmAfkTakeovers` runs before
+  // this socket is in the room, so it can still arm a takeover for the very
+  // seat now rejoining — that pending act stands down only because the stamp
+  // written here is strictly LATER than the `armedAt` it captured. Move the
+  // stamp above the rearm and the timestamps tie, and a rejoining player can
+  // lose their seat to the autopilot they just outran.
+  noteSeatPresence(gameId, playerId)
 
   await server.updateGameState(game)
 

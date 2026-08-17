@@ -1,3 +1,4 @@
+import { clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
 import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
 import {
@@ -239,6 +240,62 @@ export const CLASSIC_SETTLE_SLACK_MS = 8000
 /** Empire's beat-1 → beat-2 memorize hold (the sweep freezing at the peak). */
 export const EMPIRE_INTERBEAT_HOLD_MS = 1800
 
+/** The bot brain's cadence: how often a game with brain-played seats re-reads
+ *  state to see if any of them owes an action. Coarse on purpose — per-act
+ *  timing rides the rolled act-at stamps, not the tick. */
+export const BOT_PUMP_MS = 1500
+/** A bot "reads" its rules card this long before closing it. */
+export const BOT_TUTORIAL_MS = 5000
+export const BOT_TUTORIAL_JITTER_MS = 2000
+/** A bot "reads" its scorecard this long before walking on. */
+export const BOT_SCORES_MS = 6000
+export const BOT_SCORES_JITTER_MS = 2500
+/** A turn-engine bot's think beat before its move, plus up to this much
+ *  jitter — near the harness chain-simulator's rival beat, slower than a
+ *  buzzer so a human never feels raced by a machine. */
+export const BOT_TURN_THINK_MS = 2200
+export const BOT_TURN_JITTER_MS = 2600
+/** A gauntlet question reads longer than a turn; the extra sits here, not
+ *  as a bare literal in the engine. */
+export const BOT_FINAL_EXTRA_MS = 2000
+/** A manhunt marker weighs a candidate map — slower than a plain turn. */
+export const BOT_MARKER_EXTRA_MS = 1500
+/** A bot "reads" a briefing card this long before its ready. */
+export const BOT_READY_MS = 3500
+export const BOT_READY_JITTER_MS = 2500
+/** A bot "reads" a browsable reveal (the timeline chronicle) this long. */
+export const BOT_BROWSE_ACK_MS = 9000
+export const BOT_BROWSE_ACK_JITTER_MS = 6000
+/** The classic think on a round with no server clock (caps off in dev). */
+export const BOT_UNTIMED_THINK_MS = 15000
+export const BOT_UNTIMED_THINK_JITTER_MS = 20000
+/** Unique or Bust: the first category lands after the base, each further
+ *  category a stagger later — one blank at a time, like a person. */
+export const BOT_UNIQUE_BASE_MS = 4000
+export const BOT_UNIQUE_STAGGER_MS = 6000
+export const BOT_UNIQUE_JITTER_MS = 5000
+/** Clean Sweep's claim cadence: base + (1 − share) × spread per claim. */
+export const BOT_SWEEP_BASE_MS = 1200
+export const BOT_SWEEP_SPREAD_MS = 3500
+export const BOT_SWEEP_JITTER_MS = 1800
+/** Where in a classic round's play window a bot's answer lands, as fractions
+ *  of the budget — never first-instant, never at the buzzer. */
+export const BOT_CLASSIC_WINDOW: readonly [number, number] = [0.3, 0.75]
+/** Where a retiring bot may actually leave: past its round, not yet (or no
+ *  longer) owing the table a turn. Beside the other phase buckets so the
+ *  escapability matrix pins it when a new PlayerPhase lands. */
+export const RETIREMENT_PHASES: readonly PlayerPhase[] = [
+  'group-scores',
+  'moving',
+  'movement-summary',
+]
+
+/** A vanished socket must stay gone this long mid-race before the autopilot
+ *  takes the seat over — a refresh or a tunnel must not trigger a takeover. */
+export const AUTOPILOT_GRACE_MS = 25000
+/** The returning player's catch-up interstitial hold. */
+export const AUTOPILOT_RECLAIM_HOLD_MS = 6000
+
 /**
  * Flashpoint's two schedules. The dot waves land first, then the hint ladder
  * unlocks one rung at a time — so the round's length is a function of BOTH,
@@ -446,6 +503,28 @@ export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): 
  * part of this: a gated kind still plays for exactly this long once the clip
  * starts, and only the server's budget covers the wait before it.
  */
+/**
+ * How much of a clock is still to run, 0..1 — THE deadline→fraction math.
+ * Both sides of the wire price a buzz off this: `useDeadlineClock` repaints
+ * the player's shot clock with it and the bot brain stamps its own `buzzAt`
+ * with it, so a human and a machine answering at the same moment can never be
+ * graded by two different roundings.
+ *
+ * No WINDOW means nothing to be early in, so the clock reads full. An unset
+ * DEADLINE is a different thing — a round that hasn't been stamped yet — and
+ * reads empty, matching `secondsOnDeadline`, which returns 0 for the same
+ * input. The two must never disagree about whether a clock is running.
+ */
+export const remainingFractionOn = (
+  deadline: number | undefined,
+  totalSeconds: number | undefined
+): number => {
+  const total = (totalSeconds ?? 0) * 1000
+  if (!total) return 1
+  if (!deadline) return 0
+  return clamp01((deadline - Date.now()) / total)
+}
+
 export const classicPlaySeconds = (challenge: RoundChallenge | undefined): number | undefined => {
   if (!challenge) return undefined
   const derived = roundBeats(challenge).playSeconds?.(challenge)

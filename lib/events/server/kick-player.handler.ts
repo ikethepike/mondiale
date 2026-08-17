@@ -22,6 +22,10 @@ export const kickPlayerHandler = defineGameHandler('kick-player', async context 
   if (typeof targetId !== 'string' || !game.players[targetId])
     return console.warn(`Invalid kick target for ${game.id}`)
   if (targetId === game.host) return console.warn(`Host cannot kick themselves in ${game.id}`)
+  // Bots go through remove-bot: a bot id can never rejoin (the join door
+  // refuses the prefix), so denylisting it here only burns lobbyKicks slots
+  // until genuinely kicked humans fall off the 64-entry cap and re-enter.
+  if (game.players[targetId]?.bot) return console.warn(`Bot kick routed wrong in ${game.id}`)
 
   game.players = Object.fromEntries(Object.entries(game.players).filter(([id]) => id !== targetId))
   game.lobbyKicks ??= []

@@ -71,6 +71,8 @@
 
     <CheerToast />
 
+    <NoticeToast />
+
     <ReconnectToast />
 
     <RoundHistoryDrawer v-if="showStatusPanel && game" :game="game" />
@@ -106,6 +108,7 @@
 import BoardStage from '~/components/board3d/BoardStage.client.vue'
 import RoundHistoryDrawer from '~/components/board/RoundHistoryDrawer.vue'
 import CheerToast from '~/components/feedback/CheerToast.vue'
+import NoticeToast from '~/components/feedback/NoticeToast.vue'
 import ReconnectToast from '~/components/feedback/ReconnectToast.vue'
 import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'

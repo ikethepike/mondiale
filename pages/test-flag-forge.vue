@@ -1,7 +1,7 @@
 <template>
-  <!-- eslint-disable vue/no-v-html — dev harness rendering SVGs produced by
-       our own forgeFlag generator; no user-supplied markup. -->
   <div class="forge">
+    <!-- eslint-disable vue/no-v-html — dev harness rendering SVGs produced by
+         our own forgeFlag generator; no user-supplied markup. -->
     <header class="bar">
       <h1>Flag forge</h1>
       <div class="controls">

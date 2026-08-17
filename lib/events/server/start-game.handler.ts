@@ -1,5 +1,6 @@
 import { getRoundChallenge } from '~~/lib/challenges'
 import { defineGameHandler } from '../server-side'
+import { armBotPump } from './bot-brain'
 import { armTutorialCap } from './seat-exits'
 
 export const startGameHandler = defineGameHandler(
@@ -37,6 +38,8 @@ export const startGameHandler = defineGameHandler(
     for (const playerId of Object.keys(game.players)) {
       armTutorialCap({ io, redis, socket, eventTarget }, playerId)
     }
+    // Bot seats play from here on — the brain's pump runs for the game.
+    armBotPump({ io, redis, socket, eventTarget }, game)
   },
   { player: 'optional' }
 )

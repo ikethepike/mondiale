@@ -278,6 +278,17 @@ export type ClientEventData =
       targetId: string
     }
   | {
+      /** Host seats a computer-controlled player pre-start. Fire-and-forget
+       *  like the other lobby edits — a lost click is re-clicked. */
+      event: 'add-bot'
+    }
+  | {
+      /** Host removes a bot seat pre-start. Bot-only — human seats go
+       *  through kick-player and its denylist. */
+      event: 'remove-bot'
+      targetId: string
+    }
+  | {
       /** Ephemeral live guess during a group round — broadcast to the room so
        *  everyone sees opponents' picks land in real time. Writes no permanent
        *  state (like update-by-index). `isoCode`/`label` are omitted under a
@@ -361,6 +372,9 @@ export const isValidClientEventTarget = (data: unknown): data is ClientEventTarg
   })
 
 export type ServerEventData =
+  /** Despite the name, the ROSTER-CHANGED snapshot: joins, kicks, bot seats
+   *  added or removed all ride it (it is the one 'authoritative' full-sync
+   *  event). Never key a "someone joined" surface off the event name alone. */
   | { event: 'player-joined'; game: Game }
   | { event: 'name-set'; game: Game }
   | { event: 'color-set'; game: Game }
@@ -448,6 +462,27 @@ export type ServerEventData =
       emoji: CheerEmoji
       entryId: string
       at: number
+    }
+  /** Ephemeral table announcement (the autopilot's comings and goings, a
+   *  bot leaving the table) — no game payload; clients compose the copy from
+   *  the seat's name and show it on the always-mounted notice toast. */
+  | {
+      event: 'table-notice'
+      kind: 'autopilot-engaged' | 'autopilot-reclaimed' | 'bot-removed'
+      playerId: string
+      entryId: string
+      at: number
+    }
+  /** The returning player's catch-up: what the autopilot did with their seat.
+   *  Broadcast like everything else, but only the named player renders it —
+   *  the numbers are already public on the round history. */
+  | {
+      event: 'autopilot-summary'
+      playerId: string
+      /** Rounds the autopilot answered for the seat. */
+      rounds: number
+      /** Points it banked over that span. */
+      scored: number
     }
 
 /** The server events that carry a full game snapshot. */

@@ -1,7 +1,7 @@
 <template>
-  <!-- eslint-disable vue/no-v-html — dev review tool rendering flag SVGs
-       generated from the repo's own data; no user-supplied markup. -->
   <div class="review">
+    <!-- eslint-disable vue/no-v-html — dev review tool rendering flag SVGs
+         generated from the repo's own data; no user-supplied markup. -->
     <header class="bar">
       <h1>Flag wide-tile review</h1>
       <div class="filters">

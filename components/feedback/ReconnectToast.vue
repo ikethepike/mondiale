@@ -44,24 +44,14 @@ onUnmounted(() => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/status-pill' as *;
 
+// The shared status-pill recipe (rules/_status-pill.scss) — one shell with
+// the notice toast, so a safe-top or contrast fix reaches both.
 .reconnect-toast {
-  position: fixed;
-  top: calc(1rem + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
+  @include status-pill-anchor;
+  @include status-pill;
   z-index: 3000;
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.7rem 1.4rem;
-  font-size: 1.3rem;
-  color: #{milk()};
-  background: #{ink(0.92)};
-  border: 0.1rem solid #{milk(0.25)};
-  border-radius: 2rem;
-  pointer-events: none;
-  white-space: nowrap;
 }
 
 .dot {

@@ -3,6 +3,18 @@
 export const sample = <T>(array: readonly T[], random: () => number = Math.random): T | undefined =>
   array[Math.floor(random() * array.length)]
 
+/** A uniform integer in [min, max] inclusive — the one home for the
+ *  `Math.floor(Math.random() * …)` spelling, seedable like its siblings. */
+export const randomInt = (min: number, max: number, random: () => number = Math.random): number =>
+  min + Math.floor(random() * (max - min + 1))
+
+/** A uniform float in [min, max) — jittered delays, window fractions. */
+export const randomBetween = (
+  min: number,
+  max: number,
+  random: () => number = Math.random
+): number => min + random() * (max - min)
+
 /** Up to `count` distinct elements, uniformly random, order shuffled.
  *  Pass a seeded `random` for reproducible picks, like the rest of this module. */
 export const sampleMany = <T>(

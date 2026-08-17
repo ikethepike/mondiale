@@ -47,6 +47,20 @@ const stampTurnDeadline = (challenge: TimelineChallenge, extraMs = 0) => {
   challenge.state.deadline = Date.now() + challenge.turnSeconds * 1000 + extraMs
 }
 
+/** May this actor place on this turn? ONE guard for both callers of
+ *  `resolveTimelinePlacement` (the wire handler and the bot brain) — the
+ *  resolver itself deliberately trusts its caller, so a guard tightened in
+ *  one caller only is a drift bug waiting. */
+export const mayPlaceTimeline = (
+  challenge: TimelineChallenge,
+  playerId: string,
+  turn: number
+): boolean => {
+  const { state } = challenge
+  if (state.finished || state.revealing) return false
+  return activeTimelinePlayerId(state) === playerId && state.turn === turn
+}
+
 /**
  * Kick off the revealed round: stamp the first deadline (call BEFORE the
  * caller saves/emits so clients see a live clock) …
