@@ -112,7 +112,14 @@
         <span class="direction">{{ isPhone ? '↑ Earlier' : '← Earlier' }}</span>
         <!-- Keyed group so a filed card presses IN while its neighbours
              glide apart (FLIP moves), instead of the line snapping. -->
-        <TransitionGroup ref="lineEl" tag="ol" name="line" class="line">
+        <TransitionGroup
+          ref="lineEl"
+          tag="ol"
+          name="line"
+          class="line"
+          :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+          @scroll.passive="syncScrollEdges"
+        >
           <li
             v-for="item in lineItems"
             :key="item.key"
@@ -194,6 +201,7 @@ import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { EventEntry } from '~~/generators/create-events-file'
@@ -532,6 +540,16 @@ if (import.meta.client && !gameStore.watching) {
 // TransitionGroup ref resolves to the component; its $el is the <ol>.
 const lineEl = ref<{ $el?: HTMLElement } | null>(null)
 
+// The upright phone ledger is a capped scroller, so its edge cuts a row in
+// half — the shared scroll-edge fades say "the line continues" instead of
+// letting it end on a razor. The scrollport never changes size when a card
+// files in, so the ResizeObserver can't see it: re-judge on every line change.
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => lineEl.value?.$el)
+watch(
+  () => [lineItems.value.length, canPlace.value, cardInFlight.value],
+  () => nextTick(syncScrollEdges)
+)
+
 /** Centre a stop or slot in the line, scrolling ONLY the line — never
  *  scrollIntoView, whose ancestor walk can shift the whole shell. Layout
  *  offsets, not rects: the FLIP move transforms would lie mid-glide. */
@@ -559,6 +577,7 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 .turn-line {
   gap: 0.6rem;
@@ -749,7 +768,15 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
 }
 
 // --- The line --------------------------------------------------------------------
-footer {
+// The shell caps a footer at `60% + clearance` so a tall one can't eat the
+// stage. Here that cap was the cutoff: a PERCENTAGE max-height on a grid item
+// in an AUTO row resolves against a row already sized from that item's own
+// content, so the footer was clipped to 60% of itself — the ledger sliced
+// mid-row — and the row kept its full height, leaving a dead band of nothing
+// beneath the cut. The ledger caps itself in dvh below, which is the honest
+// bound, so the shell's is dropped rather than doubled.
+.timeline-round > footer {
+  max-height: none;
   padding: 1.4rem 2rem 2rem;
 }
 
@@ -1061,7 +1088,9 @@ footer {
     height: clamp(6rem, 13vh, 9rem);
   }
 
-  footer {
+  // Matches the selector above, or that block's desktop padding would outrank
+  // this one inside the media query.
+  .timeline-round > footer {
     padding: 1rem 1.2rem calc(1rem + var(--bottom-clearance));
   }
 
@@ -1077,15 +1106,29 @@ footer {
 
   .line {
     gap: 0.35rem;
-    max-height: 34dvh;
+    // The ledger IS the stage on a phone, and it is the one bound on the
+    // footer's height — the room the shell's broken cap used to waste below
+    // the cut goes back into rows.
+    max-height: 42dvh;
     overflow-x: hidden;
     overflow-y: auto;
     flex-flow: column nowrap;
+
+    // The cut lands wherever the rows fall, so the shared recipe softens it
+    // into a "more below" (rules/_scroll-fade.scss) instead of a razor edge.
+    @include scroll-fade(2rem, 2.8rem);
+
+    // The fades are flex items here: without this they shrink to nothing the
+    // moment the rows overflow, which is exactly when they are needed.
+    &::before,
+    &::after {
+      flex: none;
+    }
   }
 
   // Mid-flight the ledger opens up: taller list, taller targets.
   .timeline-round.dragging .line {
-    max-height: 46dvh;
+    max-height: 52dvh;
   }
 
   .timeline-round.dragging .gap {
