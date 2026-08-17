@@ -42,12 +42,7 @@
         <span v-if="!folded" class="who">
           <span class="name"
             >{{ entry.player.name || 'Player' }}<span v-if="entry.you" class="tag">you</span
-            ><span
-              v-if="entry.player.bot"
-              class="bot-mark"
-              role="img"
-              aria-label="Computer player"
-            /><span v-if="entry.points" class="points">+{{ entry.points }}</span></span
+            ><span v-if="entry.points" class="points">+{{ entry.points }}</span></span
           >
           <span class="status">
             <span v-if="entry.status.busy" class="pulse" aria-hidden="true" />
@@ -337,19 +332,6 @@ const entries = computed(() =>
     opacity: 0.4;
     cursor: default;
   }
-}
-
-// The bot glyph beside the name — the pawn wearing an antenna, masked like
-// every icon; quiet, the name stays the identity.
-.bot-mark {
-  display: inline-block;
-  width: 1.3rem;
-  height: 1.3rem;
-  margin-left: 0.4rem;
-  vertical-align: -0.15rem;
-  opacity: 0.5;
-  background: currentColor;
-  mask: url('~/assets/icons/bot.svg') no-repeat center/contain;
 }
 
 // Host-only mid-race bot removal: the kick affordance's language (a masked

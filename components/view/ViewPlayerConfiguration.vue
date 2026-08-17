@@ -174,13 +174,6 @@
             :key="lobbyPlayer.id"
             :player="lobbyPlayer"
           >
-            <span
-              v-if="lobbyPlayer.bot"
-              class="bot-marker"
-              role="img"
-              aria-label="Computer player"
-              title="Computer player"
-            />
             <button
               v-if="isPlayerHost && lobbyPlayer.id !== player?.id"
               type="button"
@@ -726,18 +719,6 @@ const startGame = () => {
       opacity: 1;
     }
   }
-}
-
-// A small, quiet glyph on a bot's roster row — the pawn wearing an antenna
-// (assets/icons/bot.svg), same masked-icon language as every other icon;
-// the seat reads as occupied first, computer-controlled second.
-.bot-marker {
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  opacity: 0.55;
-  background: var(--black);
-  mask: url('~/assets/icons/bot.svg') no-repeat center/contain;
 }
 
 // Configuration
