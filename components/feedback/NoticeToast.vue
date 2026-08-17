@@ -21,16 +21,12 @@ import { useGameStore, type TableNoticeEntry } from '~~/store/game.store'
  */
 const gameStore = useGameStore()
 
-// The tick PRUNES the store (not just the render filter): a list that never
-// drains kept the 1s interval alive for the rest of the session.
+// The shared ephemeral clock owns the prune: a list that never drained kept
+// the 1s interval alive for the rest of the session.
 const now = useEphemeralTicker(
-  () => gameStore.board.notices.length,
-  () => {
-    const fresh = gameStore.board.notices.filter(
-      entry => entry.at > Date.now() - TABLE_NOTICE_TTL_MS
-    )
-    if (fresh.length !== gameStore.board.notices.length) gameStore.board.notices = fresh
-  }
+  () => gameStore.board.notices,
+  fresh => (gameStore.board.notices = fresh),
+  TABLE_NOTICE_TTL_MS
 )
 
 const visible = computed(() =>
@@ -50,14 +46,13 @@ const lineFor = (entry: TableNoticeEntry): string =>
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/status-pill' as *;
 
-// The reconnect pill's shell, stacked — these are the same class of quiet,
-// self-expiring status line.
+// The shared status-pill recipe, stacked — same shell as the reconnect
+// line, one home for both (rules/_status-pill.scss).
 .notice-toast {
-  position: fixed;
-  top: calc(1rem + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
+  @include status-pill-anchor;
+  // Below the reconnect pill: a connection warning outranks table chatter.
   z-index: 2900;
   display: flex;
   flex-direction: column;
@@ -70,16 +65,7 @@ const lineFor = (entry: TableNoticeEntry): string =>
 }
 
 .notice {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.7rem 1.4rem;
-  font-size: 1.3rem;
-  color: #{milk()};
-  background: #{ink(0.92)};
-  border: 0.1rem solid #{milk(0.25)};
-  border-radius: 2rem;
-  white-space: nowrap;
+  @include status-pill;
 }
 
 .dot {

@@ -43,10 +43,11 @@ export const joinEventHandler: EventHandler = async ({
 
   // Bot seats are server-played and have no bearer secret — without this
   // refusal, a tab presenting a bot's public id would land in 'claim' below
-  // and walk off with the seat.
+  // and walk off with the seat. 'removed-from-room' is the honest terminal
+  // card for both game states; "already started" would lie about a lobby.
   if (isBotId(playerId)) {
     console.warn(`Refusing socket claiming bot id ${playerId} in ${gameId}`)
-    socket.emit('game-already-started', { event: 'game-already-started' }, eventTarget)
+    socket.emit('removed-from-room', { event: 'removed-from-room' }, eventTarget)
     socket.disconnect(false)
     return
   }

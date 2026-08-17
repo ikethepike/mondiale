@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { LatLng } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
-import type { CheerEmoji, GuessKind } from '~~/types/events.types'
+import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { CountryColorGrouping, MapFeatureOverlay, MapInset } from '~~/types/map.type'
@@ -40,10 +40,13 @@ export interface CheerEntry {
 }
 
 /** One table announcement in flight (the autopilot's comings and goings),
- *  as broadcast by `table-notice`. Ephemeral like cheers. */
+ *  as broadcast by `table-notice`. Ephemeral like cheers. The kind taxonomy
+ *  is DERIVED from the wire event — one home, so a new kind can't compile
+ *  on the wire while the store silently rejects it. */
+export type TableNoticeKind = Extract<ServerEventData, { event: 'table-notice' }>['kind']
 export interface TableNoticeEntry {
   entryId: string
-  kind: 'autopilot-engaged' | 'autopilot-reclaimed' | 'bot-removed'
+  kind: TableNoticeKind
   /** The seat the notice is about. */
   playerId: string
   at: number
@@ -61,9 +64,9 @@ interface GameStoreState {
   /**
    * The autopilot held this player's seat and they just reclaimed it —
    * the catch-up interstitial's data, from the targeted `autopilot-summary`
-   * emit. Cleared by the interstitial when its hold ends.
+   * emit. Cleared by the interstitial when its hold ends (and on room entry).
    */
-  reclaim?: { rounds: number; scored: number; at: number }
+  reclaim?: { rounds: number; scored: number }
   map: {
     reveal?: ISOCountryCode
     /** Educational stat shown on the reveal card ("Women in parliament · 61%"). */

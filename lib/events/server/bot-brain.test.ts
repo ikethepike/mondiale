@@ -109,9 +109,9 @@ describe('finalAnswerFor', () => {
     exception: 'NO',
   } as unknown as MembershipChallenge
 
-  it('membership answers stay inside the lineup, hit or miss', () => {
+  it('membership answers stay inside the lineup, hit or miss', async () => {
     for (const share of [0, 1]) {
-      const answer = finalAnswerFor(MEMBERSHIP, share, game)
+      const answer = await finalAnswerFor(MEMBERSHIP, share, game)
       if (answer?._type !== 'membership-challenge') throw new Error('wrong shape')
       expect(MEMBERSHIP.lineup).toContain(answer.isoCode)
       if (share === 1) expect(answer.isoCode).toBe(oddOneOut(MEMBERSHIP))
@@ -119,22 +119,22 @@ describe('finalAnswerFor', () => {
     }
   })
 
-  it('sunset names meet the quota on a hit and fall short on a miss', () => {
+  it('sunset names meet the quota on a hit and fall short on a miss', async () => {
     const sunset: SunsetBlitzChallenge = {
       _type: 'sunset-blitz-challenge',
       countries: ['SE', 'NO', 'DK', 'FI', 'IS', 'EE'],
       quotaRatio: 0.5,
     } as unknown as SunsetBlitzChallenge
     const quota = sunsetQuota(sunset)
-    const hit = finalAnswerFor(sunset, 1, game)
-    const miss = finalAnswerFor(sunset, 0, game)
+    const hit = await finalAnswerFor(sunset, 1, game)
+    const miss = await finalAnswerFor(sunset, 0, game)
     if (hit?._type !== 'sunset-blitz-challenge' || miss?._type !== 'sunset-blitz-challenge')
       throw new Error('wrong shape')
     expect(hit.namedCountries.length).toBeGreaterThanOrEqual(quota)
     expect(miss.namedCountries.length).toBeLessThan(quota)
   })
 
-  it('yearbook dials inside the tolerance on a hit, outside on a miss', () => {
+  it('yearbook dials inside the tolerance on a hit, outside on a miss', async () => {
     const yearbook: YearbookChallenge = {
       _type: 'yearbook-challenge',
       // Any real event anchors the dial — the test pins offsets, not history.
@@ -144,8 +144,8 @@ describe('finalAnswerFor', () => {
     const year = yearbookYear(yearbook)
     expect(year).toBeDefined()
     if (year === undefined) return
-    const hit = finalAnswerFor(yearbook, 1, game)
-    const miss = finalAnswerFor(yearbook, 0, game)
+    const hit = await finalAnswerFor(yearbook, 1, game)
+    const miss = await finalAnswerFor(yearbook, 0, game)
     if (hit?._type !== 'yearbook-challenge' || miss?._type !== 'yearbook-challenge')
       throw new Error('wrong shape')
     expect(Math.abs(hit.year - year)).toBeLessThanOrEqual(yearbook.tolerance)

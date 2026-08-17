@@ -1,20 +1,9 @@
-import { sample, sampleMany } from '~~/lib/arrays'
-import {
-  boundaryScene,
-  bornAfter,
-  changeAccepted,
-  changeDecade,
-  madeAcceptedCountries,
-  nocturneDealtCities,
-  sunsetQuota,
-  weighScalesPicks,
-  yearbookYear,
-} from '~~/lib/challenges/final-challenge'
+import { randomBetween, randomInt, sample, sampleMany } from '~~/lib/arrays'
 import { botShare, isBrainSeat, jitteredShare } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { playableWorldCountries } from '~~/lib/game-rules'
-import { offsetKm } from '~~/lib/geo'
+import { offsetKm, type LatLng } from '~~/lib/geo'
 import { clamp01 } from '~~/lib/number'
 import {
   AUTOPILOT_GRACE_MS,
@@ -29,6 +18,8 @@ import {
   BOT_SWEEP_BASE_MS,
   BOT_SWEEP_JITTER_MS,
   BOT_SWEEP_SPREAD_MS,
+  BOT_FINAL_EXTRA_MS,
+  BOT_MARKER_EXTRA_MS,
   BOT_TURN_JITTER_MS,
   BOT_TURN_THINK_MS,
   BOT_TUTORIAL_JITTER_MS,
@@ -38,9 +29,9 @@ import {
   BOT_UNIQUE_STAGGER_MS,
   BOT_UNTIMED_THINK_JITTER_MS,
   BOT_UNTIMED_THINK_MS,
+  RETIREMENT_PHASES,
   classicPlaySeconds,
   isClassicGroupRound,
-  WALK_LEAD_MS,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { activePlayerId } from '~~/lib/chain'
@@ -68,7 +59,8 @@ import type { GovernmentAnswers, UniqueCategoryId } from '~~/types/challenges/gr
 import type { Game, Round } from '~~/types/game.types'
 import { worldRegions, type ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
-import { useServerSideEvents } from '../server-side'
+import { enqueueGameTask, isDraining, useServerSideEvents } from '../server-side'
+import { machineOwnsGame } from './game-ownership'
 import {
   atlasOpenMoves,
   currentAtlasChain,
@@ -83,7 +75,6 @@ import {
 } from './chain-turns'
 import { closeTutorialHandler } from './close-tutorial.handler'
 import { scheduleGameTask } from './deferred-task'
-import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 import { applyGovernmentPick, currentGovernment } from './government-beats'
 import { applyHeritagePin, currentHeritageHunt } from './heritage-beats'
@@ -95,6 +86,7 @@ import {
   isManhuntParticipant,
 } from './manhunt-beats'
 import { scheduleEngineTask, type EngineContext } from './round-engine'
+import { walkParkedSeat } from './seat-exits'
 import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answer.handler'
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from './submit-individual-challenge-answer.handler'
@@ -120,20 +112,27 @@ import { applyUniqueAnswer, applyUniqueReady, currentUniqueOrBust } from './uniq
  * re-validation.
  */
 
-/** Per-process pump registry: last tick per game, so arming is idempotent
- *  while a live chain runs, yet a chain that died (ownership moved away and
- *  back, a fetch failure) can be re-armed by the next rejoin. */
-const pumpTickedAt = new Map<string, number>()
-/** Rolled act-at stamps, keyed per game — in-memory on purpose: a restart
- *  re-rolls the delay, which just reads as a slower bot. */
-const pumpActs = new Map<string, Map<string, number>>()
+/**
+ * Per-process pump registry, ONE record per game so the pieces can never
+ * fall out of lockstep: the chain token (a superseded chain's tick stops
+ * instead of pumping in parallel), the last tick (arming is idempotent
+ * while a chain runs, re-armable once it stales), and the rolled act-at
+ * stamps (in-memory on purpose — a restart re-rolls, which just reads as a
+ * slower bot).
+ */
+interface PumpRecord {
+  token: symbol
+  tickedAt: number
+  acts: Map<string, number>
+}
+const pumps = new Map<string, PumpRecord>()
 
 const PUMP_STALE_MS = BOT_PUMP_MS * 4
 /** Dead-chain registry entries (ownership moved, fetch blew up) get swept
  *  opportunistically — the rearm-round map's own growth argument. */
 const PUMP_SWEEP_MS = 3_600_000
 
-const rollMs = (base: number, jitter: number) => base + Math.random() * jitter
+const rollMs = (base: number, jitter: number) => randomBetween(base, base + jitter)
 
 /**
  * The pump and its acts never speak to a client directly (every emit is a
@@ -156,56 +155,62 @@ export const armBotPump = (ctx: EngineContext, game: Game) => {
   if (!game.started || !gameHasBrainSeats(game)) return
   const { gameId } = ctx.eventTarget
   const now = Date.now()
-  for (const [staleId, at] of pumpTickedAt) {
-    if (now - at > PUMP_SWEEP_MS) {
-      pumpTickedAt.delete(staleId)
-      pumpActs.delete(staleId)
-    }
+  for (const [staleId, record] of pumps) {
+    if (now - record.tickedAt > PUMP_SWEEP_MS) pumps.delete(staleId)
   }
-  const last = pumpTickedAt.get(gameId)
-  if (last !== undefined && now - last < PUMP_STALE_MS) return
-  pumpTickedAt.set(gameId, now)
+  const live = pumps.get(gameId)
+  if (live && now - live.tickedAt < PUMP_STALE_MS) return
   // A fresh chain token retires any chain still limping for this game — a
   // queue backlog can outlive the stale window, and two immortal chains
   // double every fetch for the rest of the game.
-  const token = Symbol('bot-pump')
-  pumpChain.set(gameId, token)
-  scheduleTick({ ...ctx, socket: DETACHED_SOCKET }, token)
+  const record: PumpRecord = { token: Symbol('bot-pump'), tickedAt: now, acts: new Map() }
+  pumps.set(gameId, record)
+  scheduleTick({ ...ctx, socket: DETACHED_SOCKET }, record.token)
 }
 
-/** The live chain's identity per game — a tick whose token was superseded
- *  by a newer armBotPump stops instead of pumping in parallel. */
-const pumpChain = new Map<string, symbol>()
-
-const stopPump = (gameId: string) => {
-  pumpTickedAt.delete(gameId)
-  pumpActs.delete(gameId)
-  pumpChain.delete(gameId)
-}
-
+/**
+ * The tick loop — deliberately NOT scheduleGameTask: that seam skips the
+ * task body outright when the ownership check fails or throws, and a
+ * reschedule living inside the body dies with it, killing every bot in the
+ * game until a human rejoins. This loop makes the same ownership decision
+ * itself, so a genuine ownership move stops the pump on purpose while a
+ * transient Redis hiccup only skips one beat. The tick is READ-ONLY —
+ * every write still re-enters the queue via the acts' scheduleEngineTask.
+ */
 const scheduleTick = (ctx: EngineContext, token: symbol) => {
   const { gameId } = ctx.eventTarget
-  scheduleGameTask({ redis: ctx.redis, gameId }, BOT_PUMP_MS, async () => {
-    if (pumpChain.get(gameId) !== token) return
-    // One transient fetch failure must not kill the chain for the rest of
-    // the game (the only other revival is a rejoin) — reschedule on ANY
-    // error and stop only on the explicit conditions.
-    try {
-      const server = useServerSideEvents(ctx)
-      const game = await server.fetchGame(gameId)
-      if (!game || !game.started || !gameHasBrainSeats(game)) return stopPump(gameId)
-      const playing = Object.values(game.players).some(
-        seat => isBrainSeat(seat) && !['victory', 'kicked'].includes(seat.phase)
-      )
-      if (!playing) return stopPump(gameId)
-      pumpTickedAt.set(gameId, Date.now())
-      pumpGame(ctx, game)
-    } catch (error) {
-      console.error(`Bot pump tick failed for ${gameId}`, error)
-    }
-    scheduleTick(ctx, token)
-  })
+  setTimeout(() => {
+    void (async () => {
+      const record = pumps.get(gameId)
+      if (record?.token !== token) return
+      if (isDraining()) return void pumps.delete(gameId)
+      try {
+        if (!(await machineOwnsGame(ctx.redis, gameId))) {
+          // Another machine owns the room now — its own rejoin arms its pump.
+          return void pumps.delete(gameId)
+        }
+        await enqueueGameTask(gameId, async () => {
+          const server = useServerSideEvents(ctx)
+          const game = await server.fetchGame(gameId)
+          const playing =
+            game?.started &&
+            Object.values(game.players).some(
+              seat => isBrainSeat(seat) && !SETTLED_TERMINAL_PHASES.includes(seat.phase)
+            )
+          if (!playing) return void pumps.delete(gameId)
+          record.tickedAt = Date.now()
+          pumpGame(ctx, game!, record)
+        })
+      } catch (error) {
+        console.error(`Bot pump tick failed for ${gameId}`, error)
+      }
+      if (pumps.get(gameId)?.token === token) scheduleTick(ctx, token)
+    })()
+  }, BOT_PUMP_MS)
 }
+
+/** Phases past which a brain seat owes nothing for the rest of the game. */
+const SETTLED_TERMINAL_PHASES: readonly Player['phase'][] = ['victory', 'kicked']
 
 /**
  * One read-only pass: for every brain seat, find the beat it owes, roll an
@@ -213,9 +218,9 @@ const scheduleTick = (ctx: EngineContext, token: symbol) => {
  * stamp is due. The per-game stamp map is rebuilt each pass, so stamps for
  * beats that no longer exist fall away instead of accumulating.
  */
-const pumpGame = (ctx: EngineContext, game: Game) => {
+const pumpGame = (ctx: EngineContext, game: Game, record: PumpRecord) => {
   const { gameId } = ctx.eventTarget
-  const previous = pumpActs.get(gameId) ?? new Map<string, number>()
+  const previous = record.acts
   const current = new Map<string, number>()
   const now = Date.now()
 
@@ -237,8 +242,16 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
     const actorCtx: EngineContext = { ...ctx, eventTarget: { gameId, playerId: seat.id } }
 
     // A host asked this bot to leave mid-race: it plays out any round it is
-    // still bound to, and retires the moment it stands somewhere safe.
-    if (seat.bot && seat.retiring && RETIREMENT_PHASES.includes(seat.phase)) {
+    // still bound to, and retires the moment it stands somewhere safe — but
+    // never during the staged-round pause: the fresh deal already seated it
+    // (turn orders, ranking hands), and a kicked ghost in a dealt order
+    // stalls every rotation to it for a full shot clock.
+    if (
+      seat.bot &&
+      seat.retiring &&
+      !game.pendingRoundStart &&
+      RETIREMENT_PHASES.includes(seat.phase)
+    ) {
       dispatchRetirement(actorCtx, seat.id)
       continue
     }
@@ -280,7 +293,7 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
         if (seat.resolving || gauntlet?._type !== 'final-challenge') break
         if (
           due(`final:${seat.id}:${gauntlet.turn ?? 0}`, () =>
-            rollMs(BOT_TURN_THINK_MS + 2000, BOT_TURN_JITTER_MS)
+            rollMs(BOT_TURN_THINK_MS + BOT_FINAL_EXTRA_MS, BOT_TURN_JITTER_MS)
           )
         ) {
           dispatchFinalAnswer(actorCtx, gauntlet.turn ?? 0)
@@ -290,18 +303,14 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
     }
   }
 
-  pumpActs.set(gameId, current)
+  record.acts = current
 }
-
-/** Where a retiring bot may actually leave: past its round, not yet (or no
- *  longer) owing the table a turn. A walk it abandons mid-step is fine —
- *  'kicked' is a settled phase and the stale continuation dies on it. */
-const RETIREMENT_PHASES: readonly Player['phase'][] = ['group-scores', 'moving', 'movement-summary']
 
 const dispatchRetirement = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async (fresh, server) => {
     const seat = fresh.players[playerId]
     if (!seat?.bot || !seat.retiring || !RETIREMENT_PHASES.includes(seat.phase)) return
+    if (fresh.pendingRoundStart) return
     console.warn(`Retiring bot ${playerId} in ${ctx.eventTarget.gameId}`)
     seat.phase = 'kicked'
     seat.moves = []
@@ -491,7 +500,7 @@ const planGroupChallenge = ({
       if (state.committed.includes(seat.id)) return
       if (
         due(`manhunt-marker:${roundIndex}:${state.turn}:${seat.id}`, () =>
-          rollMs(BOT_TURN_THINK_MS + 1500, BOT_TURN_JITTER_MS)
+          rollMs(BOT_TURN_THINK_MS + BOT_MARKER_EXTRA_MS, BOT_TURN_JITTER_MS)
         )
       ) {
         dispatchManhuntMarker(ctx, seat.id, state.turn)
@@ -511,7 +520,7 @@ const classicAnswerDelay = (round: Round): number => {
   }
   const remaining = Math.max(0, round.deadline - Date.now())
   const [from, to] = BOT_CLASSIC_WINDOW
-  return remaining * (from + Math.random() * (to - from))
+  return remaining * randomBetween(from, to)
 }
 
 // --- The AFK autopilot: the same brain, borrowed for a vacated human seat ---
@@ -530,11 +539,18 @@ const classicAnswerDelay = (round: Round): number => {
 const seatPresenceAt = new Map<string, number>()
 
 export const noteSeatPresence = (gameId: string, playerId: string) => {
-  seatPresenceAt.set(`${gameId}|${playerId}`, Date.now())
-  if (seatPresenceAt.size > 4096) {
-    const oldest = seatPresenceAt.keys().next().value
-    if (oldest) seatPresenceAt.delete(oldest)
+  const key = `${gameId}|${playerId}`
+  // Delete-before-set: Map.set on an existing key keeps its old insertion
+  // slot, so without this a REFRESHED stamp could be the next one evicted
+  // while dead games' stamps lived on. Stamps mean nothing past the grace
+  // window, so the sweep keeps the map near-empty on its own.
+  seatPresenceAt.delete(key)
+  const now = Date.now()
+  for (const [staleKey, at] of seatPresenceAt) {
+    if (now - at > AUTOPILOT_GRACE_MS * 2) seatPresenceAt.delete(staleKey)
+    else break
   }
+  seatPresenceAt.set(key, now)
 }
 
 export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string) => {
@@ -581,6 +597,35 @@ export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string)
     )
     armBotPump(ctx, game)
   })
+}
+
+/**
+ * Restart/deploy recovery for pending takeovers, called from rearmLiveRound
+ * (a rejoin is the recovery moment, as for every in-memory timer): any
+ * non-bot, non-covered, non-terminal seat with NO live socket gets a fresh
+ * grace window. Without this, a deploy — which disconnects every socket at
+ * once with the drain guard deliberately arming nothing — left exactly the
+ * seats the autopilot exists for uncovered for the rest of the game.
+ */
+export const rearmAfkTakeovers = (ctx: EngineContext, game: Game) => {
+  if (!game.started) return
+  void ctx.io
+    .in(game.id)
+    .fetchSockets()
+    .then(sockets => {
+      const seated = new Set(
+        sockets.flatMap(socket => (socket.data.playerId ? [socket.data.playerId] : []))
+      )
+      for (const seat of Object.values(game.players)) {
+        if (seat.bot || seat.autopilot || seated.has(seat.id)) continue
+        if (['victory', 'kicked'].includes(seat.phase)) continue
+        armAfkTakeover(
+          { ...ctx, eventTarget: { gameId: game.id, playerId: seat.id } },
+          'rearm-sweep'
+        )
+      }
+    })
+    .catch(error => console.error(`AFK takeover rearm failed for ${game.id}`, error))
 }
 
 /**
@@ -685,13 +730,14 @@ const dispatchClassicAnswer = (ctx: EngineContext, roundIndex: number, playerId:
 
 const dispatchScoresExit = (ctx: EngineContext, playerId: string, walkSeq: number | undefined) => {
   scheduleEngineTask(ctx, 0, async (fresh, server) => {
-    const seat = brainSeat(fresh, playerId)
-    if (!seat || seat.phase !== 'group-scores' || seat.walkSeq !== walkSeq) return
-    // The scorecard cap's shape (seat-exits.ts), one seat, sooner.
-    seat.phase = 'moving'
+    if (!brainSeat(fresh, playerId)) return
+    // The scorecard cap's own walk-out (seat-exits.ts), one seat, sooner —
+    // shared, so the walk-entry protocol can never fork between them.
+    const walk = walkParkedSeat(ctx, fresh, playerId, walkSeq)
+    if (!walk) return
     await server.updateGameState(fresh)
-    server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
-    scheduleMovementPhase(WALK_LEAD_MS, ctx, { continuation: true, walkSeq })
+    server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
+    walk()
   })
 }
 
@@ -819,17 +865,8 @@ const dispatchHeritagePin = (ctx: EngineContext, playerId: string) => {
     const target = PLACES[challenge.slugs[state.beat]]?.coordinates
     if (!target) return
     const share = jitteredShare(botShare(fresh, playerId))
-    const missKm =
-      challenge.perfectDistanceKm +
-      (1 - share) * (challenge.zeroDistanceKm - challenge.perfectDistanceKm) * 0.9
     // applyHeritagePin's own guards cover membership and the one-pin rule.
-    await applyHeritagePin(
-      ctx,
-      fresh,
-      challenge,
-      playerId,
-      offsetKm(target, missKm * Math.random(), Math.random() * 360)
-    )
+    await applyHeritagePin(ctx, fresh, challenge, playerId, pinScatter(target, challenge, share))
   })
 }
 
@@ -949,11 +986,9 @@ const dispatchManhuntReady = (ctx: EngineContext, playerId: string) => {
     if (!brainSeat(fresh, playerId)) return
     const challenge = currentManhunt(fresh)
     if (!challenge) return
-    // applyManhuntReady trusts its caller on participation — replicate the
-    // wire handler's check or a stray ready stalls the briefing forever.
-    const participant =
-      challenge.despotId === playerId || challenge.state.detectives.includes(playerId)
-    if (!participant) return
+    // applyManhuntReady trusts its caller on participation — the shared
+    // check (also the wire handler's) or a stray ready stalls the briefing.
+    if (!isManhuntParticipant(challenge, playerId)) return
     await applyManhuntReady(ctx, fresh, challenge, playerId)
   })
 }
@@ -1011,7 +1046,7 @@ const dispatchFinalAnswer = (ctx: EngineContext, turn: number) => {
     const question = item.challenges[0]
     if (!question) return
     const share = jitteredShare(botShare(fresh, playerId))
-    const submittedAnswer = finalAnswerFor(question, share, fresh)
+    const submittedAnswer = await finalAnswerFor(question, share, fresh)
     if (!submittedAnswer) return
     try {
       await submitFinalChallengeAnswerHandler({
@@ -1036,11 +1071,26 @@ const dispatchFinalAnswer = (ctx: EngineContext, turn: number) => {
  * question, and a refused miss re-rolled forever means a bot that never
  * burns a life. Correctness comes from the same helpers the verdict uses.
  */
-export const finalAnswerFor = (
+export const finalAnswerFor = async (
   question: FinalChallengeItem,
   share: number,
   game: Game
-): FinalChallengeAnswer | undefined => {
+): Promise<FinalChallengeAnswer | undefined> => {
+  // Deferred like the submit handler's own import (its comment is the rule):
+  // the gauntlet library statically pulls the fat data chunks, and a static
+  // edge from the socket middleware graph ballooned the server build past
+  // the CI heap ceiling (the pawn-replay job's OOM).
+  const {
+    boundaryScene,
+    bornAfter,
+    changeAccepted,
+    changeDecade,
+    madeAcceptedCountries,
+    nocturneDealtCities,
+    sunsetQuota,
+    weighScalesPicks,
+    yearbookYear,
+  } = await import('~~/lib/challenges/final-challenge')
   const wantCorrect = Math.random() < share
   const iso = (correctIso: ISOCountryCode | undefined, pool?: readonly ISOCountryCode[]) => {
     if (wantCorrect && correctIso) return correctIso
@@ -1080,27 +1130,25 @@ export const finalAnswerFor = (
       return pick ? { _type: question._type, isoCode: pick } : undefined
     }
     case 'sunset-blitz-challenge': {
-      const quota = sunsetQuota(question)
-      const named = wantCorrect
-        ? sampleMany(question.countries, quota)
-        : sampleMany(question.countries, Math.max(0, quota - 1))
-      return { _type: question._type, namedCountries: named }
+      return {
+        _type: question._type,
+        namedCountries: quotaPicks(question.countries, sunsetQuota(question), wantCorrect),
+      }
     }
     case 'city-nocturne-challenge': {
-      const dealt = [...nocturneDealtCities(question)]
-      const named = wantCorrect
-        ? sampleMany(dealt, question.quota)
-        : sampleMany(dealt, Math.max(0, question.quota - 1))
-      return { _type: question._type, namedCities: named }
+      return {
+        _type: question._type,
+        namedCities: quotaPicks([...nocturneDealtCities(question)], question.quota, wantCorrect),
+      }
     }
     case 'born-challenge': {
       const qualifying = playableWorldCountries(game).filter(country =>
         bornAfter(country, question.year)
       )
-      const picks = wantCorrect
-        ? sampleMany(qualifying, question.quota)
-        : sampleMany(qualifying, Math.max(0, question.quota - 1))
-      return { _type: question._type, isoCodes: picks }
+      return {
+        _type: question._type,
+        isoCodes: quotaPicks(qualifying, question.quota, wantCorrect),
+      }
     }
     case 'scales-challenge': {
       // Search the pool for a balancing set the same way a player eyeballs
@@ -1108,7 +1156,7 @@ export const finalAnswerFor = (
       if (wantCorrect) {
         const pool = playableWorldCountries(game).filter(country => country !== question.target)
         for (let attempt = 0; attempt < 120; attempt++) {
-          const picks = sampleMany(pool, 1 + Math.floor(Math.random() * question.maxPicks))
+          const picks = sampleMany(pool, randomInt(1, question.maxPicks))
           if (weighScalesPicks(question, picks)?.balanced) {
             return { _type: question._type, isoCodes: picks }
           }
@@ -1137,8 +1185,8 @@ export const finalAnswerFor = (
       if (year === undefined) return undefined
       const spread = Math.max(1, question.tolerance)
       const offset = wantCorrect
-        ? Math.round((Math.random() * 2 - 1) * question.tolerance)
-        : (question.tolerance + 1 + Math.floor(Math.random() * spread * 3)) *
+        ? Math.round(randomBetween(-question.tolerance, question.tolerance))
+        : (question.tolerance + randomInt(1, Math.ceil(spread * 3))) *
           (Math.random() < 0.5 ? -1 : 1)
       return { _type: question._type, year: year + offset }
     }
@@ -1272,11 +1320,7 @@ export const composeClassicSubmission = async (
       const pin = expectChallengeType(challenge, 'pin-landmark-challenge')
       const target = PLACES[pin.slug]?.coordinates
       if (!target) return { ranking: [] }
-      // Share interpolates the miss radius between a bullseye and the zero
-      // ring; the bearing is anyone's guess, like a real pin.
-      const missKm =
-        pin.perfectDistanceKm + (1 - share) * (pin.zeroDistanceKm - pin.perfectDistanceKm) * 0.9
-      return { ranking: [], pin: offsetKm(target, missKm * Math.random(), Math.random() * 360) }
+      return { ranking: [], pin: pinScatter(target, pin, share) }
     }
     case 'sketch': {
       // The similarity IS the score, client-computed by design — the share
@@ -1292,8 +1336,29 @@ export const composeClassicSubmission = async (
   }
 }
 
+/** A quota-recall answer: the full quota on a hit, one short on a miss —
+ *  the near-miss every list-recall final grades as a plain fail. */
+const quotaPicks = <T>(pool: readonly T[], quota: number, wantCorrect: boolean): T[] =>
+  sampleMany(pool, wantCorrect ? quota : Math.max(0, quota - 1))
+
 const takeShare = (correct: readonly ISOCountryCode[], share: number): ISOCountryCode[] => {
   if (!correct.length) return []
   const take = Math.max(1, Math.round(correct.length * share))
   return correct.slice(0, take)
+}
+
+/**
+ * A bot's pin throw — ONE inverse of the scorer's distance taper for both
+ * pin surfaces (Heritage Hunt beats, the pin-landmark classic): the share
+ * interpolates the miss radius between a bullseye and just inside the zero
+ * ring, the bearing is anyone's guess, like a real pin.
+ */
+const pinScatter = (
+  target: LatLng,
+  ring: { perfectDistanceKm: number; zeroDistanceKm: number },
+  share: number
+): LatLng => {
+  const missKm =
+    ring.perfectDistanceKm + (1 - share) * (ring.zeroDistanceKm - ring.perfectDistanceKm) * 0.9
+  return offsetKm(target, missKm * Math.random(), randomBetween(0, 360))
 }

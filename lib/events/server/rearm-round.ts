@@ -1,7 +1,7 @@
 import type { Game } from '~~/types/game.types'
 import type { EngineContext, RearmOptions } from './round-engine'
 import { rearmAtlasChain } from './atlas-turns'
-import { armBotPump } from './bot-brain'
+import { armBotPump, rearmAfkTakeovers } from './bot-brain'
 import { rearmBorderChain } from './chain-turns'
 import { rearmClassicRound } from './classic-rounds'
 import { rearmHeritageHunt } from './heritage-beats'
@@ -62,6 +62,8 @@ export const rearmLiveRound = (
   // the gauntlet) and the resolving-latch recovery.
   rearmSeatExits(ctx, game)
   // Bot seats ride an in-memory pump like every other timer — a rejoin is
-  // its recovery moment too (idempotent while a live pump runs).
+  // its recovery moment too (idempotent while a live pump runs). Ditto the
+  // AFK takeovers a deploy's drain deliberately never armed.
   armBotPump(ctx, game)
+  rearmAfkTakeovers(ctx, game)
 }

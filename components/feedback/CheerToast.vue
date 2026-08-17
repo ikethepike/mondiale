@@ -35,11 +35,9 @@ const MAX_CHIPS = 3
 // the shared ephemeral clock, whose tick also DRAINS the store (a list that
 // never emptied kept this interval alive for the rest of the session).
 const now = useEphemeralTicker(
-  () => gameStore.board.cheers.length,
-  () => {
-    const fresh = gameStore.board.cheers.filter(cheer => cheer.at > Date.now() - CHIP_TTL_MS)
-    if (fresh.length !== gameStore.board.cheers.length) gameStore.board.cheers = fresh
-  }
+  () => gameStore.board.cheers,
+  fresh => (gameStore.board.cheers = fresh),
+  CHIP_TTL_MS
 )
 
 interface CheerChip {

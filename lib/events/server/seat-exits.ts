@@ -34,6 +34,32 @@ import { forfeitGate } from './submit-individual-challenge-answer.handler'
  * walked seat is a client-driven chain the cap must not double-step — and
  * on the same walk generation it was armed against.
  */
+/**
+ * The one scored-seat walk-out: guard the tokens (still parked on the
+ * scorecard, same walk generation), announce by flipping to 'moving', and
+ * hand back the walk starter for AFTER the caller's save. Both consumers —
+ * the cap task below and the bot brain's early exit — flip through here, so
+ * the walk-entry protocol can never fork again. Returns undefined when the
+ * seat moved on (a client-driven chain this must not double-step).
+ */
+export const walkParkedSeat = (
+  ctx: EngineContext,
+  fresh: Game,
+  playerId: string,
+  walkSeq: number | undefined
+): (() => void) | undefined => {
+  const parked = fresh.players[playerId]
+  if (!parked || parked.phase !== 'group-scores') return undefined
+  if (parked.walkSeq !== walkSeq) return undefined
+  parked.phase = 'moving'
+  return () =>
+    scheduleMovementPhase(
+      WALK_LEAD_MS,
+      { ...ctx, eventTarget: { gameId: ctx.eventTarget.gameId, playerId } },
+      { continuation: true, walkSeq }
+    )
+}
+
 const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
   if (!SERVER_CONTROLLED_CAPS || !seats.length) return
   const walkSeqs = seats.map(seat => [seat.id, seat.walkSeq] as const)
@@ -44,14 +70,12 @@ const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
     // with the challenge-tile arrival beat lost with it. The client's own
     // Close-Scores path needs none of this (its board is already up), and
     // its non-continuation entry still bounces off the 'moving' guard.
-    const walkers: (readonly [string, number | undefined])[] = []
+    const walkers: (() => void)[] = []
     for (const [playerId, walkSeq] of walkSeqs) {
-      const parked = fresh.players[playerId]
-      if (!parked || parked.phase !== 'group-scores') continue
-      if (parked.walkSeq !== walkSeq) continue
+      const walk = walkParkedSeat(ctx, fresh, playerId, walkSeq)
+      if (!walk) continue
       console.warn(`Scores cap walking parked seat ${playerId} in ${ctx.eventTarget.gameId}`)
-      parked.phase = 'moving'
-      walkers.push([playerId, walkSeq] as const)
+      walkers.push(walk)
     }
     if (!walkers.length) return
     await server.updateGameState(fresh)
@@ -59,13 +83,7 @@ const armParkedWalks = (ctx: EngineContext, seats: Player[]) => {
     // it would announce ONE walker and leave the rest parked client-side,
     // defeating the mount grace for exactly the seats it exists to serve).
     server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
-    for (const [playerId, walkSeq] of walkers) {
-      scheduleMovementPhase(
-        WALK_LEAD_MS,
-        { ...ctx, eventTarget: { gameId: ctx.eventTarget.gameId, playerId } },
-        { continuation: true, walkSeq }
-      )
-    }
+    for (const walk of walkers) walk()
   })
 }
 

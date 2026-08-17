@@ -8,5 +8,5 @@ import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 export const autopilotSummaryEvent: ClientSideEventHandler = ({ payload, gameStore, playerId }) => {
   if (payload.event !== 'autopilot-summary') return
   if (payload.playerId !== playerId) return
-  gameStore.reclaim = { rounds: payload.rounds, scored: payload.scored, at: Date.now() }
+  gameStore.reclaim = { rounds: payload.rounds, scored: payload.scored }
 }

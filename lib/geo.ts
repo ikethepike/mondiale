@@ -24,9 +24,13 @@ export const countryLatLng = (isoCode: ISOCountryCode): LatLng | undefined =>
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180
 const toDegrees = (radians: number) => (radians * 180) / Math.PI
 
+/** ONE sphere for every great-circle formula in this module — offsetKm is
+ *  haversineKm's inverse, and two radii would break the round trip. */
+const EARTH_RADIUS_KM = 6371
+
 /** Great-circle distance in kilometres. */
 export const haversineKm = (a: LatLng, b: LatLng): number => {
-  const earthRadiusKm = 6371
+  const earthRadiusKm = EARTH_RADIUS_KM
   const dLat = toRadians(b.lat - a.lat)
   const dLng = toRadians(b.lng - a.lng)
   const h =
@@ -39,8 +43,7 @@ export const haversineKm = (a: LatLng, b: LatLng): number => {
  *  haversineKm's inverse, on the same sphere, so a scatter composed here
  *  grades back to (approximately) the distance it was thrown. */
 export const offsetKm = (origin: LatLng, km: number, bearingDeg: number): LatLng => {
-  const earthRadiusKm = 6371
-  const angular = km / earthRadiusKm
+  const angular = km / EARTH_RADIUS_KM
   const bearing = toRadians(bearingDeg)
   const lat1 = toRadians(origin.lat)
   const lat2 = Math.asin(

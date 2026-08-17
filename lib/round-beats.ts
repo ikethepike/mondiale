@@ -254,6 +254,11 @@ export const BOT_SCORES_JITTER_MS = 2500
  *  buzzer so a human never feels raced by a machine. */
 export const BOT_TURN_THINK_MS = 2200
 export const BOT_TURN_JITTER_MS = 2600
+/** A gauntlet question reads longer than a turn; the extra sits here, not
+ *  as a bare literal in the engine. */
+export const BOT_FINAL_EXTRA_MS = 2000
+/** A manhunt marker weighs a candidate map — slower than a plain turn. */
+export const BOT_MARKER_EXTRA_MS = 1500
 /** A bot "reads" a briefing card this long before its ready. */
 export const BOT_READY_MS = 3500
 export const BOT_READY_JITTER_MS = 2500
@@ -275,6 +280,15 @@ export const BOT_SWEEP_JITTER_MS = 1800
 /** Where in a classic round's play window a bot's answer lands, as fractions
  *  of the budget — never first-instant, never at the buzzer. */
 export const BOT_CLASSIC_WINDOW: readonly [number, number] = [0.3, 0.75]
+/** Where a retiring bot may actually leave: past its round, not yet (or no
+ *  longer) owing the table a turn. Beside the other phase buckets so the
+ *  escapability matrix pins it when a new PlayerPhase lands. */
+export const RETIREMENT_PHASES: readonly PlayerPhase[] = [
+  'group-scores',
+  'moving',
+  'movement-summary',
+]
+
 /** A vanished socket must stay gone this long mid-race before the autopilot
  *  takes the seat over — a refresh or a tunnel must not trigger a takeover. */
 export const AUTOPILOT_GRACE_MS = 25000

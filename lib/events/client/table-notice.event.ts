@@ -14,9 +14,13 @@ export const TABLE_NOTICE_TTL_MS = 8000
  */
 export const tableNoticeEvent: ClientSideEventHandler = ({ payload, gameStore }) => {
   if (payload.event !== 'table-notice') return
+  // The TTL compares against THIS clock, but `at` was stamped by the
+  // server's — on a device running fast the notice would expire on arrival.
+  // Clamping to local now keeps the full display window on every clock.
+  const at = Math.min(payload.at, Date.now())
   const next = [
     ...gameStore.board.notices.filter(notice => notice.at > Date.now() - TABLE_NOTICE_TTL_MS),
-    { entryId: payload.entryId, kind: payload.kind, playerId: payload.playerId, at: payload.at },
+    { entryId: payload.entryId, kind: payload.kind, playerId: payload.playerId, at },
   ]
   gameStore.board.notices = next.length > MAX_ENTRIES ? next.slice(-MAX_ENTRIES) : next
 }

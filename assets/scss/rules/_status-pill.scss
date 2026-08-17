@@ -1,0 +1,28 @@
+@use 'ink' as *;
+
+// The quiet top-center status pill (the reconnect line, the table notices):
+// milk-on-ink, safe-top aware, pointer-transparent. A PURE MODULE like
+// `caption-surface` — it emits nothing until a block includes it, so both
+// toasts take one recipe instead of carrying drifting copies of the shell.
+@mixin status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem 1.4rem;
+  font-size: 1.3rem;
+  color: #{milk()};
+  background: #{ink(0.92)};
+  border: 0.1rem solid #{milk(0.25)};
+  border-radius: 2rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+// The anchor both pill surfaces hang from: fixed top-center, clear of the
+// notch. z-index stays the HOST's call (reconnect outranks notices).
+@mixin status-pill-anchor {
+  position: fixed;
+  top: calc(1rem + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+}

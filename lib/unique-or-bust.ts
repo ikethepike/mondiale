@@ -101,6 +101,12 @@ export const uniqueRegisters = (
   if (memoized) return memoized
   const built = buildRegisters(rules)
   registersMemo.set(key, built)
+  // Never memoize a failure: a transient chunk-import hiccup cached here
+  // would poison every later deal and grade for this rules key until the
+  // process restarted.
+  built.catch(() => {
+    if (registersMemo.get(key) === built) registersMemo.delete(key)
+  })
   return built
 }
 
