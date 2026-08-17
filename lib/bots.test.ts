@@ -12,6 +12,7 @@ import {
 } from './bots'
 import { MAX_PLAYERS } from './player'
 import type { Game } from '~~/types/game.types'
+import type { Player } from '~~/types/player.type'
 
 describe('bot identity', () => {
   it('creates a seated, named, ready bot with a self-describing id', () => {
@@ -43,9 +44,15 @@ describe('bot identity', () => {
 })
 
 describe('botShare', () => {
-  const gameWith = (fractions: [number, number][]): Pick<Game, 'rounds' | 'difficulty'> =>
+  /** An AUTOPILOT seat by default — a human seat the brain borrowed — so these
+   *  cases read the pure mirror. The lobby-bot floor is exercised below. */
+  const gameWith = (
+    fractions: [number, number][],
+    seat: Partial<Player> = {}
+  ): Pick<Game, 'rounds' | 'difficulty' | 'players'> =>
     ({
       difficulty: 'normal',
+      players: { me: { id: 'me', autopilot: { sinceRound: 0 }, ...seat } },
       rounds: fractions.map(([scored, maximum]) => ({
         groupChallenge: {},
         groupAnswers: {},
@@ -55,7 +62,7 @@ describe('botShare', () => {
 
   it('falls back to the difficulty share with no history', () => {
     expect(botShare(gameWith([]), 'me')).toBe(DIFFICULTY_SHARE.normal)
-    expect(botShare({ difficulty: 'hard', rounds: [] } as unknown as Game, 'me')).toBe(
+    expect(botShare({ difficulty: 'hard', rounds: [], players: {} } as unknown as Game, 'me')).toBe(
       DIFFICULTY_SHARE.hard
     )
   })
@@ -71,6 +78,23 @@ describe('botShare', () => {
         'me'
       )
     ).toBeCloseTo(0.5)
+  })
+
+  it('floors a LOBBY bot at its difficulty but lets a hot streak run', () => {
+    // A cold round must not ratchet a hard table down for the rest of the
+    // game — the mirror may carry a bot above its dial, never below it.
+    const cold = gameWith([[1, 10]], { bot: true, autopilot: undefined })
+    expect(botShare(cold, 'me')).toBe(DIFFICULTY_SHARE.normal)
+    const hot = gameWith([[9, 10]], { bot: true, autopilot: undefined })
+    expect(botShare(hot, 'me')).toBeCloseTo(0.9)
+  })
+
+  it('keeps the pure mirror for an AUTOPILOT seat, floor and all', () => {
+    // Playing at the departed human's demonstrated level IS the spec here, so
+    // a weak seat stays weak rather than being lifted to the difficulty.
+    const cold = gameWith([[1, 10]])
+    expect(botShare(cold, 'me')).toBeCloseTo(0.1)
+    expect(botShare(cold, 'me')).toBeLessThan(DIFFICULTY_SHARE.normal)
   })
 
   it('skips rounds with no banked maximum and windows the history', () => {
