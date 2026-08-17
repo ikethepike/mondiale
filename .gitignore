@@ -1,5 +1,8 @@
 node_modules
 *.log*
+# bun.lockb is the lockfile every workflow installs from; an npm one drifts
+# from it silently and nothing here reads it.
+package-lock.json
 .nuxt
 .nitro
 .cache

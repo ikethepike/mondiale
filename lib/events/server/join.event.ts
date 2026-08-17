@@ -272,6 +272,13 @@ export const joinEventHandler: EventHandler = async ({
   // player who came back mid-grace and happened to be mid-refresh at fire
   // time read as still gone (no live socket) and lost their seat to the
   // autopilot one second into an ordinary reload.
+  //
+  // Stamped AFTER the rearm above ON PURPOSE. `rearmAfkTakeovers` runs before
+  // this socket is in the room, so it can still arm a takeover for the very
+  // seat now rejoining — that pending act stands down only because the stamp
+  // written here is strictly LATER than the `armedAt` it captured. Move the
+  // stamp above the rearm and the timestamps tie, and a rejoining player can
+  // lose their seat to the autopilot they just outran.
   noteSeatPresence(gameId, playerId)
 
   await server.updateGameState(game)

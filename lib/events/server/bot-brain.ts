@@ -192,6 +192,14 @@ const scheduleTick = (ctx: EngineContext, token: symbol) => {
       if (record?.token !== token) return
       if (isDraining()) return void pumps.delete(gameId)
       try {
+        // Nobody is watching: an all-brain room (the last human went AFK and
+        // the autopilot took the seat) would otherwise play itself to the end
+        // in an empty theatre. Worse, the ownership check below RE-CLAIMS the
+        // lease on every beat, so the pump alone kept a spectatorless room
+        // pinned to this machine — exactly what the socket-gated heartbeat in
+        // game-ownership.ts declines to do. Rejoining re-arms through
+        // `rearmLiveRound`, so stopping here costs the room nothing.
+        if (!(await ctx.io.in(gameId).fetchSockets()).length) return void pumps.delete(gameId)
         if (!(await machineOwnsGame(ctx.redis, gameId))) {
           // Another machine owns the room now — its own rejoin arms its pump.
           return void pumps.delete(gameId)
@@ -687,7 +695,8 @@ export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) =
   )
   const server = useServerSideEvents(ctx)
   console.warn(`Autopilot released for ${seat.id} in ${game.id} (${covered.length} rounds)`)
-  if (seat.phase === 'victory') return
+  // The table hears "back at the helm" either way — the notice renders only to
+  // the OTHER seats, so a winner's return is still news to them.
   server.emit(
     {
       event: 'table-notice',
@@ -698,6 +707,9 @@ export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) =
     },
     ctx.eventTarget
   )
+  // Only the ceremony is suppressed: a catch-up card over the final standings
+  // reads as an interruption, not a summary.
+  if (seat.phase === 'victory') return
   server.emit(
     { event: 'autopilot-summary', playerId: seat.id, rounds: covered.length, scored },
     ctx.eventTarget
