@@ -86,7 +86,7 @@
 
             <form v-if="game" ref="breakdown" class="breakdown" @change="updateConfiguration">
               <div class="configuration-block region-block">
-                <span class="config-label">Region</span>
+                <span class="eyebrow config-label">Region</span>
                 <RegionOrbs
                   :model-value="game.variant"
                   :disabled="!isPlayerHost"
@@ -96,7 +96,7 @@
 
               <div class="config-row">
                 <div class="configuration-block">
-                  <span class="config-label">Length</span>
+                  <span class="eyebrow config-label">Length</span>
                   <SegmentedControl
                     name="game-length"
                     label="Length"
@@ -108,7 +108,7 @@
                 </div>
 
                 <div class="configuration-block">
-                  <span class="config-label">Difficulty</span>
+                  <span class="eyebrow config-label">Difficulty</span>
                   <SegmentedControl
                     name="game-difficulty"
                     label="Difficulty"
@@ -206,8 +206,19 @@
         @submit.prevent
       >
         <header class="pane-content settings-header">
-          <span class="config-label">Game Settings</span>
-          <h2>Challenges</h2>
+          <div>
+            <span class="eyebrow config-label">Game Settings</span>
+            <h2>Challenges</h2>
+          </div>
+          <!-- The sheet is long on a phone; leaving only the Done button at the
+               very bottom meant scrolling the whole list to get back out. -->
+          <button
+            type="button"
+            class="kick-button settings-close"
+            aria-label="Close game settings"
+            title="Close"
+            @click="showSettings = false"
+          ></button>
         </header>
 
         <div class="pane-content">
@@ -576,30 +587,28 @@ const startGame = () => {
   .player-configuration {
     height: auto;
     min-height: 100%;
+    // Instructions first. The desktop card reads right-to-left through
+    // column-reverse, which on a phone stacked the seat roster ABOVE the
+    // headline that explains what the player is looking at.
+    flex-flow: column nowrap;
     // No bottom rule on phones: the card scrolls past the URL bar, so a
     // thick edge would just strand a heavy line mid-content.
     border-bottom: none;
-    padding-bottom: calc(var(--safe-bottom) + 2.4rem);
+    // The home indicator, or the keyboard while naming — whichever bites.
+    padding-bottom: calc(var(--bottom-clearance) + 2.4rem);
   }
 
+  // The roster stays a LIST on phones. It was a right-aligned strip of bare
+  // pawns — no names, no ready state — and once a bot glyph and a remove
+  // button joined each tile, eight seats overflowed a row that never wrapped.
   .player-configuration .player-lobby ul {
     display: flex;
-    justify-content: flex-end;
+    flex-flow: column nowrap;
     :deep(.player-tile) {
-      width: auto;
-      margin: none;
-      height: 5rem;
-      border: none;
-      gap: none;
-      padding: 0;
-
-      .player-name,
-      .player-status {
-        display: none;
-      }
-      &::before {
-        content: none;
-      }
+      width: 100%;
+      gap: 1.2rem;
+      padding: 0 1.2rem;
+      margin-bottom: 0.8rem;
     }
   }
 }
@@ -664,7 +673,12 @@ const startGame = () => {
     transform: scaleX(-1);
   }
 
-  &:hover {
+  // A resting wash so the arrows read as tappable on touch, where the hover
+  // state below never fires and they were bare glyphs on the card.
+  background: ink(0.05);
+
+  &:hover,
+  &:focus-visible {
     background: ink(0.09);
   }
   &:hover::before {
@@ -678,27 +692,37 @@ const startGame = () => {
 .player-lobby {
   > header {
     display: flex;
-    justify-content: flex-end;
-    align-items: baseline;
+    justify-content: space-between;
+    align-items: center;
     gap: 1.2rem;
-    opacity: 0.5;
     text-align: right;
     margin-bottom: 1rem;
+    // The wash is the COUNTER's, not the row's: worn by the header it also
+    // greyed the add-bot control, which then read as disabled.
+    > p {
+      opacity: 0.5;
+      margin-left: auto;
+    }
   }
 
   // The secondary mode's whole UI: a muted text affordance in the counter
-  // line. Inherits the header's wash; only wakes slightly on hover.
+  // line, never a card or panel. Quiet, but a real target — as a bare inline
+  // link it was ~10px tall and read as disabled next to the seat counter.
   .add-bot {
     border: none;
     background: none;
-    padding: 0;
+    padding: 1.2rem 0;
+    min-height: 4.4rem;
+    display: inline-flex;
+    align-items: center;
     font: inherit;
     color: inherit;
     cursor: pointer;
     text-decoration: underline dotted;
     text-underline-offset: 0.3em;
 
-    &:hover {
+    &:hover,
+    &:focus-visible {
       opacity: 1;
     }
   }
@@ -730,14 +754,10 @@ const startGame = () => {
   flex-flow: column nowrap;
 }
 
-// Small-caps section labels carry the hierarchy, matching the scorecards
+// The label itself is `.eyebrow` (templates/_eyebrow.scss); the block owns
+// its own gap, so the only genuine difference is dropping that margin.
 .config-label {
-  display: block;
-  font-size: 1.2rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--soft-blue);
+  margin-bottom: 0;
 }
 
 // Length + difficulty sit side by side on wide screens, stack on narrow
@@ -805,9 +825,20 @@ const startGame = () => {
 }
 
 .settings-header {
+  // Sticky: the challenge list runs long on a phone, and the way out must
+  // travel with it rather than sitting under every row.
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.2rem;
   padding-top: 2rem;
   padding-bottom: 1.2rem;
-  border-bottom: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+  // The pane's own surface, so rows scrolling under the header stay hidden.
+  background: var(--background-color);
+  border-bottom: 0.1rem solid $hairline;
 
   h2 {
     margin: 0.2rem 0 0;
@@ -816,12 +847,16 @@ const startGame = () => {
   }
 }
 
+.settings-close {
+  margin-left: 0;
+}
+
 .settings-nav {
   display: flex;
   padding-top: 1.6rem;
   padding-bottom: 2rem;
   justify-content: flex-end;
-  border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+  border-top: 0.1rem solid $hairline;
 }
 
 .challenge-row {
@@ -831,10 +866,10 @@ const startGame = () => {
   align-items: center;
   padding: 1rem 0;
   justify-content: space-between;
-  border-bottom: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+  border-bottom: 0.1rem solid $hairline;
 
   &:first-of-type {
-    border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+    border-top: 0.1rem solid $hairline;
   }
 
   :deep(.segment) {
@@ -896,7 +931,7 @@ const startGame = () => {
   padding-top: 2rem;
   align-items: center;
   justify-content: space-between;
-  border-top: 0.1rem solid hsla(0, 0%, 7.5%, 0.12);
+  border-top: 0.1rem solid $hairline;
 }
 .invite-button-content,
 .start-button-content {
@@ -922,13 +957,17 @@ const startGame = () => {
 // tile), full weight + the alert hue on hover/focus — it's destructive.
 .kick-button {
   margin-left: auto;
-  width: 2.4rem;
-  height: 2rem;
+  // The glyph stays small — removal shouldn't shout — but the TARGET is a
+  // finger's worth, and destructive at 2.4×2rem was the smallest thing to
+  // aim at on the whole screen.
+  width: 4.4rem;
+  height: 4.4rem;
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
   opacity: 0.45;
+  flex-shrink: 0;
   transition: opacity var(--motion-quick, 0.15s) ease;
 
   &::before {
@@ -1023,6 +1062,26 @@ const startGame = () => {
   }
   .game-controls {
     justify-content: flex-end;
+  }
+}
+
+// Phone overrides land LAST on purpose: the base `.game-controls` and
+// `.player-lobby` rules are declared after the earlier media blocks, and at
+// equal specificity the later declaration wins.
+@media screen and (max-width: $tablet) {
+  // Full-width and stacked: side by side the two buttons need ~37rem, and a
+  // 390px phone offers ~35.8 — they wrapped into a stray left-aligned Start
+  // Game with neither stretched.
+  .game-controls {
+    flex-flow: column nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+
+    :deep(.button) {
+      width: 100%;
+      margin-left: 0;
+      justify-content: center;
+    }
   }
 }
 </style>
