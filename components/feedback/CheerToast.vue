@@ -19,6 +19,7 @@
   </TransitionGroup>
 </template>
 <script lang="ts" setup>
+import { useEphemeralTicker } from '~~/lib/use-ephemeral-ticker'
 import { useGameStore } from '~~/store/game.store'
 import type { CheerEmoji } from '~~/types/events.types'
 import { BOARD_PHASES } from '~~/types/player.type'
@@ -30,29 +31,16 @@ const gameStore = useGameStore()
 const CHIP_TTL_MS = 4000
 const MAX_CHIPS = 3
 
-// 1s tick, running only while entries exist, so a lone chip still fades.
-const now = ref(Date.now())
-let ticker: ReturnType<typeof setInterval> | undefined
-const ensureTicker = () => {
-  if (ticker) return
-  ticker = setInterval(() => {
-    now.value = Date.now()
-    if (!gameStore.board.cheers.length && ticker) {
-      clearInterval(ticker)
-      ticker = undefined
-    }
-  }, 1000)
-}
-watch(
+// 1s tick, running only while entries exist, so a lone chip still fades —
+// the shared ephemeral clock, whose tick also DRAINS the store (a list that
+// never emptied kept this interval alive for the rest of the session).
+const now = useEphemeralTicker(
   () => gameStore.board.cheers.length,
-  length => {
-    if (length) ensureTicker()
-  },
-  { immediate: true }
+  () => {
+    const fresh = gameStore.board.cheers.filter(cheer => cheer.at > Date.now() - CHIP_TTL_MS)
+    if (fresh.length !== gameStore.board.cheers.length) gameStore.board.cheers = fresh
+  }
 )
-onUnmounted(() => {
-  if (ticker) clearInterval(ticker)
-})
 
 interface CheerChip {
   key: string

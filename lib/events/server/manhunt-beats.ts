@@ -131,6 +131,12 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   // move clock starts only when everyone is ready (or the cap forces it).
 }
 
+/** The round's cast — ONE membership check for every applyManhuntReady
+ *  caller (wire handler and bot brain): a stray ready pushed for a
+ *  non-participant would stall the briefing barrier forever. */
+export const isManhuntParticipant = (challenge: ManhuntChallenge, playerId: string): boolean =>
+  playerId === challenge.despotId || challenge.state.detectives.includes(playerId)
+
 const briefingParticipants = (challenge: ManhuntChallenge): string[] => [
   challenge.despotId,
   ...challenge.state.detectives,

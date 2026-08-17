@@ -43,7 +43,7 @@ export interface CheerEntry {
  *  as broadcast by `table-notice`. Ephemeral like cheers. */
 export interface TableNoticeEntry {
   entryId: string
-  kind: 'autopilot-engaged' | 'autopilot-reclaimed'
+  kind: 'autopilot-engaged' | 'autopilot-reclaimed' | 'bot-removed'
   /** The seat the notice is about. */
   playerId: string
   at: number

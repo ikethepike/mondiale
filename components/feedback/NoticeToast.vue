@@ -7,52 +7,46 @@
   </TransitionGroup>
 </template>
 <script lang="ts" setup>
+import { TABLE_NOTICE_TTL_MS } from '~~/lib/events/client/table-notice.event'
 import { playerDisplayName } from '~~/lib/player'
+import { useEphemeralTicker } from '~~/lib/use-ephemeral-ticker'
 import { useGameStore, type TableNoticeEntry } from '~~/store/game.store'
 
 /**
- * Quiet table announcements (the autopilot taking or returning a seat),
- * mounted by the layout beside the cheer toast so they surface whatever the
- * player is looking at. The affected player never needs their own line — the
- * takeover finds them gone, and the return plays their catch-up interstitial.
+ * Quiet table announcements (the autopilot taking or returning a seat, a
+ * bot leaving), mounted by the layout beside the cheer toast so they surface
+ * whatever the player is looking at. The affected player never needs their
+ * own line — the takeover finds them gone, and the return plays their
+ * catch-up interstitial.
  */
 const gameStore = useGameStore()
 
-const TTL_MS = 7000
-
-const now = ref(Date.now())
-let ticker: ReturnType<typeof setInterval> | undefined
-watch(
+// The tick PRUNES the store (not just the render filter): a list that never
+// drains kept the 1s interval alive for the rest of the session.
+const now = useEphemeralTicker(
   () => gameStore.board.notices.length,
-  length => {
-    if (length && !ticker) {
-      ticker = setInterval(() => {
-        now.value = Date.now()
-        if (!gameStore.board.notices.length && ticker) {
-          clearInterval(ticker)
-          ticker = undefined
-        }
-      }, 1000)
-    }
-  },
-  { immediate: true }
+  () => {
+    const fresh = gameStore.board.notices.filter(
+      entry => entry.at > Date.now() - TABLE_NOTICE_TTL_MS
+    )
+    if (fresh.length !== gameStore.board.notices.length) gameStore.board.notices = fresh
+  }
 )
-onUnmounted(() => {
-  if (ticker) clearInterval(ticker)
-})
 
 const visible = computed(() =>
   gameStore.board.notices.filter(
-    entry => entry.at > now.value - TTL_MS && entry.playerId !== gameStore.playerId
+    entry => entry.at > now.value - TABLE_NOTICE_TTL_MS && entry.playerId !== gameStore.playerId
   )
 )
 
-const lineFor = (entry: TableNoticeEntry): string => {
-  const name = playerDisplayName(gameStore.game?.players[entry.playerId])
-  return entry.kind === 'autopilot-engaged'
-    ? `${name} drifted off — autopilot takes the seat`
-    : `${name} is back at the helm`
+const NOTICE_LINES: Record<TableNoticeEntry['kind'], (name: string) => string> = {
+  'autopilot-engaged': name => `${name} drifted off — autopilot takes the seat`,
+  'autopilot-reclaimed': name => `${name} is back at the helm`,
+  'bot-removed': name => `${name} left the table`,
 }
+
+const lineFor = (entry: TableNoticeEntry): string =>
+  NOTICE_LINES[entry.kind](playerDisplayName(gameStore.game?.players[entry.playerId]))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -94,7 +88,8 @@ const lineFor = (entry: TableNoticeEntry): string => {
   border-radius: 50%;
   background: #{ember()};
 
-  &.autopilot-reclaimed {
+  &.autopilot-reclaimed,
+  &.bot-removed {
     background: #{milk(0.7)};
   }
 }

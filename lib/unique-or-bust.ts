@@ -84,11 +84,27 @@ export const riverNameKey = (value: string): string =>
 export const uniqueLetterOf = (entry: Pick<UniqueEntry, 'name'>): string =>
   uniqueNameKey(entry.name).charAt(0)
 
+/** Registers are pure in the rules, and building one walks every country,
+ *  river and city — memoized per rules key so the dealer, the wire handler's
+ *  grading and the bot brain share one build instead of each paying for it. */
+const registersMemo = new Map<string, Promise<Record<UniqueCategoryId, UniqueEntry[]>>>()
+
 /**
  * The four registers for a game's rules. Async because rivers and cities live
  * in fat generated chunks (the water-blitz dealers' lazy-import precedent).
  */
-export const uniqueRegisters = async (
+export const uniqueRegisters = (
+  rules: GameRules
+): Promise<Record<UniqueCategoryId, UniqueEntry[]>> => {
+  const key = `${rules.variant}|${rules.difficulty}|${rules.includeMicroNations ?? 'auto'}`
+  const memoized = registersMemo.get(key)
+  if (memoized) return memoized
+  const built = buildRegisters(rules)
+  registersMemo.set(key, built)
+  return built
+}
+
+const buildRegisters = async (
   rules: GameRules
 ): Promise<Record<UniqueCategoryId, UniqueEntry[]>> => {
   const [{ WATER_FEATURES }, { CITY_LIGHTS }] = await Promise.all([

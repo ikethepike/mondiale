@@ -4,7 +4,7 @@ import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
 import { isBotId } from '~~/lib/bots'
-import { releaseAutopilot } from './bot-brain'
+import { noteSeatPresence, releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
@@ -266,6 +266,12 @@ export const joinEventHandler: EventHandler = async ({
   // move, knock out). `join` is the only handler allowed to establish this.
   socket.data.playerId = eventTarget.playerId
   socket.data.gameId = gameId
+
+  // The AFK takeover's "reconnected since I armed?" stamp: without it, a
+  // player who came back mid-grace and happened to be mid-refresh at fire
+  // time read as still gone (no live socket) and lost their seat to the
+  // autopilot one second into an ordinary reload.
+  noteSeatPresence(gameId, playerId)
 
   await server.updateGameState(game)
 

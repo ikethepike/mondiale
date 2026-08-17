@@ -2,7 +2,10 @@ import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 /** Bounds the list between prune ticks, so a burst can't grow the scene. */
 const MAX_ENTRIES = 6
-const TTL_MS = 8000
+/** ONE lifetime for a notice — the handler's prune and NoticeToast's
+ *  visibility filter both read it, so a notice always dies by fading,
+ *  never by silently outliving its own display. */
+export const TABLE_NOTICE_TTL_MS = 8000
 
 /**
  * A table announcement arrived (the autopilot taking or returning a seat) —
@@ -12,7 +15,7 @@ const TTL_MS = 8000
 export const tableNoticeEvent: ClientSideEventHandler = ({ payload, gameStore }) => {
   if (payload.event !== 'table-notice') return
   const next = [
-    ...gameStore.board.notices.filter(notice => notice.at > Date.now() - TTL_MS),
+    ...gameStore.board.notices.filter(notice => notice.at > Date.now() - TABLE_NOTICE_TTL_MS),
     { entryId: payload.entryId, kind: payload.kind, playerId: payload.playerId, at: payload.at },
   ]
   gameStore.board.notices = next.length > MAX_ENTRIES ? next.slice(-MAX_ENTRIES) : next

@@ -372,6 +372,9 @@ export const isValidClientEventTarget = (data: unknown): data is ClientEventTarg
   })
 
 export type ServerEventData =
+  /** Despite the name, the ROSTER-CHANGED snapshot: joins, kicks, bot seats
+   *  added or removed all ride it (it is the one 'authoritative' full-sync
+   *  event). Never key a "someone joined" surface off the event name alone. */
   | { event: 'player-joined'; game: Game }
   | { event: 'name-set'; game: Game }
   | { event: 'color-set'; game: Game }
@@ -460,12 +463,12 @@ export type ServerEventData =
       entryId: string
       at: number
     }
-  /** Ephemeral table announcement (the autopilot's comings and goings) —
-   *  no game payload; clients compose the copy from the seat's name and show
-   *  it on the always-mounted notice toast. */
+  /** Ephemeral table announcement (the autopilot's comings and goings, a
+   *  bot leaving the table) — no game payload; clients compose the copy from
+   *  the seat's name and show it on the always-mounted notice toast. */
   | {
       event: 'table-notice'
-      kind: 'autopilot-engaged' | 'autopilot-reclaimed'
+      kind: 'autopilot-engaged' | 'autopilot-reclaimed' | 'bot-removed'
       playerId: string
       entryId: string
       at: number

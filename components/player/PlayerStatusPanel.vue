@@ -42,13 +42,22 @@
         <span v-if="!folded" class="who">
           <span class="name"
             >{{ entry.player.name || 'Player' }}<span v-if="entry.you" class="tag">you</span
-            ><span v-if="entry.points" class="points">+{{ entry.points }}</span></span
+            ><span v-if="entry.player.bot" class="bot-mark" role="img" aria-label="Computer player"
+            /><span v-if="entry.points" class="points">+{{ entry.points }}</span></span
           >
           <span class="status">
             <span v-if="entry.status.busy" class="pulse" aria-hidden="true" />
-            {{ entry.status.label }}
+            {{ entry.player.retiring ? 'Leaving after this round' : entry.status.label }}
           </span>
         </span>
+        <button
+          v-if="!folded && isPlayerHost && entry.player.bot && !entry.player.retiring"
+          class="remove-bot-button"
+          type="button"
+          :aria-label="`Remove ${entry.player.name || 'bot'} from the game`"
+          :title="`Remove ${entry.player.name || 'bot'}`"
+          @click.stop="removeBot(entry.player.id)"
+        ></button>
         <button
           v-if="!folded && !entry.you"
           class="cheer-button"
@@ -116,7 +125,13 @@ const toggleSpectate = (entry: { player: Player; you: boolean }) => {
 
 // Cheer picker: one open strip at a time, closed by outside taps. The 1s local
 // cooldown is UX only — the server's token bucket is the real guard.
-const { update } = useClientEvents()
+const { update, isPlayerHost } = useClientEvents()
+
+// Mid-race bot removal (host-only): the seat plays out its round, then the
+// brain retires it — the row shows "Leaving after this round" until it goes.
+const removeBot = (targetId: string) => {
+  update({ event: 'remove-bot', targetId })
+}
 const strip = ref<string>()
 const cheerCooldown = ref(false)
 
@@ -253,7 +268,9 @@ const entries = computed(() =>
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 2.4rem 1fr auto;
+  // The trailing auto columns hold whichever action buttons the row earns
+  // (host's bot-remove, the cheer) — absent buttons collapse their column.
+  grid-template-columns: 2.4rem 1fr auto auto;
   align-items: center;
   gap: 0.9rem;
   padding: 0.55rem 0.7rem;
@@ -315,6 +332,45 @@ const entries = computed(() =>
   &:disabled {
     opacity: 0.4;
     cursor: default;
+  }
+}
+
+// The bot glyph beside the name — the pawn wearing an antenna, masked like
+// every icon; quiet, the name stays the identity.
+.bot-mark {
+  display: inline-block;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-left: 0.4rem;
+  vertical-align: -0.15rem;
+  opacity: 0.5;
+  background: currentColor;
+  mask: url('~/assets/icons/bot.svg') no-repeat center/contain;
+}
+
+// Host-only mid-race bot removal: the kick affordance's language (a masked
+// cross), quiet at rest — removal shouldn't shout on every row.
+.remove-bot-button {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: ink(0.08);
+  cursor: pointer;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0.55;
+    mask: url('~/assets/icons/cross.svg') no-repeat center/45%;
+  }
+
+  &:hover::after {
+    opacity: 1;
   }
 }
 

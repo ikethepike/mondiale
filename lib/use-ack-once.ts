@@ -21,9 +21,18 @@ export const useAckOnce = (payload: () => ClientEventData) => {
   const send = () => {
     if (gameStore.watching || sent.value) return
     sent.value = true
-    void update(payload()).then(delivered => {
-      if (!delivered) sent.value = false
-    })
+    // The rejection arm matters as much as the false branch: update() can
+    // THROW mid-reconnect (socket not initialized, playerId not yet set),
+    // and a latch that only reopens on a resolved false would strand the
+    // button dead for good — the exact failure this helper exists to stop.
+    void update(payload()).then(
+      delivered => {
+        if (!delivered) sent.value = false
+      },
+      () => {
+        sent.value = false
+      }
+    )
   }
 
   return { sent, send }

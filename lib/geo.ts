@@ -35,6 +35,26 @@ export const haversineKm = (a: LatLng, b: LatLng): number => {
   return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
+/** The point `km` from `origin` along `bearingDeg` (clockwise from north) —
+ *  haversineKm's inverse, on the same sphere, so a scatter composed here
+ *  grades back to (approximately) the distance it was thrown. */
+export const offsetKm = (origin: LatLng, km: number, bearingDeg: number): LatLng => {
+  const earthRadiusKm = 6371
+  const angular = km / earthRadiusKm
+  const bearing = toRadians(bearingDeg)
+  const lat1 = toRadians(origin.lat)
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing)
+  )
+  const lng2 =
+    toRadians(origin.lng) +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1),
+      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2)
+    )
+  return { lat: toDegrees(lat2), lng: ((toDegrees(lng2) + 540) % 360) - 180 }
+}
+
 /** Initial bearing from a to b, degrees clockwise from north. */
 export const bearingDegrees = (a: LatLng, b: LatLng): number => {
   const dLng = toRadians(b.lng - a.lng)

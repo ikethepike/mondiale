@@ -91,6 +91,7 @@ import {
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
+import { isBrainSeat } from './bots'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
   ATLAS_TARGET_LINKS,
@@ -351,10 +352,14 @@ const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallen
 
   const tuning = MANHUNT_TUNING[game.difficulty]
   // The despot is the round's starring role — deal it to a human whenever
-  // one is standing. A bot despot works (the brain reads its own side key)
-  // but the cat-and-mouse is the humans' to play; an all-bot table still
-  // gets a bot despot so the round deals at all.
-  const humanContenders = contenders.filter(playerId => !game.players[playerId]?.bot)
+  // one is standing. Through isBrainSeat, not `.bot`: an AFK seat under
+  // autopilot is brain-played too, and handing it the starring role while
+  // real humans sit at the table is what this filter exists to prevent. An
+  // all-bot table still gets a bot despot so the round deals at all.
+  const humanContenders = contenders.filter(playerId => {
+    const seat = game.players[playerId]
+    return !!seat && !isBrainSeat(seat)
+  })
   const despotId = sample(humanContenders.length ? humanContenders : contenders)!
   const detectives = shuffleArray(contenders.filter(playerId => playerId !== despotId))
   return {

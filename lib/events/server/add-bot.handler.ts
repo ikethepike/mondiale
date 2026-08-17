@@ -1,6 +1,7 @@
 import { createBot } from '~~/lib/bots'
 import { MAX_PLAYERS } from '~~/lib/player'
 import { defineGameHandler } from '../server-side'
+import { armBotPump } from './bot-brain'
 
 /**
  * Host-only, lobby-only: seat a computer-controlled player. The bot arrives
@@ -25,20 +26,36 @@ export const addBotHandler = defineGameHandler('add-bot', async ({ game, server,
 })
 
 /**
- * Host-only, lobby-only, bot-only: free a bot's chair. No denylist and no
- * socket eviction (the kick handler's whole tail) — a bot id has no tab to
- * bounce and can never rejoin anyway.
+ * Host-only, bot-only: free a bot's chair. No denylist and no socket
+ * eviction (the kick handler's whole tail) — a bot id has no tab to bounce
+ * and can never rejoin anyway.
+ *
+ * In the lobby the seat simply vanishes. Mid-race the record must survive
+ * (its name anchors every past round's history), so the bot is marked
+ * `retiring` instead: the brain plays out any round it is bound to and
+ * retires the seat to 'kicked' — a settled phase — at the next safe beat
+ * (bot-brain's dispatchRetirement).
  */
 export const removeBotHandler = defineGameHandler(
   'remove-bot',
-  async ({ game, server, eventData, eventTarget }) => {
+  async ({ game, server, eventData, eventTarget, io, redis, socket }) => {
     if (game.host !== eventTarget.playerId)
       return console.warn(`Non-host tried to remove a bot: ${eventTarget.playerId}`)
-    if (game.started) return console.warn(`Ignoring mid-race remove-bot in ${game.id}`)
 
     const { targetId } = eventData
-    if (typeof targetId !== 'string' || !game.players[targetId]?.bot)
-      return console.warn(`Invalid remove-bot target for ${game.id}`)
+    const target = typeof targetId === 'string' ? game.players[targetId] : undefined
+    if (!target?.bot) return console.warn(`Invalid remove-bot target for ${game.id}`)
+
+    if (game.started) {
+      if (target.phase === 'kicked' || target.retiring) return
+      target.retiring = true
+      await server.updateGameState(game)
+      server.emit({ event: 'update', game }, { gameId: game.id, playerId: target.id })
+      // The retirement is the pump's to execute — make sure one is running
+      // (idempotent; matters only if the chain died and nobody rejoined).
+      armBotPump({ io, redis, socket, eventTarget }, game)
+      return
+    }
 
     game.players = Object.fromEntries(
       Object.entries(game.players).filter(([id]) => id !== targetId)

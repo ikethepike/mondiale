@@ -37,16 +37,11 @@ export const BOT_NAMES = [
 
 export const nextBotName = (takenNames: readonly string[]): string => {
   const free = BOT_NAMES.filter(name => !takenNames.includes(name))
-  return sample(free) ?? sample(BOT_NAMES) ?? 'Explorer'
+  return sample(free.length ? free : BOT_NAMES)!
 }
 
 export const createBot = (taken: readonly Pick<Player, 'name' | 'color'>[]): Player => ({
-  ...createPlayer(
-    // Time-based suffix is enough: creation is serialized per game, and the
-    // prefix is what carries meaning.
-    `${BOT_ID_PREFIX}${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
-    taken.map(seat => seat.color)
-  ),
+  ...createPlayer(`${BOT_ID_PREFIX}${crypto.randomUUID()}`, taken.map(seat => seat.color)),
   name: nextBotName(taken.flatMap(seat => seat.name ?? [])),
   ready: true,
   phase: 'waiting-for-game',

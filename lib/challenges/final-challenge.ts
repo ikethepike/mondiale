@@ -1358,7 +1358,9 @@ export const weighScalesPicks = (
 }
 
 /** The dealt cities a nocturne answer may light — the top N of CITY_LIGHTS. */
-const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
+/** The dealt city set — exported so the bot brain names the same cities the
+ *  verdict validates against, never a second CITY_LIGHTS slice. */
+export const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
   new Set(
     (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount).map(city => city.name)
   )

@@ -6,8 +6,21 @@ import type {
 } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
 import type { Player, PlayerPhase } from '~~/types/player.type'
+import type {
+  MembershipChallenge,
+  SunsetBlitzChallenge,
+  YearbookChallenge,
+} from '~~/types/challenges/final-challenge.type'
+import { oddOneOut } from '~~/types/challenges/final-challenge.type'
+import { sunsetQuota, yearbookYear } from '~~/lib/challenges/final-challenge'
+import { EVENTS } from '~~/data/events.gen'
 import { gradeGroupAnswer } from './grade-group-answer'
-import { armAfkTakeover, composeClassicSubmission, releaseAutopilot } from './bot-brain'
+import {
+  armAfkTakeover,
+  composeClassicSubmission,
+  finalAnswerFor,
+  releaseAutopilot,
+} from './bot-brain'
 import type { EngineContext } from './round-engine'
 
 const BLITZ: NeighbourBlitzChallenge = {
@@ -84,6 +97,60 @@ describe('composeClassicSubmission', () => {
     )
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeUndefined()
+  })
+})
+
+describe('finalAnswerFor', () => {
+  const game = buildGame(BUZZ, [seat('bot:x', 'final-challenge', { bot: true })])
+
+  const MEMBERSHIP: MembershipChallenge = {
+    _type: 'membership-challenge',
+    organization: 'eu',
+    lineup: ['DE', 'FR', 'IT', 'NO'],
+    exception: 'NO',
+  } as unknown as MembershipChallenge
+
+  it('membership answers stay inside the lineup, hit or miss', () => {
+    for (const share of [0, 1]) {
+      const answer = finalAnswerFor(MEMBERSHIP, share, game)
+      if (answer?._type !== 'membership-challenge') throw new Error('wrong shape')
+      expect(MEMBERSHIP.lineup).toContain(answer.isoCode)
+      if (share === 1) expect(answer.isoCode).toBe(oddOneOut(MEMBERSHIP))
+      if (share === 0) expect(answer.isoCode).not.toBe(oddOneOut(MEMBERSHIP))
+    }
+  })
+
+  it('sunset names meet the quota on a hit and fall short on a miss', () => {
+    const sunset: SunsetBlitzChallenge = {
+      _type: 'sunset-blitz-challenge',
+      countries: ['SE', 'NO', 'DK', 'FI', 'IS', 'EE'],
+      quotaRatio: 0.5,
+    } as unknown as SunsetBlitzChallenge
+    const quota = sunsetQuota(sunset)
+    const hit = finalAnswerFor(sunset, 1, game)
+    const miss = finalAnswerFor(sunset, 0, game)
+    if (hit?._type !== 'sunset-blitz-challenge' || miss?._type !== 'sunset-blitz-challenge')
+      throw new Error('wrong shape')
+    expect(hit.namedCountries.length).toBeGreaterThanOrEqual(quota)
+    expect(miss.namedCountries.length).toBeLessThan(quota)
+  })
+
+  it('yearbook dials inside the tolerance on a hit, outside on a miss', () => {
+    const yearbook: YearbookChallenge = {
+      _type: 'yearbook-challenge',
+      // Any real event anchors the dial — the test pins offsets, not history.
+      headlines: [Object.keys(EVENTS)[0]],
+      tolerance: 3,
+    } as unknown as YearbookChallenge
+    const year = yearbookYear(yearbook)
+    expect(year).toBeDefined()
+    if (year === undefined) return
+    const hit = finalAnswerFor(yearbook, 1, game)
+    const miss = finalAnswerFor(yearbook, 0, game)
+    if (hit?._type !== 'yearbook-challenge' || miss?._type !== 'yearbook-challenge')
+      throw new Error('wrong shape')
+    expect(Math.abs(hit.year - year)).toBeLessThanOrEqual(yearbook.tolerance)
+    expect(Math.abs(miss.year - year)).toBeGreaterThan(yearbook.tolerance)
   })
 })
 

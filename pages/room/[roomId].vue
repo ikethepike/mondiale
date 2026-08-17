@@ -238,6 +238,13 @@ const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = usePhaseTransition
 const joinRoom = useJoinRoom()
 
 onMounted(() => {
+  // Ephemeral cross-room residue: a notice fired seconds before switching
+  // rooms would resolve its name against the NEW game's players, and a
+  // reclaim summary whose interstitial never finished would replay over a
+  // fresh lobby. Entering a room starts clean.
+  gameStore.board.notices = []
+  gameStore.reclaim = undefined
+
   joinRoom()
 
   // Socket.IO drops a socket's room membership when it reconnects (a server

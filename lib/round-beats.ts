@@ -245,13 +245,33 @@ export const EMPIRE_INTERBEAT_HOLD_MS = 1800
 export const BOT_PUMP_MS = 1500
 /** A bot "reads" its rules card this long before closing it. */
 export const BOT_TUTORIAL_MS = 5000
+export const BOT_TUTORIAL_JITTER_MS = 2000
 /** A bot "reads" its scorecard this long before walking on. */
 export const BOT_SCORES_MS = 6000
+export const BOT_SCORES_JITTER_MS = 2500
 /** A turn-engine bot's think beat before its move, plus up to this much
  *  jitter — near the harness chain-simulator's rival beat, slower than a
  *  buzzer so a human never feels raced by a machine. */
 export const BOT_TURN_THINK_MS = 2200
 export const BOT_TURN_JITTER_MS = 2600
+/** A bot "reads" a briefing card this long before its ready. */
+export const BOT_READY_MS = 3500
+export const BOT_READY_JITTER_MS = 2500
+/** A bot "reads" a browsable reveal (the timeline chronicle) this long. */
+export const BOT_BROWSE_ACK_MS = 9000
+export const BOT_BROWSE_ACK_JITTER_MS = 6000
+/** The classic think on a round with no server clock (caps off in dev). */
+export const BOT_UNTIMED_THINK_MS = 15000
+export const BOT_UNTIMED_THINK_JITTER_MS = 20000
+/** Unique or Bust: the first category lands after the base, each further
+ *  category a stagger later — one blank at a time, like a person. */
+export const BOT_UNIQUE_BASE_MS = 4000
+export const BOT_UNIQUE_STAGGER_MS = 6000
+export const BOT_UNIQUE_JITTER_MS = 5000
+/** Clean Sweep's claim cadence: base + (1 − share) × spread per claim. */
+export const BOT_SWEEP_BASE_MS = 1200
+export const BOT_SWEEP_SPREAD_MS = 3500
+export const BOT_SWEEP_JITTER_MS = 1800
 /** Where in a classic round's play window a bot's answer lands, as fractions
  *  of the budget — never first-instant, never at the buzzer. */
 export const BOT_CLASSIC_WINDOW: readonly [number, number] = [0.3, 0.75]

@@ -43,6 +43,10 @@ export interface Player {
    *  bearer secret and the join door refuses its id, so no socket can ever
    *  bind to it. The bot brain (bot-brain.ts) plays it server-side. */
   bot?: true
+  /** Host asked this bot to leave mid-race. The brain retires the seat (to
+   *  'kicked') at the next moment it owes the table nothing — a round it is
+   *  mid-way through gets played out first. Bot-only, cleared on retirement. */
+  retiring?: true
   /** The bot brain is covering this HUMAN seat while its player is away.
    *  Set by the AFK takeover (socket gone past the grace window mid-race),
    *  cleared by the player's rejoin. `sinceRound` bounds the catch-up
