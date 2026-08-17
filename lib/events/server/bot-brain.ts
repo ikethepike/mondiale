@@ -1395,9 +1395,12 @@ export const composeClassicSubmission = async (
       return { ranking: [], pin: pinScatter(target, pin, share) }
     }
     case 'sketch': {
-      // The similarity IS the score, client-computed by design — the share
-      // stands in for a drawing of that quality.
-      return { ranking: [], clientScore: claim }
+      // The one kind with NO correctness gate: `gradeGroupAnswer` clamps the
+      // claim with `correct: true` always, because a sketch's similarity IS
+      // its score. So the share has to ride the CLAIM here — the `hit` roll
+      // never gets to spend it, and claiming the pot drew a flawless outline
+      // at every difficulty.
+      return { ranking: [], clientScore: Math.round(maximum * share) }
     }
     case 'traversal': {
       // The route is graded whole: `optimalPath` carries its endpoints, so a

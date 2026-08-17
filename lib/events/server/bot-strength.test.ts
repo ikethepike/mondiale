@@ -82,6 +82,16 @@ const BUZZ: TwoTruthsChallenge = {
   maximumPoints: 10,
 } as TwoTruthsChallenge
 
+/** The one kind graded with `correct: true` unconditionally — the similarity
+ *  IS the score, so the share must ride the claim or a bot draws a perfect
+ *  outline at every difficulty. */
+const SKETCH = {
+  _type: 'sketch-challenge',
+  country: 'FR',
+  durationSeconds: 40,
+  maximumPoints: 10,
+}
+
 const GHOST: GhostStateChallenge = {
   _type: 'ghost-state-challenge',
   territoryId: 'somaliland',
@@ -117,6 +127,17 @@ describe('bot strength realizes the difficulty dial', () => {
     'collect-a-set rounds land near the %s share',
     async difficulty => {
       const realized = await realizedFraction(BLITZ, difficulty)
+      expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
+      expect(realized).toBeLessThan(DIFFICULTY_SHARE[difficulty] + BAND)
+    }
+  )
+
+  // No correctness gate here, so the claim is the only place the share can
+  // live: claiming the pot banked full marks at every difficulty.
+  it.each(['easy', 'normal', 'hard'] as const)(
+    'sketch scores its %s share, not the whole pot',
+    async difficulty => {
+      const realized = await realizedFraction(SKETCH, difficulty)
       expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
       expect(realized).toBeLessThan(DIFFICULTY_SHARE[difficulty] + BAND)
     }
