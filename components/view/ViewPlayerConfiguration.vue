@@ -771,6 +771,16 @@ const startGame = () => {
   max-width: 64rem;
   display: flex;
   flex-flow: column nowrap;
+
+  // The WRAPPER scrolls, not the card, so a sticky header inside sticks to the
+  // wrapper's padding box — parking it a safe-inset below the card's own top
+  // edge while the card scrolls away underneath. Owning the scroll here puts
+  // the header's containing block back on the card, where `top: 0` means the
+  // card's top. Capped so a long list scrolls INSIDE the card rather than
+  // running past the viewport.
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 // The lobby's door to the settings page — a compact icon riding the far right
@@ -811,7 +821,11 @@ const startGame = () => {
   // travel with it rather than sitting under every row.
   position: sticky;
   top: 0;
-  z-index: 1;
+  // Above the rows travelling under it. `.segment` carries z-index 1 of its
+  // own, and an equal index loses to whatever comes LATER in the document —
+  // which is every row below, so segment labels printed straight through the
+  // heading. This must stay clear of that, not tie it.
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -819,6 +833,7 @@ const startGame = () => {
   padding-top: 2rem;
   padding-bottom: 1.2rem;
   // The pane's own surface, so rows scrolling under the header stay hidden.
+  // Opaque by necessity, not decoration: the rows pass directly beneath it.
   background: var(--background-color);
   border-bottom: 0.1rem solid $hairline;
 
