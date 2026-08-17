@@ -939,12 +939,19 @@ const startGame = () => {
 // tile), full weight + the alert hue on hover/focus — it's destructive.
 .kick-button {
   margin-left: auto;
-  // The glyph stays small — removal shouldn't shout — but the TARGET is a
-  // finger's worth, and destructive at 2.4×2rem was the smallest thing to
-  // aim at on the whole screen.
-  width: 4.4rem;
-  height: 4.4rem;
+  // The glyph stays small — removal shouldn't shout — but the TARGET grows to
+  // a finger's worth wherever a finger is what aims it: destructive at
+  // 2.4×2rem was the smallest thing to hit on the whole screen. A mouse needs
+  // no such room, and the desktop lobby column is only ~16rem wide, so a
+  // 4.4rem target there ate the name instead.
+  width: 2.8rem;
+  height: 2.8rem;
   padding: 0;
+
+  @media (pointer: coarse) {
+    width: 4.4rem;
+    height: 4.4rem;
+  }
   border: none;
   background: none;
   cursor: pointer;
@@ -973,10 +980,20 @@ const startGame = () => {
 }
 
 .player-status {
-  width: 4rem;
+  // A 2rem glyph; the box was 4rem, and in the ~16rem desktop lobby column
+  // that slack came straight off the player's name. Full width again on a
+  // laptop, where the column can afford it.
+  width: 2.4rem;
   height: 2rem;
   margin-left: auto;
+  // Ready state is the row's whole point — it must not be the thing that
+  // compresses when the desktop lobby column gets narrow.
+  flex-shrink: 0;
   background: var(--black);
+
+  @media screen and (min-width: $laptop) {
+    width: 4rem;
+  }
 
   // The kick button already claimed the auto gap when it renders before us
   .kick-button + & {
@@ -1040,6 +1057,21 @@ const startGame = () => {
       width: 32%;
       min-width: 20rem;
       border-left: 0.1rem solid var(--black);
+
+      // This column is ~22rem at the narrow end of desktop, and the tile's
+      // own 2rem gap + 2rem side padding spend 6rem of it before a single
+      // glyph lands — enough that the pawn and the ready tick were pushed out
+      // of the row and clipped by its `overflow: hidden`. Roomy again by the
+      // time the column can afford it.
+      :deep(.player-tile) {
+        gap: 1rem;
+        padding: 0 1.2rem;
+
+        @media screen and (min-width: $laptop) {
+          gap: 2rem;
+          padding: 0 2rem;
+        }
+      }
     }
   }
   .game-controls {

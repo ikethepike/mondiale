@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DIFFICULTY_SHARE } from '~~/lib/bots'
 import { pickTraversal } from '~~/lib/traversal'
+import { PLACES } from '~~/data/places.gen'
 import type {
   GhostStateChallenge,
   NeighbourBlitzChallenge,
@@ -24,8 +25,16 @@ import { composeClassicSubmission } from './bot-brain'
  * around the share the dial promised.
  */
 
-const TRIALS = 400
-/** Sampling noise on 400 trials is well inside this; a spent-share bug is not. */
+/**
+ * The all-or-nothing kinds (one pick, full pot or nothing) carry the most
+ * per-trial variance, so the trial count is set by THEM: at 400 the worst
+ * observed drift of a buzz mean over 20 replications was 0.078 against a 0.12
+ * band — a margin thin enough to go red on an unlucky seed, and it did. 1500
+ * brings the worst case under 0.04 while the suite still runs in a second.
+ * Raise the trials before loosening the band; the band is the sensitivity.
+ */
+const TRIALS = 1500
+/** Sampling noise at `TRIALS` is well inside this; a spent-share bug is not. */
 const BAND = 0.12
 
 const seat = (id: string, extra: Partial<Player> = {}): Player =>
@@ -118,6 +127,18 @@ const SKETCH = {
   maximumPoints: 10,
 }
 
+/** A pin throw is priced by distance, not by a hit roll — the scatter radius
+ *  IS the skill, and a radius drawn uniformly inward pays far over its dial. */
+const PIN = {
+  _type: 'pin-landmark-challenge',
+  slug: Object.keys(PLACES).find(candidate => PLACES[candidate]?.coordinates),
+  image: '/landmarks/placeholder.webp',
+  perfectDistanceKm: 50,
+  zeroDistanceKm: 2000,
+  durationSeconds: 30,
+  maximumPoints: 10,
+}
+
 const GHOST: GhostStateChallenge = {
   _type: 'ghost-state-challenge',
   territoryId: 'somaliland',
@@ -155,6 +176,13 @@ describe('bot strength realizes the difficulty dial', () => {
   it.each(['easy', 'normal', 'hard'] as const)(
     'sketch scores its %s share, not the whole pot',
     async difficulty => expectOnDial(await realizedFraction(SKETCH, difficulty), difficulty)
+  )
+
+  // The taper prices the throw, so the scatter radius has to BE the share —
+  // a radius drawn uniformly inward paid ~0.73 on an easy seat's 0.35 dial.
+  it.each(['easy', 'normal', 'hard'] as const)(
+    'pin throws scatter to their %s share',
+    async difficulty => expectOnDial(await realizedFraction(PIN, difficulty), difficulty)
   )
 
   // Both grade guess ZERO, so a decoy submitted first throws away a won round.

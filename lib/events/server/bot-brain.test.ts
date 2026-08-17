@@ -283,12 +283,20 @@ describe('the bot pump', () => {
 
   beforeEach(() => {
     vi.useFakeTimers()
+    // Unsharded, so `machineOwnsGame` short-circuits without touching redis.
+    // With a machine id set, the ownership claim's own reads would land on the
+    // fetch counter below and the tick oracle would report ticks that never
+    // happened.
+    vi.stubEnv('FLY_MACHINE_ID', '')
     store.clear()
     fetches = 0
     roomSockets = [{ id: 'watcher', data: { playerId: 'human' } }]
   })
 
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllEnvs()
+  })
 
   /** Ticks are read-only state reads, so "did it fetch?" IS "did it tick?". */
   const ticked = async () => {

@@ -74,6 +74,10 @@ export const SWEEP_ACCURACY: readonly [number, number] = [0.3, 0.95]
 /** A gate answer's buzz moment, floor to ceiling across the share. */
 export const GATE_REMAINING: readonly [number, number] = [0.45, 0.9]
 
+/** How wide a pin throw scatters around the radius its share prices at, as a
+ *  fraction of the ring's span — a person's aim wobbles, but symmetrically. */
+export const PIN_SCATTER_BAND = 0.12
+
 /**
  * The brain's skill knob for a seat (Isaac's ruling): play at roughly the
  * seat's own demonstrated level — the rolling share of maximum it has been

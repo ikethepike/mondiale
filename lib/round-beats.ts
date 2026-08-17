@@ -508,15 +508,20 @@ export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): 
  * Both sides of the wire price a buzz off this: `useDeadlineClock` repaints
  * the player's shot clock with it and the bot brain stamps its own `buzzAt`
  * with it, so a human and a machine answering at the same moment can never be
- * graded by two different roundings. No deadline or no window means nothing
- * to be early in.
+ * graded by two different roundings.
+ *
+ * No WINDOW means nothing to be early in, so the clock reads full. An unset
+ * DEADLINE is a different thing — a round that hasn't been stamped yet — and
+ * reads empty, matching `secondsOnDeadline`, which returns 0 for the same
+ * input. The two must never disagree about whether a clock is running.
  */
 export const remainingFractionOn = (
   deadline: number | undefined,
   totalSeconds: number | undefined
 ): number => {
   const total = (totalSeconds ?? 0) * 1000
-  if (!deadline || !total) return 1
+  if (!total) return 1
+  if (!deadline) return 0
   return clamp01((deadline - Date.now()) / total)
 }
 

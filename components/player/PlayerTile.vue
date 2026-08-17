@@ -34,6 +34,17 @@ defineProps({
   }
   .pawn {
     height: 70%;
+    flex-shrink: 0;
+  }
+  // The name is the only elastic thing in the row: a flex item cannot shrink
+  // below its content without this, so in the narrow desktop lobby column the
+  // name held its width and squeezed the ready tick and the remove button
+  // instead of ellipsing.
+  .player-name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   &::before {
     top: 0;

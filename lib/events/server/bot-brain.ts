@@ -5,6 +5,7 @@ import {
   jitteredShare,
   GATE_REMAINING,
   HOT_COLD_MAX_WANDER,
+  PIN_SCATTER_BAND,
   SWEEP_ACCURACY,
 } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
@@ -1450,10 +1451,15 @@ const pinScatter = (
   ring: { perfectDistanceKm: number; zeroDistanceKm: number },
   share: number
 ): LatLng => {
-  const missKm =
-    ring.perfectDistanceKm + (1 - share) * (ring.zeroDistanceKm - ring.perfectDistanceKm) * 0.9
-  // Scatter AROUND the share's radius rather than uniformly inside it: a
-  // uniform draw on the radius lands most throws near the bullseye, which had
-  // even easy seats out-pinning their dial.
-  return offsetKm(target, randomBetween(missKm * 0.6, missKm), randomBetween(0, 360))
+  // The taper pays `1 − (d − perfect) / span`, so the radius that prices at
+  // the share is exactly this — no fudge factor, or the throw is worth more
+  // than the seat earned.
+  const span = ring.zeroDistanceKm - ring.perfectDistanceKm
+  const missKm = ring.perfectDistanceKm + (1 - share) * span
+  // Scatter SYMMETRICALLY around it: drawing uniformly inside the radius (the
+  // old `missKm * Math.random()`) lands most throws near the bullseye and had
+  // easy seats pinning better than hard ones nominally could.
+  const jitter = span * PIN_SCATTER_BAND
+  const thrownKm = Math.max(0, randomBetween(missKm - jitter, missKm + jitter))
+  return offsetKm(target, thrownKm, randomBetween(0, 360))
 }
