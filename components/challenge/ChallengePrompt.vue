@@ -187,7 +187,12 @@ header {
 
   // Where the squeeze is real. Side padding stays — the pills need their
   // gutter, and the round clock parks in it.
-  header.compact {
+  //
+  // Selected by class, not by `header.compact`: a media query adds no
+  // specificity, and `header.compact` (0,2,1 once scoped) loses to the
+  // unconditional `.challenge-prompt.compact` (0,3,0) above, so the phone
+  // squeeze silently never applied.
+  .challenge-prompt.compact {
     padding-block: 0.6rem;
   }
 }

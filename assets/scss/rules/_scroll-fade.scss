@@ -98,26 +98,37 @@
   --scroll-fade-inset-top: #{$top};
   --scroll-fade-inset-bottom: #{$bottom};
 
-  // Declared unconditionally (a zero-depth gradient is a no-op) so flipping a
-  // class never adds or drops a stacking context mid-scroll.
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent var(--scroll-fade-top-clear),
-    #000 var(--scroll-fade-top),
-    #000 calc(100% - var(--scroll-fade-bottom)),
-    transparent calc(100% - var(--scroll-fade-bottom-clear)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent var(--scroll-fade-top-clear),
-    #000 var(--scroll-fade-top),
-    #000 calc(100% - var(--scroll-fade-bottom)),
-    transparent calc(100% - var(--scroll-fade-bottom-clear)),
-    transparent 100%
-  );
+  // Declared only while a fade is actually showing. A mask makes its element a
+  // BACKDROP ROOT, and `backdrop-filter` on anything inside then samples an
+  // empty backdrop — every frosted surface in a masked scrollport (the chronicle
+  // cards, the atlas ties, the stat cards, the option cards) quietly lost its
+  // blur. Held unconditionally that cost was paid even by the lists that never
+  // overflow, which is most deals.
+  //
+  // Nothing flickers mid-scroll for it: a list with overflow always has at least
+  // one of the two flags up, so the mask is continuously on for a scrolling list
+  // and continuously off for a short one.
+  &.fade-top,
+  &.fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent var(--scroll-fade-top-clear),
+      #000 var(--scroll-fade-top),
+      #000 calc(100% - var(--scroll-fade-bottom)),
+      transparent calc(100% - var(--scroll-fade-bottom-clear)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent var(--scroll-fade-top-clear),
+      #000 var(--scroll-fade-top),
+      #000 calc(100% - var(--scroll-fade-bottom)),
+      transparent calc(100% - var(--scroll-fade-bottom-clear)),
+      transparent 100%
+    );
+  }
 
   &.fade-top {
     --scroll-fade-top: #{$top};
@@ -148,20 +159,24 @@
   --scroll-fade-inset-left: #{$left};
   --scroll-fade-inset-right: #{$right};
 
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--scroll-fade-left),
-    #000 calc(100% - var(--scroll-fade-right)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--scroll-fade-left),
-    #000 calc(100% - var(--scroll-fade-right)),
-    transparent 100%
-  );
+  // Only while a fade shows — see the backdrop-root note on `scroll-mask`.
+  &.fade-left,
+  &.fade-right {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      #000 var(--scroll-fade-left),
+      #000 calc(100% - var(--scroll-fade-right)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      #000 var(--scroll-fade-left),
+      #000 calc(100% - var(--scroll-fade-right)),
+      transparent 100%
+    );
+  }
 
   &.fade-left {
     --scroll-fade-left: #{$left};
