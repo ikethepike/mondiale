@@ -4,7 +4,7 @@ import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
 import { isBotId } from '~~/lib/bots'
-import { noteSeatPresence, releaseAutopilot } from './bot-brain'
+import { armBotPump, noteSeatPresence, releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
@@ -248,6 +248,13 @@ export const joinEventHandler: EventHandler = async ({
   const tutorialsUp = Object.values(game.players).some(entry => entry.phase === 'tutorial')
   if (game.started && !game.pendingRoundStart) {
     rearmLiveRound({ io, redis, socket, eventTarget }, game, { armBriefingCaps: !tutorialsUp })
+  } else if (game.started) {
+    // Mid-staging rejoins skip the engine rearm (there is no live round to
+    // revive) but MUST still wake the pump: it stands itself down when the
+    // room empties, and `rearmLiveRound` is its only other recovery. Without
+    // this, a table that emptied during a round transition comes back to
+    // frozen bots. Idempotent — a live pump refuses the duplicate.
+    armBotPump({ io, redis, socket, eventTarget }, game)
   }
 
   await socket.join(gameId)
