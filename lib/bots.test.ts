@@ -60,7 +60,7 @@ describe('botShare', () => {
     )
   })
 
-  it('mirrors the seat\'s rolling accuracy', () => {
+  it("mirrors the seat's rolling accuracy", () => {
     expect(botShare(gameWith([[5, 10]]), 'me')).toBeCloseTo(0.5)
     expect(
       botShare(
@@ -74,7 +74,10 @@ describe('botShare', () => {
   })
 
   it('skips rounds with no banked maximum and windows the history', () => {
-    const zeroMax = gameWith([[0, 0], [8, 10]])
+    const zeroMax = gameWith([
+      [0, 0],
+      [8, 10],
+    ])
     expect(botShare(zeroMax, 'me')).toBeCloseTo(0.8)
     // Ten straight zeros, then five perfect rounds: only the window counts.
     const warmedUp = gameWith([

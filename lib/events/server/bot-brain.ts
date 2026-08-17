@@ -256,7 +256,9 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
         break
       }
       case 'group-scores': {
-        if (due(`scores:${roundIndex}:${seat.id}`, () => rollMs(BOT_SCORES_MS, BOT_SCORES_JITTER_MS))) {
+        if (
+          due(`scores:${roundIndex}:${seat.id}`, () => rollMs(BOT_SCORES_MS, BOT_SCORES_JITTER_MS))
+        ) {
           dispatchScoresExit(actorCtx, seat.id, seat.walkSeq)
         }
         break
@@ -264,7 +266,11 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
       case 'individual-challenge': {
         const gate = seat.moves[0]
         if (seat.resolving || gate?.challenge?._type !== 'individual-challenge') break
-        if (due(`gate:${seat.id}:${gate.endTile.position}`, () => rollMs(BOT_TURN_THINK_MS, BOT_TURN_JITTER_MS))) {
+        if (
+          due(`gate:${seat.id}:${gate.endTile.position}`, () =>
+            rollMs(BOT_TURN_THINK_MS, BOT_TURN_JITTER_MS)
+          )
+        ) {
           dispatchGateAnswer(actorCtx, gate.endTile.position)
         }
         break
@@ -272,7 +278,11 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
       case 'final-challenge': {
         const gauntlet = seat.moves[0]?.challenge
         if (seat.resolving || gauntlet?._type !== 'final-challenge') break
-        if (due(`final:${seat.id}:${gauntlet.turn ?? 0}`, () => rollMs(BOT_TURN_THINK_MS + 2000, BOT_TURN_JITTER_MS))) {
+        if (
+          due(`final:${seat.id}:${gauntlet.turn ?? 0}`, () =>
+            rollMs(BOT_TURN_THINK_MS + 2000, BOT_TURN_JITTER_MS)
+          )
+        ) {
           dispatchFinalAnswer(actorCtx, gauntlet.turn ?? 0)
         }
         break
@@ -286,11 +296,7 @@ const pumpGame = (ctx: EngineContext, game: Game) => {
 /** Where a retiring bot may actually leave: past its round, not yet (or no
  *  longer) owing the table a turn. A walk it abandons mid-step is fine —
  *  'kicked' is a settled phase and the stale continuation dies on it. */
-const RETIREMENT_PHASES: readonly Player['phase'][] = [
-  'group-scores',
-  'moving',
-  'movement-summary',
-]
+const RETIREMENT_PHASES: readonly Player['phase'][] = ['group-scores', 'moving', 'movement-summary']
 
 const dispatchRetirement = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async (fresh, server) => {
@@ -559,8 +565,7 @@ export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string)
     // catch-up card. Only a live classic the seat has NOT answered counts.
     const roundIndex = game.rounds.length - 1
     const live = latestRound(game)
-    const creditable =
-      isClassicGroupRound(live?.groupChallenge) && !live?.groupAnswers[playerId]
+    const creditable = isClassicGroupRound(live?.groupChallenge) && !live?.groupAnswers[playerId]
     seat.autopilot = { sinceRound: creditable ? Math.max(0, roundIndex) : game.rounds.length }
     await server.updateGameState(game)
     server.emit({ event: 'update', game }, ctx.eventTarget)
@@ -590,9 +595,7 @@ export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) =
   if (!seat.autopilot) return
   const { sinceRound } = seat.autopilot
   delete seat.autopilot
-  const covered = game.rounds
-    .slice(sinceRound)
-    .filter(round => round.playerTurns[seat.id]?.points)
+  const covered = game.rounds.slice(sinceRound).filter(round => round.playerTurns[seat.id]?.points)
   const scored = covered.reduce(
     (sum, round) => sum + (round.playerTurns[seat.id]?.points?.scored ?? 0),
     0
@@ -962,9 +965,7 @@ const dispatchManhuntMove = (ctx: EngineContext, playerId: string, turn: number)
     if (!challenge || challenge.despotId !== playerId) return
     const { state } = challenge
     if (state.finished || state.briefing || state.beat !== 'move' || state.turn !== turn) return
-    const secret = await ctx.redis.get<ManhuntSecret>(
-      manhuntKey(fresh.id, fresh.rounds.length - 1)
-    )
+    const secret = await ctx.redis.get<ManhuntSecret>(manhuntKey(fresh.id, fresh.rounds.length - 1))
     const from = secret?.trail[secret.trail.length - 1]
     if (!from) return
     const move = randomManhuntMove(from, state.seaPassagesLeft, fresh)
@@ -1147,9 +1148,7 @@ export const finalAnswerFor = (
       // A correct trace follows the real line; a miss walks a parallel
       // offset far enough outside the tolerance band to grade wrong.
       const drift = wantCorrect ? 0 : scene.span * question.tolerance * 3
-      const drawn = scene.line.map(
-        ([x, y]) => [x + drift, y + drift] as [number, number]
-      )
+      const drawn = scene.line.map(([x, y]) => [x + drift, y + drift] as [number, number])
       return { _type: question._type, drawn }
     }
     case 'change-challenge': {
@@ -1243,7 +1242,9 @@ export const composeClassicSubmission = async (
       const target = correct[0]
       if (!target) return { ranking: [] }
       const miss = wrongPick(game, correct)
-      return { ranking: hit ? (miss && share < 0.5 ? [miss, target] : [target]) : miss ? [miss] : [] }
+      return {
+        ranking: hit ? (miss && share < 0.5 ? [miss, target] : [target]) : miss ? [miss] : [],
+      }
     }
     case 'empire': {
       const empire = expectChallengeType(challenge, 'empire-challenge')
@@ -1273,7 +1274,8 @@ export const composeClassicSubmission = async (
       if (!target) return { ranking: [] }
       // Share interpolates the miss radius between a bullseye and the zero
       // ring; the bearing is anyone's guess, like a real pin.
-      const missKm = pin.perfectDistanceKm + (1 - share) * (pin.zeroDistanceKm - pin.perfectDistanceKm) * 0.9
+      const missKm =
+        pin.perfectDistanceKm + (1 - share) * (pin.zeroDistanceKm - pin.perfectDistanceKm) * 0.9
       return { ranking: [], pin: offsetKm(target, missKm * Math.random(), Math.random() * 360) }
     }
     case 'sketch': {
@@ -1295,4 +1297,3 @@ const takeShare = (correct: readonly ISOCountryCode[], share: number): ISOCountr
   const take = Math.max(1, Math.round(correct.length * share))
   return correct.slice(0, take)
 }
-

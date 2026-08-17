@@ -41,7 +41,10 @@ export const nextBotName = (takenNames: readonly string[]): string => {
 }
 
 export const createBot = (taken: readonly Pick<Player, 'name' | 'color'>[]): Player => ({
-  ...createPlayer(`${BOT_ID_PREFIX}${crypto.randomUUID()}`, taken.map(seat => seat.color)),
+  ...createPlayer(
+    `${BOT_ID_PREFIX}${crypto.randomUUID()}`,
+    taken.map(seat => seat.color)
+  ),
   name: nextBotName(taken.flatMap(seat => seat.name ?? [])),
   ready: true,
   phase: 'waiting-for-game',

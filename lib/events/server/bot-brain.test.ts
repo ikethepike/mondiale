@@ -56,7 +56,7 @@ const buildGame = (challenge: object, players: Player[]): Game =>
 const roundOf = (game: Game): Round => game.rounds[0]
 
 describe('composeClassicSubmission', () => {
-  it('composes a blitz answer sliced from the mode\'s own correct set', async () => {
+  it("composes a blitz answer sliced from the mode's own correct set", async () => {
     const game = buildGame(BLITZ, [seat('bot:x', 'group-challenge', { bot: true })])
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeDefined()
@@ -91,10 +91,9 @@ describe('composeClassicSubmission', () => {
   })
 
   it('returns nothing for a seat the ranking round never dealt to', async () => {
-    const game = buildGame(
-      { countriesPerPlayer: {}, id: 'population', maximumPoints: 10 },
-      [seat('bot:x', 'group-challenge', { bot: true })]
-    )
+    const game = buildGame({ countriesPerPlayer: {}, id: 'population', maximumPoints: 10 }, [
+      seat('bot:x', 'group-challenge', { bot: true }),
+    ])
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeUndefined()
   })
@@ -230,8 +229,8 @@ describe('the AFK autopilot lifecycle', () => {
     expect(covered.autopilot).toBeUndefined()
     const summary = emitted.find(entry => entry.event === 'autopilot-summary')
     expect(summary?.payload).toMatchObject({ playerId: 'human', rounds: 1, scored: 7 })
-    expect(
-      emitted.find(entry => entry.event === 'table-notice')?.payload
-    ).toMatchObject({ kind: 'autopilot-reclaimed' })
+    expect(emitted.find(entry => entry.event === 'table-notice')?.payload).toMatchObject({
+      kind: 'autopilot-reclaimed',
+    })
   })
 })

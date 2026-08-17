@@ -42,7 +42,11 @@
         <span v-if="!folded" class="who">
           <span class="name"
             >{{ entry.player.name || 'Player' }}<span v-if="entry.you" class="tag">you</span
-            ><span v-if="entry.player.bot" class="bot-mark" role="img" aria-label="Computer player"
+            ><span
+              v-if="entry.player.bot"
+              class="bot-mark"
+              role="img"
+              aria-label="Computer player"
             /><span v-if="entry.points" class="points">+{{ entry.points }}</span></span
           >
           <span class="status">
