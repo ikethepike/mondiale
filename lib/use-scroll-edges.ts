@@ -1,11 +1,17 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 
 /**
- * Scroll-edge state for a scrollport: does its content continue above, below,
- * or both. Drives the `.fade-top`/`.fade-bottom` classes the scroll-edge
+ * Scroll-edge state for a scrollport: does its content continue past each of
+ * its four edges. Drives the `.fade-top`/`.fade-bottom` classes the scroll-edge
  * fades key off (templates/_sheet.scss for parked sheets, the answer ledger's
- * own block for the scorecard) — a fade shows only when there is actually
- * more to see, so a short list never wears a dimmed last row.
+ * own block for the scorecard) and the `.fade-left`/`.fade-right` pair for the
+ * sideways ones (the ledger rails across a wide board) — a fade shows only when
+ * there is actually more to see, so a short list never wears a dimmed last row.
+ *
+ * Both axes always: a scrollport that turns with the viewport (the timeline
+ * ledger is a column on a phone and a rail on a board) would otherwise need two
+ * instances to describe one element, and the flags for an axis that cannot
+ * scroll simply stay false.
  *
  * `observe` lets a host that already runs its own ResizeObserver keep one
  * observer: useBottomSheet re-judges the edges in the same callback that
@@ -18,6 +24,8 @@ export const useScrollEdges = (
 ) => {
   const scrollableUp = ref(false)
   const scrollableDown = ref(false)
+  const scrollableLeft = ref(false)
+  const scrollableRight = ref(false)
 
   // The 1px slack absorbs sub-pixel scroll offsets — without it a list resting
   // exactly at its end flickers its bottom fade on fractional device scales.
@@ -26,6 +34,10 @@ export const useScrollEdges = (
     if (!el) return
     scrollableUp.value = el.scrollTop > 1
     scrollableDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+    // `Math.abs` because a right-to-left scrollport counts scrollLeft downward
+    // from zero, so the raw value is negative at the start edge.
+    scrollableLeft.value = Math.abs(el.scrollLeft) > 1
+    scrollableRight.value = Math.abs(el.scrollLeft) + el.clientWidth < el.scrollWidth - 1
   }
 
   let observer: ResizeObserver | undefined
@@ -56,5 +68,5 @@ export const useScrollEdges = (
     observer = undefined
   })
 
-  return { scrollableUp, scrollableDown, syncScrollEdges }
+  return { scrollableUp, scrollableDown, scrollableLeft, scrollableRight, syncScrollEdges }
 }

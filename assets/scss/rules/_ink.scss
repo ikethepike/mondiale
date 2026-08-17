@@ -53,3 +53,20 @@ $cardRadius: 1.9rem;
   background: milk(0.85);
   border: 0.1rem solid ink(0.2);
 }
+
+// The same guarantee without the box: a cream halo bled around the glyphs
+// themselves. For the marginalia that labels a column standing ON the map —
+// chronicle's `Earliest`/`Latest` poles, the ledger's direction labels — where a
+// scrim would turn a quiet label into a pill loud enough to compete with the
+// cards it is annotating. A coastline running under a thin glyph is what this
+// answers: the words stayed readable, the arrows did not.
+//
+// Layered rather than one wide shadow: the tight pass buys opacity right at the
+// stroke, the wide one carries it far enough to cover a border. Day-map only —
+// nocturne labels wear a DARK halo (ViewStarChart, NightLights).
+@mixin caption-halo {
+  text-shadow:
+    0 0 0.2rem milk(0.95),
+    0 0 0.5rem milk(0.85),
+    0 0 1rem milk(0.7);
+}

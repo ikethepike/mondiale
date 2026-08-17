@@ -114,15 +114,8 @@ header {
     gap: 0.5rem;
   }
 
-  // The margin is a stray: `h1 { margin-bottom: 1em }` in text/_heading-text.scss
-  // lands on every prompt heading, and the `:slotted(h1)` rule above was written
-  // to clear it — which it does for a view that writes its title straight into
-  // the slot, and cannot for a mode that renders one from its own component. So
-  // the title-to-sub gap was that stray em on top of the column's own gap, and
-  // clearing it lets the column's gap be the whole of it.
   :deep(h1.map-caption),
   :deep(h2.map-caption) {
-    margin-bottom: 0;
     padding: 0.5rem 1.6rem;
   }
 
@@ -134,12 +127,22 @@ header {
   }
 }
 
-:slotted(h1),
-:slotted(h2) {
+// A heading in the prompt carries no margin of its own — the column's gap is
+// what spaces it. `h1 { margin-bottom: 1em }` in text/_heading-text.scss is the
+// rule being answered, and this was `:slotted(h1)`, which only reaches a
+// heading a VIEW writes straight into the slot: a mode that renders one from
+// its own component (every individual gate, two levels down) carried the stray
+// em, worth 18-32px under the title depending on the caption scale. `:deep` is
+// the superset — it matches the slotted heading and the nested one both.
+//
+// A heading that wants its own spacing still declares it: a component's own
+// class rule outranks this attribute-plus-element selector.
+:deep(h1),
+:deep(h2) {
   margin: 0;
 }
 
-:slotted(.sub) {
+:deep(.sub) {
   padding: 0.4rem 1.4rem;
 }
 

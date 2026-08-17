@@ -129,6 +129,48 @@
   }
 }
 
+// The sideways twin, for a scrollport that rails instead of stacking: the
+// timeline ledger is a column on a phone and a rail across a board, and a card
+// sliced flat at the rail's leading edge is the same defect as a row sliced at a
+// list's bottom. Keyed on `.fade-left`/`.fade-right`, the other pair
+// `useScrollEdges` publishes.
+//
+// A separate mixin rather than an axis argument on `scroll-mask`: no scrollport
+// here scrolls both ways at once (the ledger's two shapes live in different
+// media blocks), and composing two gradients into one mask needs
+// `mask-composite`, which buys nothing for a case that does not exist.
+@mixin scroll-mask-x($left: 2.8rem, $right: 2.8rem) {
+  --scroll-fade-left: 0rem;
+  --scroll-fade-right: 0rem;
+  // Unconditional, for the same reason the vertical recipe holds a pair: a snap
+  // inset that opens and closes with the flag drives the scroll position that
+  // sets the flag.
+  --scroll-fade-inset-left: #{$left};
+  --scroll-fade-inset-right: #{$right};
+
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--scroll-fade-left),
+    #000 calc(100% - var(--scroll-fade-right)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--scroll-fade-left),
+    #000 calc(100% - var(--scroll-fade-right)),
+    transparent 100%
+  );
+
+  &.fade-left {
+    --scroll-fade-left: #{$left};
+  }
+  &.fade-right {
+    --scroll-fade-right: #{$right};
+  }
+}
+
 // Carries the rows UNDER the chrome that frames them: padding opens the band,
 // the negative margin gives the room straight back, so the scrollport's own
 // box grows past its neighbours without moving anything else in the column.
