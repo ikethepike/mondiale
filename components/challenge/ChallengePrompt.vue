@@ -114,8 +114,15 @@ header {
     gap: 0.5rem;
   }
 
+  // The margin is a stray: `h1 { margin-bottom: 1em }` in text/_heading-text.scss
+  // lands on every prompt heading, and the `:slotted(h1)` rule above was written
+  // to clear it — which it does for a view that writes its title straight into
+  // the slot, and cannot for a mode that renders one from its own component. So
+  // the title-to-sub gap was that stray em on top of the column's own gap, and
+  // clearing it lets the column's gap be the whole of it.
   :deep(h1.map-caption),
   :deep(h2.map-caption) {
+    margin-bottom: 0;
     padding: 0.5rem 1.6rem;
   }
 
