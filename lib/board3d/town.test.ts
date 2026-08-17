@@ -108,8 +108,7 @@ describe('pickTownSite', () => {
         }
         if (lake) {
           const inLake =
-            Math.hypot(house.x - lake.center.x, house.z - lake.center.z) <
-            lake.boundingRadius - 4
+            Math.hypot(house.x - lake.center.x, house.z - lake.center.z) < lake.boundingRadius - 4
           expect(inLake).toBe(false)
         }
       }

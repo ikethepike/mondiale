@@ -155,8 +155,7 @@ const railObstacleAt = (
       Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + spacing * 1.05
     )
       return 'hard'
-    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2.5)
-      return 'hard'
+    if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 2.5) return 'hard'
     for (const cairn of scenery.cairns) {
       if (Math.hypot(cairn.x - x, cairn.z - z) < 5) return 'hard'
     }
@@ -468,8 +467,7 @@ export const pickRailwayTraverse = (
     // Snap the span to the flow's perpendicular, signed to point AT the
     // water (the march's own sign can run parallel to the bank forever).
     const toRiver = river.points[anchor]
-    const across =
-      Math.sign((toRiver.x - fromX) * -flow.z + (toRiver.z - fromZ) * flow.x) || 1
+    const across = Math.sign((toRiver.x - fromX) * -flow.z + (toRiver.z - fromZ) * flow.x) || 1
     const spanX = -flow.z * across
     const spanZ = flow.x * across
 
@@ -576,8 +574,7 @@ export const pickRailwayTraverse = (
         magnitude = 1
         nextX = x + contourX * TRAVERSE_STEP
         nextZ = z + contourZ * TRAVERSE_STEP
-        if (Math.abs(sampler(nextX, nextZ) - sampler(x, z)) > TRAVERSE_MAX_RISE)
-          return undefined
+        if (Math.abs(sampler(nextX, nextZ) - sampler(x, z)) > TRAVERSE_MAX_RISE) return undefined
       }
       const stepDirectionX = stepX / magnitude
       const stepDirectionZ = stepZ / magnitude
@@ -726,8 +723,7 @@ export const pickRailwayTraverse = (
             (first.y + last.y) / 2,
             (first.z + last.z) / 2
           ),
-          halfLength:
-            Math.hypot(last.x - first.x, last.z - first.z) / 2 + BRIDGE_STRIDE,
+          halfLength: Math.hypot(last.x - first.x, last.z - first.z) / 2 + BRIDGE_STRIDE,
         })
         bridgeStart = -1
       }
@@ -787,7 +783,6 @@ export const pickRailwayRoute = (
   )
   return points ? { points, closed: true, bridges: [] } : undefined
 }
-
 
 /**
  * The railway made flesh: twin ink rails with perpendicular sleeper ticks in

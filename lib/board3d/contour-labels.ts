@@ -4,7 +4,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
-  Vector3,
+  type Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { BoardBiome } from './biomes'
@@ -152,10 +152,7 @@ export const pickContourLabels = (
  * The atlas and quads: one canvas of level numbers, one merged mesh of
  * UV-remapped quads draped at their sites. Static — no clock.
  */
-export const buildContourLabels = (
-  plan: ContourLabelPlan,
-  biome: BoardBiome
-): Mesh | undefined => {
+export const buildContourLabels = (plan: ContourLabelPlan, biome: BoardBiome): Mesh | undefined => {
   const { levels, sites } = plan
   if (!sites.length || typeof document === 'undefined') return undefined
 

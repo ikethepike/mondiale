@@ -150,9 +150,7 @@ export const pickScenerySites = (
     const saddle = spots
       .filter(spot => spot.slope <= STONES_MAX_SLOPE && spot.y >= low && spot.y <= high)
       .filter(spot =>
-        placed.every(
-          other => Math.hypot(other.x - spot.x, other.z - spot.z) > FURNITURE_SEPARATION
-        )
+        placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > FURNITURE_SEPARATION)
       )
       .sort((a, b) => a.slope - b.slope)
     if (saddle.length) {
@@ -188,9 +186,7 @@ export const pickScenerySites = (
         const reach = Math.hypot(spot.x - summit.center.x, spot.z - summit.center.z)
         return reach >= inner && reach <= outer && spot.slope <= 0.09
       })
-      .filter(spot =>
-        placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > 10)
-      )
+      .filter(spot => placed.every(other => Math.hypot(other.x - spot.x, other.z - spot.z) > 10))
       .sort((a, b) => a.slope - b.slope)
     if (camped.length) {
       const spot = camped[0]

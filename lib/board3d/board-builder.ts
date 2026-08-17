@@ -503,9 +503,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   }
 
   if (lakeSite)
-    buildLakeMeshes(seed, lakeSite, biome, sampler, timeUniforms).forEach(mesh =>
-      group.add(mesh)
-    )
+    buildLakeMeshes(seed, lakeSite, biome, sampler, timeUniforms).forEach(mesh => group.add(mesh))
 
   // Survey furniture on the open terrain: cairned hilltops and a compass-rose
   // ink decal. Heights come from the final composed sampler, so everything
@@ -638,8 +636,8 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
   // --- Pond + bridge (when this board drew one) ------------------------------
   if (pondSite) {
     const tileTopY = pondSite.center.y + rimHeight + TILE_TOP_INSET
-    buildPondMeshes(seed, pondSite, spacing, tileTopY, biome, sampler, timeUniforms).forEach(
-      mesh => group.add(mesh)
+    buildPondMeshes(seed, pondSite, spacing, tileTopY, biome, sampler, timeUniforms).forEach(mesh =>
+      group.add(mesh)
     )
   }
 
@@ -1259,11 +1257,7 @@ const bucketsToMeshes = (
  *  the ground plus a small lift, so segmented geometry follows each swell.
  *  The one drape all three printed decals (compass, scale bar, lane) share
  *  — a z-fighting or density fix lands once. */
-const drapeToGround = (
-  geometry: BufferGeometry,
-  sampler: HeightSampler,
-  lift: number
-): void => {
+const drapeToGround = (geometry: BufferGeometry, sampler: HeightSampler, lift: number): void => {
   const positions = geometry.attributes.position
   for (let index = 0; index < positions.count; index++) {
     positions.setY(index, sampler(positions.getX(index), positions.getZ(index)) + lift)
@@ -1614,9 +1608,13 @@ const buildWaymark = (site: WaymarkSite, spacing: number): Mesh[] => {
   tip.translate(0, 0.44 * s, 0.345 * s)
   parts.push({ geometry: faceted(tip), color: BOARD_COLORS.warmSand })
 
-  return bakePartsToMeshes(parts, new Matrix4()
-    .makeRotationY(site.yaw)
-    .setPosition(site.position.x, site.position.y - 0.04, site.position.z), spacing)
+  return bakePartsToMeshes(
+    parts,
+    new Matrix4()
+      .makeRotationY(site.yaw)
+      .setPosition(site.position.x, site.position.y - 0.04, site.position.z),
+    spacing
+  )
 }
 
 /** The printed scale bar: alternating filled segments inside a hairline
@@ -1672,9 +1670,7 @@ const buildScaleBar = (
     geometries.push(strip(at - RAIL / 2, at + RAIL / 2, HALF_WIDTH + 0.14, 0, 1))
   }
 
-  const merged = mergeGeometries(
-    geometries.map(geometry => geometry.toNonIndexed())
-  )
+  const merged = mergeGeometries(geometries.map(geometry => geometry.toNonIndexed()))
   geometries.forEach(geometry => geometry.dispose())
   merged.rotateZ(yaw)
   merged.rotateX(-Math.PI / 2)

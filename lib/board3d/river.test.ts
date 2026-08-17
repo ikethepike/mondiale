@@ -114,16 +114,14 @@ describe('river crossings', () => {
       // dot bound of perpendicular to the recorded track tangent.
       const band = river.points.filter(
         point =>
-          Math.hypot(point.x - crossing.center.x, point.z - crossing.center.z) <
-          crossing.halfBand
+          Math.hypot(point.x - crossing.center.x, point.z - crossing.center.z) < crossing.halfBand
       )
       expect(band.length).toBeGreaterThan(0)
       if (band.length >= 2) {
         const first = band[0]
         const last = band[band.length - 1]
         const heading = Math.atan2(last.x - first.x, last.z - first.z)
-        const dot =
-          Math.sin(heading) * crossing.tangent.x + Math.cos(heading) * crossing.tangent.z
+        const dot = Math.sin(heading) * crossing.tangent.x + Math.cos(heading) * crossing.tangent.z
         expect(Math.abs(dot)).toBeLessThan(0.6)
       }
 
@@ -132,10 +130,7 @@ describe('river crossings', () => {
       let nearest = Infinity
       let anchor = 0
       path.shelfPoints.forEach((point, at) => {
-        const distance = Math.hypot(
-          point.x - crossing.center.x,
-          point.z - crossing.center.z
-        )
+        const distance = Math.hypot(point.x - crossing.center.x, point.z - crossing.center.z)
         if (distance < nearest) {
           nearest = distance
           anchor = at

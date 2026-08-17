@@ -144,8 +144,7 @@ export const pickRiverPath = (
 
     const shelf = shelfPoints[anchor]
     // The perpendicular, signed to point AT the road.
-    const across =
-      Math.sign((shelf.x - fromX) * -tangent.z + (shelf.z - fromZ) * tangent.x) || 1
+    const across = Math.sign((shelf.x - fromX) * -tangent.z + (shelf.z - fromZ) * tangent.x) || 1
     const headingX = -tangent.z * across
     const headingZ = tangent.x * across
 
@@ -300,8 +299,7 @@ export const pickRiverPath = (
           slides++
           const tangent = trackTangentAt(fromX, fromZ)
           if (!tangent) break
-          const sign =
-            Math.sign(momentum.x * tangent.x + momentum.z * tangent.z) || 1
+          const sign = Math.sign(momentum.x * tangent.x + momentum.z * tangent.z) || 1
           position.set(
             fromX + tangent.x * sign * MARCH_STEP,
             0,
@@ -365,8 +363,7 @@ export const pickRiverPath = (
     const pinned = (point: Vector3): boolean =>
       crossings.some(
         crossing =>
-          Math.hypot(point.x - crossing.center.x, point.z - crossing.center.z) <
-          crossing.halfBand
+          Math.hypot(point.x - crossing.center.x, point.z - crossing.center.z) < crossing.halfBand
       )
 
     // After any smoothing pass, a drifted point is PROJECTED back out of the
@@ -473,10 +470,7 @@ export const withRiverBed = (sampler: HeightSampler, river: RiverPath): HeightSa
         const blend = Math.sqrt(1 - reach / crossing.halfBand)
         // ...but never above the water line — a clamp that dried the
         // channel would be worse than the cut it prevents.
-        bed = Math.max(
-          bed,
-          Math.min(crossing.center.y - 0.95 + 0.25 * blend, waterY - 0.15)
-        )
+        bed = Math.max(bed, Math.min(crossing.center.y - 0.95 + 0.25 * blend, waterY - 0.15))
       }
     }
     return bed * (1 - t) + bank * t

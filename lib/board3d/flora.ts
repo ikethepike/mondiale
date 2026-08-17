@@ -36,11 +36,7 @@ import type { TownSite } from './town'
  *  the basecamp's pennant — anything on the wind clock). Instancing-only:
  *  the shader reads instanceMatrix, so even a single flag rides an
  *  InstancedMesh of count 1. */
-export const windMaterial = (
-  color: string,
-  sway: number,
-  timeUniforms: { value: number }[]
-) => {
+export const windMaterial = (color: string, sway: number, timeUniforms: { value: number }[]) => {
   const material = new ShaderMaterial({
     side: DoubleSide,
     uniforms: { uColor: { value: new Color(color) }, uTime: { value: 0 }, uSway: { value: sway } },
@@ -442,11 +438,7 @@ export const buildFlora = (
   if (biome.reedFringe && (river || pond || lake)) {
     const reedTarget = Math.round(140 * (phone ? 0.5 : 1))
     const reedSpots: { x: number; z: number }[] = []
-    for (
-      let attempt = 0;
-      attempt < reedTarget * 4 && reedSpots.length < reedTarget;
-      attempt++
-    ) {
+    for (let attempt = 0; attempt < reedTarget * 4 && reedSpots.length < reedTarget; attempt++) {
       // Sample ALONG the water instead of over the whole page — the band is
       // thin, and a blind sweep would starve it.
       let x: number

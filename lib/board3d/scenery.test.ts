@@ -2,12 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createTilePath } from './path'
 import { pickScenerySites, pickWaymarkSites } from './scenery'
 import { pickSummitSite, withSummitMassif } from './summit'
-import {
-  createHeightSampler,
-  EDGE_FADE_START,
-  withEdgeFalloff,
-  withPathShelf,
-} from './terrain'
+import { createHeightSampler, EDGE_FADE_START, withEdgeFalloff, withPathShelf } from './terrain'
 import type { Tile } from '~~/types/game.types'
 
 const sitesFor = (seed: string, count = 65) => {

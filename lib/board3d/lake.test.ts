@@ -27,7 +27,9 @@ const worldFor = (seed: string, count = 65) => {
 }
 
 const dealtWorlds = (prefix: string, want: number, scan = 200) => {
-  const worlds: (ReturnType<typeof worldFor> & { lake: NonNullable<ReturnType<typeof worldFor>['lake']> })[] = []
+  const worlds: (ReturnType<typeof worldFor> & {
+    lake: NonNullable<ReturnType<typeof worldFor>['lake']>
+  })[] = []
   for (let index = 0; index < scan && worlds.length < want; index++) {
     const world = worldFor(`${prefix}-${index}`)
     if (world.lake) worlds.push(world as (typeof worlds)[number])
@@ -102,9 +104,7 @@ describe('pickLakeSite', () => {
           const z = grid.originZ + row * grid.step
           expect(Math.hypot(x, z)).toBeLessThanOrEqual(EDGE_FADE_START)
           for (const shelf of path.shelfPoints) {
-            expect(Math.hypot(shelf.x - x, shelf.z - z)).toBeGreaterThanOrEqual(
-              clearance - 1e-6
-            )
+            expect(Math.hypot(shelf.x - x, shelf.z - z)).toBeGreaterThanOrEqual(clearance - 1e-6)
           }
         }
       }
@@ -126,8 +126,7 @@ describe('withLakeBed', () => {
           const after = carved(x, z)
           expect(after).toBeLessThanOrEqual(before + 1e-9)
           if (before >= waterY) expect(after).toBe(before)
-          if (Math.hypot(x - center.x, z - center.z) > boundingRadius)
-            expect(after).toBe(before)
+          if (Math.hypot(x - center.x, z - center.z) > boundingRadius) expect(after).toBe(before)
         }
       }
       // The heart really is deeper than nature made it.
