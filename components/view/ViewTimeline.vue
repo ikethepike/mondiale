@@ -18,7 +18,9 @@
       :total="challenge.turnSeconds"
     />
 
-    <ChallengePrompt>
+    <!-- "Timeline — card 5 of 7" and whose call it is are status, not the
+         round: the drawn card and the ledger are. -->
+    <ChallengePrompt compact>
       <h1 class="map-caption">{{ headline }}</h1>
       <!-- The handoff beat: the old name lifts away, the next settles in. -->
       <Transition name="caption" mode="out-in">

@@ -1,6 +1,9 @@
 <template>
   <section class="challenge-shell government">
-    <ChallengePrompt :attributions="promptSources">
+    <!-- The chamber is the round; the subject line and "Which party governs?"
+         are a caption on it, so the prompt steps down and the beats take the
+         column (the logo grid overflowed by 72px on a 560px phone). -->
+    <ChallengePrompt :attributions="promptSources" :compact="!finished">
       <h1 class="map-caption">{{ heading }}</h1>
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
       <GuessTicker v-if="!finished" :entries="entries" :players="gameStore.game?.players ?? {}" />

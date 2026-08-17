@@ -9,7 +9,9 @@
       @done="start"
     />
 
-    <ChallengePrompt :attributions="claimSources" attribution-label="Sources">
+    <!-- The three claims are the round; "Tap the claim that doesn't belong"
+         is an instruction on them. Full size returns for the verdict. -->
+    <ChallengePrompt :attributions="claimSources" attribution-label="Sources" :compact="!revealed">
       <template v-if="!revealed">
         <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
         <span class="map-caption sub"> Tap the claim that doesn't belong </span>

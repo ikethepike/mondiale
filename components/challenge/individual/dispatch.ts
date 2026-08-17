@@ -125,7 +125,9 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
       return place ? { place } : {}
     },
   },
-  'odd-one-out': { component: GateOddOneOut },
+  // The option table fills the column on a phone — the prompt names the
+  // shared trait and asks for the odd one, and the cards are the round.
+  'odd-one-out': { component: GateOddOneOut, compactPrompt: true },
   rulers: { component: GateRulers },
   'higher-lower': {
     component: GateHigherLower,

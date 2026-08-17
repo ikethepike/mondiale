@@ -9,7 +9,9 @@
       @done="beginRound"
     />
 
-    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
+    <!-- The slot grid is the round, and the status line is a live tally on
+         it. Full size returns for the closing verdict. -->
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :compact="!finished">
       <template v-if="!finished">
         <!-- The set stays sealed through the briefing: it drops for the whole
              table at once, when the clock starts. -->
