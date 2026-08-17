@@ -9,7 +9,9 @@
       @done="start"
     />
 
-    <ChallengePrompt :attributions="claimSources" attribution-label="Sources">
+    <!-- The three claims are the round; "Tap the claim that doesn't belong"
+         is an instruction on them. Full size returns for the verdict. -->
+    <ChallengePrompt :attributions="claimSources" attribution-label="Sources" :compact="!revealed">
       <template v-if="!revealed">
         <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
         <span class="map-caption sub"> Tap the claim that doesn't belong </span>
@@ -37,7 +39,12 @@
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
-    <section class="claim-stage">
+    <section
+      ref="stage"
+      class="claim-stage"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      @scroll.passive="syncScrollEdges"
+    >
       <!-- Before the pick: the flag. After: the lie's stat as a world strip,
            so the reveal SHOWS where the truth and the borrowed number sit. -->
       <Transition name="caption" mode="out-in">
@@ -139,6 +146,7 @@ import {
   hintDockedScore,
 } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -157,6 +165,11 @@ const {
   elapsedFraction,
   stopCountdown,
 } = useGroupChallenge('two-truths-challenge')
+
+// The stage only scrolls where the claims stack (phones); on a wider board the
+// three columns fit and both flags stay false.
+const stage = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => stage.value)
 
 const picked = ref<number>()
 const timedOut = ref(false)
@@ -271,6 +284,7 @@ const pick = (index: number) => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 .claim-stage {
   flex: 1;
@@ -401,7 +415,24 @@ const pick = (index: number) => {
     // touches itself or drags between the cards won't scroll.
     pointer-events: auto;
     overscroll-behavior: contain;
-    padding: 0.4rem 1.6rem calc(1.2rem + var(--safe-bottom));
+    padding-inline: 1.6rem;
+    // The flag and the claims carry on under the prompt pills instead of
+    // stopping dead short of them — with nothing behind the stage but the live
+    // map, the fade has to be alpha rather than a cream wash. The stage's own
+    // block padding rides the bleed (it lands on the same property).
+    //
+    // The TOP only: the clock footer is conditional (a round dealt without a
+    // duration has none), so the stage is often flush with the shell's bottom
+    // edge, and a bottom bleed there hangs the fade band below the shell — off
+    // screen, exactly the nested-scroller trap the ledger was in. The bottom
+    // fade sits on the real edge instead, which is where the cut was.
+    @include scroll-mask;
+    @include scroll-bleed(
+      $top: 2.8rem,
+      $pad-top: 0.4rem,
+      $pad-bottom: calc(1.2rem + var(--safe-bottom))
+    );
+    @include snap-rows('> .claim-list > li');
   }
 
   .flag-frame .flag {

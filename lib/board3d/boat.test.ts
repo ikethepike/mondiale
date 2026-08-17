@@ -45,9 +45,7 @@ describe('pickBoatMooring', () => {
       if (!mooring) continue
       const waterY = lake ? lake.waterY : pond!.waterY
       expect(mooring.position.y).toBe(waterY)
-      expect(waterY - sampler(mooring.position.x, mooring.position.z)).toBeGreaterThanOrEqual(
-        0.12
-      )
+      expect(waterY - sampler(mooring.position.x, mooring.position.z)).toBeGreaterThanOrEqual(0.12)
     }
   })
 })

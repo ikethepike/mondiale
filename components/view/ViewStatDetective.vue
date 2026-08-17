@@ -27,7 +27,13 @@
       </template>
     </ChallengePrompt>
 
-    <section v-if="!resolved" class="clue-stage">
+    <section
+      v-if="!resolved"
+      ref="clueStage"
+      class="clue-stage"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      @scroll.passive="syncScrollEdges"
+    >
       <TransitionGroup name="clue" tag="ul" class="clue-list">
         <StatCard
           v-for="clue in displayClues"
@@ -103,6 +109,7 @@ import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { LOCKOUT_SECONDS, useLockoutBeat } from '~~/lib/use-lockout-beat'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useIsPhone } from '~~/lib/use-viewport'
 import { formatAmount } from '~~/lib/number'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -125,6 +132,11 @@ const {
   registerCleanup,
   gameStore,
 } = useGroupChallenge('stat-detective-challenge')
+
+// The ladder's edges. `v-if`'d behind the reveal, so the getter form matters —
+// useScrollEdges re-attaches when the section arrives.
+const clueStage = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => clueStage.value)
 
 const resolved = ref(false)
 const revealedCount = ref(0)
@@ -276,6 +288,7 @@ const onGuess = (country: Country) => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 .clue-meta {
   gap: 0.8rem;
@@ -306,21 +319,10 @@ const onGuess = (country: Country) => {
   min-height: 0;
   overflow-y: auto;
   // Soft edges: clues slide under a fade instead of guillotining at the
-  // scroller's bounds.
-  mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    black 1.6rem,
-    black calc(100% - 1.6rem),
-    transparent
-  );
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    black 1.6rem,
-    black calc(100% - 1.6rem),
-    transparent
-  );
+  // scroller's bounds. Through the shared recipe rather than a mask of its own,
+  // so the band now shows only where the ladder actually continues — held
+  // always-on, a two-clue stage wore a dimmed last card for no reason.
+  @include scroll-mask($top: 1.6rem, $bottom: 1.6rem);
 }
 
 // The ticker's empty line and the roomy footer paddings read as a dead band

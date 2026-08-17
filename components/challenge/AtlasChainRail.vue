@@ -1,5 +1,12 @@
 <template>
-  <TransitionGroup tag="ol" name="chain" class="atlas-rail country-chip-list" :class="{ compact }">
+  <TransitionGroup
+    ref="rail"
+    tag="ol"
+    name="chain"
+    class="atlas-rail country-chip-list"
+    :class="{ compact, 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+    @scroll.passive="syncScrollEdges"
+  >
     <!-- A marathon chain shows only its live tail here — the head is what the
          next move plays off; the reveal card tells the whole story. -->
     <li v-if="hiddenCount" key="earlier" class="rail-cell">
@@ -42,6 +49,7 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import { atlasKey, atlasLinkOverlap } from '~~/lib/atlas-chain'
 import { walkColor } from '~~/lib/chain'
 import { getCountry } from '~~/lib/country'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -69,6 +77,12 @@ const props = defineProps<{
    *  guard against marathon chains eating the stage. Unset shows everything. */
   tail?: number
 }>()
+
+// The chip list's cap bites on a phone, where a long chain wraps to more rows
+// than 22dvh holds (templates/_country-chip.scss). TransitionGroup's ref is the
+// component; its $el is the <ol>.
+const rail = ref<{ $el?: HTMLElement } | null>(null)
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => rail.value?.$el)
 
 const hiddenCount = computed(() =>
   props.tail && props.chain.length > props.tail ? props.chain.length - props.tail : 0

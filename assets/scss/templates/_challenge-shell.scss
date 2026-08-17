@@ -41,8 +41,15 @@
   // a tall verdict dossier, a stacked sub-line — painted straight over the
   // stage's first row. It keeps its natural height; the middle and the footer
   // are the givers.
+  //
+  // It also stands ABOVE the stage, the footer's counterpart: a stage that
+  // bleeds its scrollport under the chrome (rules/_scroll-fade.scss) reaches up
+  // into the header's band, and without a layer of its own the header would lose
+  // to a later sibling and the rows would travel OVER the prompt.
   > header {
     flex: none;
+    z-index: 2;
+    position: relative;
   }
 
   // The shell owns the column's flex contract: the middle takes the room
@@ -82,10 +89,20 @@
   // with the keyboard up (~260px of inset on a 667px phone) would have been
   // capped into pushing the very input being typed into under the keyboard,
   // with `overflow: visible` below leaving no way to scroll it back.
+  // The cap is measured against the VIEWPORT, not as a percentage of the
+  // footer's containing block. For the flex column above they are the same
+  // number — the shell is `height: var(--viewport-height)` and has no padding,
+  // so 60% of it is 60% of the viewport. They part company the moment a view
+  // makes its own root the grid (ViewTimeline), because a grid item's
+  // percentage resolves against its TRACK, and an `auto` track is sized by its
+  // content: `60%` became "60% of my own content", a cap that shrinks to fit
+  // whatever it was meant to bound. It clipped 99px off the timeline ledger on
+  // a 560px-tall phone — the tail of the line and the whole `↓ Later` pole,
+  // with the footer's own scroller the only way to reach either.
   > footer,
   .shell-footer {
     flex: none;
-    max-height: calc(60% + var(--bottom-clearance));
+    max-height: calc(0.6 * var(--viewport-height) + var(--bottom-clearance));
     overflow-y: auto;
   }
 
@@ -106,6 +123,22 @@
   > footer:has(.guess-form),
   .shell-footer:has(.guess-form) {
     overflow: visible;
+  }
+
+  // …and except a footer that already holds a scroller of its own. Two nested
+  // scrollports mean the INNER list's edges are not the ones the player sees:
+  // the timeline ledger stood 70px past the footer's bottom edge, so its rows
+  // guillotined on the footer's clip and a fade on the list faded an edge that
+  // was off-screen. The inner scrollport owns its own bounds (`.line` is capped
+  // in dvh), so the footer hands over both the scroller and the cap and goes
+  // back to being a plain band. `.scrollport` is the marker every faded or
+  // masked scrollport wears (rules/_scroll-fade.scss) — a footer that claims it
+  // without bounding its list would eat the column, the same bargain the
+  // typed-console hatch above strikes.
+  > footer:has(.scrollport),
+  .shell-footer:has(.scrollport) {
+    overflow: visible;
+    max-height: none;
   }
 
   // The action strip against the bottom edge. Views add their own layout;

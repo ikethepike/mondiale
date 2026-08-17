@@ -1,19 +1,38 @@
-// Scroll-edge fades: sticky net-zero layers riding a scrollport, painted over
-// the rows but under anything the host raises to z-index 2+ (sticky letter
-// headings float above the mist). `useScrollEdges` (lib/use-scroll-edges.ts)
-// drives the `.fade-top`/`.fade-bottom` classes — a fade shows only when
-// content actually continues past that edge, so a short list never wears a
-// dimmed last row.
+// The home for how a scrollport treats its own edges: the two fade recipes,
+// the bleed that carries rows under the chrome, and the snap that keeps a
+// resting list off a half-served row. Every one of them keys off the SAME
+// `.fade-top`/`.fade-bottom` classes that `useScrollEdges`
+// (lib/use-scroll-edges.ts) drives — a fade shows only when content actually
+// continues past that edge, so a short list never wears a dimmed last row —
+// so a surface swaps recipe without swapping wiring.
 //
 // A PURE MODULE, like `caption-surface` in rules/_ink.scss: it emits nothing
 // until a block includes it, so a scoped component can take the recipe without
-// re-emitting `.sheet-body`. Three surfaces ride it — the parked sheets, the
-// scorecard's answer ledger and its star ledger — and they used to carry a
-// copy each.
+// re-emitting `.sheet-body`. That is also why nothing here emits an at-rule:
+// `@use` de-duplicates a module's CSS per compilation unit, and every scoped
+// Vue block is its own unit, so an `@property` for a transitionable fade depth
+// would land once per component. The classes flip exactly when content starts
+// or stops continuing, so the band has nothing to ease between anyway.
 //
 // Geometry lands as custom properties so a host can retune per surface at
 // runtime (a sheet whose sticky headings float over the fade deepens the top
 // and gives it a solid lead-in for the heading's own line to sit on).
+
+// PAINT or ALPHA — the one question when picking between the two fades: is
+// there anything but the page's own cream behind this list.
+//
+// `scroll-fade` paints `--background-color` over the rows, which is right on a
+// pane, a sheet or a scorecard and wrong anywhere the board shows through: the
+// chronicle board and the timeline ledger both stand over the live map, and a
+// cream band there reads as a bug rather than as depth. It is also the wrong
+// colour outright under nocturne. `scroll-mask` fades the content's own alpha
+// instead, so whatever is behind the scrollport keeps showing through.
+//
+// The cost of the mask is that it cannot spare a child: `mask` applies to the
+// element whole, so a sticky heading inside a masked scrollport dissolves with
+// the rows (the painted recipe's z-index: 1 pseudo lets one float above the
+// mist). A label that must hold its place moves OUT of the scrollport — which
+// is where a column's own marginalia belonged in the first place.
 @mixin scroll-fade($top: 2.4rem, $bottom: 2.4rem, $top-solid: 0rem) {
   // Interpolated: Sass does not evaluate values inside custom properties.
   --scroll-fade-top: #{$top};
@@ -52,5 +71,102 @@
   &.fade-top::before,
   &.fade-bottom::after {
     opacity: 1;
+  }
+}
+
+// The alpha sibling. Same tokens, same classes — see the note above for which
+// of the two a surface wants.
+//
+// `$top-clear`/`$bottom-clear` hold a band at ZERO alpha before the ramp
+// starts — the mask's answer to `scroll-fade`'s `$top-solid`, and what a bled
+// scrollport needs: the label the rows travel under stands in that band, and
+// without it a row sits at half alpha directly behind the label's glyphs, which
+// reads as two lines of type fighting rather than as one receding.
+@mixin scroll-mask($top: 2.8rem, $bottom: 2.8rem, $top-clear: 0rem, $bottom-clear: 0rem) {
+  // Interpolated: Sass does not evaluate values inside custom properties.
+  --scroll-fade-top: 0rem;
+  --scroll-fade-bottom: 0rem;
+  --scroll-fade-top-clear: 0rem;
+  --scroll-fade-bottom-clear: 0rem;
+
+  // The same depths, held UNCONDITIONALLY — what anything that feeds back into
+  // scroll position must read instead of the class-driven pair above. A snap
+  // inset taken from `--scroll-fade-top` oscillated forever: the flag turned on
+  // at scrollTop 20, the inset it opened re-resolved the snap to 0, that turned
+  // the flag off, the inset closed, the snap went back to 20, a scroll event
+  // every frame for as long as the round lasted.
+  --scroll-fade-inset-top: #{$top};
+  --scroll-fade-inset-bottom: #{$bottom};
+
+  // Declared unconditionally (a zero-depth gradient is a no-op) so flipping a
+  // class never adds or drops a stacking context mid-scroll.
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--scroll-fade-top-clear),
+    #000 var(--scroll-fade-top),
+    #000 calc(100% - var(--scroll-fade-bottom)),
+    transparent calc(100% - var(--scroll-fade-bottom-clear)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--scroll-fade-top-clear),
+    #000 var(--scroll-fade-top),
+    #000 calc(100% - var(--scroll-fade-bottom)),
+    transparent calc(100% - var(--scroll-fade-bottom-clear)),
+    transparent 100%
+  );
+
+  &.fade-top {
+    --scroll-fade-top: #{$top};
+    --scroll-fade-top-clear: #{$top-clear};
+  }
+  &.fade-bottom {
+    --scroll-fade-bottom: #{$bottom};
+    --scroll-fade-bottom-clear: #{$bottom-clear};
+  }
+}
+
+// Carries the rows UNDER the chrome that frames them: padding opens the band,
+// the negative margin gives the room straight back, so the scrollport's own
+// box grows past its neighbours without moving anything else in the column.
+// Pair it with a fade — bleeding without one just moves the hard cut behind a
+// pill — and give whatever floats over the band a z-index and a scrim of its
+// own, or the rows travel through its glyphs.
+//
+// The band is the FADE's depth, not the chrome's height: a row has to dissolve
+// as it crosses the boundary, and carrying it the full height of a floating
+// pill only drags legible text behind that pill's scrim.
+//
+// A scrollport with block padding of its own hands it over as `$pad-*` and
+// drops it from its own shorthand — the band and the padding land on the same
+// property, so a surface that kept declaring both would silently lose whichever
+// came second (the safe-area clearance, usually).
+@mixin scroll-bleed($top: 0rem, $bottom: 0rem, $pad-top: 0rem, $pad-bottom: 0rem) {
+  padding-top: calc(#{$pad-top} + #{$top});
+  padding-bottom: calc(#{$pad-bottom} + #{$bottom});
+  margin-top: calc(-1 * #{$top});
+  margin-bottom: calc(-1 * #{$bottom});
+}
+
+// A list at rest never serves half a row: proximity snapping parks on a row
+// boundary the way `useChipTrail` parks the landing rail on a chip boundary,
+// which leaves the fade to soften only what is genuinely mid-travel. Proximity
+// and not mandatory, so a programmatic scroll (the ledger centring a fresh
+// stop) is nudged onto the boundary rather than fought.
+@mixin snap-rows($rows) {
+  scroll-snap-type: y proximity;
+  // Snap positions sit BELOW the fade, not under it: without the inset a row
+  // parked against the leading edge is the one the mist is busy dissolving,
+  // which is the opposite of what a snap is for. It reads the recipe's
+  // unconditional depths, NEVER the `.fade-*` pair — an inset that appears and
+  // disappears with the flag drives the scroll position that sets the flag, and
+  // the two chase each other every frame.
+  scroll-padding-block: var(--scroll-fade-inset-top, 0px) var(--scroll-fade-inset-bottom, 0px);
+
+  #{$rows} {
+    scroll-snap-align: start;
   }
 }

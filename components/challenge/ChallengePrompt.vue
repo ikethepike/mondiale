@@ -1,5 +1,5 @@
 <template>
-  <header class="challenge-prompt">
+  <header class="challenge-prompt" :class="{ compact }">
     <div class="prompt">
       <slot />
       <span v-if="attributions?.length || $slots.corner" class="prompt-corner">
@@ -43,6 +43,14 @@ import type { HintTone } from '~~/types/events.types'
  * The `corner` slot joins that same top-right row, to the left of the ⓘ —
  * glanceable mode chrome (the gauntlet's lives) shares the corner instead of
  * absolutely positioning itself into a collision with it.
+ *
+ * `compact` is for the modes where the prompt is NOT the equal of what it
+ * introduces — a chronicle board being assembled, a ledger being ordered. The
+ * question still has to be readable, so this steps the whole column down one
+ * notch rather than hiding anything: the caption scale, both pills' padding
+ * and the column's gaps, with the sub demoted to a caption line under a title
+ * that stays the loudest thing in the header. It hands the stage ~50px on a
+ * phone, which is most of a card.
  */
 withDefaults(
   defineProps<{
@@ -55,6 +63,8 @@ withDefaults(
     attributionLabel?: string
     /** A single item's own credit (photographer, performer) when known. */
     attributionCredit?: string
+    /** Yield the column to the stage — see the note above. */
+    compact?: boolean
   }>(),
   {
     hint: undefined,
@@ -62,6 +72,7 @@ withDefaults(
     attributions: undefined,
     attributionLabel: undefined,
     attributionCredit: undefined,
+    compact: false,
   }
 )
 </script>
@@ -81,6 +92,46 @@ header {
   position: relative;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+// The compact cut: the header yields its room to the stage below it.
+//
+// `:deep`, not `:slotted` — the rule has to reach the caption pills, and those
+// are rendered by the mode's OWN component (an individual gate is mounted two
+// levels down inside the slot), so they carry that component's scope id and
+// never the prompt's slotted marker. The existing `:slotted(.sub)` padding has
+// only ever applied to views that write their sub directly into the slot.
+//
+// The heading retunes `--caption-display` rather than declaring a size: the
+// scale is the token's job (templates/_map-caption.scss), and the same shallow
+// slope keeps it fluid through the intermediate widths instead of slamming into
+// the cap at 700px.
+.challenge-prompt.compact {
+  padding-block: 1rem;
+  --caption-display: clamp(1.5rem, 0.9rem + 1.1vw, 2.2rem);
+
+  .prompt {
+    gap: 0.5rem;
+  }
+
+  // The margin is a stray: `h1 { margin-bottom: 1em }` in text/_heading-text.scss
+  // lands on every prompt heading, and the `:slotted(h1)` rule above was written
+  // to clear it — which it does for a view that writes its title straight into
+  // the slot, and cannot for a mode that renders one from its own component. So
+  // the title-to-sub gap was that stray em on top of the column's own gap, and
+  // clearing it lets the column's gap be the whole of it.
+  :deep(h1.map-caption),
+  :deep(h2.map-caption) {
+    margin-bottom: 0;
+    padding: 0.5rem 1.6rem;
+  }
+
+  // The sub carries the instruction, so it stays a legible caption — just no
+  // longer the title's equal in weight or in the room it takes.
+  :deep(.map-caption.sub) {
+    font-size: 1.3rem;
+    padding: 0.3rem 1.2rem;
+  }
 }
 
 :slotted(h1),
@@ -129,6 +180,12 @@ header {
 @media screen and (max-width: $tablet) {
   header {
     padding: 1.2rem 1.6rem;
+  }
+
+  // Where the squeeze is real. Side padding stays — the pills need their
+  // gutter, and the round clock parks in it.
+  header.compact {
+    padding-block: 0.6rem;
   }
 }
 </style>

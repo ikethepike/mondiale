@@ -18,7 +18,9 @@
       :total="challenge.turnSeconds"
     />
 
-    <ChallengePrompt>
+    <!-- "Timeline — card 5 of 7" and whose call it is are status, not the
+         round: the drawn card and the ledger are. -->
+    <ChallengePrompt compact>
       <h1 class="map-caption">{{ headline }}</h1>
       <!-- The handoff beat: the old name lifts away, the next settles in. -->
       <Transition name="caption" mode="out-in">
@@ -112,7 +114,17 @@
         <span class="direction">{{ isPhone ? '↑ Earlier' : '← Earlier' }}</span>
         <!-- Keyed group so a filed card presses IN while its neighbours
              glide apart (FLIP moves), instead of the line snapping. -->
-        <TransitionGroup ref="lineEl" tag="ol" name="line" class="line">
+        <!-- `scrollport` is the shell's cue to stop being a scroller itself:
+             two nested scrollports put the visible cut on the FOOTER's edge,
+             where the ledger's own fade could never reach it. -->
+        <TransitionGroup
+          ref="lineEl"
+          tag="ol"
+          name="line"
+          class="line scrollport"
+          :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+          @scroll.passive="syncScrollEdges"
+        >
           <li
             v-for="item in lineItems"
             :key="item.key"
@@ -192,6 +204,7 @@ import {
 } from '~~/lib/timeline'
 import { EASE, MOTION, prefersReducedMotion } from '~~/lib/motion'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -532,6 +545,10 @@ if (import.meta.client && !gameStore.watching) {
 // TransitionGroup ref resolves to the component; its $el is the <ol>.
 const lineEl = ref<{ $el?: HTMLElement } | null>(null)
 
+// The ledger's edges. Vertical on a phone, where the line stands upright; on a
+// wider board it rails sideways and both flags simply stay false.
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => lineEl.value?.$el)
+
 /** Centre a stop or slot in the line, scrolling ONLY the line — never
  *  scrollIntoView, whose ancestor walk can shift the whole shell. Layout
  *  offsets, not rects: the FLIP move transforms would lie mid-glide. */
@@ -559,6 +576,7 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 .turn-line {
   gap: 0.6rem;
@@ -1081,11 +1099,30 @@ footer {
     overflow-x: hidden;
     overflow-y: auto;
     flex-flow: column nowrap;
+    // Upright, the ledger is a list with a top and a bottom to lose: the rows
+    // dissolve under the direction labels instead of guillotining on the box,
+    // and the alpha recipe keeps the map showing through the band. The base
+    // block's 0.4rem rides the bleed — both land on padding-block.
+    //
+    // The clear bands are the labels' own line box: a pole sits over nothing at
+    // all, and the ramp starts below it.
+    @include scroll-mask($top: 4rem, $bottom: 4rem, $top-clear: 1.8rem, $bottom-clear: 1.8rem);
+    @include scroll-bleed($top: 2.8rem, $bottom: 2.8rem, $pad-top: 0.4rem, $pad-bottom: 0.4rem);
+    @include snap-rows('> li');
   }
 
-  // Mid-flight the ledger opens up: taller list, taller targets.
+  // The poles ride over the mist the rows travel under.
+  .line-frame .direction {
+    position: relative;
+    z-index: 2;
+  }
+
+  // Mid-flight the ledger opens up: taller list, taller targets. Snapping goes
+  // quiet for the duration — a list that re-parks itself under the finger
+  // fights the drop it is meant to be receiving.
   .timeline-round.dragging .line {
     max-height: 46dvh;
+    scroll-snap-type: none;
   }
 
   .timeline-round.dragging .gap {

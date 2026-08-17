@@ -1,5 +1,6 @@
 @use '../rules/ink' as *;
 @use '../rules/breakpoints' as *;
+@use '../rules/scroll-fade' as *;
 
 // The chosen-country chip (components/country/CountryChip.vue): flag + name.
 // Two sizes only — the default for chips floating over the map, `compact` for
@@ -95,6 +96,12 @@
     max-height: 22dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
+    // The cap is where a long list is cut, so the last row recedes into a fade
+    // rather than ending flat. A no-op until a host drives `.fade-top`/
+    // `.fade-bottom` (lib/use-scroll-edges), so an unwired list is unchanged —
+    // and a no-op on the `rail` cut too, which scrolls the other axis and parks
+    // on a chip boundary instead.
+    @include scroll-mask($top: 1.6rem, $bottom: 1.6rem);
 
     &.rail {
       @include chip-rail;

@@ -1,4 +1,4 @@
-import { Mesh, MeshBasicMaterial, SphereGeometry, Vector3 } from 'three'
+import { Mesh, MeshBasicMaterial, SphereGeometry, type Vector3 } from 'three'
 
 /** Every smoker on the board burns the same neutral gray — it must read
  *  against every biome's page tint. */

@@ -9,7 +9,9 @@
       @done="beginRound"
     />
 
-    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
+    <!-- The slot grid is the round, and the status line is a live tally on
+         it. Full size returns for the closing verdict. -->
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone" :compact="!finished">
       <template v-if="!finished">
         <!-- The set stays sealed through the briefing: it drops for the whole
              table at once, when the clock starts. -->
@@ -79,7 +81,13 @@
 
     <!-- The board. The question is the shape of the empty slots, so unclaimed
          ones stay blank and nothing ever re-sorts under a racing eye. -->
-    <section v-else-if="!finished && !showInterstitial" class="board">
+    <section
+      v-else-if="!finished && !showInterstitial"
+      ref="board"
+      class="board"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+      @scroll.passive="syncScrollEdges"
+    >
       <ul class="slot-grid">
         <li
           v-for="slot in slots"
@@ -160,6 +168,7 @@ import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import type { CleanSweepState } from '~~/types/challenges/group-modes.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -187,6 +196,10 @@ const {
   gameStore,
   update,
 } = useGroupChallenge('clean-sweep-challenge')
+
+// The board's edges — a long set outgrows the cap on a phone.
+const board = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => board.value)
 
 // Total fallback: timers and watchers keep evaluating for a beat after the
 // round advances past this mode, so the state must never dereference undefined.
@@ -383,6 +396,7 @@ useFooterBerth(consoleFooter)
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
 // The briefing card's layout comes from the shared .briefing-card template.
 .briefing h2 {
@@ -438,6 +452,9 @@ useFooterBerth(consoleFooter)
   max-height: calc(var(--viewport-height) - 26rem);
   overflow-y: auto;
   scrollbar-width: thin;
+  // The grid recedes past the cap instead of ending on a straight line. Alpha,
+  // because the board stands over the map.
+  @include scroll-mask($top: 2rem, $bottom: 2rem);
 }
 
 // The shell's column stretches its children, so the grid centres ITSELF rather

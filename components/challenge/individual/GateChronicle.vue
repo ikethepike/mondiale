@@ -5,31 +5,50 @@
 
     <!-- A timeline under assembly: numbered nodes on a dashed rail hold their
          slot (1..N top-down) while the CARDS trade places through them — the
-         still rail is what makes a drag read as re-dating an event. -->
-    <div class="chronicle-board">
+         still rail is what makes a drag read as re-dating an event.
+
+         The poles label the COLUMN, not the scroll position, so they stand
+         outside the scrollport: inside it, `↓ Latest` scrolled out of existence
+         on a phone and the cut then read as the label lying. The rail stays an
+         absolute pseudo on `.chronicle-cards` inside the scroller, which is why
+         the board is still the thing that scrolls — and the column keeps the
+         gutter tokens all three of them measure from. -->
+    <div class="chronicle-column">
       <span class="pole pole-earliest" aria-hidden="true">Earliest</span>
-      <Sortable
-        :list="cards"
-        :options="options"
-        item-key="slug"
-        class="chronicle-cards"
-        @sort="updateOrder"
+      <div
+        ref="board"
+        class="chronicle-board scrollport"
+        :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+        @scroll.passive="syncScrollEdges"
       >
-        <template #item="{ element }">
-          <article :key="element.slug" class="event-card draggable" :data-slug="element.slug">
-            <img v-if="element.event.image" class="card-photo" :src="element.event.image" alt="" />
-            <span v-else class="card-initial" aria-hidden="true">{{
-              element.event.name.charAt(0)
-            }}</span>
-            <span class="card-body">
-              <span class="card-name">{{ element.event.name }}</span>
-              <span class="card-kind">{{ element.event.kind }}</span>
-            </span>
-            <span v-if="element.slug === anchorSlug" class="card-anchor">Earliest</span>
-            <span class="card-grip" aria-hidden="true" />
-          </article>
-        </template>
-      </Sortable>
+        <Sortable
+          :list="cards"
+          :options="options"
+          item-key="slug"
+          class="chronicle-cards"
+          @sort="updateOrder"
+        >
+          <template #item="{ element }">
+            <article :key="element.slug" class="event-card draggable" :data-slug="element.slug">
+              <img
+                v-if="element.event.image"
+                class="card-photo"
+                :src="element.event.image"
+                alt=""
+              />
+              <span v-else class="card-initial" aria-hidden="true">{{
+                element.event.name.charAt(0)
+              }}</span>
+              <span class="card-body">
+                <span class="card-name">{{ element.event.name }}</span>
+                <span class="card-kind">{{ element.event.kind }}</span>
+              </span>
+              <span v-if="element.slug === anchorSlug" class="card-anchor">Earliest</span>
+              <span class="card-grip" aria-hidden="true" />
+            </article>
+          </template>
+        </Sortable>
+      </div>
       <span class="pole pole-latest" aria-hidden="true">Latest</span>
     </div>
 
@@ -64,6 +83,7 @@ import { countryName } from '~~/lib/country'
 import { HOLD_DRAG_LIST_OPTIONS } from '~~/lib/drag-list'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { CHRONICLE_SECONDS } from './timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 
@@ -76,6 +96,9 @@ const order = ref<string[]>([...dealt.value])
 const cards = computed(() =>
   order.value.map(slug => ({ slug, event: EVENTS[slug] })).filter(card => !!card.event)
 )
+
+const board = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => board.value)
 
 const options = ref({ ...HOLD_DRAG_LIST_OPTIONS })
 const updateOrder = (event: Event) => {
@@ -129,8 +152,15 @@ const submitOrder = () => resolve()
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
-.chronicle-board {
+// Poles, board, poles: the column holds the marginalia and the tokens all
+// three of them measure from, and it is the column — not the board alone —
+// that is the prompt column's GIVER. A five-card hand outgrows a phone and the
+// tail is the lock row, so the column takes the room that's left and hands it
+// to the board, which keeps the prompt on top, both poles in place and "Set the
+// record" on screen at every viewport height.
+.chronicle-column {
   // The rail's gutter and the coins that hang in it — one set of numbers the
   // rail, the cards and the poles all read from, so a narrower gutter can
   // never leave the dashes off the coins' centre.
@@ -141,6 +171,8 @@ const submitOrder = () => resolve()
 
   gap: 0.6rem;
   display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
   align-items: stretch;
   // Spans the prompt column so the box below centres against the real
   // container — the header's scroller clips at its own padding, so a vw sum
@@ -148,26 +180,45 @@ const submitOrder = () => resolve()
   align-self: stretch;
   flex-flow: column nowrap;
   margin-top: 1rem;
+  // Interactive by right: the passthrough shell is pointer-events: none, and
+  // a swipe has to land somewhere. Opting the COLUMN in (not just the cards)
+  // means the rail gutter, the poles and the gaps all pan too — chronicle
+  // never answers on the map, so nothing behind this column needs the taps.
+  pointer-events: auto;
+}
 
-  // A five-card hand outgrows a phone, and the tail is the lock row: the
-  // button and the clock. So the board is the column's GIVER — it takes the
-  // room that's left and scrolls its own overflow, which keeps the prompt on
-  // top and "Set the record" on screen at every viewport height.
-  //
-  // The scroller is the board, not the card list: the rail is an absolute
-  // pseudo on `.chronicle-cards`, and inside a scroll container it would size
-  // to the VISIBLE box and scroll away, leaving the lower coins railless.
+// The scroller is the board, not the card list: the rail is an absolute pseudo
+// on `.chronicle-cards`, and inside a scroll container it would size to the
+// VISIBLE box and scroll away, leaving the lower coins railless.
+.chronicle-board {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   // A drag that overshoots must not chain into a page bounce — the
   // rubber-banding wrestles the card out of the player's finger.
   overscroll-behavior-y: contain;
-  // Interactive by right: the passthrough shell is pointer-events: none, and
-  // a swipe has to land somewhere. Opting the BOARD in (not just the cards)
-  // means the rail gutter, the poles and the gaps all pan too — chronicle
-  // never answers on the map, so nothing behind this column needs the taps.
-  pointer-events: auto;
+  // The cards dissolve under the poles rather than ending on a straight line
+  // mid-card. Alpha, not paint: the board stands over the live map, and the
+  // clear bands are the poles' own line box so a pole never has half a card
+  // showing through its letters.
+  // Shallower than the ledger's: a four-card hand overflows by a card's corner
+  // rather than by rows, and a band deeper than the overflow dims the title of a
+  // card that is otherwise fully on screen.
+  @include scroll-mask($top: 2.2rem, $bottom: 2.6rem, $top-clear: 1rem, $bottom-clear: 1.2rem);
+  @include scroll-bleed($top: 2.4rem, $bottom: 2.4rem);
+  @include snap-rows('.event-card');
+
+  // Sortable's ghost is in the list for exactly as long as a card is in the
+  // air, and a board that re-parks itself mid-drag fights the drop.
+  &:has(.ghost) {
+    scroll-snap-type: none;
+  }
+}
+
+// Over the mist the cards travel under.
+.pole {
+  position: relative;
+  z-index: 2;
 }
 
 // The rail's marginalia and the card column share one box: a gutter each
@@ -188,18 +239,21 @@ const submitOrder = () => resolve()
 .pole {
   flex: none;
   text-align: left;
-  font-size: 1.2rem;
+  // Fluid like the cards it labels, floored at the size it always was so a
+  // phone never reads a smaller pole than before.
+  font-size: clamp(1.2rem, 2.6vw, 1.6rem);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--soft-blue);
 
-  &::after {
-    content: ' ↓';
+  // Each arrow points OUT of the column, away from the cards — the top end is
+  // the earliest end, the bottom the latest — which is the same language the
+  // timeline ledger's poles speak (`↑ Earlier` / `↓ Later`). Pointing both of
+  // them down said the ordering ran downward twice and named neither end.
+  &::before {
+    content: '↑ ';
   }
-}
-.pole-latest::after {
-  content: '';
 }
 .pole-latest::before {
   content: '↓ ';
@@ -376,7 +430,7 @@ const submitOrder = () => resolve()
 @media (max-width: $tablet) {
   // A narrower gutter and smaller coins — the rail, the poles and the optical
   // offset follow from the tokens, so this is the whole of it.
-  .chronicle-board {
+  .chronicle-column {
     --rail-gutter: 3.6rem;
     // Even, like the 3rem above: the rail's left is a half-coin sum, and a
     // fractional pixel there gets snapped — half a pixel off a 0.2rem line.

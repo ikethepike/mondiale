@@ -79,6 +79,11 @@ export interface GateView {
   easySuggestions?: boolean
   /** Teleports a wide-screen subject into the shell's side stage. */
   sideStage?: boolean
+  /** Steps the prompt down a notch so the gate's own stage gets the room
+   *  (ChallengePrompt's `compact`). Declared here because the SHELL renders
+   *  the header — a gate whose board is the round wants it; a gate whose
+   *  question IS the round does not. */
+  compactPrompt?: boolean
 }
 
 /**
@@ -120,7 +125,9 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
       return place ? { place } : {}
     },
   },
-  'odd-one-out': { component: GateOddOneOut },
+  // The option table fills the column on a phone — the prompt names the
+  // shared trait and asks for the odd one, and the cards are the round.
+  'odd-one-out': { component: GateOddOneOut, compactPrompt: true },
   rulers: { component: GateRulers },
   'higher-lower': {
     component: GateHigherLower,
@@ -204,6 +211,9 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
   },
   chronicle: {
     component: GateChronicle,
+    // The board being assembled is the round; "Drag the chapters into place"
+    // is a caption on it.
+    compactPrompt: true,
     reveal: ChronicleReveal,
     wideReveal: true,
     revealProps: ({ challenge, chronicleOrder }) =>

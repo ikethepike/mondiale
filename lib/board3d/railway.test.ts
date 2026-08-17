@@ -229,8 +229,7 @@ describe('pickRailwayLoop', () => {
         // carved bed, above the river's water line there.
         const deck = route.points.filter(
           point =>
-            Math.hypot(point.x - bridge.center.x, point.z - bridge.center.z) <
-            bridge.halfLength
+            Math.hypot(point.x - bridge.center.x, point.z - bridge.center.z) < bridge.halfLength
         )
         expect(deck.length).toBeGreaterThan(0)
         let nearestWater = Infinity
@@ -253,10 +252,7 @@ describe('pickRailwayLoop', () => {
           let anchor = 0
           let nearest = Infinity
           river.points.forEach((point, at) => {
-            const distance = Math.hypot(
-              point.x - bridge.center.x,
-              point.z - bridge.center.z
-            )
+            const distance = Math.hypot(point.x - bridge.center.x, point.z - bridge.center.z)
             if (distance < nearest) {
               nearest = distance
               anchor = at
@@ -268,8 +264,7 @@ describe('pickRailwayLoop', () => {
           const flowZ = downstream.z - upstream.z
           const flowMagnitude = Math.hypot(flowX, flowZ) || 1
           const dot =
-            ((chordX / chordMagnitude) * flowX + (chordZ / chordMagnitude) * flowZ) /
-            flowMagnitude
+            ((chordX / chordMagnitude) * flowX + (chordZ / chordMagnitude) * flowZ) / flowMagnitude
           expect(Math.abs(dot)).toBeLessThan(0.75)
         }
       }
@@ -286,9 +281,9 @@ describe('pickRailwayLoop', () => {
       if (!loop || !town) continue
       pairs++
       for (const point of loop) {
-        expect(
-          Math.hypot(point.x - town.center.x, point.z - town.center.z)
-        ).toBeGreaterThanOrEqual(town.radius + 1.5)
+        expect(Math.hypot(point.x - town.center.x, point.z - town.center.z)).toBeGreaterThanOrEqual(
+          town.radius + 1.5
+        )
       }
     }
     expect(pairs).toBeGreaterThan(0)

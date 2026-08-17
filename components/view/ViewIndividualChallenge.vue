@@ -11,6 +11,7 @@
       ref="promptHost"
       :attributions="promptSources"
       :attribution-credit="promptCredit"
+      :compact="!status && GATE_VIEWS[variant].compactPrompt"
     >
       <Transition name="caption" mode="out-in">
         <div v-if="!status" key="question" class="question">

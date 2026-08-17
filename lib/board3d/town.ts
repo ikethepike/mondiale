@@ -86,8 +86,7 @@ export const pickTownSite = (
       return false
     if (
       summit &&
-      Math.hypot(summit.center.x - x, summit.center.z - z) <
-        summit.radius + radius + spacing * 1.05
+      Math.hypot(summit.center.x - x, summit.center.z - z) < summit.radius + radius + spacing * 1.05
     )
       return false
     // Waterside is WELCOME — the huddle may stand close, its houses just
@@ -175,10 +174,7 @@ export const pickTownSite = (
     let placed = true
     for (let index = 0; index < houseCount; index++) {
       const angle =
-        opening +
-        Math.PI * 0.3 +
-        (arcSpan * index) / (houseCount - 1) +
-        (random() - 0.5) * 0.25
+        opening + Math.PI * 0.3 + (arcSpan * index) / (houseCount - 1) + (random() - 0.5) * 0.25
       const ring = radius * (0.5 + random() * 0.2)
       const x = plot.x + Math.sin(angle) * ring
       const z = plot.z + Math.cos(angle) * ring
