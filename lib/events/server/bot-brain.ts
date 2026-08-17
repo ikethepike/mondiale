@@ -1,5 +1,12 @@
 import { randomBetween, randomInt, sample, sampleMany } from '~~/lib/arrays'
-import { botShare, isBrainSeat, jitteredShare } from '~~/lib/bots'
+import {
+  botShare,
+  isBrainSeat,
+  jitteredShare,
+  GATE_REMAINING,
+  HOT_COLD_MAX_WANDER,
+  SWEEP_ACCURACY,
+} from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { playableWorldCountries } from '~~/lib/game-rules'
@@ -543,6 +550,19 @@ const classicAnswerDelay = (round: Round): number => {
   return remaining * randomBetween(from, to)
 }
 
+/**
+ * How much of the play window is still on the clock as the bot answers — the
+ * buzz moment it reports, measured rather than guessed. The act was already
+ * scheduled into `BOT_CLASSIC_WINDOW`, so this reads back what that wait
+ * actually spent; an untimed kind has no window to be early in and buzzes at
+ * the middle of the curve.
+ */
+const liveRemainingFraction = (round: Round): number => {
+  const playSeconds = classicPlaySeconds(round.groupChallenge)
+  if (!round.deadline || !playSeconds) return 0.5
+  return clamp01((round.deadline - Date.now()) / (playSeconds * 1000))
+}
+
 // --- The AFK autopilot: the same brain, borrowed for a vacated human seat ---
 
 /**
@@ -839,7 +859,9 @@ const dispatchGateAnswer = (ctx: EngineContext, gateTile: number) => {
           event: 'submit-individual-challenge-answer',
           isoCode,
           // A bot never races the gate clock: a mid-window fraction, no hints.
-          remainingFraction: clamp01(0.3 + share * 0.4),
+          remainingFraction: clamp01(
+            GATE_REMAINING[0] + share * (GATE_REMAINING[1] - GATE_REMAINING[0])
+          ),
           hintsUsed: 0,
           gateTile,
         },
@@ -945,7 +967,7 @@ const dispatchSweepClaim = (ctx: EngineContext, playerId: string) => {
     // A rare stray (a non-member) benches the bot through the engine's own
     // path — the same cost a human's wrong tap pays.
     const isoCode =
-      Math.random() < Math.min(0.95, 0.5 + share * 0.5)
+      Math.random() < SWEEP_ACCURACY[0] + share * (SWEEP_ACCURACY[1] - SWEEP_ACCURACY[0])
         ? sample(free)
         : (wrongPick(fresh, [...challenge.members, ...(challenge.offBoard ?? [])]) ?? sample(free))
     if (!isoCode) return
@@ -1277,10 +1299,20 @@ export const composeClassicSubmission = async (
   const challenge = round.groupChallenge
   const kind = roundChallengeKind(challenge)
   const maximum = 'maximumPoints' in challenge ? (challenge.maximumPoints ?? 0) : 0
-  /** A buzz-style claim: the share sets how sharp the (server-clamped) buzz
-   *  was; the jitter keeps two bots from tying forever. */
-  const claim = Math.round(maximum * share * (0.6 + Math.random() * 0.4))
-  const buzzAt = clamp01(0.25 + share * 0.5)
+  /** When the bot actually buzzed, off the round's own clock — the act was
+   *  scheduled into `BOT_CLASSIC_WINDOW`, so reporting a share-derived guess
+   *  instead would tax a right answer for being confident. Reveal-only. */
+  const buzzAt = liveRemainingFraction(round)
+  /**
+   * The pot a landed buzz claims. The `hit` roll ALREADY spends the share, so
+   * the claim must not spend it again — `share × anything` is what had hard
+   * bots realizing half their dial. The buzz curve can't price it either: a
+   * bot answers mid-window on purpose (never racing a human off the line), and
+   * `buzzFraction` at that moment caps the pot near 0.66, so a hard seat could
+   * not reach 0.65 of the round however well it played. A landed answer is
+   * worth the round; the politeness beat is not a skill discount.
+   */
+  const claim = maximum
 
   switch (kind) {
     case 'silhouette':
@@ -1302,10 +1334,12 @@ export const composeClassicSubmission = async (
       return pick ? { ranking: [pick], clientScore: hit ? claim : 0, buzzAt } : { ranking: [] }
     }
     case 'hot-cold': {
-      // A probe trail: the colder the seat, the longer the wander.
+      // A probe trail: the colder the seat, the longer the wander. Every stray
+      // is two points off the decay, so a cold seat wanders — but never so far
+      // that finding the target stops being worth more than a warm seat's miss.
       const target = correct[0]
       if (!target) return { ranking: [] }
-      const wander = Array.from({ length: Math.round((1 - share) * 4) }, () =>
+      const wander = Array.from({ length: Math.round((1 - share) * HOT_COLD_MAX_WANDER) }, () =>
         wrongPick(game, correct)
       ).filter((isoCode): isoCode is ISOCountryCode => !!isoCode)
       return { ranking: hit ? [...wander, target] : wander }
@@ -1314,10 +1348,11 @@ export const composeClassicSubmission = async (
     case 'trend-race': {
       const target = correct[0]
       if (!target) return { ranking: [] }
+      // Both scorers grade guess ZERO — a decoy in front of the answer throws
+      // away the round the hit just won.
+      if (hit) return { ranking: [target] }
       const miss = wrongPick(game, correct)
-      return {
-        ranking: hit ? (miss && share < 0.5 ? [miss, target] : [target]) : miss ? [miss] : [],
-      }
+      return { ranking: miss ? [miss] : [] }
     }
     case 'empire': {
       const empire = expectChallengeType(challenge, 'empire-challenge')
@@ -1352,6 +1387,18 @@ export const composeClassicSubmission = async (
       // stands in for a drawing of that quality.
       return { ranking: [], clientScore: claim }
     }
+    case 'traversal': {
+      // The route is graded whole: `optimalPath` carries its endpoints, so a
+      // share-sized PREFIX can never bridge them and scores a flat zero. A hit
+      // names the interior; a miss names a wrong-length attempt that still
+      // grades through the decay rather than short-circuiting.
+      const interior = correct.slice(1, -1)
+      if (!interior.length) return { ranking: [] }
+      if (hit) return { ranking: interior }
+      const stray = wrongPick(game, correct)
+      const short = interior.slice(0, Math.max(1, interior.length - 1))
+      return { ranking: stray ? [...short, stray] : short }
+    }
     default: {
       // Every collect-a-set and ordered kind: a share-sized slice of the
       // correct set, order preserved (a prefix of a ranking or a path is a
@@ -1385,5 +1432,8 @@ const pinScatter = (
 ): LatLng => {
   const missKm =
     ring.perfectDistanceKm + (1 - share) * (ring.zeroDistanceKm - ring.perfectDistanceKm) * 0.9
-  return offsetKm(target, missKm * Math.random(), randomBetween(0, 360))
+  // Scatter AROUND the share's radius rather than uniformly inside it: a
+  // uniform draw on the radius lands most throws near the bullseye, which had
+  // even easy seats out-pinning their dial.
+  return offsetKm(target, randomBetween(missKm * 0.6, missKm), randomBetween(0, 360))
 }

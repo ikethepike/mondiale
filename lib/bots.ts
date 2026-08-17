@@ -63,21 +63,44 @@ export const DIFFICULTY_SHARE: Record<GameDifficulty, number> = {
  *  short enough to track a player who warms up. */
 const SHARE_HISTORY_ROUNDS = 5
 
+/** Hot Cold's coldest trail: strays cost two points each off the attempt
+ *  decay, so the wander is bounded rather than scaled without a ceiling. */
+export const HOT_COLD_MAX_WANDER = 3
+
+/** Clean Sweep's claim accuracy, floor to ceiling across the share — wide
+ *  enough that the three difficulties actually read differently on the board. */
+export const SWEEP_ACCURACY: readonly [number, number] = [0.3, 0.95]
+
+/** A gate answer's buzz moment, floor to ceiling across the share. */
+export const GATE_REMAINING: readonly [number, number] = [0.45, 0.9]
+
 /**
  * The brain's skill knob for a seat (Isaac's ruling): play at roughly the
  * seat's own demonstrated level — the rolling share of maximum it has been
  * scoring, off the same `playerTurns` every scorecard reads — and fall back
  * to the game difficulty while there is no history (lobby bots' first
  * rounds, an autopilot takeover in round 1).
+ *
+ * A LOBBY bot floors at its difficulty: the mirror may carry it above the
+ * dial on a hot streak, never below, so a cold round can't ratchet a hard
+ * table down for the rest of the game. An AUTOPILOT seat keeps the pure
+ * mirror — playing at the departed human's demonstrated level IS its spec.
  */
-export const botShare = (game: Pick<Game, 'rounds' | 'difficulty'>, playerId: string): number => {
+export const botShare = (
+  game: Pick<Game, 'rounds' | 'difficulty' | 'players'>,
+  playerId: string
+): number => {
   const fractions = game.rounds
     .map(round => round.playerTurns[playerId]?.points)
     .filter((points): points is { scored: number; maximum: number } => !!points?.maximum)
     .slice(-SHARE_HISTORY_ROUNDS)
     .map(points => points.scored / points.maximum)
-  if (!fractions.length) return DIFFICULTY_SHARE[game.difficulty]
-  return clamp01(fractions.reduce((sum, fraction) => sum + fraction, 0) / fractions.length)
+  const dialled = DIFFICULTY_SHARE[game.difficulty]
+  if (!fractions.length) return dialled
+  const mirrored = clamp01(
+    fractions.reduce((sum, fraction) => sum + fraction, 0) / fractions.length
+  )
+  return game.players?.[playerId]?.bot ? Math.max(dialled, mirrored) : mirrored
 }
 
 /** A per-act jitter around the share, so a bot is streaky like a person
