@@ -239,18 +239,21 @@ const submitOrder = () => resolve()
 .pole {
   flex: none;
   text-align: left;
-  font-size: 1.2rem;
+  // Fluid like the cards it labels, floored at the size it always was so a
+  // phone never reads a smaller pole than before.
+  font-size: clamp(1.2rem, 2.6vw, 1.6rem);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--soft-blue);
 
-  &::after {
-    content: ' ↓';
+  // Each arrow points OUT of the column, away from the cards — the top end is
+  // the earliest end, the bottom the latest — which is the same language the
+  // timeline ledger's poles speak (`↑ Earlier` / `↓ Later`). Pointing both of
+  // them down said the ordering ran downward twice and named neither end.
+  &::before {
+    content: '↑ ';
   }
-}
-.pole-latest::after {
-  content: '';
 }
 .pole-latest::before {
   content: '↓ ';
