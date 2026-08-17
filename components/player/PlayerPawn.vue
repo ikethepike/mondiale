@@ -27,7 +27,9 @@
       />
       <circle cx="34" cy="6.5" r="5.5" :fill="fill" />
       <rect x="31.6" y="8.5" width="4.8" height="12" rx="2.4" :fill="fill" />
-      <rect x="12" y="18" width="44" height="32" rx="7" :fill="fill" />
+      <!-- Head bottom meets collar top exactly: a gap here renders as a
+           transparent slit across the neck at lobby size. -->
+      <rect x="12" y="18" width="44" height="35" rx="7" :fill="fill" />
       <rect x="18.5" y="53" width="31" height="8.5" rx="3.2" :fill="fill" />
     </template>
     <path

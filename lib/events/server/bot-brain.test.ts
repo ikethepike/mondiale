@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AUTOPILOT_GRACE_MS } from '~~/lib/round-beats'
+import { AUTOPILOT_GRACE_MS, BOT_PUMP_MS } from '~~/lib/round-beats'
 import type {
   NeighbourBlitzChallenge,
   TwoTruthsChallenge,
@@ -17,6 +17,7 @@ import { EVENTS } from '~~/data/events.gen'
 import { gradeGroupAnswer } from './grade-group-answer'
 import {
   armAfkTakeover,
+  armBotPump,
   composeClassicSubmission,
   finalAnswerFor,
   releaseAutopilot,
@@ -232,5 +233,93 @@ describe('the AFK autopilot lifecycle', () => {
     expect(emitted.find(entry => entry.event === 'table-notice')?.payload).toMatchObject({
       kind: 'autopilot-reclaimed',
     })
+  })
+
+  it('releases a winner to the table without the catch-up ceremony', async () => {
+    const winner = seat('human', 'victory', { autopilot: { sinceRound: 0 } })
+    const game = buildGame(BUZZ, [winner])
+    releaseAutopilot(context(game, 'human'), game, winner)
+    // The table still hears it — NoticeToast shows the line to everyone BUT
+    // the named seat — while the summary card over the final standings does
+    // not fire.
+    expect(emitted.find(entry => entry.event === 'table-notice')?.payload).toMatchObject({
+      kind: 'autopilot-reclaimed',
+    })
+    expect(emitted.find(entry => entry.event === 'autopilot-summary')).toBeUndefined()
+  })
+})
+
+describe('the bot pump', () => {
+  const store = new Map<string, Game>()
+  let roomSockets: { id: string; data: { playerId?: string } }[] = []
+  let fetches = 0
+  let gameNumber = 0
+
+  /** The pump map is module-level and keyed by game id, so every test needs a
+   *  room of its own — a reused id inherits the previous test's live chain and
+   *  `armBotPump` refuses the duplicate. */
+  const pumpGameFor = (): Game => {
+    const game = buildGame(BUZZ, [seat('bot:x', 'group-challenge', { bot: true })])
+    game.id = `pump-test-${++gameNumber}`
+    return game
+  }
+
+  const context = (game: Game): EngineContext => {
+    store.set(game.id, game)
+    return {
+      io: { in: () => ({ emit: () => {}, fetchSockets: async () => roomSockets }) },
+      redis: {
+        get: async (key: string) => {
+          fetches++
+          return store.get(key)
+        },
+        set: async (key: string, value: Game) => void store.set(key, value),
+        expire: async () => 1,
+      },
+      socket: {},
+      eventTarget: { gameId: game.id, playerId: 'bot:x' },
+    } as unknown as EngineContext
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    store.clear()
+    fetches = 0
+    roomSockets = [{ id: 'watcher', data: { playerId: 'human' } }]
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  /** Ticks are read-only state reads, so "did it fetch?" IS "did it tick?". */
+  const ticked = async () => {
+    const before = fetches
+    await vi.advanceTimersByTimeAsync(BOT_PUMP_MS * 3)
+    await vi.runAllTicks()
+    return fetches > before
+  }
+
+  it('keeps ticking while anyone is still in the room', async () => {
+    const game = pumpGameFor()
+    armBotPump(context(game), game)
+    expect(await ticked()).toBe(true)
+  })
+
+  it('stands down when the room empties, and a rejoin brings it back', async () => {
+    const game = pumpGameFor()
+    armBotPump(context(game), game)
+    expect(await ticked()).toBe(true)
+
+    // Everyone left: an all-brain table must not play on to an empty theatre,
+    // nor keep re-claiming the room's ownership lease every beat.
+    roomSockets = []
+    await vi.advanceTimersByTimeAsync(BOT_PUMP_MS * 2)
+    expect(await ticked()).toBe(false)
+
+    // The recovery join.event owes it — including mid-staging, where the
+    // round engines have nothing to revive and skip `rearmLiveRound`.
+    roomSockets = [{ id: 'back', data: { playerId: 'human' } }]
+    game.pendingRoundStart = true
+    armBotPump(context(game), game)
+    expect(await ticked()).toBe(true)
   })
 })

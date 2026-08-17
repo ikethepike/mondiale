@@ -1,5 +1,5 @@
 import { onBeforeUnmount, ref, toValue, type MaybeRefOrGetter } from 'vue'
-import { clamp01 } from './number'
+import { remainingFractionOn } from './round-beats'
 
 /** Repaint cadence — fast enough that a 1s tick never visibly stutters. */
 const REPAINT_MS = 200
@@ -27,8 +27,7 @@ export const useDeadlineClock = (
   const repaint = () => {
     const at = toValue(deadline) ?? 0
     secondsOnClock.value = secondsOnDeadline(at)
-    const total = (toValue(totalSeconds) ?? 0) * 1000
-    fractionLeft.value = total ? clamp01((at - Date.now()) / total) : 1
+    fractionLeft.value = remainingFractionOn(at, toValue(totalSeconds))
   }
 
   repaint()

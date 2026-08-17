@@ -39,6 +39,7 @@ import {
   RETIREMENT_PHASES,
   classicPlaySeconds,
   isClassicGroupRound,
+  remainingFractionOn,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { activePlayerId } from '~~/lib/chain'
@@ -567,8 +568,9 @@ const classicAnswerDelay = (round: Round): number => {
  */
 const liveRemainingFraction = (round: Round): number => {
   const playSeconds = classicPlaySeconds(round.groupChallenge)
+  // An untimed kind has no window to be early in — mid-curve, not full marks.
   if (!round.deadline || !playSeconds) return 0.5
-  return clamp01((round.deadline - Date.now()) / (playSeconds * 1000))
+  return remainingFractionOn(round.deadline, playSeconds)
 }
 
 // --- The AFK autopilot: the same brain, borrowed for a vacated human seat ---
@@ -1405,13 +1407,16 @@ export const composeClassicSubmission = async (
     case 'traversal': {
       // The route is graded whole: `optimalPath` carries its endpoints, so a
       // share-sized PREFIX can never bridge them and scores a flat zero. A hit
-      // names the interior; a miss names a wrong-length attempt that still
-      // grades through the decay rather than short-circuiting.
+      // names the interior.
       const interior = correct.slice(1, -1)
       if (!interior.length) return { ranking: [] }
       if (hit) return { ranking: interior }
+      // A miss must genuinely NOT bridge: drop a link and offer a stray in its
+      // place. `slice(0, length - 1)` on a single-country interior keeps that
+      // country — half of every easy deal is a 2-hop route, so a floored slice
+      // handed those misses the full route and ~0.9 of the pot.
       const stray = wrongPick(game, correct)
-      const short = interior.slice(0, Math.max(1, interior.length - 1))
+      const short = interior.slice(0, interior.length - 1)
       return { ranking: stray ? [...short, stray] : short }
     }
     default: {

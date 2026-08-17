@@ -51,9 +51,13 @@ const buildGame = (challenge: object, difficulty: Game['difficulty']): Game =>
     rounds: [{ groupChallenge: { ...challenge }, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
-/** Compose and grade one round `TRIALS` times; returns the mean scored/maximum. */
+/** Compose and grade one round `TRIALS` times; returns the mean scored/maximum
+ *  over the trials that actually GRADED — dividing by `TRIALS` would let a
+ *  fixture that intermittently composes nothing drag the mean toward zero and
+ *  read as a strength regression. */
 const realizedFraction = async (challenge: object, difficulty: Game['difficulty']) => {
   let total = 0
+  let graded = 0
   for (let trial = 0; trial < TRIALS; trial++) {
     // A fresh game per trial: an empty `playerTurns` keeps every draw on the
     // difficulty dial rather than on the previous trial's mirror.
@@ -62,10 +66,32 @@ const realizedFraction = async (challenge: object, difficulty: Game['difficulty'
     const submission = await composeClassicSubmission(game, round, 'bot:x')
     if (!submission) continue
     const { scoring } = await gradeGroupAnswer({ game, round, playerId: 'bot:x', submission })
-    if (scoring.maximum) total += scoring.scored / scoring.maximum
+    if (!scoring.maximum) continue
+    total += scoring.scored / scoring.maximum
+    graded++
   }
-  return total / TRIALS
+  // A fixture that never grades is a broken fixture, not a zero-strength bot.
+  expect(graded).toBeGreaterThan(TRIALS / 2)
+  return total / graded
 }
+
+/**
+ * Both bounds, always: a one-sided floor cannot catch an OVERPAY, which is how
+ * a bot claiming the whole pot slips through.
+ *
+ * `headroom` widens the ceiling for the kinds that pay a near miss — ghost
+ * state tapers on distance from the parent, trend race on how far down the
+ * standings the pick sat — so a bot that misses its roll still banks something
+ * and the realized mean sits legitimately above the dial. The floor stays
+ * tight; it is the ceiling that has to make room for partial credit.
+ */
+const expectOnDial = (realized: number, difficulty: Game['difficulty'], headroom = 0) => {
+  expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
+  expect(realized).toBeLessThan(DIFFICULTY_SHARE[difficulty] + BAND + headroom)
+}
+
+/** What a near miss is worth on the proximity-tapered kinds. */
+const PARTIAL_CREDIT_HEADROOM = 0.12
 
 const BLITZ: NeighbourBlitzChallenge = {
   _type: 'neighbour-blitz-challenge',
@@ -116,48 +142,34 @@ describe('bot strength realizes the difficulty dial', () => {
   // share must be spent ONCE (on the hit), never again on the claim.
   it.each(['easy', 'normal', 'hard'] as const)(
     'buzz rounds land near the %s share',
-    async difficulty => {
-      const realized = await realizedFraction(BUZZ, difficulty)
-      expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
-      expect(realized).toBeLessThan(DIFFICULTY_SHARE[difficulty] + BAND)
-    }
+    async difficulty => expectOnDial(await realizedFraction(BUZZ, difficulty), difficulty)
   )
 
   it.each(['easy', 'normal', 'hard'] as const)(
     'collect-a-set rounds land near the %s share',
-    async difficulty => {
-      const realized = await realizedFraction(BLITZ, difficulty)
-      expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
-      expect(realized).toBeLessThan(DIFFICULTY_SHARE[difficulty] + BAND)
-    }
+    async difficulty => expectOnDial(await realizedFraction(BLITZ, difficulty), difficulty)
   )
 
   // No correctness gate here, so the claim is the only place the share can
   // live: claiming the pot banked full marks at every difficulty.
   it.each(['easy', 'normal', 'hard'] as const)(
     'sketch scores its %s share, not the whole pot',
-    async difficulty => {
-      const realized = await realizedFraction(SKETCH, difficulty)
-      expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
-      expect(realized).toBeLessThan(DIFFICULTY_SHARE[difficulty] + BAND)
-    }
+    async difficulty => expectOnDial(await realizedFraction(SKETCH, difficulty), difficulty)
   )
 
-  // Both grade guess ZERO — a decoy submitted first throws away a won round.
+  // Both grade guess ZERO, so a decoy submitted first throws away a won round.
+  // Neither is strictly all-or-nothing (a near miss pays partial), so the
+  // UPPER bound matters as much as the lower.
   it.each(['easy', 'normal', 'hard'] as const)(
     'ghost-state grades the answer, not a decoy, at %s',
-    async difficulty => {
-      const realized = await realizedFraction(GHOST, difficulty)
-      expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
-    }
+    async difficulty =>
+      expectOnDial(await realizedFraction(GHOST, difficulty), difficulty, PARTIAL_CREDIT_HEADROOM)
   )
 
   it.each(['easy', 'normal', 'hard'] as const)(
     'trend-race grades the answer, not a decoy, at %s',
-    async difficulty => {
-      const realized = await realizedFraction(TREND, difficulty)
-      expect(realized).toBeGreaterThan(DIFFICULTY_SHARE[difficulty] - BAND)
-    }
+    async difficulty =>
+      expectOnDial(await realizedFraction(TREND, difficulty), difficulty, PARTIAL_CREDIT_HEADROOM)
   )
 
   // The regression that scored a flat zero at every difficulty: a share-sized
@@ -181,8 +193,37 @@ describe('bot strength realizes the difficulty dial', () => {
       maximumPoints: 12,
     } as TraversalChallenge
 
-    const realized = await realizedFraction(challenge, 'hard')
-    expect(realized).toBeGreaterThan(0)
-    expect(realized).toBeGreaterThan(DIFFICULTY_SHARE.hard - BAND)
+    expectOnDial(await realizedFraction(challenge, 'hard'), 'hard')
+  })
+
+  // Easy deals 2-hop routes, whose interior is a SINGLE country. A miss branch
+  // that floors its slice at one keeps that country, hands the grader the
+  // whole route and banks near-full marks — the shape that made an easy seat
+  // the strongest traversal player at the table.
+  it('does not bridge on a miss when the route has one interior country', async () => {
+    const rules = {
+      variant: 'world',
+      difficulty: 'easy',
+      includeMicroNations: false,
+    } as unknown as Parameters<typeof pickTraversal>[0]
+
+    // Deal until a 2-hop route turns up; easy produces them about half the time.
+    let picked = pickTraversal(rules)
+    for (let attempt = 0; attempt < 40 && picked?.optimalPath.length !== 3; attempt++) {
+      picked = pickTraversal(rules)
+    }
+    expect(picked?.optimalPath).toHaveLength(3)
+
+    const challenge: TraversalChallenge = {
+      _type: 'traversal-challenge',
+      start: picked!.start,
+      target: picked!.target,
+      optimalHops: picked!.optimalHops,
+      optimalPath: picked!.optimalPath,
+      maximumClicks: 12,
+      maximumPoints: 12,
+    } as TraversalChallenge
+
+    expectOnDial(await realizedFraction(challenge, 'easy'), 'easy')
   })
 })

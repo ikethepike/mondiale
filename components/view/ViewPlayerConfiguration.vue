@@ -650,7 +650,6 @@ const startGame = () => {
   cursor: pointer;
   place-items: center;
   border-radius: 50%;
-  background: transparent;
   transition: background-color var(--motion-quick) var(--ease-out-expressive);
 
   &::before {
@@ -714,9 +713,11 @@ const startGame = () => {
     text-decoration: underline dotted;
     text-underline-offset: 0.3em;
 
+    // The wash lives on the counter now, so there is no opacity left to wake
+    // — the underline going solid is the whole hover tell.
     &:hover,
     &:focus-visible {
-      opacity: 1;
+      text-decoration-style: solid;
     }
   }
 }

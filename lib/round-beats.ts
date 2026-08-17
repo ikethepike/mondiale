@@ -1,3 +1,4 @@
+import { clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
 import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
 import {
@@ -502,6 +503,23 @@ export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): 
  * part of this: a gated kind still plays for exactly this long once the clip
  * starts, and only the server's budget covers the wait before it.
  */
+/**
+ * How much of a clock is still to run, 0..1 — THE deadline→fraction math.
+ * Both sides of the wire price a buzz off this: `useDeadlineClock` repaints
+ * the player's shot clock with it and the bot brain stamps its own `buzzAt`
+ * with it, so a human and a machine answering at the same moment can never be
+ * graded by two different roundings. No deadline or no window means nothing
+ * to be early in.
+ */
+export const remainingFractionOn = (
+  deadline: number | undefined,
+  totalSeconds: number | undefined
+): number => {
+  const total = (totalSeconds ?? 0) * 1000
+  if (!deadline || !total) return 1
+  return clamp01((deadline - Date.now()) / total)
+}
+
 export const classicPlaySeconds = (challenge: RoundChallenge | undefined): number | undefined => {
   if (!challenge) return undefined
   const derived = roundBeats(challenge).playSeconds?.(challenge)
