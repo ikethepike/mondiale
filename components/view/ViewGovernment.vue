@@ -66,7 +66,16 @@
         :group-answers="revealAnswers"
       />
 
-      <div v-else-if="beat === 'party'" key="party" class="card-options logos">
+      <!-- The two beats that scroll as a whole share one wiring: they are
+           mutually exclusive, so the ref only ever holds the mounted one. -->
+      <div
+        v-else-if="beat === 'party'"
+        key="party"
+        ref="beatScroller"
+        class="card-options logos"
+        :class="{ 'fade-top': beatUp, 'fade-bottom': beatDown }"
+        @scroll.passive="syncBeatEdges"
+      >
         <button
           v-for="(option, index) in challenge?.options ?? []"
           :key="option.name"
@@ -90,7 +99,14 @@
       </div>
 
       <!-- Beat 2: the chamber sweeps in colourless; pick the block it holds. -->
-      <div v-else-if="beat === 'seats'" key="seats" class="seats-beat">
+      <div
+        v-else-if="beat === 'seats'"
+        key="seats"
+        ref="beatScroller"
+        class="seats-beat"
+        :class="{ 'fade-top': beatUp, 'fade-bottom': beatDown }"
+        @scroll.passive="syncBeatEdges"
+      >
         <!-- WHOSE seats. Beat 2 grades against the real government, so a
              player who picked wrong in beat 1 would otherwise be answering
              about a party nobody named — the prompt's "it" had no antecedent
@@ -327,6 +343,15 @@ watch(
  */
 const benchRows = ref<HTMLElement>()
 const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => benchRows.value)
+
+// Beats 1 and 2 scroll as a whole rather than scrolling a roll inside a panel,
+// so their fade is the alpha recipe (the map is behind them, not a pane).
+const beatScroller = ref<HTMLElement>()
+const {
+  scrollableUp: beatUp,
+  scrollableDown: beatDown,
+  syncScrollEdges: syncBeatEdges,
+} = useScrollEdges(() => beatScroller.value)
 
 const allFiled = computed(() =>
   (challenge.value?.sorted ?? []).every(name => mySides.value[name] !== undefined)
@@ -850,6 +875,9 @@ const promptSources = computed(() => datasetAttribution('parties'))
 .seats-beat {
   overflow-y: auto;
   overscroll-behavior: contain;
+  // Alpha, not paint: these two beats stand over the board, where the cream
+  // wash `.bench-rows` uses inside its pane would smear over the map.
+  @include scroll-mask($top: 2rem, $bottom: 2rem);
 }
 
 // Chip, panel, footer — and the PANEL is the one that both GROWS and gives
