@@ -48,6 +48,10 @@ export const removeBotHandler = defineGameHandler(
 
     if (game.started) {
       if (target.phase === 'kicked' || target.retiring) return
+      // A winner is past removing — there is nothing left to play, and the
+      // retiring latch could never be consumed (the pump treats victory as
+      // terminal), leaving "Leaving after this round" on the podium forever.
+      if (target.phase === 'victory') return console.warn(`Refusing to remove winner ${target.id}`)
       target.retiring = true
       await server.updateGameState(game)
       server.emit({ event: 'update', game }, { gameId: game.id, playerId: target.id })

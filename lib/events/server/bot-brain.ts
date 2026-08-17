@@ -195,7 +195,9 @@ const scheduleTick = (ctx: EngineContext, token: symbol) => {
           const playing =
             game?.started &&
             Object.values(game.players).some(
-              seat => isBrainSeat(seat) && !SETTLED_TERMINAL_PHASES.includes(seat.phase)
+              seat =>
+                isBrainSeat(seat) &&
+                (!SETTLED_TERMINAL_PHASES.includes(seat.phase) || (seat.bot && seat.retiring))
             )
           if (!playing) return void pumps.delete(gameId)
           record.tickedAt = Date.now()
@@ -255,6 +257,14 @@ const pumpGame = (ctx: EngineContext, game: Game, record: PumpRecord) => {
       dispatchRetirement(actorCtx, seat.id)
       continue
     }
+    // A bot that WON while retiring: nothing left to leave — consume the
+    // latch quietly or the podium row reads "Leaving after this round"
+    // forever (the remove handler refuses winners, but a mid-gauntlet
+    // removal can finish victorious before a retirement phase arrives).
+    if (seat.bot && seat.retiring && seat.phase === 'victory') {
+      dispatchRetirementClear(actorCtx, seat.id)
+      continue
+    }
 
     switch (seat.phase) {
       case 'tutorial': {
@@ -304,6 +314,16 @@ const pumpGame = (ctx: EngineContext, game: Game, record: PumpRecord) => {
   }
 
   record.acts = current
+}
+
+const dispatchRetirementClear = (ctx: EngineContext, playerId: string) => {
+  scheduleEngineTask(ctx, 0, async (fresh, server) => {
+    const seat = fresh.players[playerId]
+    if (!seat?.bot || !seat.retiring || seat.phase !== 'victory') return
+    delete seat.retiring
+    await server.updateGameState(fresh)
+    server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
+  })
 }
 
 const dispatchRetirement = (ctx: EngineContext, playerId: string) => {
@@ -714,7 +734,12 @@ const dispatchClassicAnswer = (ctx: EngineContext, roundIndex: number, playerId:
       eventKey: 'submit-group-challenge-answers',
       eventData: { event: 'submit-group-challenge-answers', ...submission, roundIndex },
     })
-    // The room's guess ticker: the seat audibly answered, nothing more.
+    // The room's guess ticker: the seat audibly answered, nothing more —
+    // and only if the handler actually BANKED it (a late submit its guards
+    // refused must not put a phantom "answered" line beside an absent
+    // scorecard). One re-fetch buys the honesty.
+    const after = await server.fetchGame(ctx.eventTarget.gameId)
+    if (!after?.rounds[roundIndex]?.groupAnswers[playerId]) return
     server.emit(
       {
         event: 'player-guessing',
