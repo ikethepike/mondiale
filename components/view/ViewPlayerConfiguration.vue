@@ -464,8 +464,11 @@ const OPEN_SEATS_SHOWN = 2
 const openSeats = computed(() => {
   if (!isPlayerHost.value || player.value?.phase === 'naming') return 0
   const seated = playersByPhase.value.all.length
-  if (seated > 1) return 0
-  return Math.min(OPEN_SEATS_SHOWN, MAX_PLAYERS - seated)
+  // Hold the list's HEIGHT steady as seats fill: each arrival takes a chair's
+  // place rather than appearing under both and letting the block collapse.
+  // Dropping them all at seat two is what made a join jump the whole roster.
+  const room = Math.max(0, OPEN_SEATS_SHOWN + 1 - seated)
+  return Math.min(room, MAX_PLAYERS - seated)
 })
 
 /** Seating a bot is a HOST decision about the table, and the host is not a
@@ -818,6 +821,12 @@ const startGame = () => {
       opacity: 0.5;
       margin-left: auto;
     }
+  }
+
+  // The positioning context a leaving row pins to while it fades out of the
+  // flow (see .lobby-tile-leave-active).
+  > ul {
+    position: relative;
   }
 
   // The secondary mode's whole UI: a muted text affordance in the counter
@@ -1398,6 +1407,7 @@ $swirl-ease: cubic-bezier(0.37, 0, 0.28, 1);
 }
 .lobby-tile-leave-to {
   opacity: 0;
+  transform: scale(0.96);
 }
 .lobby-tile-enter-active,
 .lobby-tile-leave-active,
@@ -1405,6 +1415,21 @@ $swirl-ease: cubic-bezier(0.37, 0, 0.28, 1);
   transition:
     opacity var(--motion-base) var(--ease-out-expressive),
     transform var(--motion-base) var(--ease-out-expressive);
+}
+// A leaving row must leave the FLOW, or it holds its slot for the whole fade
+// and the rows below jump the moment it finally unmounts — the shift a join
+// used to make. Out of flow, `-move` slides the survivors up smoothly instead.
+// The list is the positioning context (below), so left/right pin the width
+// without hardcoding the pane's padding.
+.lobby-tile-leave-active {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+// The ghost a new arrival replaces should not slide in from the side — it is
+// being taken, not added. It fades in place while the roster closes up.
+.open-seat.lobby-tile-enter-from {
+  transform: none;
 }
 
 @media screen and (min-width: $tablet) {
