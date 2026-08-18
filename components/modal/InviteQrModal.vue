@@ -41,7 +41,22 @@
         </div>
 
         <p class="qr-hint">
-          Point a camera at the code, or join at <strong>{{ prettyUrl }}</strong>
+          Point a camera at the code, or join at
+          <!-- The address looked tappable and did nothing. It is a button now:
+               the one thing a person wants from a link they cannot scan is to
+               take it with them. -->
+          <button
+            type="button"
+            class="qr-url"
+            :aria-label="`Copy invite link, ${prettyUrl}`"
+            @click="copyUrl"
+          >
+            <strong>{{ prettyUrl }}</strong>
+          </button>
+        </p>
+        <!-- Announced, not just tinted, so it lands for a screen reader too. -->
+        <p class="qr-copied" role="status" aria-live="polite">
+          <span v-if="hasCopied">Link copied</span>
         </p>
       </div>
     </article>
@@ -51,6 +66,7 @@
 <script lang="ts" setup>
 import qrcode from 'qrcode-generator'
 import ModalWrapper from '~/components/modal/ModalWrapper.vue'
+import { prettyInviteUrl, useInviteLink } from '~~/lib/use-invite-link'
 
 const props = defineProps({
   url: { type: String, required: true },
@@ -88,7 +104,11 @@ const modulePath = computed(() => {
   return path
 })
 
-const prettyUrl = computed(() => props.url.replace(/^https?:\/\//, ''))
+const prettyUrl = computed(() => prettyInviteUrl(props.url))
+
+// Same helper the lobby's invite button uses, so a link copied here and a link
+// shared there can never differ.
+const { hasCopied, copy: copyUrl } = useInviteLink(() => props.url)
 </script>
 
 <style lang="scss" scoped>
@@ -212,5 +232,32 @@ const prettyUrl = computed(() => props.url.replace(/^https?:\/\//, ''))
   text-align: center;
   font-size: 1.5rem;
   opacity: 0.75;
+}
+
+// Looks like the address it is, behaves like the button it now is.
+.qr-url {
+  border: none;
+  padding: 0.4rem 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  background: none;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.25em;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-style: solid;
+  }
+}
+
+// Reserves its line so the card does not jump when the message appears.
+.qr-copied {
+  margin: 0;
+  min-height: 1.8rem;
+  font-size: 1.3rem;
+  text-align: center;
+  color: var(--dark-blue);
+  opacity: 0.8;
 }
 </style>

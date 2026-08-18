@@ -349,7 +349,7 @@ import {
   normalizePlayerName,
   playerDisplayName,
 } from '~~/lib/player'
-import { wait } from '~~/lib/time'
+import { roomInviteUrl, useInviteLink } from '~~/lib/use-invite-link'
 import {
   autoEnabledKinds,
   CHALLENGE_GROUPS,
@@ -555,8 +555,6 @@ const updateConfiguration = async () => {
   })
 }
 
-const hasCopied = ref(false)
-
 const showQr = ref(false)
 
 /**
@@ -588,44 +586,12 @@ const inviteLabel = computed(() => {
 /** The same promise in one word, for when the row is too tight for the phrase. */
 const shortInviteLabel = computed(() => (hasCopied.value ? 'Copied!' : 'Invite'))
 
-const inviteUrl = () => {
-  const { protocol, host } = window.location
-  return `${protocol}//${host}/room/${game.value?.id}`
-}
+const inviteUrl = () => roomInviteUrl(game.value?.id)
 
-/**
- * Getting the link INTO a chat is the actual goal, and copying only gets a
- * player halfway there. Where the OS offers a share sheet that is one tap to
- * WhatsApp or Messages, so take it and fall back to the clipboard everywhere
- * else. A share the player dismisses is not a failure — it must not then
- * flash "Copied!" for something they never copied.
- */
-const shareInviteLink = async () => {
-  const url = inviteUrl()
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Mondiale', text: 'Join my game of Mondiale', url })
-      return
-    } catch (error) {
-      // AbortError is the player closing the sheet — say nothing, do nothing.
-      if ((error as Error)?.name === 'AbortError') return
-    }
-  }
-  await copyInviteLink()
-}
-
-const copyInviteLink = async () => {
-  // No clipboard (insecure context, older browser) used to leave a dead
-  // button with no feedback. Select-and-copy from a prompt is worse than the
-  // sheet but better than nothing happening.
-  if (!navigator?.clipboard) return void window.prompt('Copy this invite link', inviteUrl())
-
-  hasCopied.value = true
-  await navigator.clipboard.writeText(inviteUrl()).catch(() => undefined)
-
-  await wait(2000)
-  hasCopied.value = false
-}
+// The share sheet, the copy fallback and the "Copied!" flag all live in
+// lib/use-invite-link — the QR sheet's address offers the same promise, and
+// two implementations of "hand someone this room" would drift.
+const { hasCopied, share: shareInviteLink } = useInviteLink(inviteUrl)
 
 const setSpectatorAccess = (value: string) => {
   update({
