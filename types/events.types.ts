@@ -1,5 +1,5 @@
 import type { LatLng } from '~~/lib/geo'
-import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
+import type { FinalChallengeAnswer, FinalChallengeItem } from './challenges/final-challenge.type'
 import type { UniqueCategoryId } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
@@ -470,6 +470,42 @@ export type ServerEventData =
       event: 'table-notice'
       kind: 'autopilot-engaged' | 'autopilot-reclaimed' | 'bot-removed'
       playerId: string
+      entryId: string
+      at: number
+    }
+  /**
+   * A gauntlet question resolved for one racer — the verdict at the instant
+   * the server graded it.
+   *
+   * The snapshot cannot carry this: it deliberately holds PRE-answer lives
+   * through `FINAL_REVEAL_HOLD_MS` so the answering player's own optimistic
+   * heart-break isn't undone mid-reveal. That leaves a watcher with no way to
+   * learn the verdict until the next question arrives. This is that missing
+   * fact, and it is emitted from the server's single grading point so bot and
+   * autopilot runs beat identically to human ones.
+   *
+   * `challenge` and `submittedAnswer` ride whole rather than pre-rendered:
+   * every label a client wants is derivable from the pair through the pure
+   * helpers it already imports, so a richer renderer needs no new fields.
+   */
+  | {
+      event: 'final-beat'
+      playerId: string
+      /** The gauntlet turn this resolves — the same staleness token the submit
+       *  handler grades against. Beats are idempotent on `playerId:turn`. */
+      turn: number
+      correct: boolean
+      /** The question cap burned it; nothing was submitted. */
+      timedOut: boolean
+      challenge: FinalChallengeItem
+      /** Absent on a timeout — there is no answer to show. */
+      submittedAnswer?: FinalChallengeAnswer
+      /** POST-verdict lives, the number the snapshot withholds until the
+       *  reveal ends. */
+      lives: number
+      answeredCorrect: number
+      totalCount: number
+      knockedOut: boolean
       entryId: string
       at: number
     }

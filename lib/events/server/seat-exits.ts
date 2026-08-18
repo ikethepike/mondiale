@@ -14,7 +14,7 @@ import type { Player } from '~~/types/player.type'
 import { closeTutorialHandler } from './close-tutorial.handler'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { scheduleEngineTask, type EngineContext } from './round-engine'
-import { applyFinalMiss } from './submit-final-challenge-answer.handler'
+import { applyFinalMiss, emitFinalBeat } from './submit-final-challenge-answer.handler'
 import { forfeitGate } from './submit-individual-challenge-answer.handler'
 
 /**
@@ -172,11 +172,27 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
     console.warn(
       `Final cap burning unanswered question for ${playerId} in ${ctx.eventTarget.gameId}`
     )
+    // The question that just burned — read BEFORE the miss shifts the queue.
+    const burned = liveGauntlet.challenges[0]
     const { survives } = await applyFinalMiss({ game: fresh, gauntlet: liveGauntlet, player: seat })
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (!survives) seat.moves = []
     await server.updateGameState(fresh)
     server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+    // A burned question is a verdict too: without this the watcher's view
+    // sits on the old question until the next one appears, with no sign a
+    // life just went. No `submittedAnswer` — nothing was submitted.
+    if (burned) {
+      emitFinalBeat(server, eventTarget, {
+        playerId,
+        turn,
+        correct: false,
+        timedOut: true,
+        challenge: burned,
+        gauntlet: liveGauntlet,
+        knockedOut: !survives,
+      })
+    }
     if (!survives) {
       scheduleMovementPhase(
         GATE_RESULT_HOLD_MS,

@@ -158,6 +158,13 @@ const mountedView = computed(() => {
 // state during its reveal hold (the whole table sees the answer before any
 // groupAnswers bank). Central veil, no per-view discipline; its backdrop
 // blur covers the shared map too.
+// Deliberately GROUP-ROUND only. The gauntlet is out of scope and stays that
+// way: it is dealt per seat and independently shuffled, so watching one racer
+// answer leaks nothing about the watcher's own run — and the booth's watchers
+// are latecomers or finishers, who have no run left to spoil. There is also no
+// honest release condition: `roundSettled` is a whole-table fact with no
+// per-seat gauntlet analogue, so a veil over it would either never lift or
+// lift arbitrarily.
 const veiled = computed(() => {
   if (!gameStore.spectateHideSpoilers || !mountedView.value) return false
   const round = currentRound.value?.round

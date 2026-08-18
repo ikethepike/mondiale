@@ -52,6 +52,11 @@ export interface TableNoticeEntry {
   at: number
 }
 
+/** A gauntlet verdict, DERIVED from the wire arm so the store can never drift
+ *  from what the server sends — `at` is restamped on arrival (see the
+ *  applier's clock note), so it replaces the payload's. */
+export type FinalBeatEntry = Omit<Extract<ServerEventData, { event: 'final-beat' }>, 'event'>
+
 interface GameStoreState {
   game?: Game
   playerId: string
@@ -172,6 +177,9 @@ interface GameStoreState {
     cheers: CheerEntry[]
     /** Table announcements (autopilot takeover/return), self-expiring. */
     notices: TableNoticeEntry[]
+    /** Gauntlet verdicts, self-expiring — the only place a watcher (or a
+     *  player parked on the board) learns an answer landed. */
+    finalBeats: FinalBeatEntry[]
     /** Status panel fold override; undefined = auto (folded on phones). */
     panelFolded?: boolean
     /** Round-history drawer visibility (board phases only). */
@@ -282,6 +290,7 @@ export const useGameStore = defineStore('game', {
       spectateTargetId: undefined,
       cheers: [],
       notices: [],
+      finalBeats: [],
       panelFolded: undefined,
       historyOpen: false,
       stageActive: false,

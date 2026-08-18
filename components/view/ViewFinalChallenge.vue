@@ -242,6 +242,7 @@ import {
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
+import { beatDisplayedLives, beatPickedCountry, beatStatus, latestBeatFor } from '~~/lib/final-beat'
 import { playableCountries } from '~~/lib/game-rules'
 import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
 import { listJoin } from '~~/lib/strings'
@@ -264,7 +265,20 @@ const {
   game,
 } = useClientEvents()
 
-const status = toRef(gameStore.map, 'status')
+const localStatus = toRef(gameStore.map, 'status')
+
+/**
+ * The verdict, from whichever authority this seat has.
+ *
+ * The answering player grades locally the instant they tap — `map.status`,
+ * written by each mode's own submit path — and that stays the fast path. A
+ * WATCHER never submits (the guard in `submitFinalAnswer`), so `map.status`
+ * is never written for them and every downstream reveal used to stay dark.
+ * The server's beat fills exactly that gap, so this one line lights the
+ * verdict card, the dimmed prompt and every chip reveal for the booth
+ * without touching a single submit handler.
+ */
+const status = computed(() => localStatus.value ?? beatStatus(liveBeat.value))
 
 // Held through the result beat: a knockout clears `moves` server-side while
 // the phase stays 'final-challenge' for the 5s verdict pause — computing
@@ -283,6 +297,22 @@ const gauntlet = computed(() =>
   currentMove.value?.challenge?._type === 'final-challenge'
     ? currentMove.value.challenge
     : lastGauntlet.value
+)
+
+/**
+ * The server's verdict for the seat this view renders as.
+ *
+ * `seatId`, never `playerId`: the store getter already resolves it to the
+ * booth's followed racer, so the same component serves a player and a watcher
+ * with no branching — the whole read-only fidelity rides that line.
+ *
+ * Scoped to the live turn so a beat can never outlive its question and
+ * relight the reveal on the next one (pinned in lib/final-beat.test.ts).
+ */
+const liveBeat = computed(() =>
+  latestBeatFor(gameStore.board.finalBeats, gameStore.seatId, {
+    turn: gauntlet.value?.turn ?? 0,
+  })
 )
 
 // The knockout as the WIRE tells it: the miss that ends the gauntlet (a
@@ -358,15 +388,22 @@ const currentChallengeCount = computed(() => {
 
 /**
  * What the hearts show. The wire holds pre-answer lives through the whole
- * reveal beat, so a miss spends its heart here, optimistically, at the same
- * moment the verdict card narrates it — by the time the payload confirms
- * (with the next question), the display already agrees and nothing moves.
+ * reveal beat, so a miss spends its heart optimistically at the same moment
+ * the verdict card narrates it — by the time the payload confirms (with the
+ * next question), the display already agrees and nothing moves.
+ *
+ * A watcher has no local verdict to be optimistic FROM, which is why their
+ * hearts used to drop a full reveal-hold late. The beat carries the
+ * post-verdict count, so both roles now break the heart on the same frame.
  */
-const displayedLives = computed(() => {
-  if (knockedOut.value) return 0
-  if (status.value === 'incorrect') return Math.max(0, livesRemaining.value - 1)
-  return livesRemaining.value
-})
+const displayedLives = computed(() =>
+  beatDisplayedLives({
+    beat: liveBeat.value,
+    status: status.value,
+    livesRemaining: livesRemaining.value,
+    knockedOut: knockedOut.value,
+  })
+)
 
 /**
  * The teachable moment. Wrong answers get the fact they missed AND the fact
@@ -582,12 +619,23 @@ const promptSources = computed<Attribution[] | undefined>(() =>
  * table, a per-round tally) has not landed yet — either way the shell falls
  * through to its lesson line.
  */
+/**
+ * The country this seat picked. A player's own tap sets `lastGuess`; a
+ * watcher never taps, so the beat's answer stands in — which is what lets the
+ * single-subject reveal cards (min/max, leadership, membership, region…)
+ * render in the booth exactly as they do for the runner. Multi-pick modes
+ * carry no single subject and fall through to the lesson line, as designed.
+ */
+const pickedCountry = computed(
+  () => lastGuess.value ?? (beatPickedCountry(liveBeat.value) as ISOCountryCode | undefined)
+)
+
 const finalReveal = computed(() => {
   const challenge = currentFinalChallenge.value
   if (!challenge) return undefined
   return finalRevealFor({
     challenge,
-    picked: lastGuess.value,
+    picked: pickedCountry.value,
     variant: game.value?.variant,
     pool: challengePool.value,
     sunset: sunsetResult.value,

@@ -1,6 +1,7 @@
 import { autopilotSummaryEvent } from '~~/lib/events/client/autopilot-summary.event'
 import { joinRefusedEvent } from '~~/lib/events/client/join-refused.event'
 import { tableNoticeEvent } from '~~/lib/events/client/table-notice.event'
+import { finalBeatEvent } from '~~/lib/events/client/final-beat.event'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
@@ -145,6 +146,11 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // Ephemeral table announcement — no game payload
   'table-notice': {
     handler: tableNoticeEvent,
+  },
+  // The gauntlet's verdict — no game payload; the snapshot deliberately
+  // withholds post-answer lives until the reveal ends.
+  'final-beat': {
+    handler: finalBeatEvent,
   },
   // The returning player's catch-up numbers — no game payload
   'autopilot-summary': {

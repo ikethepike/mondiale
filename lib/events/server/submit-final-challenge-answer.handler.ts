@@ -1,5 +1,13 @@
 import { playableCountries } from '~~/lib/game-rules'
-import type { FinalChallenge } from '~~/types/challenges/final-challenge.type'
+// Type-only, all of it: `FinalChallengeItem`/`FinalChallengeAnswer` are erased
+// at compile, so the beat adds no runtime edge into lib/challenges —
+// the deferred-import discipline that keeps the Nitro build under CI's heap.
+import type {
+  FinalChallenge,
+  FinalChallengeAnswer,
+  FinalChallengeItem,
+} from '~~/types/challenges/final-challenge.type'
+import type { ClientEventTarget, ServerEventData } from '~~/types/events.types'
 import { latestRound } from '~~/lib/rounds'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -7,6 +15,51 @@ import { defineGameHandler, RetryableReject } from '../server-side'
 import { scheduleMovementPhase } from './enter-movement-phase.handler'
 import { clearFinalResultBeat } from './seat-exits'
 import { FINAL_REVEAL_HOLD_MS, GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+
+/**
+ * The gauntlet's verdict on the wire.
+ *
+ * The snapshot cannot carry it: `lives` deliberately stays at its PRE-answer
+ * value through `FINAL_REVEAL_HOLD_MS` so the answering player's optimistic
+ * heart-break isn't undone mid-reveal. That leaves everyone ELSE — a watcher
+ * in the booth, a player parked on the board — with no way to learn what
+ * happened until the next question lands. This beat is that fact, stamped at
+ * the moment the server graded it.
+ *
+ * Emitted from the server's grading points, never relayed from the answering
+ * client: bots call the submit handler directly (bot-brain's
+ * `dispatchFinalAnswer`) and the AFK autopilot routes human seats through the
+ * same brain, so a client-side relay would go silent for exactly the runs
+ * nobody is sitting in front of.
+ */
+export const emitFinalBeat = (
+  server: { emit: (data: ServerEventData, target: ClientEventTarget) => void },
+  eventTarget: ClientEventTarget,
+  beat: {
+    playerId: string
+    turn: number
+    correct: boolean
+    timedOut: boolean
+    challenge: FinalChallengeItem
+    submittedAnswer?: FinalChallengeAnswer
+    gauntlet: Pick<FinalChallenge, 'lives' | 'answeredCorrect' | 'totalCount'>
+    knockedOut: boolean
+  }
+) => {
+  const { gauntlet, ...rest } = beat
+  server.emit(
+    {
+      event: 'final-beat',
+      ...rest,
+      lives: gauntlet.lives,
+      answeredCorrect: gauntlet.answeredCorrect,
+      totalCount: gauntlet.totalCount,
+      entryId: `final:${beat.playerId}:${beat.turn}`,
+      at: Date.now(),
+    },
+    eventTarget
+  )
+}
 
 /**
  * One missed question, one shape: burn a life and advance (a missed LAST
@@ -140,6 +193,10 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     })
 
     const gauntlet = currentMove.challenge
+    // The turn this answer resolves — read BEFORE the mutation bumps it, so
+    // the beat names the question that was actually on screen.
+    const answeredTurn = gauntlet.turn ?? 0
+    let knockedOut = false
     if (correct) {
       // Correct: the question is now consumed.
       gauntlet.turn = (gauntlet.turn ?? 0) + 1
@@ -147,6 +204,7 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
       gauntlet.challenges.shift()
     } else {
       const { survives } = await applyFinalMiss({ game, gauntlet, player })
+      knockedOut = !survives
 
       // Out of lives: knocked out of the gauntlet. The result pause runs
       // OUTSIDE the per-game queue — holding the lock for five seconds would
@@ -159,6 +217,16 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
         // view sits on its last frame for the whole result pause, and the
         // shell's wire-grace fallback ends up carrying the primary case.
         server.emit({ event: 'final-challenge-checked', game }, eventTarget)
+        emitFinalBeat(server, eventTarget, {
+          playerId: player.id,
+          turn: answeredTurn,
+          correct,
+          timedOut: false,
+          challenge: currentChallenge,
+          submittedAnswer: eventData.submittedAnswer,
+          gauntlet,
+          knockedOut: true,
+        })
         scheduleMovementPhase(
           GATE_RESULT_HOLD_MS,
           { io, redis, socket, eventTarget },
@@ -167,6 +235,17 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
         return
       }
     }
+
+    emitFinalBeat(server, eventTarget, {
+      playerId: player.id,
+      turn: answeredTurn,
+      correct,
+      timedOut: false,
+      challenge: currentChallenge,
+      submittedAnswer: eventData.submittedAnswer,
+      gauntlet,
+      knockedOut,
+    })
 
     // Gauntlet cleared — victory. The phase flip alone now blocks further
     // submits, so the `resolving` latch can stay set.

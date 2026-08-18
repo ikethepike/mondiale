@@ -228,6 +228,12 @@ export const TIMELINE_BROWSE_CAP_MS = 60000
  *  line says everything. */
 export const FINAL_REVEAL_HOLD_MS = 8000
 
+/** How long a gauntlet beat stands before it prunes itself. DERIVED from the
+ *  reveal it narrates, plus slack for the wire: a beat that expired mid-hold
+ *  would blank a watcher's verdict while the runner still sees theirs, which
+ *  is the exact desync this whole event exists to close. */
+export const FINAL_BEAT_TTL_MS = FINAL_REVEAL_HOLD_MS + 2000
+
 /** Ceiling for classic kinds that carry no clock of their own (a ranking
  *  being dragged, a sketch being drawn) — only armed under the cap switch. */
 export const UNTIMED_CLASSIC_CAP_SECONDS = 180

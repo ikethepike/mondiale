@@ -18,8 +18,9 @@ import { useGameStore } from '~~/store/game.store'
 import type { Game } from '~~/types/game.types'
 
 // `game` comes in as a prop (not the store) so the /test harness's mock game
-// drives the HUD too. Reads only phase/position-derived status — never the
-// target's `moves[*].challenge` payload, which contains answers.
+// drives the HUD too. This HUD renders only the seat's status line; the
+// challenge payloads are shown by the mounted views (SpectateMount), which is
+// where the booth's read-only fidelity is enforced.
 const props = defineProps<{ game: Game }>()
 
 const gameStore = useGameStore()
