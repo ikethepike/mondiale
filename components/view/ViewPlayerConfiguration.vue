@@ -71,8 +71,8 @@
               <h1>It's a bit lonely here...</h1>
               <p>
                 Hey <strong>{{ player.name }}</strong
-                >, let's invite some friends and get the game started. Just copy the link and send
-                it over to invite them to join.
+                >, a game is better with company. Send an invite, or let someone sitting nearby scan
+                the code in the corner.
               </p>
             </header>
             <header v-else-if="isEveryoneReady">
@@ -154,14 +154,20 @@
               @click="shareInviteLink"
             >
               <div class="invite-button-content">
-                <span class="text">{{ inviteLabel }}</span>
+                <!-- Two labels for one control: the full phrase when the row
+                     can hold it, a single word when it cannot. A container
+                     query swaps them on the NAV's width, so the pair reflows
+                     off its own box rather than a guessed viewport. -->
+                <span class="text long">{{ inviteLabel }}</span>
+                <span class="text short">{{ shortInviteLabel }}</span>
                 <div class="invite-icon" />
               </div>
             </ButtonLine>
 
             <ButtonFilled v-if="isPlayerHost" class="start-button" :disabled="!isEveryoneReady">
               <div class="start-button-content" @click="startGame">
-                <span class="text">Start Game</span>
+                <span class="text long">Start Game</span>
+                <span class="text short">Start</span>
                 <div class="arrow-icon" />
               </div>
             </ButtonFilled>
@@ -175,7 +181,9 @@
           <button v-if="canAddBot" type="button" class="add-bot" @click="addBot">
             + add a bot
           </button>
-          <p ref="playerCounter">{{ playersByPhase.all.length }}/{{ MAX_PLAYERS }}</p>
+          <!-- "3/8" is a fact; "5 seats open" is an invitation — and it counts
+               DOWN as people arrive, so the existing pulse reads as progress. -->
+          <p ref="playerCounter">{{ seatsLabel }}</p>
         </header>
 
         <TransitionGroup tag="ul" name="lobby-tile">
@@ -429,6 +437,12 @@ watch(
   }
 )
 
+const seatsLabel = computed(() => {
+  const open = MAX_PLAYERS - playersByPhase.value.all.length
+  if (open <= 0) return 'Table full'
+  return `${open} seat${open === 1 ? '' : 's'} open`
+})
+
 const isEveryoneReady = computed(() => {
   if (!game.value) return false
   return Object.values(game.value.players).every(player => player.ready)
@@ -571,6 +585,8 @@ const inviteLabel = computed(() => {
   if (hasCopied.value) return 'Copied!'
   return canShareNatively.value ? 'Invite Friends' : 'Copy Invite Link'
 })
+/** The same promise in one word, for when the row is too tight for the phrase. */
+const shortInviteLabel = computed(() => (hasCopied.value ? 'Copied!' : 'Invite'))
 
 const inviteUrl = () => {
   const { protocol, host } = window.location
@@ -1032,6 +1048,16 @@ const startGame = () => {
   align-items: center;
   justify-content: space-between;
   border-top: 0.1rem solid $hairline;
+  // The pair sizes off ITS OWN box, not the viewport: the same phone width
+  // gives this nav a different track in the one-column phone layout than in
+  // the desktop 68% information column.
+  container: game-controls / inline-size;
+}
+
+// Full phrases by default; the short pair only appears when the container
+// asks for it.
+.game-controls .text.short {
+  display: none;
 }
 // Pinned to the pane's corner. The pane is `position: relative` already, and
 // this sits above the columns so it clears the roster's own header row.
@@ -1174,6 +1200,9 @@ const startGame = () => {
   cursor: pointer;
   align-items: center;
   background: none;
+  // A <button> does not inherit the body font — without this the row renders
+  // in the browser's UI sans beside a roster set in Lusitana.
+  font-family: inherit;
   color: var(--dark-blue);
   border: 0.1rem dashed ink(0.28);
   border-radius: 0.6rem;
@@ -1301,21 +1330,42 @@ const startGame = () => {
 // `.player-lobby` rules are declared after the earlier media blocks, and at
 // equal specificity the later declaration wins.
 @media screen and (max-width: $tablet) {
-  // Stacked, with the INVITE on top. Side by side, both labels cannot fit in
-  // ~35.8rem, and shrinking the invite to a glyph makes the thing this screen
-  // is asking for the smallest control on it. Order beats adjacency here: the
-  // invite reads first, Start Game sits under it as the way past.
   .game-controls {
-    flex-flow: column nowrap;
+    gap: 0.8rem;
+    flex-flow: row nowrap;
     align-items: stretch;
     justify-content: flex-start;
-    gap: 0.8rem;
 
+    // Share the track evenly rather than sizing to label length — two buttons
+    // of different widths read as a primary and an afterthought.
     :deep(.button) {
-      width: 100%;
+      flex: 1 1 0;
+      min-width: 0;
       margin-left: 0;
       justify-content: center;
     }
+  }
+}
+
+// "Copy Invite Link" + "Start Game" need ~37rem side by side. Below that the
+// pair trades its phrases for "Invite" / "Start" and stays on ONE row — which
+// is where the two want to be, since they are one decision. Only when even
+// the short pair is cramped do they stack, invite first.
+@container game-controls (max-width: 37rem) {
+  .game-controls .text.long {
+    display: none;
+  }
+  .game-controls .text.short {
+    display: inline;
+  }
+}
+
+@container game-controls (max-width: 21rem) {
+  .game-controls {
+    flex-flow: column nowrap;
+  }
+  .game-controls :deep(.button) {
+    width: 100%;
   }
 }
 </style>
