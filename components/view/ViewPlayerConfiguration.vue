@@ -1094,31 +1094,59 @@ const startGame = () => {
   }
 }
 
-// ONE pass, then done — `forwards` parks it on the resting frame so the
-// button is never mid-transform when a thumb arrives.
-@keyframes invite-nudge {
-  0%,
+// Colour moves, the button does not. Two feathered blobs — the clock ember and
+// the deep blue — drift across the inside of the button and fade out, so the
+// eye is caught by warmth passing under the label rather than by a control
+// that jumps. Nothing here changes the button's box or its hit area, which is
+// what made the old lift risky above Start Game.
+//
+// ONE pass, ~2.2s, then gone: the rule this bends exists because an INFINITE
+// loop hung the stability check and stole taps, and a finite pass has neither
+// failure mode.
+.invite-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.invite-button.nudge::after {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 62% at 20% 52%, #{ember(0.8)} 0%, #{ember(0)} 68%),
+    radial-gradient(36% 58% at 76% 44%, hsla(215, 62%, 32%, 0.6) 0%, hsla(215, 62%, 32%, 0) 68%);
+  filter: blur(0.7rem);
+  opacity: 0;
+  animation: invite-swirl 2.2s var(--ease-out-expressive) 1 forwards;
+}
+
+@keyframes invite-swirl {
+  0% {
+    opacity: 0;
+    transform: translateX(-18%) rotate(0deg) scale(0.9);
+  }
+  22% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
   100% {
-    transform: translateY(0);
-    box-shadow: 0 0 0 0 ink(0);
-  }
-  30% {
-    transform: translateY(-0.4rem);
-    box-shadow: 0 0 0 0.5rem ink(0.06);
-  }
-  60% {
-    transform: translateY(0);
-    box-shadow: 0 0 0 0.9rem ink(0);
+    opacity: 0;
+    transform: translateX(18%) rotate(26deg) scale(1.15);
   }
 }
 
-.invite-button.nudge {
-  animation: invite-nudge 1.1s var(--ease-out-expressive) 1 forwards;
-}
-
+// The JS guard already declines to add `.nudge` under reduced motion; this is
+// the belt to that pair of braces, and it must name the PSEUDO-element — the
+// swirl lives on ::after, so a rule on the button alone would leave it running.
 @media (prefers-reduced-motion: reduce) {
-  .invite-button.nudge {
+  .invite-button.nudge::after {
     animation: none;
+    opacity: 0;
   }
 }
 
