@@ -1,17 +1,6 @@
 <template>
   <div class="player-configuration-wrapper">
     <article v-if="player" class="player-configuration pane tl decorator-bottom">
-      <!-- Pinned to the pane, not to a column: the code is a way INTO the
-           room, so it stays reachable from the naming step onward rather than
-           living inside the settings the host has not reached yet. -->
-      <button
-        v-if="game && !game.started"
-        type="button"
-        class="qr-trigger"
-        aria-label="Show QR code to join"
-        title="Show QR code to join"
-        @click="showQr = true"
-      ></button>
       <section class="information pane-content">
         <template v-if="player.phase === 'naming'">
           <div class="content">
@@ -185,6 +174,17 @@
           <!-- "3/8" is a fact; "5 seats open" is an invitation — and it counts
                DOWN as people arrive, so the existing pulse reads as progress. -->
           <p ref="playerCounter">{{ seatsLabel }}</p>
+          <!-- In the header ROW, not floating over the pane's corner: absolute
+               positioning put it on top of the seat counter, which the flex
+               row spaces around for free. -->
+          <button
+            v-if="game && !game.started"
+            type="button"
+            class="qr-trigger"
+            aria-label="Show QR code to join"
+            title="Show QR code to join"
+            @click="showQr = true"
+          ></button>
         </header>
 
         <TransitionGroup tag="ul" name="lobby-tile">
@@ -1065,15 +1065,15 @@ const startGame = () => {
 }
 // Pinned to the pane's corner. The pane is `position: relative` already, and
 // this sits above the columns so it clears the roster's own header row.
+// Sits IN the roster's header row. It was absolutely positioned over the
+// pane's corner, which landed it on top of the seat counter on desktop — the
+// flex row it now belongs to spaces the two for free, at every width.
 .qr-trigger {
-  top: 1.2rem;
-  right: 1.2rem;
-  z-index: 2;
-  width: 4.4rem;
-  height: 4.4rem;
+  width: 3.6rem;
+  height: 3.6rem;
   padding: 0;
   border: none;
-  position: absolute;
+  flex-shrink: 0;
   cursor: pointer;
   border-radius: 0.6rem;
   background: ink(0.05);
