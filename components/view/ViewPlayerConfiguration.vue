@@ -1110,7 +1110,15 @@ const startGame = () => {
 .invite-button {
   position: relative;
   overflow: hidden;
-  isolation: isolate;
+}
+
+// The label rides ABOVE the blobs. Lifting the content is what keeps the
+// colour behind the text without a negative z-index — `z-index: -1` inside an
+// isolated stacking context is the combination WebKit composites differently,
+// and it left the whole effect grey on iPhone.
+.invite-button .invite-button-content {
+  position: relative;
+  z-index: 1;
 }
 
 // TWO blobs on TWO elements, travelling opposite ways — painting both into one
@@ -1122,7 +1130,7 @@ const startGame = () => {
   content: '';
   position: absolute;
   top: -70%;
-  z-index: -1;
+  z-index: 0;
   width: 78%;
   height: 240%;
   border-radius: 50%;
@@ -1139,16 +1147,17 @@ const startGame = () => {
 $swirl-duration: 3.6s;
 $swirl-ease: cubic-bezier(0.37, 0, 0.28, 1);
 
-// The ember runs left → right, low. Light and airy: a DARK warm over a dark
-// cool mixes to purple-brown where they overlap, so both blobs are pale, well
-// under half opacity, and `screen` lightens rather than muddies.
+// The ember runs left → right, low. Airiness comes from PALE, translucent
+// colour rather than a blend mode: `mix-blend-mode: screen` on a `z-index: -1`
+// child of an isolated stacking context composites against a different
+// backdrop in WebKit, which washed the whole effect out to grey on iPhone
+// while looking correct in Chrome. Plain alpha renders the same everywhere.
 .invite-button.nudge::before {
   left: -30%;
-  mix-blend-mode: screen;
   background: radial-gradient(
     closest-side,
-    #{ember(0.42, 72%)} 0%,
-    #{ember(0.16, 78%)} 45%,
+    #{ember(0.55, 70%)} 0%,
+    #{ember(0.22, 76%)} 45%,
     #{ember(0, 80%)} 100%
   );
   animation: invite-swirl-warm $swirl-duration $swirl-ease 1 forwards;
@@ -1156,15 +1165,14 @@ $swirl-ease: cubic-bezier(0.37, 0, 0.28, 1);
 
 // The blue runs right → left, high, so they cross rather than travel together.
 // A soft sky rather than the deep navy — the ink blue went muddy the instant
-// it met the ember.
+// it met the ember, and pale-over-pale stays clean without any blending.
 .invite-button.nudge::after {
   right: -30%;
-  mix-blend-mode: screen;
   background: radial-gradient(
     closest-side,
-    hsla(205, 72%, 68%, 0.4) 0%,
-    hsla(205, 72%, 74%, 0.15) 45%,
-    hsla(205, 72%, 78%, 0) 100%
+    hsla(205, 78%, 66%, 0.5) 0%,
+    hsla(205, 78%, 72%, 0.2) 45%,
+    hsla(205, 78%, 78%, 0) 100%
   );
   animation: invite-swirl-cool $swirl-duration $swirl-ease 1 forwards;
 }
