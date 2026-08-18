@@ -1098,11 +1098,19 @@ const startGame = () => {
   opacity: 0;
 }
 
+// A slow, even drift — NOT an entrance. `--ease-out-expressive` front-loads
+// almost all of its travel into the first fraction, which is why this read as
+// a flash: by the time the eye arrived the blobs had already crossed. A gentle
+// in-out over 3.6s lets the motion be the thing you notice, and the opacity
+// ramps sit well inside the flight so nothing pops on or cuts off.
+$swirl-duration: 3.6s;
+$swirl-ease: cubic-bezier(0.37, 0, 0.28, 1);
+
 // The ember runs left → right, low.
 .invite-button.nudge::before {
   left: -30%;
   background: radial-gradient(closest-side, #{ember(0.95)} 0%, #{ember(0)} 100%);
-  animation: invite-swirl-warm 2.4s var(--ease-out-expressive) 1 forwards;
+  animation: invite-swirl-warm $swirl-duration $swirl-ease 1 forwards;
 }
 
 // The blue runs right → left, high, so they cross rather than travel together.
@@ -1113,40 +1121,48 @@ const startGame = () => {
     hsla(215, 62%, 34%, 0.72) 0%,
     hsla(215, 62%, 34%, 0) 100%
   );
-  animation: invite-swirl-cool 2.4s var(--ease-out-expressive) 1 forwards;
+  animation: invite-swirl-cool $swirl-duration $swirl-ease 1 forwards;
 }
 
+// Long fades at both ends: in over the first fifth, out over the last quarter,
+// so the colour arrives and leaves rather than switching.
 @keyframes invite-swirl-warm {
   0% {
     opacity: 0;
-    transform: translate(0, 12%) scale(0.85);
+    transform: translate(0, 14%) scale(0.8);
   }
-  18% {
+  20% {
     opacity: 1;
   }
-  72% {
+  50% {
+    transform: translate(72%, -6%) scale(1.05);
+  }
+  76% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translate(150%, -8%) scale(1.2);
+    transform: translate(148%, 10%) scale(1.25);
   }
 }
 
 @keyframes invite-swirl-cool {
   0% {
     opacity: 0;
-    transform: translate(0, -12%) scale(0.85);
+    transform: translate(0, -14%) scale(0.8);
   }
-  18% {
+  20% {
     opacity: 1;
   }
-  72% {
+  50% {
+    transform: translate(-72%, 6%) scale(1.05);
+  }
+  76% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translate(-150%, 8%) scale(1.2);
+    transform: translate(-148%, -10%) scale(1.25);
   }
 }
 
@@ -1184,11 +1200,14 @@ const startGame = () => {
 // not a typeset glyph. Quiet at rest (removal shouldn't shout on every
 // tile), full weight + the alert hue on hover/focus — it's destructive.
 .kick-button {
-  // Last in the row, past the status badge (see `.player-status`). The badge
-  // owns the `margin-left: auto` that pushes the pair right, so this one only
-  // needs the gap.
-  order: 2;
-  margin-left: 0.6rem;
+  // Floated OUT of the row so it cannot shift the status pill: a kickable seat
+  // and an unkickable one (your own) must line their pills up, and an inline
+  // button pushed every other row's pill left by its own width. Centred on the
+  // row's own axis, so it sits level with the pill and the name.
+  top: 50%;
+  right: 0.4rem;
+  position: absolute;
+  transform: translateY(-50%);
   // The glyph stays small — removal shouldn't shout — but the TARGET grows to
   // a finger's worth wherever a finger is what aims it: destructive at
   // 2.4×2rem was the smallest thing to hit on the whole screen. A mouse needs
@@ -1307,10 +1326,10 @@ const startGame = () => {
     }
   }
 
-  // Status reads first, the remove control sits out at the edge — so the row
-  // goes name → state → action, and the destructive thing is the one furthest
-  // from where the eye lands.
-  order: 1;
+  // The kick button floats in the corner rather than sitting in this row, so
+  // every seat's pill lands at the same x — but the pill still has to clear
+  // it, hence the reserved margin on rows that have one.
+  margin-right: 2.4rem;
 }
 
 @keyframes tick-pop {
