@@ -13,6 +13,25 @@ body {
   font-size: 1.6rem;
 }
 
+// No double-tap zoom, anywhere. iOS reads two quick taps on the same spot as a
+// zoom gesture, and `maximum-scale=1` does NOT prevent it — Safari ignores that
+// for accessibility.
+//
+// `touch-action` does NOT inherit, so setting it on `body` reaches nothing:
+// measured in WebKit, every `div`, `a` and non-button control still read
+// `auto`. It has to be applied per element, and a hand-written list of tappable
+// selectors goes stale the moment someone adds another `div @click` — half this
+// game's controls already are ones (variant arrows, the pawn colour picker,
+// dismissable overlays).
+//
+// `manipulation` keeps panning and PINCH-zoom; it drops only double-tap-to-zoom
+// and the 300ms click delay. Zero specificity, so every surface that needs
+// finer control (drag sheets, the sketch pad, the map, the 3D board) still wins
+// with its own `none`/`pan-y`.
+:where(*) {
+  touch-action: manipulation;
+}
+
 ul {
   list-style: none;
 }
@@ -20,18 +39,6 @@ ul {
 a[role='button'] {
   cursor: pointer;
   user-select: none;
-}
-
-// No double-tap zoom on anything tappable. iOS treats two quick taps on the
-// same control as a zoom gesture — repeatedly hitting ±100 on the year dial,
-// or any counter, fights the page instead of driving it. `maximum-scale=1` in
-// the viewport meta does NOT prevent this (Safari ignores it for
-// accessibility); this does, and pinch-zoom on the page itself still works.
-button,
-[role='button'],
-label,
-summary {
-  touch-action: manipulation;
 }
 
 img {

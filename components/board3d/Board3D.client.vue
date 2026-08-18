@@ -69,5 +69,12 @@ const onFirstFrame = () => {
   min-height: var(--viewport-height);
   pointer-events: auto;
   touch-action: none;
+
+  // The CANVAS is what fingers actually land on, and `touch-action` does not
+  // inherit — so the orbit/pinch gestures need it declared here too, or the
+  // reset's `manipulation` claims them and the rig stops turning under a drag.
+  canvas {
+    touch-action: none;
+  }
 }
 </style>
