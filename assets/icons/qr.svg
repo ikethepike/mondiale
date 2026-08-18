@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- The three finder squares plus a scatter of modules: a QR read at a glance,
+     legible down to the 2rem the lobby renders it at. -->
+<path fill-rule="evenodd" clip-rule="evenodd" d="M6 6h20v20H6V6zm5 5v10h10V11H11z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M38 6h20v20H38V6zm5 5v10h10V11H43z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M6 38h20v20H6V38zm5 5v10h10V43H11z" fill="currentColor"/>
+<rect x="14" y="14" width="4" height="4" fill="currentColor"/>
+<rect x="46" y="14" width="4" height="4" fill="currentColor"/>
+<rect x="14" y="46" width="4" height="4" fill="currentColor"/>
+<rect x="38" y="38" width="8" height="8" fill="currentColor"/>
+<rect x="50" y="38" width="8" height="8" fill="currentColor"/>
+<rect x="38" y="50" width="8" height="8" fill="currentColor"/>
+<rect x="50" y="50" width="8" height="8" fill="currentColor"/>
+</svg>

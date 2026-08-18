@@ -1,6 +1,17 @@
 <template>
   <div class="player-configuration-wrapper">
     <article v-if="player" class="player-configuration pane tl decorator-bottom">
+      <!-- Pinned to the pane, not to a column: the code is a way INTO the
+           room, so it stays reachable from the naming step onward rather than
+           living inside the settings the host has not reached yet. -->
+      <button
+        v-if="game && !game.started"
+        type="button"
+        class="qr-trigger"
+        aria-label="Show QR code to join"
+        title="Show QR code to join"
+        @click="showQr = true"
+      ></button>
       <section class="information pane-content">
         <template v-if="player.phase === 'naming'">
           <div class="content">
@@ -137,16 +148,20 @@
           </div>
 
           <nav class="game-controls">
-            <ButtonLine @click="copyInviteLink">
+            <ButtonLine
+              :class="['invite-button', { nudge: nudgeInvite }]"
+              :aria-label="inviteLabel"
+              @click="shareInviteLink"
+            >
               <div class="invite-button-content">
-                <span class="text">{{ hasCopied ? 'Copied!' : 'Copy Invite Link' }}</span>
+                <span class="text">{{ inviteLabel }}</span>
                 <div class="invite-icon" />
               </div>
             </ButtonLine>
 
-            <ButtonFilled v-if="isPlayerHost" :disabled="!isEveryoneReady">
+            <ButtonFilled v-if="isPlayerHost" class="start-button" :disabled="!isEveryoneReady">
               <div class="start-button-content" @click="startGame">
-                <span>Start Game</span>
+                <span class="text">Start Game</span>
                 <div class="arrow-icon" />
               </div>
             </ButtonFilled>
@@ -157,12 +172,7 @@
         <header>
           <!-- Bots are the secondary mode — a quiet text affordance, never a
                card or panel; the roster and Start Game keep the stage. -->
-          <button
-            v-if="isPlayerHost && playersByPhase.all.length < MAX_PLAYERS"
-            type="button"
-            class="add-bot"
-            @click="addBot"
-          >
+          <button v-if="canAddBot" type="button" class="add-bot" @click="addBot">
             + add a bot
           </button>
           <p ref="playerCounter">{{ playersByPhase.all.length }}/{{ MAX_PLAYERS }}</p>
@@ -184,6 +194,16 @@
             ></button>
             <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
           </PlayerTile>
+
+          <!-- The empty chairs, made visible: a counter reading "1/8" states
+               the table is empty, a waiting seat SHOWS it — and doubles as the
+               second way to invite, right where the absence is felt. -->
+          <li v-for="seat in openSeats" :key="`open-${seat}`" class="open-seat">
+            <button type="button" class="open-seat-button" @click="shareInviteLink">
+              <span class="open-seat-pawn" aria-hidden="true" />
+              <span class="open-seat-label">Invite a friend</span>
+            </button>
+          </li>
         </TransitionGroup>
       </section>
     </article>
@@ -303,10 +323,13 @@
         </nav>
       </form>
     </ModalWrapper>
+
+    <InviteQrModal v-if="showQr && game" :url="inviteUrl()" @close="showQr = false" />
   </div>
 </template>
 <script lang="ts" setup>
 import { gsap } from 'gsap'
+import InviteQrModal from '~/components/modal/InviteQrModal.vue'
 import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -411,6 +434,30 @@ const isEveryoneReady = computed(() => {
   return Object.values(game.value.players).every(player => player.ready)
 })
 
+/**
+ * Waiting chairs to draw under the roster. Capped at two: enough to read as
+ * "there is room for people", not so many that a solo host faces seven empty
+ * rows and a full table looks broken. Gone entirely once anyone else arrives —
+ * the point is the invitation, not an inventory of the seat count.
+ */
+const OPEN_SEATS_SHOWN = 2
+const openSeats = computed(() => {
+  if (!isPlayerHost.value || player.value?.phase === 'naming') return 0
+  const seated = playersByPhase.value.all.length
+  if (seated > 1) return 0
+  return Math.min(OPEN_SEATS_SHOWN, MAX_PLAYERS - seated)
+})
+
+/** Seating a bot is a HOST decision about the table, and the host is not a
+ *  seated player until they have a name — otherwise round one deals to a
+ *  nameless chair sitting above a row of ready bots. */
+const canAddBot = computed(
+  () =>
+    isPlayerHost.value &&
+    player.value?.phase !== 'naming' &&
+    playersByPhase.value.all.length < MAX_PLAYERS
+)
+
 const name = ref('')
 const breakdown = ref<HTMLFormElement>()
 // Arrows step deterministically through free colours; a pawn tap (no
@@ -495,14 +542,70 @@ const updateConfiguration = async () => {
 }
 
 const hasCopied = ref(false)
+
+const showQr = ref(false)
+
+/**
+ * A single nudge on the invite the first time the host sees it, then never
+ * again — the standing rule against ambient motion exists because an INFINITE
+ * loop hung the stability check and stole taps, and a one-shot has neither
+ * failure mode. It also holds still under reduced-motion.
+ */
+const nudgeInvite = ref(false)
+const NUDGE_DELAY_MS = 600
+watch(
+  () => player.value?.phase === 'waiting-for-game',
+  waiting => {
+    if (!waiting || nudgeInvite.value || prefersReducedMotion()) return
+    // A beat after the step lands, so it reads as a nudge rather than part of
+    // the screen arriving.
+    setTimeout(() => (nudgeInvite.value = true), NUDGE_DELAY_MS)
+  },
+  { immediate: true }
+)
+
+/** Say what the tap will actually do: a share sheet is not a copy, and
+ *  promising "Copied!" for one is a small lie the player catches. */
+const canShareNatively = computed(() => import.meta.client && !!navigator.share)
+const inviteLabel = computed(() => {
+  if (hasCopied.value) return 'Copied!'
+  return canShareNatively.value ? 'Invite Friends' : 'Copy Invite Link'
+})
+
+const inviteUrl = () => {
+  const { protocol, host } = window.location
+  return `${protocol}//${host}/room/${game.value?.id}`
+}
+
+/**
+ * Getting the link INTO a chat is the actual goal, and copying only gets a
+ * player halfway there. Where the OS offers a share sheet that is one tap to
+ * WhatsApp or Messages, so take it and fall back to the clipboard everywhere
+ * else. A share the player dismisses is not a failure — it must not then
+ * flash "Copied!" for something they never copied.
+ */
+const shareInviteLink = async () => {
+  const url = inviteUrl()
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Mondiale', text: 'Join my game of Mondiale', url })
+      return
+    } catch (error) {
+      // AbortError is the player closing the sheet — say nothing, do nothing.
+      if ((error as Error)?.name === 'AbortError') return
+    }
+  }
+  await copyInviteLink()
+}
+
 const copyInviteLink = async () => {
-  if (!navigator?.clipboard) return
+  // No clipboard (insecure context, older browser) used to leave a dead
+  // button with no feedback. Select-and-copy from a prompt is worse than the
+  // sheet but better than nothing happening.
+  if (!navigator?.clipboard) return void window.prompt('Copy this invite link', inviteUrl())
 
   hasCopied.value = true
-
-  const { protocol, host } = window.location
-  const url = `${protocol}//${host}/room/${game.value?.id}`
-  navigator.clipboard.writeText(url)
+  await navigator.clipboard.writeText(inviteUrl()).catch(() => undefined)
 
   await wait(2000)
   hasCopied.value = false
@@ -930,6 +1033,69 @@ const startGame = () => {
   justify-content: space-between;
   border-top: 0.1rem solid $hairline;
 }
+// Pinned to the pane's corner. The pane is `position: relative` already, and
+// this sits above the columns so it clears the roster's own header row.
+.qr-trigger {
+  top: 1.2rem;
+  right: 1.2rem;
+  z-index: 2;
+  width: 4.4rem;
+  height: 4.4rem;
+  padding: 0;
+  border: none;
+  position: absolute;
+  cursor: pointer;
+  border-radius: 0.6rem;
+  background: ink(0.05);
+  opacity: 0.75;
+  transition:
+    opacity var(--motion-quick, 0.15s) ease,
+    background-color var(--motion-quick, 0.15s) ease;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--dark-blue);
+    mask: url('~/assets/icons/qr.svg') no-repeat center / 2.2rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    background: ink(0.09);
+  }
+}
+
+// ONE pass, then done — `forwards` parks it on the resting frame so the
+// button is never mid-transform when a thumb arrives.
+@keyframes invite-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 ink(0);
+  }
+  30% {
+    transform: translateY(-0.4rem);
+    box-shadow: 0 0 0 0.5rem ink(0.06);
+  }
+  60% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0.9rem ink(0);
+  }
+}
+
+.invite-button.nudge {
+  animation: invite-nudge 1.1s var(--ease-out-expressive) 1 forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .invite-button.nudge {
+    animation: none;
+  }
+}
+
 .invite-button-content,
 .start-button-content {
   display: flex;
@@ -992,6 +1158,43 @@ const startGame = () => {
       background: flame();
     }
   }
+}
+
+// A chair nobody is in yet: the roster tile's silhouette in dashes, so the
+// eye reads "one of these, empty" rather than a new kind of thing.
+.open-seat {
+  margin-bottom: 0.8rem;
+}
+.open-seat-button {
+  gap: 1.2rem;
+  width: 100%;
+  height: 5rem;
+  display: flex;
+  padding: 0 1.2rem;
+  cursor: pointer;
+  align-items: center;
+  background: none;
+  color: var(--dark-blue);
+  border: 0.1rem dashed ink(0.28);
+  border-radius: 0.6rem;
+  transition: border-color var(--motion-quick) ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: ink(0.5);
+  }
+}
+.open-seat-pawn {
+  width: 2.2rem;
+  height: 3.4rem;
+  flex-shrink: 0;
+  opacity: 0.3;
+  background: var(--dark-blue);
+  mask: url('~/assets/icons/pawn.svg') no-repeat center / contain;
+}
+.open-seat-label {
+  font-size: 1.5rem;
+  opacity: 0.65;
 }
 
 .player-status {
@@ -1098,13 +1301,15 @@ const startGame = () => {
 // `.player-lobby` rules are declared after the earlier media blocks, and at
 // equal specificity the later declaration wins.
 @media screen and (max-width: $tablet) {
-  // Full-width and stacked: side by side the two buttons need ~37rem, and a
-  // 390px phone offers ~35.8 — they wrapped into a stray left-aligned Start
-  // Game with neither stretched.
+  // Stacked, with the INVITE on top. Side by side, both labels cannot fit in
+  // ~35.8rem, and shrinking the invite to a glyph makes the thing this screen
+  // is asking for the smallest control on it. Order beats adjacency here: the
+  // invite reads first, Start Game sits under it as the way past.
   .game-controls {
     flex-flow: column nowrap;
     align-items: stretch;
     justify-content: flex-start;
+    gap: 0.8rem;
 
     :deep(.button) {
       width: 100%;

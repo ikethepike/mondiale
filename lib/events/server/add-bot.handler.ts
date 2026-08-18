@@ -14,6 +14,12 @@ export const addBotHandler = defineGameHandler('add-bot', async ({ game, server,
   if (game.host !== eventTarget.playerId)
     return console.warn(`Non-host tried to add a bot: ${eventTarget.playerId}`)
   if (game.started) return console.warn(`Ignoring mid-race add-bot in ${game.id}`)
+  // A host still on the naming card is not seated yet: bots arrive named and
+  // READY, so seating one first leaves a nameless chair above a row of ready
+  // players and lets `isEveryoneReady` turn on Start Game for a table whose
+  // host has no name. The view hides the affordance; this refuses the event.
+  if (game.players[eventTarget.playerId]?.phase === 'naming')
+    return console.warn(`Ignoring add-bot from unnamed host in ${game.id}`)
   if (Object.keys(game.players).length >= MAX_PLAYERS)
     return console.warn(`Table full — refusing add-bot in ${game.id}`)
 
