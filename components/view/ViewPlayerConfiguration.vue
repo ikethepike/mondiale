@@ -200,7 +200,12 @@
               :title="`Remove ${playerDisplayName(lobbyPlayer)}`"
               @click="lobbyPlayer.bot ? removeBot(lobbyPlayer.id) : kickPlayer(lobbyPlayer.id)"
             ></button>
-            <div :class="['player-status', { ready: lobbyPlayer.ready }]" />
+            <!-- Status, not a control: a bare tick beside a bare cross made
+                 the two read as a pair of buttons. A word carries the state
+                 and the glyph only decorates it. -->
+            <span :class="['player-status', { ready: lobbyPlayer.ready }]">
+              {{ lobbyPlayer.ready ? 'Ready' : 'Setting up' }}
+            </span>
           </PlayerTile>
 
           <!-- The empty chairs, made visible: a counter reading "1/8" states
@@ -1075,34 +1080,73 @@ const startGame = () => {
   isolation: isolate;
 }
 
+// TWO blobs on TWO elements, travelling opposite ways — painting both into one
+// background made them a single rigid sheet that could only slide as a unit,
+// which read as a colour flashing on rather than anything swirling. Each one
+// crosses the full width and they pass through each other mid-flight.
+.invite-button.nudge::before,
 .invite-button.nudge::after {
   content: '';
   position: absolute;
-  inset: -40%;
+  top: -70%;
   z-index: -1;
+  width: 78%;
+  height: 240%;
+  border-radius: 50%;
   pointer-events: none;
-  background:
-    radial-gradient(40% 62% at 20% 52%, #{ember(0.8)} 0%, #{ember(0)} 68%),
-    radial-gradient(36% 58% at 76% 44%, hsla(215, 62%, 32%, 0.6) 0%, hsla(215, 62%, 32%, 0) 68%);
-  filter: blur(0.7rem);
+  filter: blur(1.1rem);
   opacity: 0;
-  animation: invite-swirl 2.2s var(--ease-out-expressive) 1 forwards;
 }
 
-@keyframes invite-swirl {
+// The ember runs left → right, low.
+.invite-button.nudge::before {
+  left: -30%;
+  background: radial-gradient(closest-side, #{ember(0.95)} 0%, #{ember(0)} 100%);
+  animation: invite-swirl-warm 2.4s var(--ease-out-expressive) 1 forwards;
+}
+
+// The blue runs right → left, high, so they cross rather than travel together.
+.invite-button.nudge::after {
+  right: -30%;
+  background: radial-gradient(
+    closest-side,
+    hsla(215, 62%, 34%, 0.72) 0%,
+    hsla(215, 62%, 34%, 0) 100%
+  );
+  animation: invite-swirl-cool 2.4s var(--ease-out-expressive) 1 forwards;
+}
+
+@keyframes invite-swirl-warm {
   0% {
     opacity: 0;
-    transform: translateX(-18%) rotate(0deg) scale(0.9);
+    transform: translate(0, 12%) scale(0.85);
   }
-  22% {
+  18% {
     opacity: 1;
   }
-  70% {
+  72% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translateX(18%) rotate(26deg) scale(1.15);
+    transform: translate(150%, -8%) scale(1.2);
+  }
+}
+
+@keyframes invite-swirl-cool {
+  0% {
+    opacity: 0;
+    transform: translate(0, -12%) scale(0.85);
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-150%, 8%) scale(1.2);
   }
 }
 
@@ -1110,6 +1154,7 @@ const startGame = () => {
 // the belt to that pair of braces, and it must name the PSEUDO-element — the
 // swirl lives on ::after, so a rule on the button alone would leave it running.
 @media (prefers-reduced-motion: reduce) {
+  .invite-button.nudge::before,
   .invite-button.nudge::after {
     animation: none;
     opacity: 0;
@@ -1139,7 +1184,11 @@ const startGame = () => {
 // not a typeset glyph. Quiet at rest (removal shouldn't shout on every
 // tile), full weight + the alert hue on hover/focus — it's destructive.
 .kick-button {
-  margin-left: auto;
+  // Last in the row, past the status badge (see `.player-status`). The badge
+  // owns the `margin-left: auto` that pushes the pair right, so this one only
+  // needs the gap.
+  order: 2;
+  margin-left: 0.6rem;
   // The glyph stays small — removal shouldn't shout — but the TARGET grows to
   // a finger's worth wherever a finger is what aims it: destructive at
   // 2.4×2rem was the smallest thing to hit on the whole screen. A mouse needs
@@ -1220,33 +1269,48 @@ const startGame = () => {
   opacity: 0.65;
 }
 
+// A READ-OUT, not a control. The old bare tick sat next to the kick button's
+// bare cross at a similar weight, so the row offered what looked like two
+// buttons and neither said which was which. A word settles it; the glyph is
+// only a prefix, and the whole badge is unclickable.
 .player-status {
-  // A 2rem glyph; the box was 4rem, and in the ~16rem desktop lobby column
-  // that slack came straight off the player's name. Full width again on a
-  // laptop, where the column can afford it.
-  width: 2.4rem;
-  height: 2rem;
+  gap: 0.5rem;
+  display: inline-flex;
+  align-items: center;
   margin-left: auto;
-  // Ready state is the row's whole point — it must not be the thing that
-  // compresses when the desktop lobby column gets narrow.
+  padding: 0.3rem 0.8rem;
   flex-shrink: 0;
-  background: var(--black);
+  font-size: 1.2rem;
+  white-space: nowrap;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  // Never the ink of a control: status is quieter than anything tappable.
+  color: ink(0.62);
+  background: ink(0.05);
 
-  @media screen and (min-width: $laptop) {
-    width: 4rem;
+  &::before {
+    content: '';
+    width: 1.4rem;
+    height: 1.4rem;
+    flex-shrink: 0;
+    background: currentColor;
+    mask: url('~/assets/icons/dots.svg') no-repeat center / contain;
   }
 
-  // The kick button already claimed the auto gap when it renders before us
-  .kick-button + & {
-    margin-left: 0.5rem;
-  }
-  &:not(.ready) {
-    mask: url('~/assets/icons/dots.svg') no-repeat center/2rem;
-  }
   &.ready {
-    mask: url('~/assets/icons/tick.svg') no-repeat center/contain;
-    animation: tick-pop var(--motion-quick) var(--ease-out-expressive) 1;
+    color: ink(0.8);
+    background: ink(0.08);
+
+    &::before {
+      mask: url('~/assets/icons/tick.svg') no-repeat center / contain;
+      animation: tick-pop var(--motion-quick) var(--ease-out-expressive) 1;
+    }
   }
+
+  // Status reads first, the remove control sits out at the edge — so the row
+  // goes name → state → action, and the destructive thing is the one furthest
+  // from where the eye lands.
+  order: 1;
 }
 
 @keyframes tick-pop {
