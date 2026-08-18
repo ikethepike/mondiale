@@ -8,6 +8,17 @@
       }}</span>
       <h1 data-hero="name">{{ heroHeading }}</h1>
       <p data-hero="sub" class="hero-sub">{{ heroSub }}</p>
+
+      <!-- Who actually won, and who else placed. The beat used to report only
+           YOUR position, which on a four-player table left everyone staring at
+           a full-screen moment that never named the champion. -->
+      <ol v-if="podium.length" data-hero="podium" class="hero-podium">
+        <li v-for="entry in podium" :key="entry.player.id" :class="{ you: entry.you }">
+          <span class="podium-place">{{ placeLabel(entry.place) }}</span>
+          <PlayerPawn class="podium-pawn" :player="entry.player" />
+          <span class="podium-name">{{ entry.you ? 'You' : playerDisplayName(entry.player) }}</span>
+        </li>
+      </ol>
     </div>
 
     <!-- Act two: the report — a living end-screen over the game's atlas -->
@@ -139,7 +150,10 @@
 import { gsap } from 'gsap'
 import AtlasCard from '~/components/atlas/AtlasCard.vue'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
+import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { getCountry } from '~~/lib/country'
+import { playerDisplayName } from '~~/lib/player'
+import { placeLabel } from '~~/lib/player-status'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -185,11 +199,22 @@ const heroSub = computed(() => {
   return `${ordinal(placement.value ?? 0)} across the finish — the report awaits.`
 })
 
-const ordinal = (value: number) => {
-  const suffixes: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' }
-  const tens = value % 100
-  return `${value}${tens >= 11 && tens <= 13 ? 'th' : (suffixes[value % 10] ?? 'th')}`
-}
+/** The ordinal helper lives in lib/player-status beside the status labels —
+ *  the panel and this screen must agree on what "2nd" means. */
+const ordinal = placeLabel
+
+/**
+ * The finish order, top three. `gameStore.standings` is already sorted by the
+ * same comparator the report uses, so the podium here and the table below can
+ * never disagree; only FINISHED seats appear, so a race still in progress
+ * shows just the players actually across the line.
+ */
+const podium = computed(() =>
+  gameStore.standings
+    .filter(standing => standing.completedAtRound !== undefined)
+    .slice(0, 3)
+    .map((player, index) => ({ player, place: index + 1, you: player.id === playerId.value }))
+)
 
 const kindLabel = (kind: RoundChallengeKind) => kind.replace(/-/g, ' ')
 
@@ -381,6 +406,54 @@ onBeforeUnmount(() => {
   margin: 0;
   opacity: 0.75;
   font-size: 1.9rem;
+}
+
+// The finish order, on the takeover itself — quiet rows so the champion's name
+// above still carries the moment.
+.hero-podium {
+  gap: 0.8rem;
+  margin: 2.4rem 0 0;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  flex-flow: column nowrap;
+  align-items: stretch;
+  min-width: min(32rem, 80vw);
+
+  li {
+    gap: 1rem;
+    display: flex;
+    padding: 0.8rem 1.4rem;
+    align-items: center;
+    border-radius: 1.2rem;
+    background: milk(0.08);
+    border: 0.1rem solid milk(0.14);
+
+    &.you {
+      background: milk(0.16);
+      border-color: milk(0.3);
+    }
+  }
+}
+
+.podium-place {
+  min-width: 3.2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.podium-pawn {
+  width: 1.8rem;
+  height: 2.8rem;
+  flex-shrink: 0;
+}
+
+.podium-name {
+  font-size: 1.7rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .hero-ripple {

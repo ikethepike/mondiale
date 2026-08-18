@@ -21,6 +21,34 @@ export interface PlayerStatus {
   gone: boolean
   /** Board steps still to walk (including beyond a pending gate), when relevant. */
   steps?: number
+  /** Finishing position, 1-based, once this seat has won. */
+  place?: number
+  /** Gauntlet progress while in the final challenge. */
+  final?: { answered: number; total: number }
+}
+
+/** 1st / 2nd / 3rd — the podium reads better than "place 2". */
+export const placeLabel = (place: number): string => {
+  const tens = place % 100
+  if (tens >= 11 && tens <= 13) return `${place}th`
+  return `${place}${['th', 'st', 'nd', 'rd'][place % 10] ?? 'th'}`
+}
+
+/**
+ * Where a finished seat placed: everyone who completed EARLIER outranks them.
+ * Derived from the same `completedAtRound` the standings sort by, so the panel
+ * and the final scoreboard can never disagree about who came second.
+ */
+const finishingPlace = (player: Player, table: readonly Player[]): number | undefined => {
+  const finishedAt = player.completedAtRound
+  if (finishedAt === undefined) return undefined
+  const ahead = table.filter(
+    other =>
+      other.id !== player.id &&
+      other.completedAtRound !== undefined &&
+      other.completedAtRound < finishedAt
+  ).length
+  return ahead + 1
 }
 
 /**
@@ -43,7 +71,7 @@ const plural = (count: number, noun: string) => `${count}\u00A0${noun}${count ==
  * others are still busy rather than assuming the game froze. Purely derived
  * from already-broadcast state — no server round-trip.
  */
-export const getPlayerStatus = (player: Player): PlayerStatus => {
+export const getPlayerStatus = (player: Player, table: readonly Player[] = []): PlayerStatus => {
   const idle = { busy: false, done: false, gone: false }
 
   switch (player.phase) {
@@ -68,8 +96,25 @@ export const getPlayerStatus = (player: Player): PlayerStatus => {
         steps,
       }
     }
-    case 'final-challenge':
-      return { label: 'In the final challenge', busy: true, done: false, gone: false }
+    case 'final-challenge': {
+      // The gauntlet is the tensest stretch of the game to watch someone else
+      // play — "in the final challenge" for two minutes says nothing about
+      // whether they are one question from winning.
+      const gauntlet = player.moves[0]?.challenge
+      const final =
+        gauntlet?._type === 'final-challenge'
+          ? { answered: gauntlet.answeredCorrect, total: gauntlet.totalCount }
+          : undefined
+      return {
+        label: final
+          ? `Final challenge · ${final.answered}/${final.total}`
+          : 'In the final challenge',
+        busy: true,
+        done: false,
+        gone: false,
+        final,
+      }
+    }
     case 'moving': {
       const steps = stepsRemaining(player)
       return {
@@ -87,8 +132,18 @@ export const getPlayerStatus = (player: Player): PlayerStatus => {
       return { label: 'Reviewing scores', ...idle }
     case 'movement-summary':
       return { label: 'Finished this turn', ...idle }
-    case 'victory':
-      return { label: 'Finished the race! 🏁', busy: false, done: true, gone: false }
+    case 'victory': {
+      // WHERE they finished, not just that they did — a four-player table ends
+      // with three "Finished the race!" rows that say nothing about the podium.
+      const place = finishingPlace(player, table)
+      return {
+        label: place ? `Finished ${placeLabel(place)}` : 'Finished the race!',
+        busy: false,
+        done: true,
+        gone: false,
+        place,
+      }
+    }
     case 'kicked':
       return { label: 'Knocked out', busy: false, done: false, gone: true }
     default:

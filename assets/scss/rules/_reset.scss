@@ -22,6 +22,18 @@ a[role='button'] {
   user-select: none;
 }
 
+// No double-tap zoom on anything tappable. iOS treats two quick taps on the
+// same control as a zoom gesture — repeatedly hitting ±100 on the year dial,
+// or any counter, fights the page instead of driving it. `maximum-scale=1` in
+// the viewport meta does NOT prevent this (Safari ignores it for
+// accessibility); this does, and pinch-zoom on the page itself still works.
+button,
+[role='button'],
+label,
+summary {
+  touch-action: manipulation;
+}
+
 img {
   max-width: 100%;
 }

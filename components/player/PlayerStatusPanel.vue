@@ -158,7 +158,8 @@ onUnmounted(() => document.removeEventListener('click', closeStrip))
 const entries = computed(() =>
   props.players
     .map(player => {
-      const status = getPlayerStatus(player)
+      // The whole table, so a finished seat can say WHICH place it took.
+      const status = getPlayerStatus(player, props.players)
       const span = Math.max(1, (props.boardLength ?? 1) - 1)
       return {
         player,
