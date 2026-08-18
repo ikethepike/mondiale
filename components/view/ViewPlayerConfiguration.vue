@@ -149,6 +149,7 @@
 
           <nav class="game-controls">
             <ButtonLine
+              ref="inviteButton"
               :class="['invite-button', { nudge: nudgeInvite }]"
               :aria-label="inviteLabel"
               @click="shareInviteLink"
@@ -569,17 +570,49 @@ const showQr = ref(false)
  * failure mode. It also holds still under reduced-motion.
  */
 const nudgeInvite = ref(false)
+const inviteButton = ref<HTMLElement | { $el: HTMLElement }>()
 const NUDGE_DELAY_MS = 600
+
+/**
+ * Fires when the button is actually ON SCREEN, not when its phase begins. The
+ * lobby scrolls: on a 667px-tall phone the invite sits at ~715px, so a
+ * phase-triggered nudge played out its whole flight below the fold and the
+ * host never saw it. An observer waits for the host to scroll to it.
+ */
+let inviteWatcher: IntersectionObserver | undefined
+const armInviteNudge = () => {
+  if (nudgeInvite.value || inviteWatcher || prefersReducedMotion()) return
+  const host = inviteButton.value
+  const element = host && '$el' in host ? host.$el : host
+  if (!(element instanceof HTMLElement)) return
+
+  inviteWatcher = new IntersectionObserver(
+    entries => {
+      // Enough of it showing to be worth animating, not a sliver at the edge.
+      if (!entries.some(entry => entry.isIntersecting)) return
+      setTimeout(() => (nudgeInvite.value = true), NUDGE_DELAY_MS)
+      inviteWatcher?.disconnect()
+      inviteWatcher = undefined
+    },
+    { threshold: 0.6 }
+  )
+  inviteWatcher.observe(element)
+}
+
 watch(
   () => player.value?.phase === 'waiting-for-game',
-  waiting => {
-    if (!waiting || nudgeInvite.value || prefersReducedMotion()) return
-    // A beat after the step lands, so it reads as a nudge rather than part of
-    // the screen arriving.
-    setTimeout(() => (nudgeInvite.value = true), NUDGE_DELAY_MS)
+  async waiting => {
+    if (!waiting) return
+    await nextTick()
+    armInviteNudge()
   },
   { immediate: true }
 )
+
+onBeforeUnmount(() => {
+  inviteWatcher?.disconnect()
+  inviteWatcher = undefined
+})
 
 /** Say what the tap will actually do: a share sheet is not a copy, and
  *  promising "Copied!" for one is a small lie the player catches. */
@@ -1106,20 +1139,32 @@ const startGame = () => {
 $swirl-duration: 3.6s;
 $swirl-ease: cubic-bezier(0.37, 0, 0.28, 1);
 
-// The ember runs left → right, low.
+// The ember runs left → right, low. Light and airy: a DARK warm over a dark
+// cool mixes to purple-brown where they overlap, so both blobs are pale, well
+// under half opacity, and `screen` lightens rather than muddies.
 .invite-button.nudge::before {
   left: -30%;
-  background: radial-gradient(closest-side, #{ember(0.95)} 0%, #{ember(0)} 100%);
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    closest-side,
+    #{ember(0.42, 72%)} 0%,
+    #{ember(0.16, 78%)} 45%,
+    #{ember(0, 80%)} 100%
+  );
   animation: invite-swirl-warm $swirl-duration $swirl-ease 1 forwards;
 }
 
 // The blue runs right → left, high, so they cross rather than travel together.
+// A soft sky rather than the deep navy — the ink blue went muddy the instant
+// it met the ember.
 .invite-button.nudge::after {
   right: -30%;
+  mix-blend-mode: screen;
   background: radial-gradient(
     closest-side,
-    hsla(215, 62%, 34%, 0.72) 0%,
-    hsla(215, 62%, 34%, 0) 100%
+    hsla(205, 72%, 68%, 0.4) 0%,
+    hsla(205, 72%, 74%, 0.15) 45%,
+    hsla(205, 72%, 78%, 0) 100%
   );
   animation: invite-swirl-cool $swirl-duration $swirl-ease 1 forwards;
 }
