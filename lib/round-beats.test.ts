@@ -10,6 +10,9 @@ import {
   GATE_RESULT_WIRE_GRACE_MS,
   LANDING_SETTLE_MS,
   MOVE_INTERSTITIAL_HOLD_MS,
+  FIRST_TURN_GRACE_MS,
+  INTERSTITIAL_HOLD_MS,
+  INTERSTITIAL_TOTAL_MS,
   MOVE_INTERSTITIAL_OVERHEAD_MS,
   MOVE_INTERSTITIAL_TOTAL_MS,
   PAWN_HOP_MS,
@@ -225,6 +228,13 @@ describe('round beats', () => {
     } as const
     expect(classicPlaySeconds(hotCold)).toBeUndefined()
     expect(UNTIMED_CLASSIC_CAP_SECONDS).toBeGreaterThan(0)
+  })
+
+  it('hands back at least what the round interstitial takes', () => {
+    // The card stands in front of a clock the server already started, so a
+    // hold lengthened without the grace is play time taken from the table.
+    expect(FIRST_TURN_GRACE_MS).toBeGreaterThanOrEqual(INTERSTITIAL_TOTAL_MS)
+    expect(INTERSTITIAL_TOTAL_MS).toBe(INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS)
   })
 
   it('fits the move interstitial inside the walk lead by construction', () => {

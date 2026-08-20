@@ -29,6 +29,7 @@
 </template>
 <script lang="ts" setup>
 import { backdropFor } from '~~/components/feedback/backdrops'
+import { INTERSTITIAL_HOLD_MS } from '~~/lib/round-beats'
 import { challengeCategory, roundKicker } from '~~/lib/challenge-labels'
 import { prefersLightMotion } from '~~/lib/motion'
 import { seedFrom } from '~~/lib/random'
@@ -71,7 +72,7 @@ const props = defineProps({
   /** Seconds before auto-advancing. */
   holdFor: {
     type: Number,
-    default: 3.2,
+    default: INTERSTITIAL_HOLD_MS / 1000,
   },
 })
 

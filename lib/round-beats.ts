@@ -20,9 +20,11 @@ import type { PlayerPhase } from '~~/types/player.type'
 export const REVEAL_HOLD_MS = 6000
 /** Buzzer grace so an on-the-wire submit beats its own turn's timeout. */
 export const TIMEOUT_SLACK_MS = 350
-/** Extra opening-turn time — the first clock starts behind the round
- *  interstitial, which everyone watches for a few seconds. */
-export const FIRST_TURN_GRACE_MS = 4000
+/** The round interstitial stands in front of a clock that is already running,
+ *  so the server hands that time back. Must cover INTERSTITIAL_TOTAL_MS —
+ *  pinned in round-beats.test.ts, since a card lengthened without this is play
+ *  time taken from the table. */
+export const FIRST_TURN_GRACE_MS = 6000
 /** How long a briefing (the click-away rules cards manhunt and unique-or-bust
  *  open on) may hold before the round starts regardless. */
 export const BRIEFING_CAP_MS = 60000
@@ -118,6 +120,12 @@ export const WALK_LEAD_HEADROOM_MS = 250
 export const MOVE_INTERSTITIAL_HOLD_MS = 900
 export const MOVE_INTERSTITIAL_OVERHEAD_MS = 1040
 export const MOVE_INTERSTITIAL_TOTAL_MS = MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
+
+/** The challenge card's hold. Longer than the move card's: it carries rules a
+ *  slow reader has to finish, and a tap skips it. */
+export const INTERSTITIAL_HOLD_MS = 4500
+/** Hold + the beat's own fade/stagger/rule choreography. */
+export const INTERSTITIAL_TOTAL_MS = INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
 
 /**
  * The camera's framing sweep onto the walking pawn, sized to land INSIDE the
