@@ -24,6 +24,7 @@
 <script lang="ts" setup>
 import { backdropFor } from '~~/components/feedback/backdrops'
 import { challengeCategory, roundKicker } from '~~/lib/challenge-labels'
+import { seedFrom } from '~~/lib/random'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
@@ -83,14 +84,9 @@ const category = computed(() => (props.kind ? challengeCategory(props.kind) : un
 // table (it is shared state, not a local roll), different from game to game,
 // and stable across a re-render mid-beat so the wall never reshuffles under
 // the words.
-const backdropSeed = computed(() => {
-  const source = `${gameStore.game?.id ?? 'room'}:${roundNumber.value}`
-  let hash = 0
-  for (let index = 0; index < source.length; index++) {
-    hash = (hash * 31 + source.charCodeAt(index)) | 0
-  }
-  return Math.abs(hash)
-})
+const backdropSeed = computed(() =>
+  seedFrom(`${gameStore.game?.id ?? 'room'}:${roundNumber.value}`)
+)
 const backdrop = computed(() => backdropFor(props.kind, backdropSeed.value))
 const resolvedKicker = computed(
   () => props.kicker ?? (props.kind ? roundKicker(props.kind, roundNumber.value) : 'Challenge!')

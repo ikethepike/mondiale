@@ -1,4 +1,6 @@
 import type { Component } from 'vue'
+import ConflictDrift from '~~/components/feedback/backdrops/ConflictDrift.vue'
+import EmpireDrift from '~~/components/feedback/backdrops/EmpireDrift.vue'
 import PoliticsDrift from '~~/components/feedback/backdrops/PoliticsDrift.vue'
 import { CHALLENGE_GROUP_BY_KIND } from '~~/types/challenges/challenge-groups.type'
 import type { ChallengeGroupId } from '~~/types/challenges/challenge-groups.type'
@@ -40,6 +42,19 @@ export const INTERSTITIAL_BACKDROPS: Partial<Record<ChallengeGroupId, Interstiti
   politics: {
     component: PoliticsDrift,
     props: ({ seed }) => ({ seed }),
+    ripple: 'replace',
+  },
+  conflicts: {
+    component: ConflictDrift,
+    props: ({ seed }) => ({ seed }),
+    // A swarm of points and an expanding ring are different gestures; the
+    // ripple still reads as the card's own flourish over them.
+    ripple: 'keep',
+  },
+  empires: {
+    component: EmpireDrift,
+    props: ({ seed }) => ({ seed }),
+    // Rings over surfacing borders read as a second set of borders.
     ripple: 'replace',
   },
 }
