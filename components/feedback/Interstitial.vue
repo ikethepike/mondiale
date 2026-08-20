@@ -121,6 +121,13 @@ useKeyboardSkip(() => !watching.value, skip)
   background: milk(0.75);
 }
 
+// A dressed card is opaque. The backdrop is a CHILD, so the wash sits behind
+// it and the live round reads through the quarter that is left — which is why
+// per-backdrop grounds could never fix this from inside.
+.interstitial.dressed {
+  background: milk(1);
+}
+
 .ripple {
   top: 50%;
   left: 50%;
