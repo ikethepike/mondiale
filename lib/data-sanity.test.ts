@@ -12,7 +12,7 @@ import { conflictMapping } from '~~/data/conflicts.gen'
 import { LEADERS } from '~~/data/leaders.gen'
 import { PARTIES } from '~~/data/parties.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { governingParty, partiesWithLogo } from '~~/lib/parties'
+import { decorativeLogos, governingParty, isDecorativeLogo, partiesWithLogo } from '~~/lib/parties'
 import { MARRIAGE_RIGHTS } from '~~/data/marriage-rights.gen'
 import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
@@ -185,6 +185,36 @@ describe('parties.gen', () => {
       }
       expect(governingParty(isoCode)?.coalition).toBeFalsy()
     }
+  })
+
+  // A backdrop scatters marks with no caption under them, which is a
+  // different permission from showing one AS the question. These pin the
+  // gate: everything the decorative pool admits must owe nobody a credit and
+  // offend nobody, because nothing downstream can catch it if it doesn't.
+  it('never scatters a mark that owes a credit or carries a swastika', () => {
+    const pool = decorativeLogos()
+    // Deep enough to fill a field without repeating — if a licence sweep ever
+    // guts it, that is a design problem and should fail loudly here.
+    expect(pool.length).toBeGreaterThan(400)
+    for (const party of pool) {
+      expect(party.nonFree, `${party.name} is fair-use and cannot be decoration`).toBeFalsy()
+      expect(party.license, `${party.name} has no licence`).toMatch(/^(public domain|cc0|pd)$/i)
+      expect(
+        party.logoRestrictions ?? '',
+        `${party.name} carries a restriction a backdrop must not scatter`
+      ).not.toMatch(/nazi|insignia/i)
+      expect(party.coalition, `${party.name} is a bloc, not a party`).toBeFalsy()
+    }
+  })
+
+  it("keeps the SSNP zawba'a out of the decorative pool", () => {
+    // The two rows the restriction exists for. Named, so a generator change
+    // that drops the flag fails here instead of shipping the mark.
+    const flagged = Object.values(PARTIES)
+      .flatMap(chamber => chamber?.parties ?? [])
+      .filter(party => /nazi/i.test(party.logoRestrictions ?? ''))
+    expect(flagged.length, 'expected the flagged rows to still exist').toBeGreaterThan(0)
+    for (const party of flagged) expect(isDecorativeLogo(party)).toBe(false)
   })
 
   it('credits every logo whose licence demands attribution', () => {

@@ -1,6 +1,12 @@
 <template>
   <div v-if="!watching" ref="root" class="intro-overlay interstitial" :class="tone" @click="skip">
-    <ContourRipple class="ripple" :tone="tone === 'alert' ? 'alert' : 'success'" :delay="0.35" />
+    <component :is="backdrop.component" v-if="backdrop" v-bind="backdrop.props" />
+    <ContourRipple
+      v-if="!backdrop || backdrop.ripple !== 'replace'"
+      class="ripple"
+      :tone="tone === 'alert' ? 'alert' : 'success'"
+      :delay="0.35"
+    />
     <div class="content">
       <span v-if="category" data-interstitial class="category-pill">{{ category.label }}</span>
       <span data-interstitial class="kicker map-caption">
@@ -16,6 +22,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { backdropFor } from '~~/components/feedback/backdrops'
 import { challengeCategory, roundKicker } from '~~/lib/challenge-labels'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
@@ -72,6 +79,19 @@ const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
 const roundNumber = computed(() => gameStore.currentRound?.number ?? 1)
 const category = computed(() => (props.kind ? challengeCategory(props.kind) : undefined))
+// Seeded off the room and the round number: identical on every seat at the
+// table (it is shared state, not a local roll), different from game to game,
+// and stable across a re-render mid-beat so the wall never reshuffles under
+// the words.
+const backdropSeed = computed(() => {
+  const source = `${gameStore.game?.id ?? 'room'}:${roundNumber.value}`
+  let hash = 0
+  for (let index = 0; index < source.length; index++) {
+    hash = (hash * 31 + source.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash)
+})
+const backdrop = computed(() => backdropFor(props.kind, backdropSeed.value))
 const resolvedKicker = computed(
   () => props.kicker ?? (props.kind ? roundKicker(props.kind, roundNumber.value) : 'Challenge!')
 )

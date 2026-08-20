@@ -1,5 +1,14 @@
 <template>
   <section class="challenge-shell government">
+    <Interstitial
+      v-if="showInterstitial"
+      tone="info"
+      kind="government"
+      title="Who governs here?"
+      stakes="Three questions about one chamber: the party in charge, the seats it holds, and who sits with it. Each beat scores on its own."
+      @done="begin()"
+    />
+
     <!-- The chamber is the round; the subject line and "Which party governs?"
          are a caption on it, so the prompt steps down and the beats take the
          column (the logo grid overflowed by 72px on a 560px phone). -->
@@ -268,6 +277,7 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
+import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { BEAT_SECONDS, MAX_SEAT_DOTS } from '~~/lib/government'
 import { placedTotalFor } from '~~/lib/live-guess-policy'
@@ -286,7 +296,7 @@ import type { GovernmentState } from '~~/types/challenges/group-modes.type'
  * timer here would eventually disagree with the grade.
  */
 
-const { challenge, gameStore, update, announce, entries } =
+const { challenge, showInterstitial, begin, gameStore, update, announce, entries } =
   useGroupChallenge('government-challenge')
 
 // Timers keep evaluating for a beat after the round advances, so the state

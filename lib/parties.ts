@@ -509,6 +509,42 @@ export const isDealableParty = (party: Party): boolean => !party.coalition
 export const partiesWithLogo = (isoCode: ISOCountryCode): Party[] =>
   partiesOf(isoCode).filter(party => !!party.logo && isDealableParty(party))
 
+/** Marks a decorative pool must never scatter, whatever the licence permits.
+ *  The two `nazi` rows are the Syrian Social Nationalist Party's zawba'a,
+ *  which reads as a swastika at a glance — and a drifting field parks a tile
+ *  mid-screen eventually. Insignia are somebody's armed forces. */
+const UNSCATTERABLE = /nazi|insignia/i
+
+/** Licences that owe nobody a credit line. */
+const UNATTRIBUTED = /^(public domain|cc0|pd)$/i
+
+/**
+ * A logo that may be used as DECORATION — wallpaper behind a title, where no
+ * caption can name it and nothing about it is the question.
+ *
+ * A far narrower gate than `partiesWithLogo`, and deliberately so. Fair use is
+ * a use, not a property: showing a mark AS the subject of a question is the
+ * context that earns it, and scattering the same mark as texture is not, so
+ * `nonFree` is out. Attribution-bearing licences are out for the plainer
+ * reason that the surface has nowhere to print a credit — data-sanity.test.ts
+ * already fails the build when a CC BY logo ships without one, and a backdrop
+ * cannot honour that. What survives owes nothing and offends nobody: ~768
+ * marks across most of the roster, far more than any field needs.
+ */
+export const isDecorativeLogo = (party: Party): boolean =>
+  !!party.logo &&
+  isDealableParty(party) &&
+  !party.nonFree &&
+  UNATTRIBUTED.test(party.license ?? '') &&
+  !UNSCATTERABLE.test(party.logoRestrictions ?? '')
+
+/** Every scatterable mark on the roster, country order. The pool a decorative
+ *  field samples — never `PARTIES` itself, which is 40% unusable here. */
+export const decorativeLogos = (): Party[] =>
+  (Object.keys(PARTIES) as ISOCountryCode[]).flatMap(isoCode =>
+    partiesOf(isoCode).filter(isDecorativeLogo)
+  )
+
 /**
  * Every country with a party in this transnational grouping (EPP, ECR, the
  * Progressive Alliance). Membership rides Wikidata's `P463`, already filtered
