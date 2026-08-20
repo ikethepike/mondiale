@@ -10,6 +10,7 @@
         :class="mark.kind"
         :style="mark.style"
       />
+      <span class="playhead ambient-loop" :style="lane.playhead" />
     </div>
   </div>
 </template>
@@ -49,6 +50,10 @@ const lanes = computed(() => {
         top: `${6 + index * 21}%`,
         opacity: (0.7 + random() * 0.3).toFixed(2),
       } as Record<string, string>,
+      playhead: {
+        animationDuration: `${(13 + random() * 9).toFixed(2)}s`,
+        animationDelay: `${(-random() * 14).toFixed(2)}s`,
+      } as Record<string, string>,
     }
   })
 })
@@ -67,6 +72,18 @@ const lanes = computed(() => {
   width: 124%;
   height: 2.4rem;
   position: absolute;
+}
+
+.playhead {
+  top: 50%;
+  left: 0;
+  width: 0.3rem;
+  height: 2.2rem;
+  position: absolute;
+  border-radius: 999px;
+  background: var(--hior-ange);
+  box-shadow: 0 0 0.9rem 0.3rem color-mix(in srgb, var(--hior-ange) 35%, transparent);
+  animation: playhead-sweep 16s linear infinite;
 }
 
 .rail {
@@ -115,6 +132,22 @@ const lanes = computed(() => {
   to {
     opacity: 1;
     translate: 0 0;
+  }
+}
+
+// translate, not `left`: `left` relayouts the lane every frame.
+@keyframes playhead-sweep {
+  from {
+    opacity: 0;
+    translate: 0 -50%;
+  }
+  6%,
+  94% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    translate: calc(100vw + 12%) -50%;
   }
 }
 </style>
