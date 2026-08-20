@@ -1,46 +1,52 @@
 <template>
   <div class="trend-drift" aria-hidden="true">
     <div v-for="lane in lanes" :key="lane.key" class="lane" :style="lane.style">
-      <span class="rail" />
-      <span v-for="tick in lane.ticks" :key="tick.key" class="tick" :style="tick.style" />
-      <span
-        v-for="mark in lane.marks"
-        :key="mark.key"
-        class="mark"
-        :class="mark.kind"
-        :style="mark.style"
-      />
-      <span class="sweep ambient-loop" :style="lane.playhead" />
+      <div class="strip ambient-loop" :style="lane.strip">
+        <!-- Twice through, so the pan closes on itself with no seam. -->
+        <template v-for="pass in 2" :key="pass">
+          <span class="rail" :style="{ left: `${(pass - 1) * 50}%` }" />
+          <span
+            v-for="tick in lane.ticks"
+            :key="`t${pass}-${tick.key}`"
+            class="tick"
+            :style="{ ...tick.style, left: `${(pass - 1) * 50 + tick.at}%` }"
+          />
+          <span
+            v-for="mark in lane.marks"
+            :key="`m${pass}-${mark.key}`"
+            class="mark"
+            :class="mark.kind"
+            :style="{ left: `${(pass - 1) * 50 + mark.at}%` }"
+          />
+        </template>
+      </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/** Timelines: rails with year ticks, events settling onto the line. */
+/** Timelines panning past, each at its own pace. */
 const props = defineProps<{ seed: number }>()
 
 const LANES = 5
-const TICKS = 13
+const TICKS = 15
 
 const lanes = computed(() => {
   const random = seededRandom(props.seed)
   return Array.from({ length: LANES }, (_, index) => {
     const ticks = Array.from({ length: TICKS }, (_, tick) => ({
       key: `t${tick}`,
+      at: (tick / TICKS) * 50,
       style: {
-        left: `${((tick / (TICKS - 1)) * 100).toFixed(2)}%`,
         height: tick % 4 === 0 ? '1.1rem' : '0.55rem',
         opacity: tick % 4 === 0 ? '0.7' : '0.4',
       } as Record<string, string>,
     }))
-    const marks = Array.from({ length: 4 + Math.floor(random() * 3) }, (_, mark) => ({
+    const marks = Array.from({ length: 5 + Math.floor(random() * 3) }, (_, mark) => ({
       key: `m${mark}`,
+      at: 1 + random() * 47,
       kind: random() > 0.72 ? 'major' : 'minor',
-      style: {
-        left: `${(4 + random() * 92).toFixed(1)}%`,
-        '--at': `${(0.2 + index * 0.12 + random() * 0.3).toFixed(2)}s`,
-      } as Record<string, string>,
     }))
     return {
       key: `lane-${index}`,
@@ -50,9 +56,10 @@ const lanes = computed(() => {
         top: `${6 + index * 21}%`,
         opacity: (0.7 + random() * 0.3).toFixed(2),
       } as Record<string, string>,
-      playhead: {
-        animationDuration: `${(9 + random() * 5).toFixed(2)}s`,
-        animationDelay: `${(-random() * 12).toFixed(2)}s`,
+      strip: {
+        animationDuration: `${(38 + random() * 30).toFixed(2)}s`,
+        animationDelay: `${(-random() * 40).toFixed(2)}s`,
+        animationDirection: index % 2 ? 'reverse' : 'normal',
       } as Record<string, string>,
     }
   })
@@ -68,34 +75,22 @@ const lanes = computed(() => {
 }
 
 .lane {
-  left: -12%;
-  width: 124%;
+  left: 0;
+  right: 0;
   height: 2.4rem;
   position: absolute;
 }
 
-// A light travelling the rail, not a cursor sitting on it: a soft gradient
-// band the width of a few years, so the line reads as being scanned.
-.sweep {
-  top: 50%;
-  left: 0;
-  width: 26%;
-  height: 0.3rem;
+.strip {
+  inset: 0;
+  width: 200%;
   position: absolute;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--soft-blue) 70%, transparent),
-    transparent
-  );
-  animation: rail-sweep 12s linear infinite;
+  animation: strip-pan 50s linear infinite;
 }
 
 .rail {
   top: 50%;
-  left: 0;
-  right: 0;
+  width: 50%;
   height: 0.2rem;
   position: absolute;
   background: ink(0.42);
@@ -113,47 +108,28 @@ const lanes = computed(() => {
   top: 50%;
   position: absolute;
   border-radius: 50%;
-  animation: mark-settle 0.55s var(--ease-out-expressive) var(--at, 0s) backwards;
+  translate: -50% -50%;
 }
 
 .minor {
   width: 0.7rem;
   height: 0.7rem;
-  margin: -0.35rem 0 0 -0.35rem;
   background: ink(0.5);
 }
 
 .major {
   width: 1.15rem;
   height: 1.15rem;
-  margin: -0.575rem 0 0 -0.575rem;
   background: var(--hior-ange);
 }
 
-@keyframes mark-settle {
+// Half, because the strip is drawn twice.
+@keyframes strip-pan {
   from {
-    opacity: 0;
-    translate: 0 -0.7rem;
+    transform: translate3d(0, 0, 0);
   }
   to {
-    opacity: 1;
-    translate: 0 0;
-  }
-}
-
-// translate, not `left`: `left` relayouts the lane every frame.
-@keyframes rail-sweep {
-  from {
-    opacity: 0;
-    translate: -26% -50%;
-  }
-  12%,
-  88% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    translate: 124% -50%;
+    transform: translate3d(-50%, 0, 0);
   }
 }
 </style>
