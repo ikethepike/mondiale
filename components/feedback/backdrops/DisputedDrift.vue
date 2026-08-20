@@ -153,12 +153,18 @@ const islands = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .disputed-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 0.55;
+}
+
+.disputed-drift > * {
   mask-image: radial-gradient(ellipse 56% 50% at 50% 50%, transparent 44%, black 88%);
 }
 

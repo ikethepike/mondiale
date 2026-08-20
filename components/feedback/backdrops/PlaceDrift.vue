@@ -52,8 +52,7 @@ const pins = computed(() => {
       // ground a small one does rather than floating off it.
       transform: `translate(${(random() * 400).toFixed(1)} ${(random() * 260).toFixed(1)}) scale(${scale.toFixed(2)})`,
       style: {
-        animationDelay: `${(-random() * 11).toFixed(2)}s`,
-        animationDuration: `${(8 + random() * 7).toFixed(2)}s`,
+        '--at': `${(index * 0.05 + random() * 0.25).toFixed(2)}s`,
         opacity: (0.35 + random() * 0.4).toFixed(2),
       } as Record<string, string>,
     }
@@ -64,17 +63,24 @@ const pins = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .place-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   position: absolute;
   pointer-events: none;
   opacity: 0.8;
+}
+
+.place-drift > * {
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
 }
 
 .pin {
   fill: ink(0.34);
-  animation: pin-hover 12s ease-in-out infinite;
+  opacity: 0;
+  animation: pin-drop 0.6s var(--ease-out-expressive) var(--at, 0s) forwards;
 }
 
 .bore {
@@ -88,13 +94,16 @@ const pins = computed(() => {
 }
 
 // Resting state is planted; the hover only lifts a little off it.
-@keyframes pin-hover {
-  0%,
-  100% {
-    translate: 0 0;
+@keyframes pin-drop {
+  from {
+    opacity: 0;
+    translate: 0 -1.2rem;
+    scale: 0.7;
   }
-  50% {
-    translate: 0 -2px;
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
   }
 }
 </style>

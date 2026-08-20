@@ -12,7 +12,14 @@
   align-items: center;
   pointer-events: auto;
   justify-content: center;
+  // Softens whatever the card is standing over. A card that paints its own
+  // ground does not need it, and re-blurring the viewport behind one is pure
+  // cost: `.dressed` opts out.
   backdrop-filter: blur(0.8rem);
+
+  &.dressed {
+    backdrop-filter: none;
+  }
 
   .content {
     gap: 1.6rem;

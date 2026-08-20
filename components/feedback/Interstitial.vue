@@ -1,5 +1,11 @@
 <template>
-  <div v-if="!watching" ref="root" class="intro-overlay interstitial" :class="tone" @click="skip">
+  <div
+    v-if="!watching"
+    ref="root"
+    class="intro-overlay interstitial"
+    :class="[tone, { dressed: !!backdrop }]"
+    @click="skip"
+  >
     <component :is="backdrop.component" v-if="backdrop" v-bind="backdrop.props" />
     <ContourRipple
       v-if="!backdrop || backdrop.ripple !== 'replace'"
@@ -24,6 +30,7 @@
 <script lang="ts" setup>
 import { backdropFor } from '~~/components/feedback/backdrops'
 import { challengeCategory, roundKicker } from '~~/lib/challenge-labels'
+import { prefersLightMotion } from '~~/lib/motion'
 import { seedFrom } from '~~/lib/random'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
@@ -87,7 +94,12 @@ const category = computed(() => (props.kind ? challengeCategory(props.kind) : un
 const backdropSeed = computed(() =>
   seedFrom(`${gameStore.game?.id ?? 'room'}:${roundNumber.value}`)
 )
-const backdrop = computed(() => backdropFor(props.kind, backdropSeed.value))
+// A modest device gets the plain card. Not because the motion is heavy — it
+// holds 120fps throttled — but because first paint costs up to 2s there, and
+// the beat is only 4.5s long.
+const backdrop = computed(() =>
+  prefersLightMotion() ? undefined : backdropFor(props.kind, backdropSeed.value)
+)
 const resolvedKicker = computed(
   () => props.kicker ?? (props.kind ? roundKicker(props.kind, roundNumber.value) : 'Challenge!')
 )

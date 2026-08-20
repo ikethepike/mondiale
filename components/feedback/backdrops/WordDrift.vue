@@ -70,12 +70,18 @@ const glyphs = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .word-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 0.75;
+}
+
+.word-drift > * {
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 30%, black 74%);
 }
 

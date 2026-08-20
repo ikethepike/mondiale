@@ -48,11 +48,17 @@ const lines = computed(() => {
 </script>
 <style lang="scss" scoped>
 .water-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   position: absolute;
   pointer-events: none;
   opacity: 0.95;
+}
+
+.water-drift > * {
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
 }
 

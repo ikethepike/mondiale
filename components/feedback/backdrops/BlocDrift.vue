@@ -29,8 +29,7 @@ const rings = computed(() => {
         top: `${(random() * 100 - 12).toFixed(1)}%`,
         width: `${size.toFixed(1)}rem`,
         height: `${size.toFixed(1)}rem`,
-        animationDelay: `${(-random() * 20).toFixed(2)}s`,
-        animationDuration: `${(16 + random() * 12).toFixed(2)}s`,
+        '--at': `${(index * 0.05 + random() * 0.25).toFixed(2)}s`,
         opacity: (0.3 + random() * 0.35).toFixed(2),
       } as Record<string, string>,
     }
@@ -41,12 +40,18 @@ const rings = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .bloc-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 1;
+}
+
+.bloc-drift > * {
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
 }
 
@@ -55,16 +60,18 @@ const rings = computed(() => {
   position: absolute;
   border-radius: 50%;
   border: 3px solid var(--soft-blue);
-  animation: bloc-breathe 20s ease-in-out infinite;
+  opacity: 0;
+  animation: bloc-in 0.7s var(--ease-out-expressive) var(--at, 0s) forwards;
 }
 
-@keyframes bloc-breathe {
-  0%,
-  100% {
-    transform: scale(0.96) translate3d(0, 0, 0);
+@keyframes bloc-in {
+  from {
+    opacity: 0;
+    scale: 0.75;
   }
-  50% {
-    transform: scale(1.05) translate3d(2%, -2%, 0);
+  to {
+    opacity: 1;
+    scale: 1;
   }
 }
 </style>

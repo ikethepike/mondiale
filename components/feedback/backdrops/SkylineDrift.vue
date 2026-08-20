@@ -216,14 +216,16 @@ const ranks = computed(() => {
   overflow: hidden;
   position: absolute;
   pointer-events: none;
-  // Only the bottom edge is masked away, not the middle: the band sits BELOW
-  // the copy rather than behind it, so it needs no centre clearing.
-  mask-image: linear-gradient(to bottom, transparent 34%, black 62%);
+  // Opaque: the band only covers the bottom, so without a ground of its own
+  // the live round reads through the whole upper half of the card.
+  background: var(--sour-milk);
 }
 
 .rank {
   left: 0;
   bottom: 0;
+  // The fade lives on the towers, not the field, so the opaque ground stays.
+  mask-image: linear-gradient(to bottom, transparent 4%, black 34%);
   width: 200%;
   display: block;
   position: absolute;

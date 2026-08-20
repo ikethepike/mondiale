@@ -33,8 +33,7 @@ const rows = computed(() => {
       left: width,
       right: width * (0.86 + random() * 0.28),
       style: {
-        animationDelay: `${(-random() * 14).toFixed(2)}s`,
-        animationDuration: `${(9 + random() * 7).toFixed(2)}s`,
+        '--at': `${(index * 0.05 + random() * 0.25).toFixed(2)}s`,
         opacity: (0.3 + random() * 0.35).toFixed(2),
       } as Record<string, string>,
     }
@@ -45,6 +44,9 @@ const rows = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .society-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   gap: 0.5%;
@@ -55,6 +57,9 @@ const rows = computed(() => {
   flex-flow: column-reverse nowrap;
   pointer-events: none;
   opacity: 0.85;
+}
+
+.society-drift > * {
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
 }
 
@@ -65,7 +70,8 @@ const rows = computed(() => {
   min-height: 0;
   align-items: stretch;
   justify-content: center;
-  animation: cohort-breathe 11s ease-in-out infinite;
+  opacity: 0;
+  animation: cohort-in 0.5s var(--ease-out-expressive) var(--at, 0s) forwards;
 }
 
 .bar {
@@ -78,13 +84,14 @@ const rows = computed(() => {
 }
 
 // Resting state is the full bar; the breath only narrows it.
-@keyframes cohort-breathe {
-  0%,
-  100% {
-    transform: scaleX(1);
+@keyframes cohort-in {
+  from {
+    opacity: 0;
+    scale: 0.4 1;
   }
-  50% {
-    transform: scaleX(0.93);
+  to {
+    opacity: 1;
+    scale: 1 1;
   }
 }
 </style>

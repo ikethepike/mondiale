@@ -63,8 +63,7 @@ const lanes = computed(() => {
       kind: random() > 0.72 ? 'major' : 'minor',
       style: {
         left: `${(4 + random() * 92).toFixed(1)}%`,
-        animationDelay: `${(-random() * 14).toFixed(2)}s`,
-        animationDuration: `${(9 + random() * 6).toFixed(2)}s`,
+        '--at': `${(0.2 + index * 0.12 + random() * 0.3).toFixed(2)}s`,
       } as Record<string, string>,
     }))
     return {
@@ -74,9 +73,6 @@ const lanes = computed(() => {
       style: {
         top: `${6 + index * 21}%`,
         // Lanes drift at their own pace, so the field never marches in step.
-        animationDelay: `${(-random() * 50).toFixed(2)}s`,
-        animationDuration: `${(60 + random() * 40).toFixed(2)}s`,
-        animationDirection: index % 2 ? 'reverse' : 'normal',
         opacity: (0.7 + random() * 0.3).toFixed(2),
       } as Record<string, string>,
     }
@@ -87,12 +83,18 @@ const lanes = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .trend-drift {
+  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
+  // budget at 4x throttle, and an opaque field makes it unnecessary.
+  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 1;
+}
+
+.trend-drift > * {
   mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 40%, black 84%);
 }
 
@@ -101,7 +103,6 @@ const lanes = computed(() => {
   width: 124%;
   height: 2.4rem;
   position: absolute;
-  animation: lane-drift 80s linear infinite;
 }
 
 .rail {
@@ -127,7 +128,8 @@ const lanes = computed(() => {
   border-radius: 50%;
   // Resting state is seated on the rail; the animation only lifts it off and
   // sets it back, so a stopped card still shows a placed timeline.
-  animation: mark-settle 11s ease-in-out infinite;
+  opacity: 0;
+  animation: mark-settle 0.55s var(--ease-out-expressive) var(--at, 0s) forwards;
 }
 
 .minor {
@@ -155,12 +157,13 @@ const lanes = computed(() => {
 
 // The settle: up a little, then back down onto the line.
 @keyframes mark-settle {
-  0%,
-  100% {
-    translate: 0 0;
+  from {
+    opacity: 0;
+    translate: 0 -0.7rem;
   }
-  35% {
-    translate: 0 -0.5rem;
+  to {
+    opacity: 1;
+    translate: 0 0;
   }
 }
 </style>

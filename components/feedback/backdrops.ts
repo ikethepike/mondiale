@@ -136,7 +136,11 @@ export const backdropFor = (
   kind: RoundChallengeKind | undefined,
   seed: number
 ):
-  | { component: Component; props: Record<string, unknown>; ripple: 'keep' | 'replace' }
+  | {
+      component: Component
+      props: Record<string, unknown>
+      ripple: 'keep' | 'replace'
+    }
   | undefined => {
   if (!kind) return undefined
   const group = CHALLENGE_GROUP_BY_KIND[kind]
