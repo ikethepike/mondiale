@@ -1,91 +1,93 @@
 <template>
   <svg
     class="route-drift"
-    viewBox="0 0 2000 1001"
+    viewBox="0 0 400 260"
     preserveAspectRatio="xMidYMid slice"
     aria-hidden="true"
   >
-    <g class="ambient-loop">
-      <path v-for="link in links" :key="link.key" class="link" :d="link.d" :style="link.style" />
+    <g v-for="run in runs" :key="run.key">
+      <path
+        v-for="(hop, index) in run.hops"
+        :key="`l${index}`"
+        class="hop"
+        :d="hop.d"
+        pathLength="1"
+        :style="hop.style"
+      />
+      <circle
+        v-for="(stop, index) in run.stops"
+        :key="`d${index}`"
+        class="stop"
+        :cx="stop.x"
+        :cy="stop.y"
+        :r="stop.r"
+        :style="stop.style"
+      />
     </g>
-    <circle v-for="node in nodes" :key="node.key" class="node" :cx="node.x" :cy="node.y" r="4" />
   </svg>
 </template>
 <script lang="ts" setup>
-import { MAP_BOUNDS } from '~~/data/map.gen'
-import { BORDERS } from '~~/data/borders.gen'
-import { sampleMany } from '~~/lib/arrays'
 import { seededRandom } from '~~/lib/random'
-import type { ISOCountryCode } from '~~/types/geography.types'
 
-/**
- * The navigation card's ground: the land-border graph, as a graph.
- *
- * Real neighbours joined by real arcs — which is exactly what a border run
- * traverses — but drawn as a lattice with no country named, so it reads as
- * connectivity rather than as a route anybody could copy.
- */
+/** Two routes hopping across the card at once — a dot lands, a line reaches to
+ *  the next, repeat. Hops are distance-clamped so a route never doubles back on
+ *  itself or leaps the whole width in one stride. */
 const props = defineProps<{ seed: number }>()
 
-const LINKS = 90
+const RUNS = 2
+const STOPS = 9
+const MIN_HOP = 34
+const MAX_HOP = 92
+const W = 400
+const H = 260
+/** Seconds per hop — the pace the whole effect is read at. */
+const HOP = 0.62
 
-// The bounds box centre, which is already in map space — precise enough for a
-// lattice nobody reads a route off, and free.
-const bounds = MAP_BOUNDS as Record<string, [number, number, number, number] | undefined>
-const centreOf = (isoCode: ISOCountryCode) => {
-  const box = bounds[isoCode]
-  if (!box) return undefined
-  return { x: box[0] + box[2] / 2, y: box[1] + box[3] / 2 }
-}
-
-const edges = computed(() => {
-  const seen = new Set<string>()
-  const out: { from: ISOCountryCode; to: ISOCountryCode }[] = []
-  for (const [from, neighbours] of Object.entries(BORDERS) as [
-    ISOCountryCode,
-    ISOCountryCode[],
-  ][]) {
-    for (const to of neighbours ?? []) {
-      const key = [from, to].sort().join('-')
-      if (seen.has(key)) continue
-      seen.add(key)
-      out.push({ from, to })
-    }
-  }
-  return out
-})
-
-const drawn = computed(() => {
+const runs = computed(() => {
   const random = seededRandom(props.seed)
-  return sampleMany(edges.value, LINKS, random).flatMap((edge, index) => {
-    const from = centreOf(edge.from)
-    const to = centreOf(edge.to)
-    if (!from || !to) return []
-    // Bow each link so a dense lattice reads as arcs rather than as a mesh.
-    const midX = (from.x + to.x) / 2
-    const midY = (from.y + to.y) / 2 - (12 + random() * 26)
-    return [
-      {
-        key: `${index}-${edge.from}-${edge.to}`,
-        from,
-        to,
-        d: `M ${from.x},${from.y} Q ${midX},${midY} ${to.x},${to.y}`,
-        style: {
-          animationDelay: `${(-random() * 12).toFixed(2)}s`,
-          animationDuration: `${(8 + random() * 8).toFixed(2)}s`,
-          opacity: (0.4 + random() * 0.45).toFixed(2),
-        } as Record<string, string>,
-      },
+  return Array.from({ length: RUNS }, (_, runIndex) => {
+    const stops: { x: number; y: number }[] = [
+      { x: 20 + random() * 60, y: runIndex === 0 ? 30 + random() * 50 : 150 + random() * 60 },
     ]
+    while (stops.length < STOPS) {
+      const from = stops[stops.length - 1]!
+      let placed = false
+      for (let attempt = 0; attempt < 24 && !placed; attempt++) {
+        // Bias rightward so a run reads as travel rather than a wander.
+        const angle = (random() - 0.5) * 1.9
+        const reach = MIN_HOP + random() * (MAX_HOP - MIN_HOP)
+        const x = from.x + Math.cos(angle) * reach
+        const y = from.y + Math.sin(angle) * reach
+        if (x < 12 || x > W - 12 || y < 12 || y > H - 12) continue
+        // Never land on top of a stop already placed.
+        if (stops.some(s => Math.hypot(s.x - x, s.y - y) < MIN_HOP * 0.8)) continue
+        stops.push({ x, y })
+        placed = true
+      }
+      if (!placed) break
+    }
+    // The second run starts half a hop later, so the two interleave.
+    const offset = runIndex * HOP * 0.5
+    return {
+      key: `run-${runIndex}`,
+      stops: stops.map((stop, index) => ({
+        ...stop,
+        r: index === 0 || index === stops.length - 1 ? 3.4 : 2.2,
+        style: { '--at': `${(offset + index * HOP).toFixed(2)}s` } as Record<string, string>,
+      })),
+      hops: stops.slice(1).map((stop, index) => {
+        const from = stops[index]!
+        return {
+          d: `M ${from.x.toFixed(1)},${from.y.toFixed(1)} L ${stop.x.toFixed(1)},${stop.y.toFixed(1)}`,
+          style: { '--at': `${(offset + index * HOP + HOP * 0.35).toFixed(2)}s` } as Record<
+            string,
+            string
+          >,
+        }
+      }),
+    }
   })
 })
-
-const links = computed(() => drawn.value)
-const nodes = computed(() =>
-  drawn.value
-    .slice(0, 40)
-    .map((link, index) => ({ key: `n${index}`, x: link.from.x, y: link.from.y }))
-)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -95,28 +97,46 @@ const nodes = computed(() =>
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 1;
-  mask-image: radial-gradient(ellipse 48% 42% at 50% 50%, transparent 32%, black 78%);
+  opacity: 0.85;
+  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
 }
 
-.link {
+.hop {
   fill: none;
   stroke: var(--soft-blue);
-  stroke-width: 2.4;
-  animation: route-pulse 12s ease-in-out infinite;
+  stroke-width: 1.8;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  vector-effect: non-scaling-stroke;
+  animation: stroke-draw 0.45s var(--ease-smooth) var(--at, 0s) forwards;
 }
 
-.node {
-  fill: ink(0.3);
+.stop {
+  fill: var(--soft-blue);
+  opacity: 0;
+  animation: stop-land 0.4s var(--ease-out-expressive) var(--at, 0s) forwards;
 }
 
-@keyframes route-pulse {
-  0%,
-  100% {
-    stroke-width: 1.2;
+@media (prefers-reduced-motion: reduce) {
+  .hop {
+    stroke-dashoffset: 0;
+    animation: none;
   }
-  50% {
-    stroke-width: 2.6;
+
+  .stop {
+    opacity: 0.9;
+    animation: none;
+  }
+}
+
+@keyframes stop-land {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+  to {
+    opacity: 0.9;
+    scale: 1;
   }
 }
 </style>

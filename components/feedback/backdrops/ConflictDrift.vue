@@ -5,15 +5,10 @@
     preserveAspectRatio="xMidYMid slice"
     aria-hidden="true"
   >
-    <g class="swarm ambient-loop">
-      <circle
-        v-for="dot in dots"
-        :key="dot.key"
-        :cx="dot.x"
-        :cy="dot.y"
-        :r="dot.r"
-        :style="dot.style"
-      />
+    <g v-for="strike in strikes" :key="strike.key" :style="strike.style">
+      <circle class="shock" :cx="strike.x" :cy="strike.y" :r="strike.reach" />
+      <circle class="shock late" :cx="strike.x" :cy="strike.y" :r="strike.reach" />
+      <circle class="core" :cx="strike.x" :cy="strike.y" :r="strike.core" />
     </g>
   </svg>
 </template>
@@ -22,35 +17,27 @@ import { CONFLICT_FIELDS } from '~~/data/conflict-events.gen'
 import { sampleMany } from '~~/lib/arrays'
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The conflicts card's ground: real UCDP event points, breathing.
- *
- * The points are already projected into the map's own viewBox (the generator
- * does it, so ConflictDotField can lay them straight over the map), which
- * means the swarm carries the SHAPE of where the world actually fights — the
- * Sahel, the Levant, the Horn — rather than a scatter that only looks busy.
- * Nothing here is a question: no country is named and no borders are drawn.
- */
+/** Real UCDP event points, pre-projected — so the field carries the shape of
+ *  where the world actually fights. Each lands as a flashpoint: a core, then
+ *  two shock rings pushing out and fading. No country named. */
 const props = defineProps<{ seed: number }>()
 
-const DOTS = 320
+const STRIKES = 150
 
-const dots = computed(() => {
+const strikes = computed(() => {
   const random = seededRandom(props.seed)
   const points = Object.values(CONFLICT_FIELDS).flatMap(
     field => field?.eras.flatMap(era => era.points) ?? []
   )
-  return sampleMany(points, DOTS, random).map((point, index) => ({
+  return sampleMany(points, STRIKES, random).map((point, index) => ({
     key: `${index}-${point[0]}-${point[1]}`,
     x: point[0],
     y: point[1],
-    r: 2.5 + random() * 6,
+    core: 4 + random() * 6,
+    reach: 22 + random() * 34,
     style: {
-      // Each dot breathes on its own phase, so the field never pulses as one
-      // body — a swarm, not a heartbeat.
-      animationDelay: `${(-random() * 9).toFixed(2)}s`,
-      animationDuration: `${(6 + random() * 6).toFixed(2)}s`,
-      opacity: (0.25 + random() * 0.55).toFixed(2),
+      '--at': `${(index * 0.018 + random() * 0.3).toFixed(2)}s`,
+      '--beat': `${(3.6 + random() * 2.4).toFixed(2)}s`,
     } as Record<string, string>,
   }))
 })
@@ -63,24 +50,67 @@ const dots = computed(() => {
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
   mask-image: radial-gradient(ellipse 46% 40% at 50% 50%, transparent 30%, black 76%);
 }
 
-circle {
-  fill: flame(0.55);
-  animation: conflict-breathe 8s ease-in-out infinite;
+.core {
+  fill: flame(0.95);
+  opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
+  animation: strike-land 0.5s var(--ease-out-expressive) var(--at, 0s) forwards;
 }
 
-@keyframes conflict-breathe {
-  0%,
-  100% {
-    transform: scale(0.75);
+.shock {
+  fill: none;
+  stroke: flame(0.8);
+  stroke-width: 3;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: shock-out var(--beat, 4s) ease-out infinite;
+  animation-delay: var(--at, 0s);
+}
+
+.late {
+  animation-delay: calc(var(--at, 0s) + 0.55s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core {
+    opacity: 0.8;
+    animation: none;
   }
-  50% {
-    transform: scale(1.25);
+
+  .shock {
+    opacity: 0.25;
+    animation: none;
+  }
+}
+
+@keyframes strike-land {
+  from {
+    opacity: 0;
+    scale: 0.2;
+  }
+  to {
+    opacity: 0.95;
+    scale: 1;
+  }
+}
+
+@keyframes shock-out {
+  0% {
+    opacity: 0;
+    scale: 0.15;
+  }
+  18% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    scale: 1;
   }
 }
 </style>

@@ -1,46 +1,83 @@
 <template>
-  <svg class="trend-drift" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-    <path
-      v-for="line in lines"
-      :key="line.key"
-      class="line ambient-loop"
-      :d="line.d"
-      :style="line.style"
-    />
-  </svg>
+  <div class="trend-drift" aria-hidden="true">
+    <div v-for="lane in lanes" :key="lane.key" class="lane" :style="lane.style">
+      <!-- The rail is the century; the ticks are the years on it. -->
+      <span class="rail" />
+      <span v-for="tick in lane.ticks" :key="tick.key" class="tick" :style="tick.style" />
+      <!-- Events sit ON the rail, the way a placed card does in the round.
+           Each rises into place on its own delay — the settling motion the
+           timeline itself has, slowed to the speed of a background. -->
+      <span
+        v-for="mark in lane.marks"
+        :key="mark.key"
+        class="mark"
+        :class="mark.kind"
+        :style="mark.style"
+      />
+    </div>
+  </div>
 </template>
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
 /**
- * The trends card's ground: curves climbing and falling.
+ * The trends card's ground: chronology, drawn as chronology.
  *
- * Drawn, not read from a series — every real curve here is somebody's answer
- * later in the round, and a backdrop that plots one has shown the shape of it.
- * A random walk with a drift term reads like the genuine article and says
- * nothing about anybody.
+ * The first version was a sheaf of random-walk lines — a stack of sparklines,
+ * which said "data" but never said "time", and crowded into the top third
+ * where it read as a tangle. The group's own centre of gravity is the timeline
+ * round: event cards placed along a year axis. So the ground is that axis —
+ * rails with ticks marching across them and events seated on the line.
+ *
+ * The events settle rather than appear. A timeline is the one round where the
+ * whole motion is a card finding its slot, and a backdrop that simply exists
+ * misses what the category feels like; each mark rises the last few pixels
+ * into its place on its own delay, so something is always arriving.
+ *
+ * Generated, not read from EVENTS: which year a thing happened in is precisely
+ * what the round asks, and a real chronology in the background would be a
+ * cheat sheet.
  */
 const props = defineProps<{ seed: number }>()
 
-const LINES = 10
-const STEPS = 28
+const LANES = 5
+const TICKS = 13
 
-const lines = computed(() => {
+const lanes = computed(() => {
   const random = seededRandom(props.seed)
-  return Array.from({ length: LINES }, (_, index) => {
-    const drift = (random() - 0.4) * 2.6
-    let value = 30 + random() * 60
-    const points = Array.from({ length: STEPS + 1 }, (_, step) => {
-      value = Math.max(6, Math.min(114, value + drift + (random() - 0.5) * 11))
-      return `${((step / STEPS) * 400).toFixed(1)},${value.toFixed(1)}`
-    })
-    return {
-      key: `line-${index}`,
-      d: `M ${points.join(' L ')}`,
+  return Array.from({ length: LANES }, (_, index) => {
+    // Ticks march evenly — a year axis is regular, and jittering it would say
+    // "sketch" where the round says "sequence".
+    const ticks = Array.from({ length: TICKS }, (_, tick) => ({
+      key: `t${tick}`,
       style: {
-        animationDelay: `${(-random() * 24).toFixed(2)}s`,
-        animationDuration: `${(20 + random() * 16).toFixed(2)}s`,
-        opacity: (0.45 + random() * 0.45).toFixed(2),
+        left: `${((tick / (TICKS - 1)) * 100).toFixed(2)}%`,
+        // Every fourth tick is the era marker, taller than its neighbours.
+        height: tick % 4 === 0 ? '1.1rem' : '0.55rem',
+        opacity: tick % 4 === 0 ? '0.7' : '0.4',
+      } as Record<string, string>,
+    }))
+    const marks = Array.from({ length: 4 + Math.floor(random() * 3) }, (_, mark) => ({
+      key: `m${mark}`,
+      // A few events are the big ones — a war, a founding — and read larger.
+      kind: random() > 0.72 ? 'major' : 'minor',
+      style: {
+        left: `${(4 + random() * 92).toFixed(1)}%`,
+        animationDelay: `${(-random() * 14).toFixed(2)}s`,
+        animationDuration: `${(9 + random() * 6).toFixed(2)}s`,
+      } as Record<string, string>,
+    }))
+    return {
+      key: `lane-${index}`,
+      ticks,
+      marks,
+      style: {
+        top: `${6 + index * 21}%`,
+        // Lanes drift at their own pace, so the field never marches in step.
+        animationDelay: `${(-random() * 50).toFixed(2)}s`,
+        animationDuration: `${(60 + random() * 40).toFixed(2)}s`,
+        animationDirection: index % 2 ? 'reverse' : 'normal',
+        opacity: (0.7 + random() * 0.3).toFixed(2),
       } as Record<string, string>,
     }
   })
@@ -52,27 +89,78 @@ const lines = computed(() => {
 .trend-drift {
   inset: 0;
   z-index: 0;
+  overflow: hidden;
   position: absolute;
   pointer-events: none;
-  opacity: 0.95;
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
+  opacity: 1;
+  mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 40%, black 84%);
 }
 
-.line {
-  fill: none;
-  stroke: ink(0.42);
-  stroke-width: 2.4;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  animation: trend-slide 26s linear infinite;
+.lane {
+  left: -12%;
+  width: 124%;
+  height: 2.4rem;
+  position: absolute;
+  animation: lane-drift 80s linear infinite;
 }
 
-@keyframes trend-slide {
+.rail {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 0.2rem;
+  position: absolute;
+  background: ink(0.42);
+}
+
+.tick {
+  top: 50%;
+  width: 0.2rem;
+  position: absolute;
+  background: ink(0.42);
+  transform: translateY(-50%);
+}
+
+.mark {
+  top: 50%;
+  position: absolute;
+  border-radius: 50%;
+  // Resting state is seated on the rail; the animation only lifts it off and
+  // sets it back, so a stopped card still shows a placed timeline.
+  animation: mark-settle 11s ease-in-out infinite;
+}
+
+.minor {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin: -0.35rem 0 0 -0.35rem;
+  background: ink(0.5);
+}
+
+.major {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: -0.575rem 0 0 -0.575rem;
+  background: var(--hior-ange);
+}
+
+@keyframes lane-drift {
   from {
-    transform: translate3d(-6%, 0, 0);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translate3d(6%, 0, 0);
+    transform: translate3d(-8%, 0, 0);
+  }
+}
+
+// The settle: up a little, then back down onto the line.
+@keyframes mark-settle {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  35% {
+    translate: 0 -0.5rem;
   }
 }
 </style>

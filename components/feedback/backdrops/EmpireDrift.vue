@@ -10,6 +10,7 @@
       :key="ghost.key"
       class="ghost ambient-loop"
       :d="ghost.d"
+      pathLength="1"
       :style="ghost.style"
     />
   </svg>
@@ -19,15 +20,8 @@ import { EMPIRE_PATHS } from '~~/data/empire-paths.gen'
 import { sampleMany } from '~~/lib/arrays'
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The empires card's ground: old borders, surfacing and fading.
- *
- * Real keyframe extents from the historical basemaps, drawn as outlines in the
- * map's own space — so the shapes are the actual reach of actual empires, not
- * decorative blobs. They cross-fade rather than morph: a morph is the empire
- * ROUND's own language (EmpireGhostField), and a backdrop that animates the
- * same way would read as the question starting early.
- */
+/** Real historical extents, surfacing and fading. They cross-fade rather than
+ *  morph — morphing is the empire ROUND's own language (EmpireGhostField). */
 const props = defineProps<{ seed: number }>()
 
 const GHOSTS = 7
@@ -43,7 +37,8 @@ const ghosts = computed(() => {
     key: entry.id,
     d: entry.d,
     style: {
-      // Staggered so one is always arriving as another leaves.
+      // The draw happens once on arrival; the surfacing loop opens mid-way.
+      '--draw-delay': `${(index * 0.22).toFixed(2)}s`,
       animationDelay: `${(-index * 2.6 - random() * 2).toFixed(2)}s`,
       animationDuration: `${(17 + random() * 7).toFixed(2)}s`,
     } as Record<string, string>,
@@ -62,9 +57,17 @@ const ghosts = computed(() => {
   mask-image: radial-gradient(ellipse 54% 48% at 50% 50%, transparent 40%, black 86%);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ghost {
+    stroke-dashoffset: 0;
+  }
+}
+
 .ghost {
   fill: ink(0.07);
   stroke: ink(0.42);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
   stroke-width: 3.4;
   stroke-linejoin: round;
   // The RESTING state is visible, and the animation moves away from it — not
@@ -73,7 +76,9 @@ const ghosts = computed(() => {
   // renders blank. This is the ContourRipple mistake, and it is easy to make
   // twice: paint the still frame first, animate second.
   opacity: 0.55;
-  animation: empire-surface 20s ease-in-out infinite;
+  animation:
+    stroke-draw 1.4s var(--ease-out-expressive) var(--draw-delay, 0s) forwards,
+    empire-surface 20s ease-in-out infinite;
 }
 
 // Never fully present: an extent that resolves completely reads as the answer

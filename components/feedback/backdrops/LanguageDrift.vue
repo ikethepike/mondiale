@@ -1,58 +1,64 @@
 <template>
-  <div class="language-drift" aria-hidden="true">
-    <svg
-      v-for="wave in waves"
-      :key="wave.key"
-      class="wave ambient-loop"
-      :style="wave.style"
-      viewBox="0 0 400 40"
-      preserveAspectRatio="none"
-    >
-      <path :d="wave.d" />
-    </svg>
-  </div>
+  <svg
+    class="language-drift"
+    viewBox="0 0 400 300"
+    preserveAspectRatio="xMidYMid slice"
+    aria-hidden="true"
+  >
+    <!-- Back to front, so a nearer ridge masks the one behind it. -->
+    <path
+      v-for="ridge in ridges"
+      :key="ridge.key"
+      class="ridge"
+      :d="ridge.d"
+      :style="ridge.style"
+    />
+  </svg>
 </template>
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The language card's ground: speech seen rather than heard.
- *
- * Waveforms, because every mode under this toggle is something SAID — an
- * anthem playing, a language spoken aloud, a tongue named. Drawn rather than
- * sampled from the real audio: the actual clip is the round's subject, and a
- * backdrop tracing it would leak the answer's shape.
- */
+/** Stacked waveform ridges — one line per voice, each filled so it occludes
+ *  the one behind. Synthesised, not sampled: the real clip is the round's
+ *  subject. */
 const props = defineProps<{ seed: number }>()
 
-const WAVES = 11
-const STEPS = 64
+const RIDGES = 22
+const STEPS = 90
+const W = 400
+const H = 300
 
-const waves = computed(() => {
+const ridges = computed(() => {
   const random = seededRandom(props.seed)
-  return Array.from({ length: WAVES }, (_, index) => {
-    // A sum of three sines reads as speech; one reads as a test tone.
-    const a = 0.5 + random() * 1.6
-    const b = 1.4 + random() * 2.8
-    const c = 3 + random() * 4
-    const phase = random() * Math.PI * 2
+  return Array.from({ length: RIDGES }, (_, index) => {
+    const baseline = 22 + (index / (RIDGES - 1)) * (H - 44)
+    // Energy peaks mid-line and dies at the edges, so each ridge sits flat on
+    // its baseline before and after it speaks.
+    const centre = 0.4 + random() * 0.2
+    const spread = 0.1 + random() * 0.08
+    const height = 13 + random() * 15
+    const detail = 2 + Math.floor(random() * 3)
+    const waves = Array.from({ length: detail }, () => ({
+      frequency: 5 + random() * 13,
+      amplitude: 0.35 + random() * 0.65,
+      phase: random() * Math.PI * 2,
+    }))
     const points = Array.from({ length: STEPS + 1 }, (_, step) => {
       const t = step / STEPS
-      const value =
-        Math.sin(t * Math.PI * 2 * a + phase) * 0.5 +
-        Math.sin(t * Math.PI * 2 * b + phase) * 0.3 +
-        Math.sin(t * Math.PI * 2 * c + phase) * 0.2
-      return `${(t * 400).toFixed(1)},${(20 + value * 17).toFixed(1)}`
+      const envelope = Math.exp(-((t - centre) ** 2) / (2 * spread * spread))
+      let value = 0
+      for (const wave of waves) {
+        value += Math.sin(t * Math.PI * 2 * wave.frequency + wave.phase) * wave.amplitude
+      }
+      const y = baseline - Math.abs(value) * envelope * height
+      return `${(t * W).toFixed(1)},${y.toFixed(1)}`
     })
+    // Closed along its own baseline so the fill hides whatever is behind.
     return {
-      key: `wave-${index}`,
-      d: `M ${points.join(' L ')}`,
+      key: `ridge-${index}`,
+      d: `M 0,${baseline.toFixed(1)} L ${points.join(' L ')} L ${W},${baseline.toFixed(1)} z`,
       style: {
-        top: `${2 + index * 9}%`,
-        animationDelay: `${(-random() * 30).toFixed(2)}s`,
-        animationDuration: `${(26 + random() * 20).toFixed(2)}s`,
-        animationDirection: index % 2 ? 'reverse' : 'normal',
-        opacity: (0.5 + random() * 0.5).toFixed(2),
+        '--at': `${(index * 0.075).toFixed(2)}s`,
       } as Record<string, string>,
     }
   })
@@ -64,34 +70,38 @@ const waves = computed(() => {
 .language-drift {
   inset: 0;
   z-index: 0;
-  overflow: hidden;
   position: absolute;
   pointer-events: none;
-  opacity: 0.9;
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse 54% 48% at 50% 50%, transparent 38%, black 86%);
 }
 
-.wave {
-  left: -30%;
-  width: 160%;
-  height: 12%;
-  position: absolute;
-  animation: wave-slide 32s linear infinite;
+.ridge {
+  fill: var(--sour-milk);
+  stroke: ink(0.5);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  animation: ridge-in 0.75s var(--ease-out-expressive) var(--at, 0s) forwards;
+}
 
-  path {
-    fill: none;
-    stroke: ink(0.5);
-    stroke-width: 2.2;
-    vector-effect: non-scaling-stroke;
+@media (prefers-reduced-motion: reduce) {
+  .ridge {
+    opacity: 1;
+    animation: none;
   }
 }
 
-@keyframes wave-slide {
+// Each voice fades up and settles, top to bottom.
+@keyframes ridge-in {
   from {
-    transform: translate3d(-12%, 0, 0);
+    opacity: 0;
+    translate: 0 8px;
   }
   to {
-    transform: translate3d(12%, 0, 0);
+    opacity: 1;
+    translate: 0 0;
   }
 }
 </style>

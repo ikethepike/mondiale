@@ -14,7 +14,12 @@
       <!-- Twice through: at -50% the second copy lands exactly where the
            first began, so the pan loops with no seam. -->
       <g v-for="pass in 2" :key="pass" :transform="`translate(${(pass - 1) * RANK_WIDTH} 0)`">
-        <g v-for="(tower, index) in rank.towers" :key="index">
+        <g
+          v-for="(tower, index) in rank.towers"
+          :key="index"
+          class="tower-group"
+          :style="{ '--rise-delay': `${(index * 0.035).toFixed(2)}s` }"
+        >
           <path class="tower" :d="tower.d" />
           <rect
             v-if="tower.antenna"
@@ -42,15 +47,9 @@
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The cities card's ground: a skyline along the bottom edge.
- *
- * The 2D twin of the board's capital gate marker (`capitalSkyline` in
- * board-builder), which is towers and an antenna for the same reason — it is
- * the shape everyone reads as "a city" instantly, where a scatter of lights
- * needs a second to resolve. Generated, so it is no city in particular: an
- * actual skyline is what the capital round asks a player to name.
- */
+/** A skyline along the bottom edge — the 2D twin of the board's capital gate
+ *  marker. Generated, so it is no city in particular: a real one is what the
+ *  capital round asks a player to name. */
 const props = defineProps<{ seed: number }>()
 
 const RANK_WIDTH = 1200
@@ -241,8 +240,28 @@ const ranks = computed(() => {
   opacity: 0.55;
 }
 
+.tower-group {
+  // Each tower rises on its own beat, so the skyline builds rather than
+  // switching on.
+  transform-box: view-box;
+  animation: tower-rise 0.9s var(--ease-out-expressive) var(--rise-delay, 0s) backwards;
+}
+
 .tower {
   fill: ink(0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tower-group {
+    animation: none;
+  }
+}
+
+@keyframes tower-rise {
+  from {
+    // The viewBox height, so a tower starts genuinely off-stage.
+    transform: translateY(130px);
+  }
 }
 
 .window {

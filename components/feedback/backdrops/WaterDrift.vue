@@ -5,6 +5,7 @@
       :key="line.key"
       class="isobath ambient-loop"
       :d="line.d"
+      pathLength="1"
       :style="line.style"
     />
   </svg>
@@ -12,11 +13,8 @@
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The water card's ground: isobaths — the nested contours a chart draws round
- * a depth. The hand-drawn idiom ContourRipple established, held still and
- * spread wide instead of expanding from a point.
- */
+/** Isobaths — ContourRipple's hand-drawn idiom, spread wide instead of
+ *  expanding from a point. */
 const props = defineProps<{ seed: number }>()
 
 const LINES = 13
@@ -38,6 +36,7 @@ const lines = computed(() => {
       key: `iso-${index}`,
       d: `M ${points.join(' L ')}`,
       style: {
+        '--draw-delay': `${(index * 0.07).toFixed(2)}s`,
         animationDelay: `${(-random() * 30).toFixed(2)}s`,
         animationDuration: `${(24 + random() * 18).toFixed(2)}s`,
         animationDirection: index % 2 ? 'reverse' : 'normal',
@@ -62,7 +61,17 @@ const lines = computed(() => {
   stroke: var(--soft-blue);
   stroke-width: 2.4;
   vector-effect: non-scaling-stroke;
-  animation: isobath-drift 30s linear infinite;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    stroke-draw 1.2s var(--ease-out-expressive) var(--draw-delay, 0s) forwards,
+    isobath-drift 30s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .isobath {
+    stroke-dashoffset: 0;
+  }
 }
 
 @keyframes isobath-drift {
