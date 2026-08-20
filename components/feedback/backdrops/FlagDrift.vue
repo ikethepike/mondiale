@@ -10,8 +10,7 @@ import FlagSketch from '~~/components/challenge/FlagSketch.vue'
 import { forgeFlag } from '~~/lib/flags/forge'
 import { seededRandom } from '~~/lib/random'
 
-/** Forged flags drawn on as ink lines, the way the sketch round draws a real
- *  one. Generated rather than real: a wall of real flags is a wall of answers. */
+/** Forged flags drawn on as ink lines. */
 const props = defineProps<{ seed: number }>()
 
 const SHEETS = 5
@@ -34,19 +33,13 @@ const sketches = computed(() => {
 </script>
 <style lang="scss" scoped>
 .flag-drift {
-  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
-  // budget at 4x throttle, and an opaque field makes it unnecessary.
-  background: var(--sour-milk);
+  mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 40%, black 84%);
   inset: 0;
   z-index: 0;
   overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 0.8;
-}
-
-.flag-drift > * {
-  mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 40%, black 84%);
 }
 
 .sheet {

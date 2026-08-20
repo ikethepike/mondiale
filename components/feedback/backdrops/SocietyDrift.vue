@@ -9,14 +9,7 @@
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The society card's ground: an age pyramid, abstracted.
- *
- * Paired bars narrowing upward — the silhouette every population shares,
- * whatever its numbers. Generated rather than taken from PYRAMIDS, because a
- * real country's structure is precisely what the pyramid round asks a player
- * to recognise.
- */
+/** An age pyramid, abstracted. */
 const props = defineProps<{ seed: number }>()
 
 const ROWS = 17
@@ -24,7 +17,6 @@ const ROWS = 17
 const rows = computed(() => {
   const random = seededRandom(props.seed)
   return Array.from({ length: ROWS }, (_, index) => {
-    // Cohorts thin toward the top, with the jitter real censuses carry.
     const share = (1 - index / ROWS) ** 1.35
     const jitter = 0.82 + random() * 0.36
     const width = Math.max(4, share * 42 * jitter)
@@ -44,9 +36,7 @@ const rows = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .society-drift {
-  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
-  // budget at 4x throttle, and an opaque field makes it unnecessary.
-  background: var(--sour-milk);
+  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
   inset: 0;
   z-index: 0;
   gap: 0.5%;
@@ -56,11 +46,7 @@ const rows = computed(() => {
   padding: 4% 0;
   flex-flow: column-reverse nowrap;
   pointer-events: none;
-  opacity: 0.85;
-}
-
-.society-drift > * {
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
+  opacity: 0.4;
 }
 
 .row {
@@ -75,7 +61,7 @@ const rows = computed(() => {
 }
 
 .bar {
-  background: ink(0.42);
+  background: ink(0.3);
   border-radius: 2px;
 }
 
@@ -83,7 +69,6 @@ const rows = computed(() => {
   justify-self: end;
 }
 
-// Resting state is the full bar; the breath only narrows it.
 @keyframes cohort-in {
   from {
     opacity: 0;

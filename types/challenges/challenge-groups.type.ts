@@ -132,11 +132,10 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'no-mans-land': 'disputed',
   'trend-race': 'trends',
   timeline: 'trends',
-  // 'society' would read more accurately — it is an age structure, nothing
-  // else — but that group is hidden, and a kind filed under a hidden group
-  // could never be toggled off. Trends is the visible home for the data
-  // shapes, and a pyramid IS a demographic trend held still.
-  'pyramid-scheme': 'trends',
+  // An age structure and nothing else. It sat under 'trends' only because
+  // 'society' was hidden and an unreachable toggle is no toggle at all; the
+  // split made society visible, so it comes home.
+  'pyramid-scheme': 'society',
   // Draws clues from every stat topic, so no single accessor group owns it
   // (and those groups are hidden — a kind filed there could never be toggled
   // off). Trends is the visible home for the data-pool rounds.

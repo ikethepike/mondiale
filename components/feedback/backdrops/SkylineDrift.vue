@@ -1,7 +1,5 @@
 <template>
   <div class="skyline-drift" aria-hidden="true">
-    <!-- Two ranks: the far one paler and slower, so the band has depth rather
-         than reading as one flat cut-out. -->
     <svg
       v-for="rank in ranks"
       :key="rank.key"
@@ -11,8 +9,6 @@
       :viewBox="`0 0 ${RANK_WIDTH * 2} 120`"
       preserveAspectRatio="none"
     >
-      <!-- Twice through: at -50% the second copy lands exactly where the
-           first began, so the pan loops with no seam. -->
       <g v-for="pass in 2" :key="pass" :transform="`translate(${(pass - 1) * RANK_WIDTH} 0)`">
         <g
           v-for="(tower, index) in rank.towers"
@@ -47,9 +43,7 @@
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/** A skyline along the bottom edge — the 2D twin of the board's capital gate
- *  marker. Generated, so it is no city in particular: a real one is what the
- *  capital round asks a player to name. */
+/** A generated skyline along the bottom edge — five building types. */
 const props = defineProps<{ seed: number }>()
 
 const RANK_WIDTH = 1200
@@ -64,11 +58,6 @@ type Tower = {
   d: string
 }
 
-/**
- * The shapes a skyline is actually made of. A real one is mostly slabs with a
- * few of everything else, which is what the weights encode — an even mix reads
- * as a novelty skyline, and slabs alone read as a bar chart.
- */
 type TowerKind = 'slab' | 'setback' | 'spire' | 'dome' | 'pitched'
 const KINDS: [TowerKind, number][] = [
   ['slab', 0.46],
@@ -79,7 +68,6 @@ const KINDS: [TowerKind, number][] = [
 ]
 
 const pickKind = (random: () => number, tall: boolean): TowerKind => {
-  // The back rank is the low-rise city behind the towers: no spires there.
   const pool = tall ? KINDS : KINDS.filter(([kind]) => kind !== 'spire')
   const total = pool.reduce((sum, [, weight]) => sum + weight, 0)
   let roll = random() * total
@@ -90,7 +78,6 @@ const pickKind = (random: () => number, tall: boolean): TowerKind => {
   return 'slab'
 }
 
-/** One tower's silhouette, bottom-anchored on the 120-unit baseline. */
 const silhouette = (
   kind: TowerKind,
   x: number,
@@ -102,26 +89,20 @@ const silhouette = (
   const right = x + width
   switch (kind) {
     case 'setback': {
-      // Steps in as it rises — the pre-war tower, and the one shape that makes
-      // a row of boxes look like a city rather than a chart.
       const inset = width * (0.16 + random() * 0.12)
       const shoulder = top + height * (0.28 + random() * 0.2)
       return `M ${x},120 L ${x},${shoulder} L ${x + inset},${shoulder} L ${x + inset},${top} L ${right - inset},${top} L ${right - inset},${shoulder} L ${right},${shoulder} L ${right},120 z`
     }
     case 'spire': {
-      // Tapers to a point: the mast that gives a skyline its high note.
       const shoulder = top + height * (0.3 + random() * 0.15)
       const taper = width * 0.3
       return `M ${x},120 L ${x},${shoulder} L ${x + taper},${top} L ${right - taper},${top} L ${right},${shoulder} L ${right},120 z`
     }
     case 'dome': {
-      // The civic building — a capital has a parliament, and a dome is the one
-      // roof nobody mistakes for an office block.
       const shoulder = top + width * 0.42
       return `M ${x},120 L ${x},${shoulder} A ${width / 2},${width * 0.46} 0 0 1 ${right},${shoulder} L ${right},120 z`
     }
     case 'pitched': {
-      // Low, roofed, older: the fabric a downtown actually stands in.
       const eaves = top + height * 0.26
       return `M ${x},120 L ${x},${eaves} L ${x + width / 2},${top} L ${right},${eaves} L ${right},120 z`
     }
@@ -130,15 +111,11 @@ const silhouette = (
   }
 }
 
-/** One rank of towers, tiled twice so the slow drift never shows an end. */
 const buildRank = (random: () => number, tall: boolean): Tower[] => {
   const towers: Tower[] = []
   let x = 0
   while (x < RANK_WIDTH) {
     const kind = pickKind(random, tall)
-    // Clamps per type, so the shapes stay recognisable: a dome is wide and
-    // squat whatever the roll, a spire is narrow and tall, and nothing is
-    // allowed to be a square blob.
     const width =
       kind === 'dome'
         ? 26 + random() * 22
@@ -156,15 +133,11 @@ const buildRank = (random: () => number, tall: boolean): Tower[] => {
           ? base * 0.5 + span * (0.16 + random() * 0.28)
           : base + random() * span
     const windows: Window[] = []
-    // Window grid, inset from the edges so the tower keeps its silhouette.
     const columns = Math.max(1, Math.floor((width - 6) / 7))
-    // Keep windows out of whatever the roof is doing — a dome and a pitch are
-    // not glazed, and a spire's taper would leave them hanging in the air.
     const roofless = kind === 'slab' || kind === 'setback' ? 8 : height * 0.42
     const rows = Math.max(1, Math.floor((height - roofless) / 9))
     for (let column = 0; column < columns; column++) {
       for (let row = 0; row < rows; row++) {
-        // Most windows are dark; a lit minority is what reads as night.
         if (random() > 0.42) continue
         windows.push({
           x: x + 4 + column * 7,
@@ -179,7 +152,6 @@ const buildRank = (random: () => number, tall: boolean): Tower[] => {
       x,
       width,
       height,
-      // A mast belongs on a flat top; a spire already is one.
       antenna: (kind === 'slab' || kind === 'setback') && random() > 0.82 ? 6 + random() * 14 : 0,
       windows,
       d: silhouette(kind, x, width, height, random),
@@ -216,15 +188,12 @@ const ranks = computed(() => {
   overflow: hidden;
   position: absolute;
   pointer-events: none;
-  // Opaque: the band only covers the bottom, so without a ground of its own
-  // the live round reads through the whole upper half of the card.
   background: var(--sour-milk);
 }
 
 .rank {
   left: 0;
   bottom: 0;
-  // The fade lives on the towers, not the field, so the opaque ground stays.
   mask-image: linear-gradient(to bottom, transparent 4%, black 34%);
   width: 200%;
   display: block;
@@ -243,8 +212,6 @@ const ranks = computed(() => {
 }
 
 .tower-group {
-  // Each tower rises on its own beat, so the skyline builds rather than
-  // switching on.
   transform-box: view-box;
   animation: tower-rise 0.9s var(--ease-out-expressive) var(--rise-delay, 0s) backwards;
 }
@@ -261,7 +228,6 @@ const ranks = computed(() => {
 
 @keyframes tower-rise {
   from {
-    // The viewBox height, so a tower starts genuinely off-stage.
     transform: translateY(130px);
   }
 }
@@ -270,7 +236,6 @@ const ranks = computed(() => {
   fill: var(--night-amber);
 }
 
-// Resting state is a full band; the pan only slides it.
 @keyframes skyline-pan {
   from {
     transform: translate3d(0, 0, 0);

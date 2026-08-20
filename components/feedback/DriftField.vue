@@ -6,8 +6,6 @@
       class="column ambient-loop"
       :style="column.style"
     >
-      <!-- Twice through: the second run is what the first scrolls into, so the
-           loop closes without a seam. -->
       <template v-for="pass in 2" :key="pass">
         <img
           v-for="tile in column.tiles"
@@ -62,11 +60,7 @@ const columns = computed(() => {
   const count = Math.max(1, props.columns)
   return Array.from({ length: count }, (_, index) => {
     const picked = sampleMany(props.tiles, props.perColumn, random)
-    // Alternate direction per column: a wall drifting one way reads as a
-    // scroll, two ways as a surface.
     const reverse = index % 2 === 1
-    // Spread the phase so neighbouring columns never line up their seams, and
-    // open mid-loop (see the note above).
     const offset = -props.driftSeconds * (0.15 + random() * 0.7)
     return {
       style: {
@@ -78,8 +72,6 @@ const columns = computed(() => {
         key: `${index}-${tileIndex}-${tile.src}`,
         src: tile.src,
         style: {
-          // Ratio is width/height: a wide wordmark and a square crest must
-          // paint comparable AREA or the wall reads as a ranking.
           aspectRatio: `${tile.ratio && tile.ratio > 0 ? tile.ratio : 1}`,
           width: `${Math.round(84 + random() * 16)}%`,
           opacity: `${(0.5 + random() * 0.5).toFixed(2)}`,
@@ -102,16 +94,9 @@ const columns = computed(() => {
   position: absolute;
   padding: 0 0.6%;
   pointer-events: none;
-  // The wall is ground: hold it well under the copy's contrast, and drop the
-  // colour so a hundred party palettes read as one texture rather than
-  // confetti.
   opacity: 0.22;
   filter: saturate(0.3);
-  // Tilt the whole grid — the reference's marks sit off-square, which is what
-  // stops a wall of rectangles reading as a spreadsheet. Scaled up so the
-  // rotation never swings an unpainted corner into frame.
   transform: rotate(-8deg) scale(1.35);
-  // Keep the middle clear for the words.
   mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 42%, black 85%);
 }
 
@@ -132,15 +117,9 @@ const columns = computed(() => {
   height: auto;
   object-fit: contain;
   flex: none;
-  // Many marks ship on an opaque white plate rather than transparency, which
-  // punches lit rectangles through the wash and turns a texture back into a
-  // grid of tiles. `multiply` lets the cream swallow the plate and leaves only
-  // the ink — the one blend that treats both kinds of file the same.
   mix-blend-mode: multiply;
 }
 
-// Half, because the strip is drawn twice: at -50% the second pass sits exactly
-// where the first began.
 @keyframes drift-column {
   from {
     transform: translate3d(0, 0, 0);

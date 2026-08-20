@@ -1,23 +1,17 @@
 <template>
   <div class="disputed-drift" aria-hidden="true">
     <div v-for="island in islands" :key="island.key" class="island" :style="island.style">
-      <!-- One flag each side of the line, forged from the island's own seed so
-           the same rock always draws the same two claimants. -->
-      <!-- eslint-disable-next-line vue/no-v-html -- SVG forged locally by lib/flags/forge -->
+      <!-- eslint-disable vue/no-v-html -- SVG forged locally by lib/flags/forge -->
       <span class="claimant left" v-html="island.left" />
-      <!-- eslint-disable-next-line vue/no-v-html -- SVG forged locally by lib/flags/forge -->
       <span class="claimant right" v-html="island.right" />
+      <!-- eslint-enable vue/no-v-html -->
       <svg class="land" :viewBox="`0 0 ${ISLAND_W} ${ISLAND_H}`">
         <defs>
-          <!-- The border is clipped to the coast: a line that runs on past the
-               shore is a line drawn on the sea. -->
           <clipPath :id="`coast-${island.key}`">
             <path :d="island.coast" />
           </clipPath>
         </defs>
         <path class="coast" :d="island.coast" />
-        <!-- The border runs the island's full height, wandering the way a
-             surveyed line does rather than ruling straight down. -->
         <g :clip-path="`url(#coast-${island.key})`">
           <path class="border ambient-loop" :d="island.border" :style="island.borderStyle" />
         </g>
@@ -29,49 +23,23 @@
 import { forgeFlag } from '~~/lib/flags/forge'
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The disputed card's ground: an island with a line drawn down it and a flag
- * planted either side.
- *
- * Earlier passes drew the real recognition outlines and came out blank — the
- * median disputed territory is 3x2 units on a 2000-unit map, and three of them
- * are bare rocks with zero-sized bounds. This draws the SITUATION instead, and
- * says it plainly: one piece of land, two claimants, a border neither agrees
- * on. The flags are forged (lib/flags/forge) rather than real, because a real
- * pair would name the countries and every disputed round is a question about
- * exactly that.
- */
+/** An island, a dashed border down it, a forged flag either side. */
 const props = defineProps<{ seed: number }>()
 
 const ISLANDS = 3
 const ISLAND_W = 200
 const ISLAND_H = 130
 
-/**
- * A closed coastline.
- *
- * Two passes, because one does not give you a coast. The first lays down the
- * broad form — a handful of low-frequency lobes, which is what makes an island
- * long or kidney-shaped rather than round. The second adds detail at three
- * halving scales, the way a real coast is rough at every zoom: headlands carry
- * coves, coves carry rocks.
- *
- * Drawn as straight segments on purpose. Smoothing every point through a
- * quadratic — the obvious move, and the first thing tried here — rounds off
- * exactly the detail this generates, and turns a rocky island back into a lump.
- */
 const coastline = (random: () => number): string => {
   const STEPS = 150
   const cx = ISLAND_W / 2
   const cy = ISLAND_H / 2
 
-  // The broad form: three lobes at low frequency, random phase.
   const lobes = Array.from({ length: 3 }, (_, index) => ({
     frequency: index + 2,
     amplitude: (0.22 - index * 0.05) * (0.6 + random()),
     phase: random() * Math.PI * 2,
   }))
-  // The roughness: each octave half the size and twice the frequency.
   const octaves = Array.from({ length: 3 }, (_, index) => ({
     frequency: 7 * 2 ** index,
     amplitude: 0.09 / 2 ** index,
@@ -98,7 +66,6 @@ const coastline = (random: () => number): string => {
     .join(' ')} z`
 }
 
-/** The line down the middle — surveyed, so it bends and doubles back. */
 const borderLine = (random: () => number): string => {
   const STEPS = 9
   let x = ISLAND_W / 2 + (random() - 0.5) * 12
@@ -112,12 +79,6 @@ const borderLine = (random: () => number): string => {
     .join(' ')
 }
 
-/**
- * Where the three sit. Fixed anchors with a little jitter, not free scatter:
- * three random points in a box collide about as often as they spread, and a
- * seed that overlapped two islands read as one shapeless mass while the bottom
- * half of the card sat empty.
- */
 const ANCHORS: [number, number][] = [
   [4, 6],
   [62, 4],
@@ -153,19 +114,13 @@ const islands = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .disputed-drift {
-  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
-  // budget at 4x throttle, and an opaque field makes it unnecessary.
-  background: var(--sour-milk);
+  mask-image: radial-gradient(ellipse 56% 50% at 50% 50%, transparent 44%, black 88%);
   inset: 0;
   z-index: 0;
   overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 0.55;
-}
-
-.disputed-drift > * {
-  mask-image: radial-gradient(ellipse 56% 50% at 50% 50%, transparent 44%, black 88%);
 }
 
 .island {
@@ -188,8 +143,6 @@ const islands = computed(() => {
   stroke-linejoin: round;
 }
 
-// Dashed because it is not agreed. A solid line would be a settled border,
-// which is the one thing none of these has.
 .border {
   fill: none;
   stroke: var(--hior-ange);
@@ -210,8 +163,6 @@ const islands = computed(() => {
   width: 19%;
   position: absolute;
   transform: translateY(-50%);
-  // The flags sit UNDER the coast outline, planted in their half rather than
-  // floating over the island.
   z-index: -1;
 
   :deep(svg) {

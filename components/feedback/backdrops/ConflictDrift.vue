@@ -17,9 +17,7 @@ import { CONFLICT_FIELDS } from '~~/data/conflict-events.gen'
 import { sampleMany } from '~~/lib/arrays'
 import { seededRandom } from '~~/lib/random'
 
-/** Real UCDP event points, pre-projected — so the field carries the shape of
- *  where the world actually fights. Each lands as a flashpoint: a core, then
- *  two shock rings pushing out and fading. No country named. */
+/** Real UCDP event points, landing as flashpoints with shock rings. */
 const props = defineProps<{ seed: number }>()
 
 const STRIKES = 150
@@ -32,7 +30,7 @@ const strikes = computed(() => {
   return sampleMany(points, STRIKES, random).map((point, index) => ({
     key: `${index}-${point[0]}-${point[1]}`,
     x: point[0],
-    y: point[1],
+    y: 500 + (point[1] - 430) * 2.6,
     core: 4 + random() * 6,
     reach: 22 + random() * 34,
     style: {
@@ -46,18 +44,12 @@ const strikes = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .conflict-drift {
-  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
-  // budget at 4x throttle, and an opaque field makes it unnecessary.
-  background: var(--sour-milk);
+  mask-image: radial-gradient(ellipse 46% 40% at 50% 50%, transparent 30%, black 76%);
   inset: 0;
   z-index: 0;
   position: absolute;
   pointer-events: none;
   opacity: 0.9;
-}
-
-.conflict-drift > * {
-  mask-image: radial-gradient(ellipse 46% 40% at 50% 50%, transparent 30%, black 76%);
 }
 
 .core {

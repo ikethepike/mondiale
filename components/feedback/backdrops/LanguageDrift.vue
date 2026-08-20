@@ -5,7 +5,6 @@
     preserveAspectRatio="xMidYMid slice"
     aria-hidden="true"
   >
-    <!-- Back to front, so a nearer ridge masks the one behind it. -->
     <path
       v-for="ridge in ridges"
       :key="ridge.key"
@@ -18,9 +17,7 @@
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/** Stacked waveform ridges — one line per voice, each filled so it occludes
- *  the one behind. Synthesised, not sampled: the real clip is the round's
- *  subject. */
+/** Stacked waveform ridges, each occluding the one behind. */
 const props = defineProps<{ seed: number }>()
 
 const RIDGES = 22
@@ -32,8 +29,6 @@ const ridges = computed(() => {
   const random = seededRandom(props.seed)
   return Array.from({ length: RIDGES }, (_, index) => {
     const baseline = 22 + (index / (RIDGES - 1)) * (H - 44)
-    // Energy peaks mid-line and dies at the edges, so each ridge sits flat on
-    // its baseline before and after it speaks.
     const centre = 0.4 + random() * 0.2
     const spread = 0.1 + random() * 0.08
     const height = 13 + random() * 15
@@ -53,7 +48,6 @@ const ridges = computed(() => {
       const y = baseline - Math.abs(value) * envelope * height
       return `${(t * W).toFixed(1)},${y.toFixed(1)}`
     })
-    // Closed along its own baseline so the fill hides whatever is behind.
     return {
       key: `ridge-${index}`,
       d: `M 0,${baseline.toFixed(1)} L ${points.join(' L ')} L ${W},${baseline.toFixed(1)} z`,
@@ -68,18 +62,12 @@ const ridges = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .language-drift {
-  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
-  // budget at 4x throttle, and an opaque field makes it unnecessary.
-  background: var(--sour-milk);
+  mask-image: radial-gradient(ellipse 54% 48% at 50% 50%, transparent 38%, black 86%);
   inset: 0;
   z-index: 0;
   position: absolute;
   pointer-events: none;
   opacity: 0.55;
-}
-
-.language-drift > * {
-  mask-image: radial-gradient(ellipse 54% 48% at 50% 50%, transparent 38%, black 86%);
 }
 
 .ridge {
@@ -99,7 +87,6 @@ const ridges = computed(() => {
   }
 }
 
-// Each voice fades up and settles, top to bottom.
 @keyframes ridge-in {
   from {
     opacity: 0;
