@@ -33,7 +33,7 @@ import { seededRandom } from '~~/lib/random'
  */
 const props = defineProps<{ seed: number }>()
 
-const LIGHTS = 190
+const LIGHTS = 300
 
 const lights = computed(() => {
   const random = seededRandom(props.seed)
@@ -48,7 +48,7 @@ const lights = computed(() => {
         key: `${index}-${city.name}`,
         x: point.x,
         y: point.y,
-        r: 1.6 + Math.max(scale, 0) * 3.4,
+        r: 2 + Math.max(scale, 0) * 4.2,
         style: {
           animationDelay: `${(-random() * 7).toFixed(2)}s`,
           animationDuration: `${(4.5 + random() * 5).toFixed(2)}s`,
@@ -65,12 +65,14 @@ const lights = computed(() => {
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 0.8;
-  mask-image: radial-gradient(ellipse 46% 40% at 50% 50%, transparent 30%, black 76%);
+  opacity: 1;
+  mask-image: radial-gradient(ellipse 44% 38% at 50% 50%, transparent 28%, black 74%);
 }
 
 .light {
   fill: var(--night-amber);
+  // A city light has a glow; without it 300 amber discs read as confetti.
+  filter: drop-shadow(0 0 3px var(--night-amber));
   // Resting state is lit; the twinkle only modulates it.
   animation: city-twinkle 6s ease-in-out infinite;
 }
