@@ -1,12 +1,12 @@
 import type { Component } from 'vue'
 import BlocDrift from '~~/components/feedback/backdrops/BlocDrift.vue'
-import CityDrift from '~~/components/feedback/backdrops/CityDrift.vue'
 import ConflictDrift from '~~/components/feedback/backdrops/ConflictDrift.vue'
 import DisputedDrift from '~~/components/feedback/backdrops/DisputedDrift.vue'
 import EmpireDrift from '~~/components/feedback/backdrops/EmpireDrift.vue'
 import FlagDrift from '~~/components/feedback/backdrops/FlagDrift.vue'
 import LanguageDrift from '~~/components/feedback/backdrops/LanguageDrift.vue'
 import PlaceDrift from '~~/components/feedback/backdrops/PlaceDrift.vue'
+import SkylineDrift from '~~/components/feedback/backdrops/SkylineDrift.vue'
 import PoliticsDrift from '~~/components/feedback/backdrops/PoliticsDrift.vue'
 import RouteDrift from '~~/components/feedback/backdrops/RouteDrift.vue'
 import SocietyDrift from '~~/components/feedback/backdrops/SocietyDrift.vue'
@@ -92,8 +92,10 @@ export const INTERSTITIAL_BACKDROPS: Partial<Record<ChallengeGroupId, Interstiti
     ripple: 'keep',
   },
   cities: {
-    component: CityDrift,
+    component: SkylineDrift,
     props: ({ seed }) => ({ seed }),
+    // The band sits below the copy rather than behind it, so the ripple still
+    // has the middle to itself.
     ripple: 'keep',
   },
   places: {

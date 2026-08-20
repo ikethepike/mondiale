@@ -41,7 +41,7 @@ const lines = computed(() => {
         animationDelay: `${(-random() * 30).toFixed(2)}s`,
         animationDuration: `${(24 + random() * 18).toFixed(2)}s`,
         animationDirection: index % 2 ? 'reverse' : 'normal',
-        opacity: (0.25 + random() * 0.4).toFixed(2),
+        opacity: (0.45 + random() * 0.45).toFixed(2),
       } as Record<string, string>,
     }
   })
@@ -53,14 +53,14 @@ const lines = computed(() => {
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.95;
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
 }
 
 .isobath {
   fill: none;
   stroke: var(--soft-blue);
-  stroke-width: 1.5;
+  stroke-width: 2.4;
   vector-effect: non-scaling-stroke;
   animation: isobath-drift 30s linear infinite;
 }

@@ -61,7 +61,7 @@ const claims = computed(() => {
         transform: `translate(${(x - cx).toFixed(1)}px, ${(y - cy).toFixed(1)}px) translate(${cx.toFixed(1)}px, ${cy.toFixed(1)}px) scale(${scale.toFixed(2)}) translate(${(-cx).toFixed(1)}px, ${(-cy).toFixed(1)}px)`,
         animationDelay: `${(-random() * 16).toFixed(2)}s`,
         animationDuration: `${(12 + random() * 9).toFixed(2)}s`,
-        opacity: (0.3 + random() * 0.4).toFixed(2),
+        opacity: (0.5 + random() * 0.4).toFixed(2),
       } as Record<string, string>,
     }
   })
@@ -75,7 +75,7 @@ const claims = computed(() => {
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 0.7;
+  opacity: 0.95;
   mask-image: radial-gradient(ellipse 48% 42% at 50% 50%, transparent 32%, black 78%);
 }
 

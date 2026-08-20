@@ -54,7 +54,7 @@ const rows = computed(() => {
   padding: 4% 0;
   flex-flow: column-reverse nowrap;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.85;
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
 }
 
@@ -69,7 +69,7 @@ const rows = computed(() => {
 }
 
 .bar {
-  background: ink(0.34);
+  background: ink(0.42);
   border-radius: 2px;
 }
 

@@ -54,7 +54,7 @@ const pins = computed(() => {
       style: {
         animationDelay: `${(-random() * 11).toFixed(2)}s`,
         animationDuration: `${(8 + random() * 7).toFixed(2)}s`,
-        opacity: (0.22 + random() * 0.34).toFixed(2),
+        opacity: (0.35 + random() * 0.4).toFixed(2),
       } as Record<string, string>,
     }
   })

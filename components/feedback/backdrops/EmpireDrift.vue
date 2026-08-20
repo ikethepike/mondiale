@@ -58,14 +58,14 @@ const ghosts = computed(() => {
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 0.75;
+  opacity: 0.95;
   mask-image: radial-gradient(ellipse 54% 48% at 50% 50%, transparent 40%, black 86%);
 }
 
 .ghost {
   fill: ink(0.07);
   stroke: ink(0.42);
-  stroke-width: 2.5;
+  stroke-width: 3.4;
   stroke-linejoin: round;
   // The RESTING state is visible, and the animation moves away from it — not
   // toward it. Under reduced motion `.ambient-loop` stops the animation dead,

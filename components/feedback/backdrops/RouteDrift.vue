@@ -73,7 +73,7 @@ const drawn = computed(() => {
         style: {
           animationDelay: `${(-random() * 12).toFixed(2)}s`,
           animationDuration: `${(8 + random() * 8).toFixed(2)}s`,
-          opacity: (0.2 + random() * 0.4).toFixed(2),
+          opacity: (0.4 + random() * 0.45).toFixed(2),
         } as Record<string, string>,
       },
     ]
@@ -95,14 +95,14 @@ const nodes = computed(() =>
   z-index: 0;
   position: absolute;
   pointer-events: none;
-  opacity: 0.7;
+  opacity: 1;
   mask-image: radial-gradient(ellipse 48% 42% at 50% 50%, transparent 32%, black 78%);
 }
 
 .link {
   fill: none;
   stroke: var(--soft-blue);
-  stroke-width: 1.6;
+  stroke-width: 2.4;
   animation: route-pulse 12s ease-in-out infinite;
 }
 

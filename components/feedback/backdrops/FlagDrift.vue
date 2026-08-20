@@ -39,7 +39,7 @@ const bands = computed(() => {
         top: `${(index / BANDS) * 118 - 9}%`,
         height: `${height}%`,
         background: color,
-        opacity: (0.16 + random() * 0.26).toFixed(2),
+        opacity: (0.3 + random() * 0.35).toFixed(2),
         animationDelay: `${(-random() * 40).toFixed(2)}s`,
         animationDuration: `${(34 + random() * 26).toFixed(2)}s`,
         animationDirection: index % 2 ? 'reverse' : 'normal',
@@ -55,7 +55,7 @@ const bands = computed(() => {
   overflow: hidden;
   position: absolute;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.8;
   transform: rotate(-6deg) scale(1.3);
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 80%);
 }

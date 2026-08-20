@@ -25,7 +25,7 @@ import { seededRandom } from '~~/lib/random'
  */
 const props = defineProps<{ seed: number }>()
 
-const WAVES = 7
+const WAVES = 11
 const STEPS = 64
 
 const waves = computed(() => {
@@ -48,11 +48,11 @@ const waves = computed(() => {
       key: `wave-${index}`,
       d: `M ${points.join(' L ')}`,
       style: {
-        top: `${8 + index * 13}%`,
+        top: `${2 + index * 9}%`,
         animationDelay: `${(-random() * 30).toFixed(2)}s`,
         animationDuration: `${(26 + random() * 20).toFixed(2)}s`,
         animationDirection: index % 2 ? 'reverse' : 'normal',
-        opacity: (0.3 + random() * 0.4).toFixed(2),
+        opacity: (0.5 + random() * 0.5).toFixed(2),
       } as Record<string, string>,
     }
   })
@@ -67,7 +67,7 @@ const waves = computed(() => {
   overflow: hidden;
   position: absolute;
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 0.9;
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
 }
 
@@ -80,8 +80,8 @@ const waves = computed(() => {
 
   path {
     fill: none;
-    stroke: ink(0.4);
-    stroke-width: 1.4;
+    stroke: ink(0.5);
+    stroke-width: 2.2;
     vector-effect: non-scaling-stroke;
   }
 }

@@ -31,7 +31,7 @@ const rings = computed(() => {
         height: `${size.toFixed(1)}rem`,
         animationDelay: `${(-random() * 20).toFixed(2)}s`,
         animationDuration: `${(16 + random() * 12).toFixed(2)}s`,
-        opacity: (0.16 + random() * 0.26).toFixed(2),
+        opacity: (0.3 + random() * 0.35).toFixed(2),
       } as Record<string, string>,
     }
   })
@@ -46,7 +46,7 @@ const rings = computed(() => {
   overflow: hidden;
   position: absolute;
   pointer-events: none;
-  opacity: 0.8;
+  opacity: 1;
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
 }
 
@@ -54,7 +54,7 @@ const rings = computed(() => {
   display: block;
   position: absolute;
   border-radius: 50%;
-  border: 2px solid var(--soft-blue);
+  border: 3px solid var(--soft-blue);
   animation: bloc-breathe 20s ease-in-out infinite;
 }
 
