@@ -513,7 +513,7 @@ export const partiesWithLogo = (isoCode: ISOCountryCode): Party[] =>
  *  The two `nazi` rows are the Syrian Social Nationalist Party's zawba'a,
  *  which reads as a swastika at a glance — and a drifting field parks a tile
  *  mid-screen eventually. Insignia are somebody's armed forces. */
-const UNSCATTERABLE = /nazi|insignia/i
+const UNSCATTERABLE = /nazi|insignia|communist/i
 
 /** Licences that owe nobody a credit line. */
 const UNATTRIBUTED = /^(public domain|cc0|pd)$/i
@@ -522,14 +522,15 @@ const UNATTRIBUTED = /^(public domain|cc0|pd)$/i
  * A logo that may be used as DECORATION — wallpaper behind a title, where no
  * caption can name it and nothing about it is the question.
  *
- * A far narrower gate than `partiesWithLogo`, and deliberately so. Fair use is
- * a use, not a property: showing a mark AS the subject of a question is the
- * context that earns it, and scattering the same mark as texture is not, so
- * `nonFree` is out. Attribution-bearing licences are out for the plainer
- * reason that the surface has nowhere to print a credit — data-sanity.test.ts
- * already fails the build when a CC BY logo ships without one, and a backdrop
- * cannot honour that. What survives owes nothing and offends nobody: ~768
- * marks across most of the roster, far more than any field needs.
+ * A far narrower gate than `partiesWithLogo`. Fair use is a use, not a
+ * property: showing a mark AS the subject of a question is the context that
+ * earns it, and scattering the same mark as texture is not, so `nonFree` is
+ * out. Attribution-bearing licences are out because the surface has nowhere to
+ * print a credit. Leaves ~732 marks.
+ *
+ * Trademarked marks are KEPT — around half the pool, and unlike fair use a
+ * trademark bars confusing use in trade rather than depiction. If that reading
+ * is ever revisited, `UNSCATTERABLE` is where it changes.
  */
 export const isDecorativeLogo = (party: Party): boolean =>
   !!party.logo &&

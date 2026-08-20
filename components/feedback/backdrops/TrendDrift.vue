@@ -94,8 +94,7 @@ const lanes = computed(() => {
   top: 50%;
   position: absolute;
   border-radius: 50%;
-  opacity: 0;
-  animation: mark-settle 0.55s var(--ease-out-expressive) var(--at, 0s) forwards;
+  animation: mark-settle 0.55s var(--ease-out-expressive) var(--at, 0s) backwards;
 }
 
 .minor {
@@ -110,15 +109,6 @@ const lanes = computed(() => {
   height: 1.15rem;
   margin: -0.575rem 0 0 -0.575rem;
   background: var(--hior-ange);
-}
-
-@keyframes lane-drift {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-8%, 0, 0);
-  }
 }
 
 @keyframes mark-settle {

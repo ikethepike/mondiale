@@ -76,15 +76,7 @@ const ridges = computed(() => {
   stroke-width: 1.1;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  opacity: 0;
-  animation: ridge-in 0.75s var(--ease-out-expressive) var(--at, 0s) forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ridge {
-    opacity: 1;
-    animation: none;
-  }
+  animation: ridge-in 0.75s var(--ease-out-expressive) var(--at, 0s) backwards;
 }
 
 @keyframes ridge-in {

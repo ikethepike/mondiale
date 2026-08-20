@@ -202,7 +202,7 @@ describe('parties.gen', () => {
       expect(
         party.logoRestrictions ?? '',
         `${party.name} carries a restriction a backdrop must not scatter`
-      ).not.toMatch(/nazi|insignia/i)
+      ).not.toMatch(/nazi|insignia|communist/i)
       expect(party.coalition, `${party.name} is a bloc, not a party`).toBeFalsy()
     }
   })

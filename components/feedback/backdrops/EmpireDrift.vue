@@ -53,22 +53,16 @@ const ghosts = computed(() => {
   opacity: 0.95;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ghost {
-    stroke-dashoffset: 0;
-  }
-}
-
 .ghost {
   fill: ink(0.07);
   stroke: ink(0.42);
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  stroke-dashoffset: 0;
   stroke-width: 3.4;
   stroke-linejoin: round;
   opacity: 0.55;
   animation:
-    stroke-draw 1.4s var(--ease-out-expressive) var(--draw-delay, 0s) forwards,
+    stroke-draw 1.4s var(--ease-out-expressive) var(--draw-delay, 0s) both,
     empire-surface 20s ease-in-out infinite;
 }
 

@@ -56,8 +56,7 @@ const rows = computed(() => {
   min-height: 0;
   align-items: stretch;
   justify-content: center;
-  opacity: 0;
-  animation: cohort-in 0.5s var(--ease-out-expressive) var(--at, 0s) forwards;
+  animation: cohort-in 0.5s var(--ease-out-expressive) var(--at, 0s) backwards;
 }
 
 .bar {

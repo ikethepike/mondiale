@@ -1,18 +1,21 @@
 <template>
-  <button
-    type="button"
-    class="tri-chip"
-    :class="[selected, { disabled }]"
-    :disabled="disabled"
-    :aria-label="`${label}: ${STATE_LABELS[selected]}. Tap to change.`"
-    @click="advance"
-  >
-    <span class="dot" aria-hidden="true" />
-    <span class="state">{{ STATE_LABELS[selected] }}</span>
-    <!-- Same FormData contract SegmentedControl carries, so the settings form
-         parses this row exactly as it did the three-segment version. -->
+  <span class="tri-chip-host">
+    <button
+      type="button"
+      class="tri-chip"
+      :class="[selected, { disabled }]"
+      :disabled="disabled"
+      :aria-label="`${label}: ${STATE_LABELS[selected]}`"
+      @click="advance"
+    >
+      <span class="dot" aria-hidden="true" />
+      <span class="state">{{ STATE_LABELS[selected] }}</span>
+    </button>
+    <!-- Outside the button: a form control may not sit inside one, and a
+         disabled ancestor is what bars a control from FormData. -->
     <input type="hidden" :name="name" :value="selected" />
-  </button>
+    <span class="visually-hidden" role="status">{{ label }}: {{ STATE_LABELS[selected] }}</span>
+  </span>
 </template>
 <script lang="ts" setup>
 /**
@@ -73,6 +76,22 @@ const advance = () => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+
+.tri-chip-host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.visually-hidden {
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  position: absolute;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 .tri-chip {
   gap: 0.6rem;
