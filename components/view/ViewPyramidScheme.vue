@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Pyramid Scheme`"
+      kind="pyramid-scheme"
       title="Whose country is this?"
       :stakes="`Every country has an age structure like a fingerprint. Match all ${challenge.countries.length} — you are paid for each one you get right.`"
       @done="begin({ onTimeout: () => lockIn() })"
@@ -156,7 +156,6 @@ const SLOT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   secondsLeft,
   begin,

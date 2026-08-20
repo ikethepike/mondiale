@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Trend Race`"
+      kind="trend-race"
       :title="`Whose ${metricLabel} has ${challenge.direction} the most?`"
       :stakes="`Every line here has ${challenge.direction} since ${challenge.windowStartYear} — pick the country that moved the most. One shot, ${challenge.durationSeconds} seconds.`"
       @done="begin({ onTimeout: () => resolve() })"
@@ -122,7 +122,6 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   secondsLeft,
   begin,

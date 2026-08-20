@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Tongues`"
+      kind="tongue-buzz"
       title="What language is this?"
       :stakes="`Someone speaks for ${challenge.durationSeconds} seconds. Name ANY country ${motherTongueScope(challenge)} where that language is spoken — there is more than one right answer. Buzz early for more points.`"
       @done="onInterstitialDone"
@@ -111,7 +111,6 @@ import type { Country } from '~~/types/geography.types'
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

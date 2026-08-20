@@ -6,7 +6,7 @@
     <Interstitial
       v-if="showInterstitial && !trap"
       tone="alert"
-      :kicker="`Round ${currentRound?.number ?? 1} — Border Chain`"
+      kind="border-chain"
       :title="`The chain starts in ${countryName(getCountry(seed))}`"
       :stakes="stakes"
       @done="begin()"
@@ -165,7 +165,6 @@ const promptSources = dedupeAttributions([
 // The whole world stays visible — the walked path needs the map for context.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   begin: beginRound,
   hint,

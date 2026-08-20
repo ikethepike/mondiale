@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Two Truths and a Lie`"
+      kind="two-truths"
       :title="`Three claims about ${countryName(challenge.country)}`"
       stakes="One of these values secretly belongs to another country. Spot the lie — the sooner you call it, the more it pays. One shot."
       @done="start"
@@ -153,7 +153,6 @@ import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challen
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   begin,
   announce,

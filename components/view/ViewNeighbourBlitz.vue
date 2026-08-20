@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Neighbour Blitz`"
+      kind="neighbour-blitz"
       :title="`Name ${countryName(challenge.country)}'s neighbours`"
       :stakes="`${challenge.neighbours.length} countries share a border with it — name as many as you can in ${challenge.durationSeconds} seconds. Wrong names cost points.`"
       @done="begin"
@@ -62,7 +62,6 @@ const promptSources = datasetAttribution('borders')
 // Shapes-only map: the centre country plus guesses materializing around it
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

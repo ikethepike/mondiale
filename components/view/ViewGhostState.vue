@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Ghost State`"
+      kind="ghost-state"
       title="A country almost nobody recognizes"
       :stakes="`All you get is the flag. Point to where on Earth it is — the closer you land, the more you score. ${DURATION_SECONDS} seconds.`"
       @done="start"
@@ -67,7 +67,6 @@ const promptSources = datasetAttribution('recognition')
 // The whole world must stay tappable — the answer is a place, not a shape.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   submitted,
   secondsLeft,

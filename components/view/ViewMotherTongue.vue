@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Mother Tongue`"
+      kind="mother-tongue"
       :title="motherTongueQuestion(challenge)"
       :stakes="motherTongueStakes(challenge)"
       @done="start"
@@ -66,7 +66,6 @@ const promptSources = datasetAttribution('countries')
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

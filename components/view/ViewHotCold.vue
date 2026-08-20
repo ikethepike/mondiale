@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Hot & Cold`"
+      kind="hot-cold"
       title="Find the mystery country"
       :stakes="`Every country you click reports how far you are and which way to head. You have ${challenge.maximumGuesses} probes — the fewer you spend, the more you score.`"
       @done="begin()"
@@ -61,7 +61,6 @@ const promptSources = datasetAttribution('map')
 // highlights, tints or camera focus, so this mode opts out of shapes-only.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   submitted,
   begin,

@@ -6,7 +6,7 @@
     <Interstitial
       v-if="showInterstitial && !trap"
       tone="alert"
-      :kicker="`Round ${currentRound?.number ?? 1} — Atlas`"
+      kind="atlas"
       :title="`The chain starts in ${countryName(getCountry(seed))}`"
       :stakes="stakes"
       @done="begin()"
@@ -205,7 +205,6 @@ const LIVE_RAIL_TAIL = 10
 // names, and the walked path needs it for context.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   begin: beginRound,
   hint,

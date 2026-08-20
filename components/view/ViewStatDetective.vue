@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Stat Detective`"
+      kind="stat-detective"
       title="Guess the country from its numbers"
       :stakes="`A clue lands every ${challenge.secondsPerClue} seconds — buzz in early for more points. A wrong buzz locks you out for a moment.`"
       @done="begin"
@@ -119,7 +119,6 @@ import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challen
 // Blank the world map — the numbers are the whole question
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

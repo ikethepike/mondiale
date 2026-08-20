@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Sketch`"
+      kind="sketch"
       :title="`Draw ${countryName(challenge.country)} from memory`"
       stakes="One continuous line — the closer your outline matches the real shape, the more points you earn."
       @done="begin()"
@@ -56,7 +56,6 @@ import {
 const {
   gameStore,
   challenge,
-  currentRound,
   showInterstitial,
   submitted,
   begin,

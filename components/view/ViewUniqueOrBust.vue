@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Unique or Bust`"
+      kind="unique-or-bust"
       title="Only the lonely answer pays"
       :stakes="`One letter, ${challenge.categories.length} blanks, one shared clock. An answer any rival also picks cancels to zero — reach past the obvious.`"
       @done="beginRound"

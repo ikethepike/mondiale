@@ -3,6 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       :tone="challenge.corridor ? 'alert' : 'info'"
+      kind="traversal"
       :kicker="
         challenge.corridor
           ? `Round ${currentRound?.number ?? 1} — ${challenge.corridor.name} Corridor`

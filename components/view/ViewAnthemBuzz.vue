@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Opening Ceremony`"
+      kind="anthem-buzz"
       title="Whose anthem is this?"
       :stakes="`A national anthem plays for ${challenge.durationSeconds} seconds — buzz in early for more points. Hints arrive as it runs, and a wrong buzz locks you out for a moment.`"
       @done="onInterstitialDone"
@@ -102,7 +102,6 @@ import type { Country } from '~~/types/geography.types'
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

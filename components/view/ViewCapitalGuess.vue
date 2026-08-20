@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Capital Guess`"
+      kind="capital-guess"
       title="What capital is this?"
       :stakes="stakes"
       @done="start"
@@ -89,7 +89,6 @@ import { useAttemptOptions } from '~~/lib/use-attempt-options'
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

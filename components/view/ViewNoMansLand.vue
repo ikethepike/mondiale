@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — No Man's Land`"
+      kind="no-mans-land"
       title="A rock, and everyone who wants it"
       :stakes="`Tap every country that claims it. Some of these nobody claims at all — and there, naming nobody is the right answer. ${DURATION_SECONDS} seconds.`"
       @done="start"
@@ -90,7 +90,6 @@ const promptSources = datasetAttribution('recognition')
 // The world stays tappable: the answer is a set of countries.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   submitted,
   secondsLeft,

@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Heritage Hunt`"
+      kind="heritage-hunt"
       title="Pin the World Heritage Sites"
       :stakes="`${challenge.slugs.length} sites, one pin each. The closer you land, the more you score — and the sharpest pin of each photo takes a bonus off the table.`"
       @done="begin()"
@@ -81,7 +81,6 @@ const photoSources = datasetAttribution('places')
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   begin,

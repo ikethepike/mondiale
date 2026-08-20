@@ -3,6 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
+      :kind="copy.roundKind"
       :kicker="`Round ${currentRound?.number ?? 1} — ${copy.kicker}`"
       :title="copy.title"
       :stakes="`${challenge.countries.length} countries — name as many as you can in ${challenge.durationSeconds} seconds. Wrong names cost points.`"
@@ -87,6 +88,7 @@ const copy = computed(() => {
   switch (active?.kind) {
     case 'river':
       return {
+        roundKind: 'river-run' as const,
         kicker: 'River Run',
         title: `The ${name} flows through which countries?`,
         placeholder: 'Type a country along the river…',
@@ -94,12 +96,14 @@ const copy = computed(() => {
     case 'sea':
     case 'lake':
       return {
+        roundKind: 'shared-shores' as const,
         kicker: 'Shared Shores',
         title: `Name every country on the ${name}`,
         placeholder: 'Type a country on this shore…',
       }
     default:
       return {
+        roundKind: 'highlands' as const,
         kicker: 'Highlands & Basins',
         title: `The ${name} spans which countries?`,
         placeholder: 'Type a country it touches…',
