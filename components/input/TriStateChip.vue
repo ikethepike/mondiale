@@ -70,17 +70,6 @@ const advance = () => {
   align-items: center;
 }
 
-.visually-hidden {
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  position: absolute;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .tri-chip {
   gap: 0.6rem;
   border: 0;

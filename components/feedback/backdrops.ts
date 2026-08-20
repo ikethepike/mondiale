@@ -1,21 +1,54 @@
+import { defineAsyncComponent } from 'vue'
 import type { Component } from 'vue'
-import BlocDrift from '~~/components/feedback/backdrops/BlocDrift.vue'
-import ConflictDrift from '~~/components/feedback/backdrops/ConflictDrift.vue'
-import DisputedDrift from '~~/components/feedback/backdrops/DisputedDrift.vue'
-import EmpireDrift from '~~/components/feedback/backdrops/EmpireDrift.vue'
-import FlagDrift from '~~/components/feedback/backdrops/FlagDrift.vue'
-import LanguageDrift from '~~/components/feedback/backdrops/LanguageDrift.vue'
-import PlaceDrift from '~~/components/feedback/backdrops/PlaceDrift.vue'
-import SkylineDrift from '~~/components/feedback/backdrops/SkylineDrift.vue'
-import PoliticsDrift from '~~/components/feedback/backdrops/PoliticsDrift.vue'
-import RouteDrift from '~~/components/feedback/backdrops/RouteDrift.vue'
-import SocietyDrift from '~~/components/feedback/backdrops/SocietyDrift.vue'
-import TrendDrift from '~~/components/feedback/backdrops/TrendDrift.vue'
-import WaterDrift from '~~/components/feedback/backdrops/WaterDrift.vue'
-import WordDrift from '~~/components/feedback/backdrops/WordDrift.vue'
 import { CHALLENGE_GROUP_BY_KIND } from '~~/types/challenges/challenge-groups.type'
 import type { ChallengeGroupId } from '~~/types/challenges/challenge-groups.type'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
+
+// Each ground is fetched only when its category is dealt: statically
+// importing all fourteen put every backdrop in one chunk that every
+// interstitial parsed to show one.
+const BlocDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/BlocDrift.vue')
+)
+const ConflictDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/ConflictDrift.vue')
+)
+const DisputedDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/DisputedDrift.vue')
+)
+const EmpireDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/EmpireDrift.vue')
+)
+const FlagDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/FlagDrift.vue')
+)
+const LanguageDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/LanguageDrift.vue')
+)
+const PlaceDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/PlaceDrift.vue')
+)
+const SkylineDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/SkylineDrift.vue')
+)
+const PoliticsDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/PoliticsDrift.vue')
+)
+const RouteDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/RouteDrift.vue')
+)
+const SocietyDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/SocietyDrift.vue')
+)
+const TrendDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/TrendDrift.vue')
+)
+const WaterDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/WaterDrift.vue')
+)
+const WordDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/WordDrift.vue')
+)
 
 /**
  * What a category's card is dressed with. A backdrop is DECORATION: it may
