@@ -114,7 +114,7 @@ const headline = computed(() => {
   if (props.raceOver) return 'Final standings'
   const round = currentRound.value
   if (!round) return 'Waiting for the first round'
-  return `Round ${round.number} · ${KIND_LABELS[roundChallengeKind(round.round.groupChallenge)]}`
+  return `Round ${round.number} · ${KIND_LABELS[roundChallengeKind(round.round.groupChallenge)].title}`
 })
 
 const rail = computed(() =>

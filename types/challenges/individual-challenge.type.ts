@@ -277,9 +277,16 @@ export type IndividualChallengeVariant = (typeof individualChallengeVariants)[nu
  * A theme is a CATEGORY, never a mode. A marker can only ever reflect the
  * theme (tiles are dealt at game creation, long before any challenge is), so a
  * tile named for one mode would either strand its siblings on the wrong marker
- * or need a new tile per mode. The six data themes above name what the gate is
- * about; the two below name a kind of thinking, and each has room for more
- * tenants:
+ * or need a new tile per mode.
+ *
+ * Not to be confused with `ChallengeGroupId`, the OTHER category axis. That
+ * one sorts the shared GROUP rounds — what the lobby toggles, what the mix
+ * decays, what an interstitial's pill names. Group rounds are dealt from the
+ * round mix and never occupy a tile, so adding or splitting a challenge group
+ * needs nothing from the board; only a new theme here does.
+ *
+ * The six data themes above name what the gate is about; the two below name a
+ * kind of thinking, and each has room for more tenants:
  *
  * - `errata` — things that are wrong. Tenants: Errata. Counterfeit belongs
  *   here when it lands (its marker will have to widen past signposts to cover

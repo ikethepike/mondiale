@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — The Star Chart`"
+      kind="star-chart"
       title="The lights go out"
       :stakes="`${stars.length} capitals pulse where they really stand. Type which city each one is — ${challenge.durationSeconds} seconds, no suggestions, and wrong names cost points.`"
       @done="begin"
@@ -94,7 +94,6 @@ const promptSources = [...datasetAttribution('capitals'), ...datasetAttribution(
 // than the composable's shapes-only default.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

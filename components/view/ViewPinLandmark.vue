@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Drop a Pin`"
+      kind="pin-landmark"
       title="Where in the world is this?"
       stakes="Click the map to place your pin, then lock it in. The closer you land, the more you score — no country names, just the spot."
       @done="begin()"
@@ -87,7 +87,6 @@ import { useIsPhone } from '~~/lib/use-viewport'
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

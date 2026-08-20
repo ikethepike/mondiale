@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Silhouette`"
+      kind="silhouette"
       title="Whose outline is this?"
       :stakes="`The outline flashes whole, then draws itself back in over ${challenge.durationSeconds} seconds — buzz in early for more points. A wrong buzz locks you out for a moment.`"
       @done="begin"
@@ -73,7 +73,6 @@ const {
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

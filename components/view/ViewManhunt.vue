@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
-      :kicker="`Round ${currentRound?.number ?? 1} — The Despot`"
+      kind="manhunt"
       :title="interstitialTitle"
       :stakes="stakes"
       @done="begin()"
@@ -255,7 +255,6 @@ import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 // The whole world stays visible — the pursuit needs the map for context.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   begin,
   hint,

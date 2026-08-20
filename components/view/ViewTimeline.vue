@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
-      :kicker="`Round ${currentRound?.number ?? 1} — Timeline`"
+      kind="timeline"
       :title="openerTitle"
       :stakes="stakes"
       @done="begin()"
@@ -217,7 +217,7 @@ import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { EventEntry } from '~~/generators/create-events-file'
 
 // A card table, not a map question — the board blanks out underneath.
-const { challenge, currentRound, showInterstitial, begin, gameStore, update, registerCleanup } =
+const { challenge, showInterstitial, begin, gameStore, update, registerCleanup } =
   useGroupChallenge('timeline-challenge')
 
 const isPhone = useIsPhone()

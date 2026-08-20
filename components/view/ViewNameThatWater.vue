@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Name That Water`"
+      kind="name-that-water"
       :title="promptTitle"
       :stakes="`It's glowing on the map. ${challenge.maximumGuesses} guesses, ${challenge.durationSeconds} seconds — earlier and fewer guesses score higher. Hints surface as the clock runs, each costing points.`"
       @done="begin"
@@ -104,7 +104,6 @@ const promptSources = datasetAttribution('water')
 // mode opts out of the composable's shapes-only default.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   elapsedFraction,

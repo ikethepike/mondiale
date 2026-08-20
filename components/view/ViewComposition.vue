@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Composition`"
+      kind="composition"
       title="Where were they born?"
       :stakes="stakes"
       @done="start"
@@ -114,7 +114,6 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
  */
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

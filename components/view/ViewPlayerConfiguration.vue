@@ -265,19 +265,25 @@
             />
           </div>
 
-          <div v-for="(group, id) in visibleChallengeGroups" :key="id" class="challenge-row">
-            <div class="challenge-meta">
-              <span class="challenge-name">{{ group.label }}</span>
-              <span class="challenge-caption">{{ groupCaption(id) }}</span>
+          <!-- Fourteen categories, one tap-target each. A full segmented track
+               per row ran the list to 2.3 phone screens; the chip states its
+               value and cycles, so the whole list stands on one. -->
+          <div class="challenge-scope">
+            <div class="challenge-grid">
+              <div v-for="(group, id) in visibleChallengeGroups" :key="id" class="challenge-line">
+                <div class="challenge-meta">
+                  <span class="challenge-name">{{ group.label }}</span>
+                  <span class="challenge-caption">{{ groupCaption(id) }}</span>
+                </div>
+                <TriStateChip
+                  :name="`game-challenges-${id}`"
+                  :label="group.label"
+                  :model-value="overrideValue(id)"
+                  :disabled="!isPlayerHost"
+                  @change="updateConfiguration"
+                />
+              </div>
             </div>
-            <SegmentedControl
-              :name="`game-challenges-${id}`"
-              :label="group.label"
-              :options="['auto', 'on', 'off']"
-              :model-value="overrideValue(id)"
-              :disabled="!isPlayerHost"
-              @change="updateConfiguration"
-            />
           </div>
 
           <div class="challenge-row">
@@ -346,6 +352,8 @@ import { gsap } from 'gsap'
 import InviteQrModal from '~/components/modal/InviteQrModal.vue'
 import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
+import TriStateChip from '~/components/input/TriStateChip.vue'
+import { categoryModes } from '~~/lib/challenge-labels'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { microNationsIncluded } from '~~/lib/game-rules'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
@@ -357,7 +365,6 @@ import {
 } from '~~/lib/player'
 import { roomInviteUrl, useInviteLink } from '~~/lib/use-invite-link'
 import {
-  autoEnabledKinds,
   CHALLENGE_GROUPS,
   type ChallengeGroup,
   type ChallengeGroupId,
@@ -419,15 +426,10 @@ const microNationsCaption = computed(() => {
 })
 
 /** What this group's current tab means in modes, at the previewed difficulty. */
-const groupCaption = (id: ChallengeGroupId): string => {
-  const override = game.value?.challengeOverrides?.[id]
-  const { enabled, total } = autoEnabledKinds(id, difficultyPreview.value)
-  if (override === true) return `all ${total.length} ${total.length === 1 ? 'mode' : 'modes'} on`
-  if (override === false) return 'off'
-  if (enabled.length === total.length) return 'on'
-  if (enabled.length === 0) return `off below hard — now ${difficultyPreview.value}`
-  return `${enabled.length} of ${total.length} modes at ${difficultyPreview.value}`
-}
+// What the category deals, by name. The old caption was a count, which read
+// well when `culture` held eleven kinds and collapsed to the word "on" once
+// the groups were split down to one to three each.
+const groupCaption = (id: ChallengeGroupId): string => categoryModes(id, difficultyPreview.value)
 
 // Pulse the seat counter when the lobby size changes
 const playerCounter = ref<HTMLElement>()
@@ -1004,6 +1006,53 @@ const startGame = () => {
   :deep(.segment) {
     font-size: 1.3rem;
     padding: 0.5rem 1.3rem;
+  }
+}
+
+.challenge-scope {
+  // The query container is the WRAPPER, never the grid: a grid cannot resize
+  // its own columns off its own width without the query chasing itself.
+  container-type: inline-size;
+  container-name: challenge-scope;
+}
+
+.challenge-grid {
+  display: grid;
+  gap: 0 2.4rem;
+  grid-template-columns: 1fr;
+  border-top: 0.1rem solid $hairline;
+}
+
+.challenge-line {
+  gap: 1.2rem;
+  display: flex;
+  padding: 0.8rem 0;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.1rem solid $hairline;
+
+  // Two lines is the ceiling. Borders & routes names six modes and ran to
+  // three, which put its row back where the segmented control had it — the
+  // list stays scannable only while every line is the same height.
+  .challenge-caption {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+// Two columns as soon as the box can hold a name and a chip twice over — a
+// container query, not a viewport one, because this list lives in a modal
+// whose width is its own business.
+@container challenge-scope (min-width: 46rem) {
+  .challenge-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  // With two columns the last row's pair would draw a rule under nothing.
+  .challenge-line:nth-last-child(-n + 2):nth-child(odd) {
+    border-bottom: 0;
   }
 }
 

@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Flashpoint`"
+      kind="flashpoint"
       title="A history of conflict, drawn in dots"
       :stakes="stakes"
       @done="start"
@@ -143,7 +143,6 @@ import type { ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

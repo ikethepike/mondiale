@@ -196,7 +196,7 @@ const pastRounds = computed(() =>
       return {
         number: index + 1,
         headline: roundChallengeHeadline(challenge),
-        kindLabel: KIND_LABELS[roundChallengeKind(challenge)],
+        kindLabel: KIND_LABELS[roundChallengeKind(challenge)].title,
         country: subjectIso ? getCountry(subjectIso) : undefined,
         rows,
         sketches: sketchCountry

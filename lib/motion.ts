@@ -51,3 +51,34 @@ export const prefersReducedMotion = (): boolean => {
   reducedMotionQuery ??= window.matchMedia('(prefers-reduced-motion: reduce)')
   return reducedMotionQuery.matches
 }
+
+// Cached: called per mount, and the answer cannot change within a session.
+let modestDevice: boolean | undefined
+
+/**
+ * A device that should be spared decorative extras.
+ *
+ * The cost is SETUP, not the animation. Once painted, an interstitial backdrop
+ * holds 120fps even at 4x CPU throttle — the loops are transform and opacity,
+ * which the compositor handles for free. What hurts is getting there: at 6x
+ * throttle the party-logo wall takes ~2.0s to first paint and the forged flags
+ * ~1.9s, against ~160ms and ~855ms unthrottled. The card only lives 4.5s, so
+ * on that hardware half the beat is a blank card followed by a rushed
+ * entrance, which is worse than the plain card it replaced.
+ *
+ * `deviceMemory` and `hardwareConcurrency` are advisory and both absent on
+ * Safari, so a missing answer is treated as capable: guessing "modest" on
+ * every iPhone would be wrong far more often than the reverse.
+ */
+export const prefersLightMotion = (): boolean => {
+  if (typeof window === 'undefined') return false
+  if (modestDevice !== undefined) return modestDevice
+  const nav = navigator as Navigator & { deviceMemory?: number }
+  const memory = nav.deviceMemory
+  const cores = nav.hardwareConcurrency
+  modestDevice =
+    prefersReducedMotion() ||
+    (memory !== undefined && memory <= 4) ||
+    (cores !== undefined && cores <= 4)
+  return modestDevice
+}

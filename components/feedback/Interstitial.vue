@@ -1,9 +1,22 @@
 <template>
-  <div v-if="!watching" ref="root" class="intro-overlay interstitial" :class="tone" @click="skip">
-    <ContourRipple class="ripple" :tone="tone === 'alert' ? 'alert' : 'success'" :delay="0.35" />
+  <div
+    v-if="!watching"
+    ref="root"
+    class="intro-overlay interstitial"
+    :class="[tone, { dressed: !!backdrop }]"
+    @click="skip"
+  >
+    <component :is="backdrop.component" v-if="backdrop" v-bind="backdrop.props" />
+    <ContourRipple
+      v-if="!backdrop || backdrop.ripple !== 'replace'"
+      class="ripple"
+      :tone="tone === 'alert' ? 'alert' : 'success'"
+      :delay="0.35"
+    />
     <div class="content">
+      <span v-if="category" data-interstitial class="category-pill">{{ category.label }}</span>
       <span data-interstitial class="kicker map-caption">
-        {{ kicker }}
+        {{ resolvedKicker }}
         <!-- A mode may toss its emblem onto the sign's corner. -->
         <span v-if="$slots.emblem" class="kicker-emblem"><slot name="emblem" /></span>
       </span>
@@ -15,7 +28,13 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { backdropFor } from '~~/components/feedback/backdrops'
+import { INTERSTITIAL_HOLD_MS } from '~~/lib/round-beats'
+import { challengeCategory, roundKicker } from '~~/lib/challenge-labels'
+import { prefersLightMotion } from '~~/lib/motion'
+import { seedFrom } from '~~/lib/random'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
+import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
 import { useGameStore } from '~~/store/game.store'
 import ContourRipple from './ContourRipple.vue'
@@ -27,9 +46,16 @@ import ContourRipple from './ContourRipple.vue'
  * (blue) marks everything else.
  */
 const props = defineProps({
+  /** Give it one and the card names itself. The board's move card and the
+   *  gates have no kind and stay bare. */
+  kind: {
+    type: String as PropType<RoundChallengeKind>,
+    default: undefined,
+  },
+  /** Overrides the derived kicker — a corridor run, the water trio. */
   kicker: {
     type: String,
-    default: 'Challenge!',
+    default: undefined,
   },
   title: {
     type: String,
@@ -46,7 +72,7 @@ const props = defineProps({
   /** Seconds before auto-advancing. */
   holdFor: {
     type: Number,
-    default: 3.2,
+    default: INTERSTITIAL_HOLD_MS / 1000,
   },
 })
 
@@ -58,6 +84,20 @@ const emit = defineEmits<{ done: [] }>()
 // view's state machine proceed exactly as if the beat had played.
 const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
+const roundNumber = computed(() => gameStore.currentRound?.number ?? 1)
+const category = computed(() => (props.kind ? challengeCategory(props.kind) : undefined))
+// Room + round: identical on every seat, stable across a re-render.
+const backdropSeed = computed(() =>
+  seedFrom(`${gameStore.game?.id ?? 'room'}:${roundNumber.value}`)
+)
+// A modest device gets the plain card: first paint costs up to 2s there
+// against a 4.5s beat.
+const backdrop = computed(() =>
+  prefersLightMotion() ? undefined : backdropFor(props.kind, backdropSeed.value)
+)
+const resolvedKicker = computed(
+  () => props.kicker ?? (props.kind ? roundKicker(props.kind, roundNumber.value) : 'Challenge!')
+)
 if (watching.value) onMounted(() => emit('done'))
 
 const root = ref<HTMLElement>()
@@ -76,6 +116,13 @@ useKeyboardSkip(() => !watching.value, skip)
   background: milk(0.75);
 }
 
+// A dressed card is opaque. The backdrop is a CHILD, so the wash sits behind
+// it and the live round reads through the quarter that is left — which is why
+// per-backdrop grounds could never fix this from inside.
+.interstitial.dressed {
+  background: milk(1);
+}
+
 .ripple {
   top: 50%;
   left: 50%;
@@ -83,6 +130,24 @@ useKeyboardSkip(() => !watching.value, skip)
   height: min(46rem, 100vw);
   position: absolute;
   transform: translate(-50%, -50%);
+}
+
+// The lobby's own toggle name, so a player can place the round in the menu
+// they configured. Quieter than the kicker: it labels, the kicker announces.
+.category-pill {
+  padding: 0.3rem 1.2rem;
+  font-size: 1.2rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: bold;
+  background: ink(0.06);
+  color: ink(0.65);
+}
+
+.alert .category-pill {
+  background: flame(0.12);
+  color: var(--dark-blue);
 }
 
 .kicker {

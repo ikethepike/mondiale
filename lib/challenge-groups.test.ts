@@ -7,25 +7,26 @@ import {
   autoEnabledKinds,
   CHALLENGE_GROUP_ACCESSORS,
   CHALLENGE_GROUP_BY_KIND,
+  CHALLENGE_GROUPS,
   HEAVY_ACCESSORS,
   isAccessorEnabled,
   isGroupEnabled,
   isKindEnabled,
   isValidChallengeOverrides,
 } from '~~/types/challenges/challenge-groups.type'
+import type { ChallengeGroupId } from '~~/types/challenges/challenge-groups.type'
 
 describe('isKindEnabled', () => {
   it('always deals core kinds, whatever the overrides say', () => {
+    // Derived, not hand-listed: a new group added to CHALLENGE_GROUPS has to
+    // land in this all-off table too, or the core floor stops being tested
+    // against a genuinely empty pool. A hand-written list silently stopped
+    // covering capital-guess the day it moved to its own group.
     const game = {
       difficulty: 'easy',
-      challengeOverrides: {
-        conflicts: false,
-        navigation: false,
-        water: false,
-        flags: false,
-        culture: false,
-        disputed: false,
-      },
+      challengeOverrides: Object.fromEntries(
+        (Object.keys(CHALLENGE_GROUPS) as ChallengeGroupId[]).map(group => [group, false])
+      ),
     } as const
     expect(isKindEnabled(game, 'ranking')).toBe(true)
     expect(isKindEnabled(game, 'two-truths')).toBe(true)

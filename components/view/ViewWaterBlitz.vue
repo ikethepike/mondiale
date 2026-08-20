@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — ${copy.kicker}`"
+      :kind="copy.roundKind"
       :title="copy.title"
       :stakes="`${challenge.countries.length} countries — name as many as you can in ${challenge.durationSeconds} seconds. Wrong names cost points.`"
       @done="begin"
@@ -66,7 +66,6 @@ const promptSources = datasetAttribution('water')
 // this mode opts out of the composable's shapes-only default.
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,
@@ -87,20 +86,20 @@ const copy = computed(() => {
   switch (active?.kind) {
     case 'river':
       return {
-        kicker: 'River Run',
+        roundKind: 'river-run' as const,
         title: `The ${name} flows through which countries?`,
         placeholder: 'Type a country along the river…',
       }
     case 'sea':
     case 'lake':
       return {
-        kicker: 'Shared Shores',
+        roundKind: 'shared-shores' as const,
         title: `Name every country on the ${name}`,
         placeholder: 'Type a country on this shore…',
       }
     default:
       return {
-        kicker: 'Highlands & Basins',
+        roundKind: 'highlands' as const,
         title: `The ${name} spans which countries?`,
         placeholder: 'Type a country it touches…',
       }

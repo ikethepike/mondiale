@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Clean Sweep`"
+      kind="clean-sweep"
       title="First to say it, owns it"
       :stakes="`One list, one clock, and everyone racing the same board. A name you get is a name nobody else can have — and a name you get wrong benches you while they keep going.`"
       @done="beginRound"
@@ -186,7 +186,6 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
  */
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   hint,

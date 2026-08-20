@@ -19,20 +19,29 @@ import { clamp01 } from './number'
  * These are the NOMINAL weights — `mixWeights` decays them against the rounds
  * already dealt, and decay can only ever push a weight DOWN, so the rarity
  * ordering below is preserved whatever the history.
+ *
+ * CULTURE_SPLIT_FACTOR: the eleven kinds that used to share one 'culture'
+ * group carry their old weight times 0.7. Splitting that bucket six ways
+ * stopped those kinds suppressing each other through `groupBite`, which lifted
+ * their combined share of a twelve-round game from 27.3% to 33.4%. The factor
+ * is what puts it back (simulated: 27.3%, worst single kind 0.18pp off). It
+ * scales with the SIZE of the bucket that split, not with which group each
+ * kind landed in — re-deriving it means re-running the simulation in
+ * round-mix.test.ts, not guessing.
  */
 export const ROUND_WEIGHTS = {
   ranking: 0.2,
   traversal: 0.13,
   'border-chain': 0.09,
-  atlas: 0.07,
-  'heritage-hunt': 0.07,
+  atlas: 0.049,
+  'heritage-hunt': 0.049,
   'neighbour-blitz': 0.1,
   silhouette: 0.09,
   // The only rounds that need sound: still shy of the visual staples so a
   // muted room or a bad connection never faces a run of them, but no longer
   // rare — they earned their slot.
-  'anthem-buzz': 0.08,
-  'tongue-buzz': 0.06,
+  'anthem-buzz': 0.056,
+  'tongue-buzz': 0.042,
   'hot-cold': 0.06,
   sketch: 0.07,
   'stat-detective': 0.06,
@@ -41,12 +50,12 @@ export const ROUND_WEIGHTS = {
   'shared-shores': 0.05,
   'name-that-water': 0.04,
   highlands: 0.08,
-  'mother-tongue': 0.09,
+  'mother-tongue': 0.063,
   'flag-palette': 0.08,
-  'capital-guess': 0.08,
+  'capital-guess': 0.056,
   // Shy of its mirror on purpose: the dark map asks more of a player than a
   // skyline photo does, and two city rounds in a game is plenty.
-  'star-chart': 0.06,
+  'star-chart': 0.042,
   // A THIN pool, and weighted low for that as much as for the read. Measured,
   // it is 15 (DZ MA AL CA DK EE ES ID IT JP LU NL NZ SE ZA) at every
   // difficulty, because the round needs a chamber whose cabinet resolved AND
@@ -61,7 +70,7 @@ export const ROUND_WEIGHTS = {
   // cabinet join. Not a crash: `getGovernmentChallenge` returns undefined and
   // the mix buys another kind. Raise this as the logo coverage grows.
   government: 0.06,
-  composition: 0.06,
+  composition: 0.042,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
   // them obscure — so dealing these at a staple's rate burns through the whole
   // roster in a session or two. They should land like finding something odd on
@@ -73,7 +82,7 @@ export const ROUND_WEIGHTS = {
   // must never read as a defining mode. A hard game sees one about one time
   // in eight — an occasional, sobering find.
   flashpoint: 0.02,
-  'pin-landmark': 0.06,
+  'pin-landmark': 0.042,
   'trend-race': 0.08,
   timeline: 0.08,
   // A set-piece, dealt sparingly: two beats make it the longest single-player
@@ -87,11 +96,11 @@ export const ROUND_WEIGHTS = {
   manhunt: 0.05,
   // Needs three players before duplicate-cancel scoring has teeth, so it
   // self-rarifies at duos the same way manhunt does.
-  'unique-or-bust': 0.07,
+  'unique-or-bust': 0.049,
   // A staple in waiting: loud, quick to teach, and the only mode where the
   // table races each other in the open. Held at a staple's rate rather than
   // above it because the set register is small enough to repeat inside a game.
-  'clean-sweep': 0.07,
+  'clean-sweep': 0.049,
   // The world ending is a set-piece: the longest clock among the typed rounds
   // and the only one that rewrites the map itself. Held below the staples so
   // it stays an event — a game usually sees one, and two never read as a

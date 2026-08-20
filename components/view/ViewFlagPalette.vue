@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Flag Palette`"
+      kind="flag-palette"
       title="Whose flag is this?"
       stakes="Only the colours — no flag. Name the country before the clock runs out. The sooner you name it, the more it's worth."
       @done="start"
@@ -70,7 +70,6 @@ const promptSources = [attributionFor('flag')]
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

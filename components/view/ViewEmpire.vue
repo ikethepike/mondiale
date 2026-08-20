@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1} — Ghosts of Empires`"
+      kind="empire"
       title="A vanished power sweeps the map"
       :stakes="stakes"
       @done="start"
@@ -185,7 +185,6 @@ const promptSources = datasetAttribution('empires')
 
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

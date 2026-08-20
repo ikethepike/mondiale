@@ -1,7 +1,30 @@
 # CODING RULES
 
 - NEVER redefine logic, definitions or types. Always use centralized, consolidated types where possible.
-- Skip verbose comments
+
+## Comments
+
+**Default to no comment.** Code that needs prose to be understood should be rewritten,
+not annotated. A file arriving with a comment on every block is a defect, not thoroughness.
+
+Write one ONLY when a reader who understands the code would still get it wrong — a
+non-obvious constraint, a rejected alternative that looks correct, a bug the line exists
+to prevent. If it survives, keep it to one or two lines.
+
+NEVER write a comment that:
+
+- restates the line below it (`// fade the card in` over a fade)
+- narrates what a value was tuned to, or what it measured at
+- explains an animation, a colour, a size or a layout choice — the screen shows it
+- recounts what was tried first, unless someone is actively likely to retry it
+- describes what a prop, function or component obviously does from its name
+
+Docblocks: only on exported lib functions whose contract is not evident from the
+signature. A `.vue` component gets at most one short block saying what it is — never a
+paragraph, never a rationale essay, never a section per style rule.
+
+When editing an existing file, do not add comments that were not asked for, and do not
+"improve" the ones already there.
 
 ## Single sources of truth
 

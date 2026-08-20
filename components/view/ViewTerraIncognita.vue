@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
-      :kicker="`Round ${currentRound?.number ?? 1} — Terra Incognita`"
+      kind="terra-incognita"
       title="The atlas is failing"
       :stakes="`Countries are being erased from the map, one every ${cadenceSeconds} seconds. Name the missing country — or the one that swallowed it — to put it back. Let ${challenge.collapseThreshold} go at once and the world starts coming apart.`"
       @done="begin"
@@ -106,7 +106,6 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 const {
   challenge,
-  currentRound,
   showInterstitial,
   started,
   submitted,

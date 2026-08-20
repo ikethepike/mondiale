@@ -73,42 +73,52 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'pyramid-scheme': ['Demographer', 'The Cohort Reader', 'Shape of Things', 'Census Whisperer'],
 }
 
-export const KIND_LABELS: { [kind in RoundChallengeKind]: string } = {
-  ranking: 'ranking',
-  traversal: 'border-run',
-  'neighbour-blitz': 'neighbour blitz',
-  silhouette: 'silhouette',
-  'anthem-buzz': 'anthem',
-  'tongue-buzz': 'language',
-  'hot-cold': 'hot & cold',
-  sketch: 'sketch',
-  'stat-detective': 'stat detective',
-  'two-truths': 'two truths',
-  'river-run': 'river run',
-  'shared-shores': 'shared shores',
-  highlands: 'highlands',
-  'name-that-water': 'name that water',
-  'mother-tongue': 'mother tongue',
-  'flag-palette': 'flag palette',
-  'capital-guess': 'capital guess',
-  'star-chart': 'star chart',
-  government: 'parliament',
-  'terra-incognita': 'terra incognita',
-  flashpoint: 'flashpoint',
-  composition: 'composition',
-  'ghost-state': 'ghost states',
-  'no-mans-land': "no man's land",
-  'pin-landmark': 'drop a pin',
-  'border-chain': 'border chain',
-  atlas: 'atlas',
-  'heritage-hunt': 'heritage hunt',
-  'trend-race': 'trend race',
-  timeline: 'timeline',
-  empire: 'ghosts of empires',
-  manhunt: 'the despot',
-  'unique-or-bust': 'unique or bust',
-  'clean-sweep': 'clean sweep',
-  'pyramid-scheme': 'age pyramids',
+/**
+ * Two registers for one mode name, so the pair can never drift apart.
+ * `prose` reads mid-sentence and lowercase ("62% on border-run rounds");
+ * `title` is the sign over the round — what the interstitial's kicker says.
+ * They are not derivable from each other: fifteen titles diverge from their
+ * prose in more than casing (anthem -> Opening Ceremony, the small words in
+ * Drop a Pin), so title-casing the prose would quietly rename half the roster.
+ */
+export const KIND_LABELS: {
+  [kind in RoundChallengeKind]: { prose: string; title: string }
+} = {
+  ranking: { prose: 'ranking', title: 'Ranking' },
+  traversal: { prose: 'border-run', title: 'Border Run' },
+  'neighbour-blitz': { prose: 'neighbour blitz', title: 'Neighbour Blitz' },
+  silhouette: { prose: 'silhouette', title: 'Silhouette' },
+  'anthem-buzz': { prose: 'anthem', title: 'Opening Ceremony' },
+  'tongue-buzz': { prose: 'language', title: 'Tongues' },
+  'hot-cold': { prose: 'hot & cold', title: 'Hot & Cold' },
+  sketch: { prose: 'sketch', title: 'Sketch' },
+  'stat-detective': { prose: 'stat detective', title: 'Stat Detective' },
+  'two-truths': { prose: 'two truths', title: 'Two Truths and a Lie' },
+  'river-run': { prose: 'river run', title: 'River Run' },
+  'shared-shores': { prose: 'shared shores', title: 'Shared Shores' },
+  highlands: { prose: 'highlands', title: 'Highlands & Basins' },
+  'name-that-water': { prose: 'name that water', title: 'Name That Water' },
+  'mother-tongue': { prose: 'mother tongue', title: 'Mother Tongue' },
+  'flag-palette': { prose: 'flag palette', title: 'Flag Palette' },
+  'capital-guess': { prose: 'capital guess', title: 'Capital Guess' },
+  'star-chart': { prose: 'star chart', title: 'The Star Chart' },
+  government: { prose: 'parliament', title: 'Parliament' },
+  'terra-incognita': { prose: 'terra incognita', title: 'Terra Incognita' },
+  flashpoint: { prose: 'flashpoint', title: 'Flashpoint' },
+  composition: { prose: 'composition', title: 'Composition' },
+  'ghost-state': { prose: 'ghost states', title: 'Ghost State' },
+  'no-mans-land': { prose: "no man's land", title: "No Man's Land" },
+  'pin-landmark': { prose: 'drop a pin', title: 'Drop a Pin' },
+  'border-chain': { prose: 'border chain', title: 'Border Chain' },
+  atlas: { prose: 'atlas', title: 'Atlas' },
+  'heritage-hunt': { prose: 'heritage hunt', title: 'Heritage Hunt' },
+  'trend-race': { prose: 'trend race', title: 'Trend Race' },
+  timeline: { prose: 'timeline', title: 'Timeline' },
+  empire: { prose: 'ghosts of empires', title: 'Ghosts of Empires' },
+  manhunt: { prose: 'the despot', title: 'The Despot' },
+  'unique-or-bust': { prose: 'unique or bust', title: 'Unique or Bust' },
+  'clean-sweep': { prose: 'clean sweep', title: 'Clean Sweep' },
+  'pyramid-scheme': { prose: 'age pyramids', title: 'Pyramid Scheme' },
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {
@@ -223,7 +233,7 @@ export const gameStats = (game: Game): { [playerId: string]: PlayerGameStats } =
     if (bestKind && bestRatio > 0) {
       playerStats.superlative = {
         title: pickEpithet(bestKind, playerStats.playerId + bestKind),
-        detail: `${Math.round(bestRatio * 100)}% on ${KIND_LABELS[bestKind]} rounds`,
+        detail: `${Math.round(bestRatio * 100)}% on ${KIND_LABELS[bestKind].prose} rounds`,
       }
     }
   }
