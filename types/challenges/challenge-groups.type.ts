@@ -30,7 +30,15 @@ export const CHALLENGE_GROUPS = {
   navigation: { label: 'Borders & routes' },
   water: { label: 'Water & terrain' },
   flags: { label: 'Flags & shapes' },
-  culture: { label: 'Culture & places' },
+  // What was one 'Culture & places' bucket until it held eleven kinds — a
+  // catch-all, because the accurate homes ('economy', 'society') were hidden
+  // and a kind filed there could never be switched off. The four below name
+  // what their rounds are actually about; culture keeps the word games.
+  culture: { label: 'Word games' },
+  language: { label: 'Languages & anthems' },
+  places: { label: 'Landmarks & heritage' },
+  cities: { label: 'Cities & capitals' },
+  blocs: { label: 'Clubs & treaties' },
   disputed: { label: 'Disputed places' },
   // Parties, parliaments and who governs. Visible on purpose: politics is the
   // one topic a table may want switched off outright, which a hidden group
@@ -40,7 +48,10 @@ export const CHALLENGE_GROUPS = {
   trends: { label: 'Trends & history' },
   empires: { label: 'Empires & colonies' },
   economy: { label: 'Economy & work', hidden: true },
-  society: { label: 'People & society', hidden: true },
+  // Unhidden with the culture split: it now owns a round kind (composition),
+  // and `hidden` gates ONLY the lobby row — isAccessorEnabled never reads it —
+  // so the row also hands the table its 24 stat accessors to switch off.
+  society: { label: 'People & society' },
   health: { label: 'Health & lifestyle', hidden: true },
   nature: { label: 'Nature & environment', hidden: true },
 } as const satisfies Record<string, ChallengeGroup>
@@ -87,30 +98,36 @@ export const CHALLENGE_GROUP_BY_KIND = {
   sketch: 'flags',
   'flag-palette': 'flags',
   silhouette: 'flags',
-  'heritage-hunt': 'culture',
-  'mother-tongue': 'culture',
-  // The audio pair: an anthem, and a language spoken aloud.
-  'anthem-buzz': 'culture',
-  'tongue-buzz': 'culture',
-  // Countries, capitals, rivers and megacities in one board — places at large.
+  'heritage-hunt': 'places',
+  'mother-tongue': 'language',
+  // The audio pair: an anthem, and a language spoken aloud. With
+  // mother-tongue they are the language group — all three are speech, heard
+  // or named.
+  'anthem-buzz': 'language',
+  'tongue-buzz': 'language',
+  // Countries, capitals, rivers and megacities in one board. With atlas it is
+  // what 'culture' now means: a word game over place names, where the naming
+  // is the mechanic and the subject is incidental.
   'unique-or-bust': 'culture',
   // Clubs, currency zones, treaty rosters and regions — who belongs to what.
-  // The accurate homes ('economy', 'society') are hidden groups, so a kind
-  // filed there could never be switched off; culture is the visible home.
-  'clean-sweep': 'culture',
-  'capital-guess': 'culture',
+  // SWEEP_SETS is mostly treaty and political blocs (EU, NATO, OPEC, CSTO,
+  // Schengen) plus three regions, so 'economy' would misname it: only the
+  // euro set is economic. Membership is its own axis.
+  'clean-sweep': 'blocs',
+  'capital-guess': 'cities',
   // Capital-guess's mirror: the same cities, read off the map instead of a
   // photo, so it shares the toggle a table that wants city content flips.
-  'star-chart': 'culture',
+  'star-chart': 'cities',
   // The chamber round: who governs, how large they are, and who is with them.
   government: 'politics',
-  // 'society' would read closer, but its group is hidden — hidden groups
-  // classify stat accessors and can't be toggled, so a round kind filed there
-  // could never be switched off. Culture is the visible home for the people.
-  composition: 'culture',
+  // Where a country's people were born — foreign-born share and the corridors
+  // that fed it. Society is now a visible group, so the accurate home is
+  // finally the reachable one.
+  composition: 'society',
   // Deals on every difficulty — icon landmarks and wider scoring bands below
-  // hard (PIN_LANDMARK_TIERS).
-  'pin-landmark': 'culture',
+  // hard (PIN_LANDMARK_TIERS). With heritage-hunt it is the places group: the
+  // two kinds that deal a photographed subject out of PLACES.
+  'pin-landmark': 'places',
   'ghost-state': 'disputed',
   'no-mans-land': 'disputed',
   'trend-race': 'trends',

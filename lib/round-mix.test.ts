@@ -296,9 +296,36 @@ describe('the mix over a full game', () => {
     expect(ranked[0][0]).toBe('ranking')
   })
 
+  // The eleven kinds that used to share one 'culture' group. Splitting that
+  // bucket six ways stopped them suppressing each other through `groupBite`,
+  // which lifted their combined share from 27.3% to 33.4% of a board — so
+  // ROUND_WEIGHTS carries them at 0.7x their old weight to put it back. This
+  // pins the RESULT, not the factor: retune a weight here and the drift shows
+  // up as a failure rather than as a quietly commoner theme.
+  const EX_CULTURE: RoundChallengeKind[] = [
+    'mother-tongue',
+    'anthem-buzz',
+    'tongue-buzz',
+    'capital-guess',
+    'star-chart',
+    'heritage-hunt',
+    'pin-landmark',
+    'clean-sweep',
+    'composition',
+    'atlas',
+    'unique-or-bust',
+  ]
+
+  it('keeps the split-up culture kinds at their pre-split share', () => {
+    const dealt = play(true).flat()
+    const share = dealt.filter(kind => EX_CULTURE.includes(kind)).length / dealt.length
+    expect(share).toBeGreaterThan(0.25)
+    expect(share).toBeLessThan(0.29)
+  })
+
   it('clusters one group three-deep far less often than an undecayed draw', () => {
-    // Not an absolute bar: `navigation` and `culture` hold five to six kinds
-    // each, so some co-occurrence is structural. What matters is the mix
+    // Not an absolute bar: `navigation` holds six kinds, so some co-occurrence
+    // is structural. What matters is the mix
     // cutting it several-fold against the same seed.
     const clusterRate = (games: RoundChallengeKind[][]) => {
       let clustered = 0
