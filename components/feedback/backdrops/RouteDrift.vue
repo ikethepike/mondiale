@@ -102,17 +102,11 @@ const runs = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .route-drift {
-  // Paints its own ground: the shell's backdrop blur is ~90% of the frame
-  // budget at 4x throttle, and an opaque field makes it unnecessary.
-  background: var(--sour-milk);
   inset: 0;
   z-index: 0;
   position: absolute;
   pointer-events: none;
   opacity: 0.85;
-}
-
-.route-drift > * {
   mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
 }
 
@@ -123,17 +117,15 @@ const runs = computed(() => {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   vector-effect: non-scaling-stroke;
-  animation: stroke-draw 0.26s linear var(--at, 0s) forwards;
+  animation: stroke-draw 0.34s var(--ease-smooth) var(--at, 0s) backwards forwards;
 }
 
 .stop {
   fill: var(--soft-blue);
-  opacity: 0;
-  // Without fill-box a circle scales from the SVG origin and visibly slides
-  // toward it as it grows.
+  // fill-box or the circle scales from the SVG origin and slides as it grows.
   transform-box: fill-box;
   transform-origin: center;
-  animation: stop-land 0.28s var(--ease-out-expressive) var(--at, 0s) forwards;
+  animation: stop-land 0.3s var(--ease-out-expressive) var(--at, 0s) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -143,7 +135,6 @@ const runs = computed(() => {
   }
 
   .stop {
-    opacity: 0.9;
     animation: none;
   }
 }
@@ -151,14 +142,10 @@ const runs = computed(() => {
 @keyframes stop-land {
   from {
     opacity: 0;
-    scale: 0.2;
-  }
-  60% {
-    opacity: 1;
-    scale: 1.35;
+    scale: 0.3;
   }
   to {
-    opacity: 0.9;
+    opacity: 1;
     scale: 1;
   }
 }

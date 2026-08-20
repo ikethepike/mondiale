@@ -22,7 +22,7 @@ import { seededRandom } from '~~/lib/random'
  *  two shock rings pushing out and fading. No country named. */
 const props = defineProps<{ seed: number }>()
 
-const STRIKES = 110
+const STRIKES = 150
 
 const strikes = computed(() => {
   const random = seededRandom(props.seed)
@@ -62,10 +62,10 @@ const strikes = computed(() => {
 
 .core {
   fill: flame(0.95);
-  opacity: 0;
+  opacity: 0.95;
   transform-box: fill-box;
   transform-origin: center;
-  animation: strike-land 0.5s var(--ease-out-expressive) var(--at, 0s) forwards;
+  animation: strike-land 0.5s var(--ease-out-expressive) var(--at, 0s) backwards;
 }
 
 .shock {
@@ -73,13 +73,15 @@ const strikes = computed(() => {
   stroke: flame(0.8);
   stroke-width: 3;
   opacity: 0;
+  will-change: transform, opacity;
   transform-box: fill-box;
   transform-origin: center;
-  animation: shock-out 1.5s ease-out var(--at, 0s) forwards;
+  animation: shock-out var(--beat, 4s) ease-out infinite;
+  animation-delay: var(--at, 0s);
 }
 
 .late {
-  animation-delay: calc(var(--at, 0s) + 0.4s);
+  animation-delay: calc(var(--at, 0s) + 0.55s);
 }
 
 @media (prefers-reduced-motion: reduce) {
