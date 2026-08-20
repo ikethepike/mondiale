@@ -45,15 +45,13 @@ import ContourRipple from './ContourRipple.vue'
  * (blue) marks everything else.
  */
 const props = defineProps({
-  /** The round's kind. Give it one and the card names itself — kicker and
-   *  category pill both — so a view never spells the mode out by hand. The
-   *  board's move card and the gates have no kind and stay bare. */
+  /** Give it one and the card names itself. The board's move card and the
+   *  gates have no kind and stay bare. */
   kind: {
     type: String as PropType<RoundChallengeKind>,
     default: undefined,
   },
-  /** Overrides the derived kicker, for the cards whose sign is not just the
-   *  mode's name: a corridor run, the water trio sharing one view. */
+  /** Overrides the derived kicker — a corridor run, the water trio. */
   kicker: {
     type: String,
     default: undefined,
@@ -87,16 +85,12 @@ const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
 const roundNumber = computed(() => gameStore.currentRound?.number ?? 1)
 const category = computed(() => (props.kind ? challengeCategory(props.kind) : undefined))
-// Seeded off the room and the round number: identical on every seat at the
-// table (it is shared state, not a local roll), different from game to game,
-// and stable across a re-render mid-beat so the wall never reshuffles under
-// the words.
+// Room + round: identical on every seat, stable across a re-render.
 const backdropSeed = computed(() =>
   seedFrom(`${gameStore.game?.id ?? 'room'}:${roundNumber.value}`)
 )
-// A modest device gets the plain card. Not because the motion is heavy — it
-// holds 120fps throttled — but because first paint costs up to 2s there, and
-// the beat is only 4.5s long.
+// A modest device gets the plain card: first paint costs up to 2s there
+// against a 4.5s beat.
 const backdrop = computed(() =>
   prefersLightMotion() ? undefined : backdropFor(props.kind, backdropSeed.value)
 )

@@ -1,0 +1,19 @@
+// Interstitial backdrops: the ground behind a branded category card
+// (components/feedback/backdrops/). A pure module like `caption-surface` — it
+// emits nothing until a block includes it.
+
+// Clears the middle so the announcement reads over its own ground. `$reach`
+// widens the cleared ellipse for a sparse field; a dense one can hold a
+// smaller hole without crowding the copy.
+@mixin backdrop-field($opacity: 0.8, $reach: 1) {
+  inset: 0;
+  z-index: 0;
+  position: absolute;
+  pointer-events: none;
+  opacity: $opacity;
+  mask-image: radial-gradient(
+    ellipse #{50% * $reach} #{44% * $reach} at 50% 50%,
+    transparent 34%,
+    black 80%
+  );
+}

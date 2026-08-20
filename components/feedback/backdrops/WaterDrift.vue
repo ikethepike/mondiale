@@ -46,13 +46,9 @@ const lines = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 .water-drift {
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 36%, black 82%);
-  inset: 0;
-  z-index: 0;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.95;
+  @include backdrop-field(0.95);
 }
 
 .isobath {

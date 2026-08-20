@@ -62,16 +62,12 @@ const glyphs = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .word-drift {
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 30%, black 74%);
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(0.75);
   overflow: hidden;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.75;
 }
 
 .glyph {

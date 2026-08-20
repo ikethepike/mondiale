@@ -87,14 +87,10 @@ const runs = computed(() => {
 const dots = computed(() => runs.value.flatMap(run => run.stops))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 .route-drift {
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(0.9, 0.92);
   overflow: hidden;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.9;
-  mask-image: radial-gradient(ellipse 46% 40% at 50% 50%, transparent 32%, black 78%);
 }
 
 .run {

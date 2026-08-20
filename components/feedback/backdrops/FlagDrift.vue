@@ -32,14 +32,10 @@ const sketches = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 .flag-drift {
-  mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 40%, black 84%);
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(0.8, 1.04);
   overflow: hidden;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.8;
 }
 
 .sheet {

@@ -54,16 +54,12 @@ const lanes = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .trend-drift {
-  mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 40%, black 84%);
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(1, 1.04);
   overflow: hidden;
-  position: absolute;
-  pointer-events: none;
-  opacity: 1;
 }
 
 .lane {

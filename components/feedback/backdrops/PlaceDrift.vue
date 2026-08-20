@@ -48,15 +48,11 @@ const pins = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .place-drift {
-  inset: 0;
-  z-index: 0;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.8;
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
+  @include backdrop-field(0.8);
 }
 
 .pin {

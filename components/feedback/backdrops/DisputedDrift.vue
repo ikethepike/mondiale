@@ -111,16 +111,12 @@ const islands = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .disputed-drift {
-  mask-image: radial-gradient(ellipse 56% 50% at 50% 50%, transparent 44%, black 88%);
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(0.55, 1.12);
   overflow: hidden;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.55;
 }
 
 .island {

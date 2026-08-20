@@ -18,16 +18,7 @@
   </span>
 </template>
 <script lang="ts" setup>
-/**
- * A tri-state in one tap-target: auto → on → off → auto.
- *
- * The three-segment control is the right shape for a choice a player weighs
- * (difficulty), but the challenge list is fourteen rows of a setting almost
- * every table leaves alone. Spending a full segmented track on each cost 103px
- * a row on a phone — the list ran 2.3 screens and showed six of them. A chip
- * states the current value and cycles on tap, which fits the whole list on one
- * screen and keeps every state readable without opening anything.
- */
+/** A tri-state in one tap-target: auto → on → off → auto. */
 const STATES = ['auto', 'on', 'off'] as const
 type TriState = (typeof STATES)[number]
 
@@ -54,11 +45,8 @@ const emit = defineEmits<{ 'update:modelValue': [TriState]; change: [] }>()
 const asState = (value: string): TriState =>
   (STATES as readonly string[]).includes(value) ? (value as TriState) : 'auto'
 
-// Held locally and re-synced from the prop, the way SegmentedControl does it:
-// the value the parent hands back is server state, which only lands after the
-// round trip this control is what triggers. A purely computed chip would show
-// the old value until the server answered — which, in testing, looked exactly
-// like a chip that does not work.
+// Held locally and re-synced, like SegmentedControl: the prop is server state
+// that only lands after the round trip this tap starts.
 const selected = ref<TriState>(asState(props.modelValue))
 watch(
   () => props.modelValue,
@@ -123,10 +111,9 @@ const advance = () => {
   background: ink(0.3);
 }
 
-// Auto is the resting state and stays quiet. A row a table has DECIDED reads
-// loud on purpose — the point of the list is spotting your own overrides.
+// A row the table has DECIDED reads loud: the list is for spotting overrides.
 .on {
-  background: hsla(170.5, 24.7%, 65.1%, 0.28);
+  background: color-mix(in srgb, var(--soft-mint) 28%, transparent);
 
   .dot {
     background: var(--soft-mint);

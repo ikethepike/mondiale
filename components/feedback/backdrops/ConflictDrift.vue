@@ -41,15 +41,11 @@ const strikes = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .conflict-drift {
-  mask-image: radial-gradient(ellipse 46% 40% at 50% 50%, transparent 30%, black 76%);
-  inset: 0;
-  z-index: 0;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.9;
+  @include backdrop-field(0.9, 0.92);
 }
 
 .core {

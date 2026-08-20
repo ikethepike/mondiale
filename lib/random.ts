@@ -1,14 +1,6 @@
 /**
- * Mulberry32 — a small, fast, seeded PRNG.
- *
- * `Math.random` is right for anything a single client decides alone. This is
- * for the opposite case: a value every seat must AGREE on without a round
- * trip. A backdrop's layout is the example — the wall behind a round has to be
- * the same wall on every screen at the table, so it is derived from shared
- * state (the room and the round) rather than rolled locally.
- *
- * Not for dealing. The mix, the pools and the subjects are the server's to
- * choose; a client that seeds its own deal has invented a second dealer.
+ * Mulberry32 — for values every seat must agree on without a round trip.
+ * Never for dealing: the mix, the pools and the subjects are the server's.
  */
 export const seededRandom = (seed: number): (() => number) => {
   let state = seed | 0
@@ -20,8 +12,7 @@ export const seededRandom = (seed: number): (() => number) => {
   }
 }
 
-/** A stable 31-bit hash of a string — for turning shared identifiers (a room
- *  id, a round number) into a seed both ends compute the same way. */
+/** Stable 31-bit hash — turns a shared identifier into a seed. */
 export const seedFrom = (source: string): number => {
   let hash = 0
   for (let index = 0; index < source.length; index++) {

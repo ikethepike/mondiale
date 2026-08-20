@@ -91,19 +91,15 @@ const blocs = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .bloc-drift {
-  inset: 0;
-  z-index: 0;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.8;
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
+  @include backdrop-field(0.8);
 }
 
 .hull {
-  fill: hsla(197.6, 51.2%, 41.8%, 0.07);
+  fill: color-mix(in srgb, var(--soft-blue) 7%, transparent);
   stroke: var(--soft-blue);
   stroke-width: 1.4;
   stroke-dasharray: 1;

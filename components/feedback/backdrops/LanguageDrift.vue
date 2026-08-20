@@ -59,15 +59,11 @@ const ridges = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .language-drift {
-  mask-image: radial-gradient(ellipse 54% 48% at 50% 50%, transparent 38%, black 86%);
-  inset: 0;
-  z-index: 0;
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.55;
+  @include backdrop-field(0.55, 1.08);
 }
 
 .ridge {

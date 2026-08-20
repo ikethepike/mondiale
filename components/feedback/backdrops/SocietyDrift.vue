@@ -33,20 +33,16 @@ const rows = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .society-drift {
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(0.4);
   gap: 0.5%;
   display: flex;
   overflow: hidden;
-  position: absolute;
   padding: 4% 0;
   flex-flow: column-reverse nowrap;
-  pointer-events: none;
-  opacity: 0.4;
 }
 
 .row {

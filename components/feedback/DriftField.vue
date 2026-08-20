@@ -24,21 +24,7 @@
 import { sampleMany } from '~~/lib/arrays'
 import { seededRandom } from '~~/lib/random'
 
-/**
- * A slow sea of marks behind an announcement — the album-wall idiom: stacked
- * columns at a slight tilt, drifting in alternating directions, dimmed and
- * desaturated so the words in front stay the subject.
- *
- * Two things are load-bearing. The card lives about four seconds, so the field
- * opens MID-DRIFT (a negative animation-delay) rather than easing up from
- * rest — a field that starts still reads as a static image for the only
- * seconds anyone sees it. And the motion is pure CSS on transform, carrying
- * `.ambient-loop` — the shared rule in _motion.scss stops it under reduced
- * motion while the tiles stay VISIBLE. That is the point: this is the page's
- * ground, not a flourish, and a backdrop that vanishes for the motion-averse
- * is just a blank card. (ContourRipple sets opacity 0 in both CSS and JS, so
- * it disappears entirely — correct for a flourish, wrong for a backdrop.)
- */
+/** A slow sea of marks behind an announcement — the album-wall idiom. */
 const props = withDefaults(
   defineProps<{
     /** Every mark the field may draw from. Sampled, never drawn whole. */
@@ -83,21 +69,17 @@ const columns = computed(() => {
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/backdrop' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 .drift-field {
-  inset: 0;
-  z-index: 0;
+  @include backdrop-field(0.22, 1.04);
   display: flex;
   gap: 1.2%;
   overflow: hidden;
-  position: absolute;
   padding: 0 0.6%;
-  pointer-events: none;
-  opacity: 0.22;
   filter: saturate(0.3);
   transform: rotate(-8deg) scale(1.35);
-  mask-image: radial-gradient(ellipse 52% 46% at 50% 50%, transparent 42%, black 85%);
 }
 
 .column {
