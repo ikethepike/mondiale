@@ -1183,16 +1183,23 @@ const scenarios: Scenario[] = [
   {
     id: 'pyramid-scheme',
     label: 'Pyramid scheme (drag countries onto their shapes)',
-    build: () =>
+    variants: [
+      { id: 'normal', label: 'Normal — four subjects' },
+      // Hard deals five, which is where the phone's two-abreast board runs to
+      // three rows and has to stay on one screen.
+      { id: 'hard', label: 'Hard — five subjects' },
+    ],
+    build: variant =>
       mockGame('group-challenge', [
         groupRound({
           _type: 'pyramid-scheme-challenge',
           // The four extremes, so every axis the round reads on is on screen:
           // Niger's triangle, Japan's coffin, Qatar's migrant slab and the US
           // barrel between them.
-          countries: ['NE', 'JP', 'QA', 'US'],
-          distinctnessFloor: 22,
-          durationSeconds: 55,
+          countries:
+            variant?.id === 'hard' ? ['NE', 'JP', 'QA', 'US', 'DE'] : ['NE', 'JP', 'QA', 'US'],
+          distinctnessFloor: variant?.id === 'hard' ? 16 : 22,
+          durationSeconds: variant?.id === 'hard' ? 50 : 55,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),

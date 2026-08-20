@@ -16,8 +16,8 @@
       :total="challenge.durationSeconds"
     />
 
-    <ChallengePrompt :attributions="datasetAttribution('wpp')">
-      <h1 v-if="!locked" class="map-caption">Drag each country onto its own age pyramid</h1>
+    <ChallengePrompt :compact="tight" :attributions="datasetAttribution('wpp')">
+      <h1 v-if="!locked" class="map-caption">{{ promptLine }}</h1>
       <ChallengeResult
         v-if="locked"
         :status="correctCount === challenge.countries.length ? 'correct' : 'incorrect'"
@@ -38,13 +38,27 @@
         <span class="span-label">{{ PYRAMID_YEARS[0] }} → {{ PYRAMID_YEARS.at(-1) }}</span>
       </div>
 
-      <ul class="cards" :style="{ '--subject-count': challenge.countries.length }">
+      <!-- One key for the whole board where a card has no room to carry its
+           own: the sexes are on the same sides of every spine. -->
+      <p class="axis legend">
+        <span>← men</span>
+        <span>women →</span>
+      </p>
+
+      <ul
+        ref="cardsEl"
+        class="cards scrollport"
+        :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+        :style="{ '--subject-count': challenge.countries.length, '--card-rows': cardRows }"
+        @scroll.passive="syncScrollEdges"
+      >
         <li
           v-for="(isoCode, slot) in challenge.countries"
           :key="isoCode"
           class="card"
           :class="slotClass(slot)"
           :style="{ '--settle-index': slot }"
+          @click="onCardTap(slot)"
         >
           <header>
             <span class="slot-letter">{{ SLOT_LETTERS[slot] }}</span>
@@ -95,15 +109,19 @@
                 </div>
               </template>
             </Sortable>
-            <span v-if="!placedIn(slot).length" class="plate-hint">drop a country here</span>
+            <span v-if="!placedIn(slot).length" class="plate-hint">{{ wellHint }}</span>
           </div>
         </li>
       </ul>
+    </section>
 
+    <footer v-if="!locked" ref="footerEl" class="shell-footer">
       <!-- The tray. Countries stay large and legible here: they are half the
-           puzzle, not a legend. -->
+           puzzle, not a legend. It stands in the footer because it is the
+           round's one control strip — and because a phone scrolls the board
+           past it, so a tray inside the stage scrolled out of reach. -->
       <Sortable
-        v-if="!locked"
+        v-if="unplaced.length || !tapToPlace"
         :key="`tray-${revision}`"
         :list="unplaced"
         :item-key="(iso: ISOCountryCode) => iso"
@@ -113,14 +131,14 @@
         @add="onReturn"
       >
         <template #item="{ element }">
-          <div class="draggable">
+          <div class="draggable" :class="{ held: held === element }" @click="onTrayTap(element)">
             <CountryChip tag="span" :country="getCountry(element)" class="tray-chip" />
           </div>
         </template>
       </Sortable>
-    </section>
 
-    <footer v-if="!locked" ref="footerEl" class="shell-footer">
+      <p v-if="trayHint" class="tray-hint">{{ trayHint }}</p>
+
       <ButtonFilled :disabled="unplaced.length > 0" @click="lockIn()">
         {{ unplaced.length ? `${unplaced.length} still to place` : 'Lock in answers' }}
       </ButtonFilled>
@@ -146,6 +164,8 @@ import { prefersReducedMotion } from '~~/lib/motion'
 import { PYRAMID_YEARS, pyramidPeakShare, pyramidScar, pyramidYearAt } from '~~/lib/pyramids'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
+import { useIsCoarsePointer, useIsPhone, useIsShortViewport } from '~~/lib/use-viewport'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** How long one sweep of the sixty years takes, and the pause at each end. */
@@ -169,15 +189,41 @@ const {
 const footerEl = ref<HTMLElement>()
 useFooterBerth(footerEl)
 
+const isPhone = useIsPhone()
+const isShort = useIsShortViewport()
+/** No room to spare: the header steps down so the board keeps the height. */
+const tight = computed(() => isPhone.value || isShort.value)
+
+/**
+ * Touch places by TAPPING, not by dragging. The board outgrows a phone, so the
+ * cards scroll — and a drag cannot share a finger with a scroller (the tiles
+ * refuse pans to be picked up at all) while the tray sits a screen away from
+ * the pyramid it is aimed at. A pointer keeps the drag: it has the room, and
+ * carrying a country onto its shape is the better gesture where it fits.
+ */
+const tapToPlace = useIsCoarsePointer()
+
+/** The country in hand between a tray tap and the pyramid tap that seats it. */
+const held = ref<ISOCountryCode>()
+
 /** slot index → the country dropped on it. */
 const assignment = ref<(ISOCountryCode | undefined)[]>([])
 const locked = ref(false)
+
+const cardsEl = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => cardsEl.value)
 
 const subjects = computed<ISOCountryCode[]>(() => challenge.value?.countries ?? [])
 
 /** ONE domain across every card, so a bar's length means the same thing on all
  *  of them and the sweep never rescales under the player. */
 const peak = computed(() => pyramidPeakShare(subjects.value))
+
+/** How many rows the phone's two-abreast grid needs. The grid divides its own
+ *  height between them, so every card of the deal is on screen at once — the
+ *  whole puzzle is comparing the shapes, and a shape below the fold is not in
+ *  the comparison. */
+const cardRows = computed(() => Math.ceil(subjects.value.length / 2))
 
 const unplaced = computed(() =>
   subjects.value.filter(isoCode => !assignment.value.includes(isoCode))
@@ -199,8 +245,22 @@ const verdictLine = computed(() => {
   return 'The rest went to the wrong country'
 })
 
+// The instruction has to name the gesture the device actually answers to.
+const promptLine = computed(() =>
+  tapToPlace.value
+    ? 'Tap a country, then tap its age pyramid'
+    : 'Drag each country onto its own age pyramid'
+)
+const wellHint = computed(() => (tapToPlace.value ? 'tap to place here' : 'drop a country here'))
+const trayHint = computed(() => {
+  if (!tapToPlace.value)
+    return unplaced.value.length ? '' : 'drag a country back here to change your mind'
+  if (held.value) return `Now tap the pyramid that fits ${countryName(held.value)}`
+  return unplaced.value.length ? '' : 'tap a placed country to move it'
+})
+
 const slotClass = (slot: number) => {
-  if (!locked.value) return { filled: !!assignment.value[slot] }
+  if (!locked.value) return { filled: !!assignment.value[slot], awaiting: !!held.value }
   return {
     correct: assignment.value[slot] === subjects.value[slot],
     missed: assignment.value[slot] !== subjects.value[slot],
@@ -208,6 +268,57 @@ const slotClass = (slot: number) => {
 }
 
 // --- placing ----------------------------------------------------------------
+
+/**
+ * Seat `iso` on `slot`, or send it back to the tray with `slot` undefined. THE
+ * one placement path: a tap and a drag differ only in how they name the two
+ * arguments, so both ends come through here and the announce below cannot
+ * drift between them.
+ */
+const applyPlacement = (iso: ISOCountryCode, slot: number | undefined) => {
+  const next = [...assignment.value]
+  // A country stands in one place and a slot holds one country: taking either
+  // seat evicts whoever was in it back to the tray.
+  const previous = next.indexOf(iso)
+  if (previous !== -1) next[previous] = undefined
+  if (slot !== undefined) next[slot] = iso
+  assignment.value = next
+  revision.value++
+
+  // The race, not the answer: the room learns how far along someone is, never
+  // which country they seated — with four subjects there are only 24
+  // arrangements, so one named placement would hand over most of the puzzle.
+  // A tile coming back OFF a pyramid rides as `taken`, a second-thoughts tell.
+  // Never `correct`/`wrong`: a placement is a decision, not a verdict, and
+  // nobody knows yet whether it was right — it must not wear a tick or a cross.
+  const seated = next.filter(Boolean).length
+  announce({
+    kind: slot === undefined ? 'taken' : 'presence',
+    placed: { seated, total: placedTotalFor(challenge.value) ?? subjects.value.length },
+  })
+}
+
+const onTrayTap = (iso: ISOCountryCode) => {
+  if (!tapToPlace.value || locked.value) return
+  held.value = held.value === iso ? undefined : iso
+}
+
+/**
+ * A tap on a pyramid seats whatever is in hand. With an empty hand it PICKS UP
+ * the country already sitting there — the same tile, back in hand and ready
+ * for another card, which is how a placement is undone without a tray to drag
+ * it back to.
+ */
+const onCardTap = (slot: number) => {
+  if (!tapToPlace.value || locked.value) return
+  const carried = held.value
+  held.value = undefined
+  if (carried) return applyPlacement(carried, slot)
+  const seated = assignment.value[slot]
+  if (!seated) return
+  applyPlacement(seated, undefined)
+  held.value = seated
+}
 
 /**
  * Which country was dragged. Sortable's `#item` slot owns the element it
@@ -253,26 +364,7 @@ const place = (event: DragMoveEvent, slot: number | undefined) => {
   const iso = isoFromEvent(event)
   undoDomMove(event)
   if (!iso || locked.value) return
-  const next = [...assignment.value]
-  // A country stands in one place and a slot holds one country: taking either
-  // seat evicts whoever was in it back to the tray.
-  const previous = next.indexOf(iso)
-  if (previous !== -1) next[previous] = undefined
-  if (slot !== undefined) next[slot] = iso
-  assignment.value = next
-  revision.value++
-
-  // The race, not the answer: the room learns how far along someone is, never
-  // which country they seated — with four subjects there are only 24
-  // arrangements, so one named placement would hand over most of the puzzle.
-  // A tile coming back OFF a pyramid rides as `taken`, a second-thoughts tell.
-  // Never `correct`/`wrong`: a placement is a decision, not a verdict, and
-  // nobody knows yet whether it was right — it must not wear a tick or a cross.
-  const seated = next.filter(Boolean).length
-  announce({
-    kind: slot === undefined ? 'taken' : 'presence',
-    placed: { seated, total: placedTotalFor(challenge.value) ?? subjects.value.length },
-  })
+  applyPlacement(iso, slot)
 }
 
 const onDrop = (event: DragMoveEvent, slot: number) => place(event, slot)
@@ -285,12 +377,12 @@ const NO_CARRY_LAG = { animation: 0 } as const
 const dropOptions = computed(() => ({
   ...DROP_TARGET_OPTIONS,
   ...NO_CARRY_LAG,
-  disabled: locked.value,
+  disabled: locked.value || tapToPlace.value,
 }))
 const sourceOptions = computed(() => ({
   ...DRAG_SOURCE_OPTIONS,
   ...NO_CARRY_LAG,
-  disabled: locked.value,
+  disabled: locked.value || tapToPlace.value,
 }))
 
 // --- the carry tilt ---------------------------------------------------------
@@ -358,6 +450,7 @@ registerCleanup(() => raf !== undefined && cancelAnimationFrame(raf))
 const lockIn = () => {
   if (locked.value) return
   locked.value = true
+  held.value = undefined
   // Position is the claim: index i is whoever the player put on pyramid i.
   // Absent picks ride as an empty string so the array stays positional.
   submitOnce(subjects.value.map((_, slot) => assignment.value[slot] ?? '') as ISOCountryCode[])
@@ -368,6 +461,7 @@ watch(
   countries => {
     assignment.value = new Array(countries?.length ?? 0).fill(undefined)
     locked.value = false
+    held.value = undefined
   },
   { immediate: true }
 )
@@ -376,22 +470,28 @@ watch(
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/scroll-fade' as *;
 
-/** The nameplate's height, shared by the empty well, the filled one and the
- *  settled truth — a card must not change height as a country lands on it. */
-$plateHeight: 5.4rem;
+.pyramid-scheme {
+  /** The nameplate's height, shared by the empty well, the filled one and the
+   *  settled truth — a card must not change height as a country lands on it. */
+  --plate-height: 5.4rem;
+}
 
 .stage {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
+  min-height: 0;
   // The pyramids ARE the round, so the stage takes the width it can get: four
   // 21-row charts huddled in a narrow column read as decoration.
   width: min(96rem, 100%);
+  margin: 0 auto;
   // Centred in the shell's spare height rather than pinned to the top, where
-  // the round sat above a screen's worth of nothing.
-  margin: auto;
+  // the round sat above a screen's worth of nothing — and where a desk's spare
+  // height opened as a band between the board and the tray below it.
+  justify-content: center;
 }
 
 // The year ticks every frame, so NOTHING here may be laid out from its width:
@@ -404,6 +504,7 @@ $plateHeight: 5.4rem;
   align-items: baseline;
   justify-content: center;
   min-height: 4.6rem;
+  flex: none;
 }
 
 .odometer {
@@ -430,6 +531,10 @@ $plateHeight: 5.4rem;
   color: #{ink(0.55)};
 }
 
+.axis.legend {
+  display: none;
+}
+
 @media screen and (max-width: $tablet) {
   // No room to sit the span beside the odometer on a phone.
   .span-label {
@@ -448,11 +553,21 @@ $plateHeight: 5.4rem;
   margin: 0;
   padding: 0;
   align-items: stretch;
+  // A phone stacks the deal two-abreast and runs past the fold; the board is
+  // the one thing here that may scroll, so the row of countries under it stays
+  // put in the footer. The mask, not the paint: the map shows through.
+  flex: 0 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  @include scroll-mask($top: 2rem, $bottom: 2.4rem);
 }
 
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   gap: 0.6rem;
   padding: 1.3rem 1.4rem 1.1rem;
   border-radius: 2.2rem;
@@ -520,7 +635,7 @@ $plateHeight: 5.4rem;
 // empty as it is filled and the row never re-flows as countries are placed.
 .well {
   position: relative;
-  height: $plateHeight;
+  height: var(--plate-height);
   border-radius: 1rem;
   border: 0.18rem dashed #{ink(0.2)};
   transition:
@@ -546,6 +661,20 @@ $plateHeight: 5.4rem;
     border-color: var(--hior-ange);
     background: #{flame(0.1)};
     box-shadow: 0 0 0 0.35rem #{flame(0.16)};
+  }
+}
+
+// A country is in hand: every pyramid is a live target, and the empty ones say
+// so loudest — the same ember the drop well lights in under a carried tile.
+.card.awaiting {
+  border-color: #{flame(0.45)};
+
+  .well:not(.filled) {
+    border-color: var(--hior-ange);
+    background: #{flame(0.1)};
+  }
+  .plate-hint {
+    color: var(--hior-ange);
   }
 }
 
@@ -578,7 +707,7 @@ $plateHeight: 5.4rem;
 .plate.truth {
   position: relative;
   inset: auto;
-  height: $plateHeight;
+  min-height: var(--plate-height);
   flex-direction: column;
   gap: 0.2rem;
   border-radius: 0.8rem;
@@ -597,6 +726,7 @@ $plateHeight: 5.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   font-size: 1.3rem;
   color: #{ink(0.3)};
   pointer-events: none;
@@ -636,16 +766,13 @@ $plateHeight: 5.4rem;
     border-style: dashed;
     border-color: #{ink(0.12)};
   }
+}
 
-  &::after {
-    content: 'drag a country back here to change your mind';
-    font-size: 1.25rem;
-    color: #{ink(0.3)};
-    display: none;
-  }
-  &.spent::after {
-    display: block;
-  }
+.tray-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 1.25rem;
+  color: #{ink(0.45)};
 }
 
 // A country is a THING to pick up, not a label: a real tile with a face, a
@@ -706,23 +833,129 @@ $plateHeight: 5.4rem;
     // further the closer it is carried to an edge. Set by `tiltToPointer`.
     rotate: var(--carry-tilt, 1.5deg);
   }
+
+  // Picked up by a tap and waiting for the pyramid that takes it.
+  &.held {
+    border-color: var(--hior-ange);
+    background: #{flame(0.12)};
+    box-shadow: 0 0 0 0.3rem #{flame(0.2)};
+    transform: translateY(-0.25rem);
+  }
 }
 
 .shell-footer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
   // The shell passes pointer events through to the map; anything interactive
   // has to claim them back or the map's SVG eats the click.
   pointer-events: auto;
 }
 
+// A finger scrolls the board with the same gesture that would have dragged a
+// tile, so the tiles hand vertical panning back to the scroller and take taps
+// instead (`tapToPlace` disables Sortable at the same breakpoint).
+@media (pointer: coarse) {
+  .draggable {
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+}
+
+// Tight for room: a phone, or a viewport with no height to give (a phone on
+// its side is both at once). The board divides the room it has so the whole
+// deal stays on one screen — comparing the shapes IS the round, and a shape
+// below the fold is out of the comparison.
+@media screen and (max-width: $tablet), screen and (max-height: $short) {
+  .pyramid-scheme {
+    --plate-height: 3.8rem;
+  }
+  .stage {
+    gap: 0.8rem;
+  }
+  .yearbar {
+    min-height: 3rem;
+  }
+  .odometer {
+    font-size: 2.8rem;
+  }
+  // A card this size has no width for a key of its own, and it would say the
+  // same thing four times over. One key for the board instead.
+  .card .axis {
+    display: none;
+  }
+  .axis.legend {
+    display: flex;
+    flex: none;
+    gap: 1.4rem;
+    justify-content: center;
+    margin: -0.4rem 0 0;
+  }
+  .cards {
+    flex: 1 1 auto;
+    // The floor is what a 21-row chart needs to still be a shape; below it the
+    // board goes back to scrolling.
+    grid-template-rows: minmax(11rem, 1fr);
+    align-content: stretch;
+    gap: 0.8rem;
+  }
+  .card {
+    gap: 0.4rem;
+    padding: 0.6rem 0.7rem 0.6rem;
+    border-radius: 1.4rem;
+
+    // A row of its own for one letter is a row the pyramids do not get.
+    header {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.8rem;
+    }
+    // The chart takes whatever the card has left: it is the thing being read.
+    :deep(.population-pyramid) {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    :deep(.population-pyramid svg) {
+      height: 100%;
+    }
+  }
+  .slot-letter {
+    font-size: 1.4rem;
+  }
+  .plate-chip,
+  .tray-chip {
+    font-size: 1.4rem;
+
+    :deep(.chip-flag) {
+      height: 1.9rem;
+    }
+  }
+  .plate-hint {
+    font-size: 1.1rem;
+  }
+  .draggable {
+    min-height: 3.6rem;
+    padding: 0.4rem 0.9rem;
+  }
+  .tray {
+    gap: 0.6rem;
+    padding: 0.7rem;
+    min-height: 0;
+    border-radius: 1.4rem;
+  }
+  .shell-footer {
+    gap: 0.7rem;
+  }
+}
+
+// Two abreast, as many rows as the deal needs. Stands after the tight block so
+// a phone that is also short (a small window) still stacks rather than laying
+// five cards across a 375px screen.
 @media screen and (max-width: $tablet) {
   .cards {
     grid-template-columns: 1fr 1fr;
-    gap: 0.9rem;
-  }
-  .card {
-    padding: 0.9rem 0.9rem 0.8rem;
+    grid-template-rows: repeat(var(--card-rows, 2), minmax(13rem, 1fr));
   }
 }
 </style>
