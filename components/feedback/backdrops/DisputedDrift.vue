@@ -1,97 +1,149 @@
 <template>
-  <svg
-    class="disputed-drift"
-    viewBox="0 0 400 240"
-    preserveAspectRatio="xMidYMid slice"
-    aria-hidden="true"
-  >
-    <defs>
-      <pattern
-        id="disputed-hatch"
-        width="6"
-        height="6"
-        patternTransform="rotate(45)"
-        patternUnits="userSpaceOnUse"
-      >
-        <line x1="0" y1="0" x2="0" y2="6" />
-      </pattern>
-    </defs>
-    <g v-for="claim in claims" :key="claim.key" :transform="claim.transform">
-      <!-- The arrows come first so the ground sits on top of their points:
-           they press against it rather than crossing it. -->
-      <path
-        v-for="(arrow, index) in claim.arrows"
-        :key="index"
-        class="arrow ambient-loop"
-        :d="arrow.d"
-        :style="arrow.style"
-      />
-      <circle class="ground" :r="claim.radius" />
-      <circle class="edge ambient-loop" :r="claim.radius" :style="claim.style" />
-    </g>
-  </svg>
+  <div class="disputed-drift" aria-hidden="true">
+    <div v-for="island in islands" :key="island.key" class="island" :style="island.style">
+      <!-- One flag each side of the line, forged from the island's own seed so
+           the same rock always draws the same two claimants. -->
+      <!-- eslint-disable-next-line vue/no-v-html -- SVG forged locally by lib/flags/forge -->
+      <span class="claimant left" v-html="island.left" />
+      <!-- eslint-disable-next-line vue/no-v-html -- SVG forged locally by lib/flags/forge -->
+      <span class="claimant right" v-html="island.right" />
+      <svg class="land" :viewBox="`0 0 ${ISLAND_W} ${ISLAND_H}`">
+        <defs>
+          <!-- The border is clipped to the coast: a line that runs on past the
+               shore is a line drawn on the sea. -->
+          <clipPath :id="`coast-${island.key}`">
+            <path :d="island.coast" />
+          </clipPath>
+        </defs>
+        <path class="coast" :d="island.coast" />
+        <!-- The border runs the island's full height, wandering the way a
+             surveyed line does rather than ruling straight down. -->
+        <g :clip-path="`url(#coast-${island.key})`">
+          <path class="border ambient-loop" :d="island.border" :style="island.borderStyle" />
+        </g>
+      </svg>
+    </div>
+  </div>
 </template>
 <script lang="ts" setup>
+import { forgeFlag } from '~~/lib/flags/forge'
 import { seededRandom } from '~~/lib/random'
 
 /**
- * The disputed card's ground: one piece of ground, several arrows pointing at
- * it, none of them arriving.
+ * The disputed card's ground: an island with a line drawn down it and a flag
+ * planted either side.
  *
- * The first version scattered the real territory outlines, and it was nearly
- * blank — the median disputed place is 3x2 units on a 2000-unit map and three
- * of them (Rockall, Serranilla Bank, Isla del Perejil) are bare rocks with
- * zero-sized bounds. Blowing each up individually made a few big ones legible
- * and left the rest invisible.
- *
- * What the roster does carry is the argument: seventeen territories have
- * exactly two claimants, four have three or more. So the motif is the CLAIM
- * rather than the coastline — arrows converging on a hatched patch and holding
- * short of it, which is the one thing every disputed place has in common and
- * which no outline could show.
+ * Earlier passes drew the real recognition outlines and came out blank — the
+ * median disputed territory is 3x2 units on a 2000-unit map, and three of them
+ * are bare rocks with zero-sized bounds. This draws the SITUATION instead, and
+ * says it plainly: one piece of land, two claimants, a border neither agrees
+ * on. The flags are forged (lib/flags/forge) rather than real, because a real
+ * pair would name the countries and every disputed round is a question about
+ * exactly that.
  */
 const props = defineProps<{ seed: number }>()
 
-const PATCHES = 7
-/** Claimants per patch, matching the roster's own spread (mostly two). */
-const CLAIMANT_WEIGHTS = [2, 2, 2, 2, 2, 3, 4]
+const ISLANDS = 3
+const ISLAND_W = 200
+const ISLAND_H = 130
 
-const claims = computed(() => {
+/**
+ * A closed coastline.
+ *
+ * Two passes, because one does not give you a coast. The first lays down the
+ * broad form — a handful of low-frequency lobes, which is what makes an island
+ * long or kidney-shaped rather than round. The second adds detail at three
+ * halving scales, the way a real coast is rough at every zoom: headlands carry
+ * coves, coves carry rocks.
+ *
+ * Drawn as straight segments on purpose. Smoothing every point through a
+ * quadratic — the obvious move, and the first thing tried here — rounds off
+ * exactly the detail this generates, and turns a rocky island back into a lump.
+ */
+const coastline = (random: () => number): string => {
+  const STEPS = 150
+  const cx = ISLAND_W / 2
+  const cy = ISLAND_H / 2
+
+  // The broad form: three lobes at low frequency, random phase.
+  const lobes = Array.from({ length: 3 }, (_, index) => ({
+    frequency: index + 2,
+    amplitude: (0.22 - index * 0.05) * (0.6 + random()),
+    phase: random() * Math.PI * 2,
+  }))
+  // The roughness: each octave half the size and twice the frequency.
+  const octaves = Array.from({ length: 3 }, (_, index) => ({
+    frequency: 7 * 2 ** index,
+    amplitude: 0.09 / 2 ** index,
+    phase: random() * Math.PI * 2,
+  }))
+
+  const points: [number, number][] = []
+  for (let step = 0; step < STEPS; step++) {
+    const angle = (step / STEPS) * Math.PI * 2
+    let radius = 1
+    for (const lobe of lobes)
+      radius += Math.sin(angle * lobe.frequency + lobe.phase) * lobe.amplitude
+    for (const octave of octaves) {
+      radius += Math.sin(angle * octave.frequency + octave.phase) * octave.amplitude
+    }
+    radius = Math.max(0.45, radius)
+    points.push([
+      cx + Math.cos(angle) * radius * (ISLAND_W * 0.4),
+      cy + Math.sin(angle) * radius * (ISLAND_H * 0.36),
+    ])
+  }
+  return `${points
+    .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)},${y.toFixed(1)}`)
+    .join(' ')} z`
+}
+
+/** The line down the middle — surveyed, so it bends and doubles back. */
+const borderLine = (random: () => number): string => {
+  const STEPS = 9
+  let x = ISLAND_W / 2 + (random() - 0.5) * 12
+  const points: [number, number][] = []
+  for (let step = 0; step <= STEPS; step++) {
+    x += (random() - 0.5) * 15
+    points.push([x, (step / STEPS) * ISLAND_H])
+  }
+  return points
+    .map(([px, py], index) => `${index === 0 ? 'M' : 'L'} ${px.toFixed(1)},${py.toFixed(1)}`)
+    .join(' ')
+}
+
+/**
+ * Where the three sit. Fixed anchors with a little jitter, not free scatter:
+ * three random points in a box collide about as often as they spread, and a
+ * seed that overlapped two islands read as one shapeless mass while the bottom
+ * half of the card sat empty.
+ */
+const ANCHORS: [number, number][] = [
+  [4, 6],
+  [62, 4],
+  [30, 62],
+]
+
+const islands = computed(() => {
   const random = seededRandom(props.seed)
-  return Array.from({ length: PATCHES }, (_, index) => {
-    const radius = 7 + random() * 9
-    const count = CLAIMANT_WEIGHTS[Math.floor(random() * CLAIMANT_WEIGHTS.length)] ?? 2
-    const spin = random() * Math.PI * 2
-    const arrows = Array.from({ length: count }, (_, arrow) => {
-      // Spread the claimants around the patch, jittered so a four-way dispute
-      // never reads as a compass rose.
-      const angle = spin + (arrow / count) * Math.PI * 2 + (random() - 0.5) * 0.5
-      const reach = radius + 16 + random() * 22
-      // Stops short of the ground on purpose — a claim that lands is a border.
-      const stop = radius + 4
-      const [dx, dy] = [Math.cos(angle), Math.sin(angle)]
-      const head = 4.5
-      // Shaft, then two barbs at the inner end.
-      return {
-        d:
-          `M ${(dx * reach).toFixed(1)},${(dy * reach).toFixed(1)} L ${(dx * stop).toFixed(1)},${(dy * stop).toFixed(1)} ` +
-          `M ${(dx * (stop + head) + dy * head * 0.6).toFixed(1)},${(dy * (stop + head) - dx * head * 0.6).toFixed(1)} ` +
-          `L ${(dx * stop).toFixed(1)},${(dy * stop).toFixed(1)} ` +
-          `L ${(dx * (stop + head) - dy * head * 0.6).toFixed(1)},${(dy * (stop + head) + dx * head * 0.6).toFixed(1)}`,
-        style: {
-          animationDelay: `${(-random() * 9).toFixed(2)}s`,
-          animationDuration: `${(7 + random() * 5).toFixed(2)}s`,
-        } as Record<string, string>,
-      }
-    })
+  return Array.from({ length: ISLANDS }, (_, index) => {
+    const size = 26 + random() * 12
+    const [anchorX, anchorY] = ANCHORS[index] ?? [10, 10]
     return {
-      key: `claim-${index}`,
-      radius,
-      transform: `translate(${(30 + random() * 340).toFixed(1)} ${(24 + random() * 192).toFixed(1)})`,
-      arrows,
+      key: `island-${index}`,
+      coast: coastline(random),
+      border: borderLine(random),
+      left: forgeFlag(`disputed-${props.seed}-${index}-a`).svg,
+      right: forgeFlag(`disputed-${props.seed}-${index}-b`).svg,
       style: {
+        left: `${(anchorX + random() * 10 - 5).toFixed(1)}%`,
+        top: `${(anchorY + random() * 10 - 5).toFixed(1)}%`,
+        width: `${size.toFixed(1)}rem`,
+        transform: `rotate(${(random() * 14 - 7).toFixed(1)}deg)`,
+        opacity: (0.5 + random() * 0.4).toFixed(2),
+      } as Record<string, string>,
+      borderStyle: {
         animationDelay: `${(-random() * 12).toFixed(2)}s`,
-        animationDuration: `${(11 + random() * 6).toFixed(2)}s`,
       } as Record<string, string>,
     }
   })
@@ -103,57 +155,72 @@ const claims = computed(() => {
 .disputed-drift {
   inset: 0;
   z-index: 0;
+  overflow: hidden;
   position: absolute;
   pointer-events: none;
   opacity: 0.55;
   mask-image: radial-gradient(ellipse 56% 50% at 50% 50%, transparent 44%, black 88%);
 }
 
-#disputed-hatch line {
-  stroke: ink(0.34);
-  stroke-width: 2.2;
+.island {
+  position: absolute;
+  aspect-ratio: 200 / 130;
 }
 
-.ground {
-  fill: url(#disputed-hatch);
+.land {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: relative;
+  overflow: visible;
 }
 
-// The dashed edge is what says "not settled" — a solid outline would be
-// taking a side, which is exactly what nobody has managed here.
-.edge {
-  fill: none;
-  stroke: ink(0.42);
-  stroke-width: 1.4;
-  stroke-dasharray: 4 3;
-  animation: claim-waver 14s linear infinite;
+.coast {
+  fill: ink(0.1);
+  stroke: ink(0.4);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
 }
 
-.arrow {
+// Dashed because it is not agreed. A solid line would be a settled border,
+// which is the one thing none of these has.
+.border {
   fill: none;
   stroke: var(--hior-ange);
-  stroke-width: 1.3;
+  stroke-width: 2.2;
+  stroke-dasharray: 7 5;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  // Resting state is a full-strength arrow; the push only leans on it.
-  opacity: 0.6;
-  animation: claim-press 9s ease-in-out infinite;
+  animation: border-crawl 9s linear infinite;
 }
 
-@keyframes claim-waver {
+@keyframes border-crawl {
   to {
-    stroke-dashoffset: -14;
+    stroke-dashoffset: -24;
   }
 }
 
-// Each claimant presses in and eases back, never reaching. Scale, not opacity,
-// so a stopped animation leaves the arrow where it is.
-@keyframes claim-press {
-  0%,
-  100% {
-    transform: scale(1.06);
+.claimant {
+  top: 50%;
+  width: 19%;
+  position: absolute;
+  transform: translateY(-50%);
+  // The flags sit UNDER the coast outline, planted in their half rather than
+  // floating over the island.
+  z-index: -1;
+
+  :deep(svg) {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 0.2rem;
   }
-  50% {
-    transform: scale(0.97);
-  }
+}
+
+.left {
+  left: 22%;
+}
+
+.right {
+  right: 22%;
 }
 </style>
