@@ -53,16 +53,8 @@ import {
 
 // The shared scaffolding blanks the map (no reference material while
 // sketching), runs the interstitial, and owns the submit latch + redelivery.
-const {
-  gameStore,
-  challenge,
-  showInterstitial,
-  submitted,
-  begin,
-  submitOnce,
-  announce,
-  entries,
-} = useGroupChallenge('sketch-challenge')
+const { gameStore, challenge, showInterstitial, submitted, begin, submitOnce, announce, entries } =
+  useGroupChallenge('sketch-challenge')
 
 const canvas = ref<HTMLCanvasElement>()
 const points = ref<OutlinePoint[]>([])
