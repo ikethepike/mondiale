@@ -1,43 +1,69 @@
 <template>
   <div class="word-drift" aria-hidden="true">
     <span
-      v-for="letter in letters"
-      :key="letter.key"
-      class="glyph ambient-loop"
-      :style="letter.style"
+      v-for="glyph in glyphs"
+      :key="glyph.key"
+      class="glyph"
+      :class="{ script: glyph.script }"
+      :style="glyph.style"
     >
-      {{ letter.char }}
+      {{ glyph.char }}
     </span>
   </div>
 </template>
 <script lang="ts" setup>
 import { seededRandom } from '~~/lib/random'
 
-/**
- * The culture card's ground — culture being what is left once the split took
- * the languages, the places and the cities out of it: the word games, where
- * the naming IS the mechanic and the subject is incidental. So: letters.
- */
+/** Letters pushing outward from the middle — Latin among the scripts the atlas
+ *  is actually written in. */
 const props = defineProps<{ seed: number }>()
 
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-const LETTERS = 22
+const LATIN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+/** Greek, Cyrillic, Hebrew, Arabic, Devanagari, Thai, Hangul, Kana, Han,
+ *  Armenian, Georgian, Ethiopic. */
+const SCRIPTS =
+  'ΑΒΓΔΛΠΣΦΩ' +
+  'БГДЖИЛФЦЧШЯ' +
+  'אבגדהחלמשת' +
+  'بجحسصطعكمنه' +
+  'अआकखगचजञटपबमयरल' +
+  'กขคงจฉชญฐณ' +
+  '가나다라마바사아' +
+  'あいうえおかきくけこ' +
+  '山川日月木火土水金' +
+  'ԱԲԳԴԵԼՄՆ' +
+  'ႠႡႢႣႤႥ' +
+  'ሀለሐመሠረ'
 
-const letters = computed(() => {
+const GLYPHS = 34
+
+const glyphs = computed(() => {
   const random = seededRandom(props.seed)
-  return Array.from({ length: LETTERS }, (_, index) => ({
-    key: `glyph-${index}`,
-    char: ALPHABET[Math.floor(random() * ALPHABET.length)],
-    style: {
-      left: `${(random() * 104 - 2).toFixed(1)}%`,
-      top: `${(random() * 104 - 2).toFixed(1)}%`,
-      fontSize: `${(3 + random() * 9).toFixed(1)}rem`,
-      transform: `rotate(${(random() * 24 - 12).toFixed(1)}deg)`,
-      animationDelay: `${(-random() * 14).toFixed(2)}s`,
-      animationDuration: `${(10 + random() * 9).toFixed(2)}s`,
-      opacity: (0.18 + random() * 0.3).toFixed(2),
-    } as Record<string, string>,
-  }))
+  return Array.from({ length: GLYPHS }, (_, index) => {
+    // Half Latin, half everything else.
+    const script = random() > 0.5
+    const alphabet = script ? SCRIPTS : LATIN
+    const angle = random() * Math.PI * 2
+    // Rings out from the middle, so the field clears the copy as it spreads.
+    const reach = 26 + random() * 34
+    const size = 2.6 + random() * 6
+    return {
+      key: `glyph-${index}`,
+      char: alphabet[Math.floor(random() * alphabet.length)],
+      script,
+      style: {
+        left: `${(50 + Math.cos(angle) * reach).toFixed(1)}%`,
+        top: `${(50 + Math.sin(angle) * reach * 0.9).toFixed(1)}%`,
+        fontSize: `${size.toFixed(1)}rem`,
+        '--spin': `${(random() * 22 - 11).toFixed(1)}deg`,
+        '--at': `${(index * 0.05 + random() * 0.2).toFixed(2)}s`,
+        '--drift': `${(reach * 0.22).toFixed(1)}%`,
+        '--dx': `${Math.cos(angle).toFixed(3)}`,
+        '--dy': `${Math.sin(angle).toFixed(3)}`,
+        opacity: (0.2 + random() * 0.3).toFixed(2),
+      } as Record<string, string>,
+    }
+  })
 })
 </script>
 <style lang="scss" scoped>
@@ -50,24 +76,40 @@ const letters = computed(() => {
   position: absolute;
   pointer-events: none;
   opacity: 0.75;
-  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 34%, black 80%);
+  mask-image: radial-gradient(ellipse 50% 44% at 50% 50%, transparent 30%, black 74%);
 }
 
 .glyph {
   position: absolute;
   font-weight: bold;
   line-height: 1;
-  color: ink(0.34);
-  animation: glyph-settle 14s ease-in-out infinite;
+  color: ink(0.38);
+  translate: -50% -50%;
+  animation: glyph-out 1.1s var(--ease-out-expressive) var(--at, 0s) backwards;
 }
 
-@keyframes glyph-settle {
-  0%,
-  100% {
-    translate: 0 0;
+// The non-Latin ones lean on the system stack: the brand face has no Devanagari.
+.script {
+  font-family: system-ui, sans-serif;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glyph {
+    animation: none;
   }
-  50% {
-    translate: 0 -0.6rem;
+}
+
+@keyframes glyph-out {
+  from {
+    opacity: 0;
+    scale: 0.3;
+    rotate: 0deg;
+    translate: calc(-50% - var(--dx) * var(--drift)) calc(-50% - var(--dy) * var(--drift));
+  }
+  to {
+    scale: 1;
+    rotate: var(--spin);
   }
 }
 </style>
