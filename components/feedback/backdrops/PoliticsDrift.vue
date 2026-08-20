@@ -24,7 +24,7 @@ const tiles = computed(() =>
 
 // A phone is a third of the width and every tile is a decode: fewer, larger
 // marks read better there and cost less.
-const columns = computed(() => (isPhone.value ? 4 : 9))
-const perColumn = computed(() => (isPhone.value ? 5 : 7))
+const columns = computed(() => (isPhone.value ? 5 : 12))
+const perColumn = computed(() => (isPhone.value ? 7 : 10))
 const seed = computed(() => props.seed)
 </script>

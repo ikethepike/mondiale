@@ -81,7 +81,7 @@ const columns = computed(() => {
           // Ratio is width/height: a wide wordmark and a square crest must
           // paint comparable AREA or the wall reads as a ranking.
           aspectRatio: `${tile.ratio && tile.ratio > 0 ? tile.ratio : 1}`,
-          width: `${Math.round(72 + random() * 26)}%`,
+          width: `${Math.round(84 + random() * 16)}%`,
           opacity: `${(0.5 + random() * 0.5).toFixed(2)}`,
           transform: `rotate(${(random() * 5 - 2.5).toFixed(2)}deg)`,
         } as Record<string, string>,
@@ -97,10 +97,10 @@ const columns = computed(() => {
   inset: 0;
   z-index: 0;
   display: flex;
-  gap: 2.4%;
+  gap: 1.2%;
   overflow: hidden;
   position: absolute;
-  padding: 0 1.2%;
+  padding: 0 0.6%;
   pointer-events: none;
   // The wall is ground: hold it well under the copy's contrast, and drop the
   // colour so a hundred party palettes read as one texture rather than
@@ -117,7 +117,7 @@ const columns = computed(() => {
 
 .column {
   flex: 1;
-  gap: 2.4rem;
+  gap: 1.1rem;
   display: flex;
   min-width: 0;
   flex-flow: column nowrap;
