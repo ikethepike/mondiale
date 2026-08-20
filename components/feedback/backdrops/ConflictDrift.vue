@@ -45,7 +45,7 @@ const strikes = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .conflict-drift {
-  @include backdrop-field(0.9, 0.92);
+  @include backdrop-field(0.9, 0.92, 30%, 76%);
 }
 
 .core {

@@ -63,7 +63,7 @@ const ridges = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .language-drift {
-  @include backdrop-field(0.55, 1.08);
+  @include backdrop-field(0.55, 1.08, 38%, 86%);
 }
 
 .ridge {

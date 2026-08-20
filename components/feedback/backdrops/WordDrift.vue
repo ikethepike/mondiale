@@ -66,7 +66,7 @@ const glyphs = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .word-drift {
-  @include backdrop-field(0.75);
+  @include backdrop-field(0.75, 1, 30%, 74%);
   overflow: hidden;
 }
 

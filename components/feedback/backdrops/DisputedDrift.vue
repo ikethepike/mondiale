@@ -115,7 +115,7 @@ const islands = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .disputed-drift {
-  @include backdrop-field(0.55, 1.12);
+  @include backdrop-field(0.55, 1.12, 44%, 88%);
   overflow: hidden;
 }
 

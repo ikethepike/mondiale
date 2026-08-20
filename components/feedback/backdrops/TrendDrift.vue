@@ -70,7 +70,7 @@ const lanes = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .trend-drift {
-  @include backdrop-field(1, 1.04);
+  @include backdrop-field(1, 1.04, 40%, 84%);
   overflow: hidden;
 }
 

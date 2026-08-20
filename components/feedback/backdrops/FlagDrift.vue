@@ -34,7 +34,7 @@ const sketches = computed(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/backdrop' as *;
 .flag-drift {
-  @include backdrop-field(0.8, 1.04);
+  @include backdrop-field(0.8, 1.04, 40%, 84%);
   overflow: hidden;
 }
 

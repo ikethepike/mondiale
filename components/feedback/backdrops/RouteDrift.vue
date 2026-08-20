@@ -89,7 +89,7 @@ const dots = computed(() => runs.value.flatMap(run => run.stops))
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/backdrop' as *;
 .route-drift {
-  @include backdrop-field(0.9, 0.92);
+  @include backdrop-field(0.9, 1, 36%, 82%);
   overflow: hidden;
 }
 

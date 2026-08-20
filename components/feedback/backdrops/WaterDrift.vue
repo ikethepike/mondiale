@@ -48,7 +48,7 @@ const lines = computed(() => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/backdrop' as *;
 .water-drift {
-  @include backdrop-field(0.95);
+  @include backdrop-field(0.95, 1, 36%, 82%);
 }
 
 .isobath {

@@ -46,7 +46,7 @@ const ghosts = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .empire-drift {
-  @include backdrop-field(0.95, 1.08);
+  @include backdrop-field(0.95, 1.08, 40%, 86%);
 }
 
 .ghost {
