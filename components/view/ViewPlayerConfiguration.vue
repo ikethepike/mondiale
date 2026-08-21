@@ -236,6 +236,11 @@
           <div>
             <span class="eyebrow config-label">Game Settings</span>
             <h2>Challenges</h2>
+            <!-- The consequence, in one line. Switching a category off used to
+                 change nothing on screen but the chip that was tapped. -->
+            <p class="deck-count">
+              <strong>{{ deck.playing }}</strong> of {{ deck.total }} modes in play
+            </p>
           </div>
           <!-- The sheet is long on a phone; leaving only the Done button at the
                very bottom meant scrolling the whole list to get back out. -->
@@ -265,25 +270,73 @@
             />
           </div>
 
-          <!-- Fourteen categories, one tap-target each. A full segmented track
-               per row ran the list to 2.3 phone screens; the chip states its
-               value and cycles, so the whole list stands on one. -->
+          <!-- Fourteen categories, each a collapsed row carrying its own count
+               and one switch. The count is what the row is FOR: a name alone
+               cannot show that a category is standing empty because the
+               difficulty withheld it, or because the table is two people. -->
           <div class="challenge-scope">
-            <div class="challenge-grid">
-              <div v-for="(group, id) in visibleChallengeGroups" :key="id" class="challenge-line">
-                <div class="challenge-meta">
-                  <span class="challenge-name">{{ group.label }}</span>
-                  <span class="challenge-caption">{{ groupCaption(id) }}</span>
+            <ul class="challenge-grid">
+              <li
+                v-for="(group, id) in visibleChallengeGroups"
+                :key="id"
+                class="challenge-group"
+                :class="{ open: openGroup === id }"
+              >
+                <div class="challenge-line">
+                  <button
+                    type="button"
+                    class="challenge-summary"
+                    :aria-expanded="openGroup === id"
+                    :aria-controls="`challenge-modes-${id}`"
+                    @click="toggleGroup(id)"
+                  >
+                    <span class="chevron" aria-hidden="true" />
+                    <span class="challenge-meta">
+                      <span class="challenge-name">{{ group.label }}</span>
+                      <span class="challenge-caption">{{ modeCount(id) }}</span>
+                    </span>
+                  </button>
+                  <!-- Outside the summary button: an interactive control may
+                       not nest inside one, and the switch must stay reachable
+                       without opening the panel. -->
+                  <ChallengeToggle
+                    :label="group.label"
+                    :model-value="overrideValue(id)"
+                    :playing="lineups[id].playing > 0"
+                    :disabled="!isPlayerHost"
+                    @update:model-value="state => setOverride(id, state)"
+                  />
                 </div>
-                <TriStateChip
-                  :name="`game-challenges-${id}`"
-                  :label="group.label"
-                  :model-value="overrideValue(id)"
-                  :disabled="!isPlayerHost"
-                  @change="updateConfiguration"
-                />
-              </div>
-            </div>
+
+                <div
+                  v-show="openGroup === id"
+                  :id="`challenge-modes-${id}`"
+                  class="challenge-modes"
+                >
+                  <ul class="mode-list">
+                    <li
+                      v-for="mode in lineups[id].modes"
+                      :key="mode.kind"
+                      class="mode"
+                      :class="mode.status"
+                    >
+                      <span class="mode-name">{{ mode.title }}</span>
+                      <span v-if="mode.status !== 'playing'" class="mode-note">
+                        {{ modeNote(mode) }}
+                      </span>
+                    </li>
+                  </ul>
+                  <button
+                    v-if="isPlayerHost && overrideValue(id) !== 'auto'"
+                    type="button"
+                    class="follow-difficulty"
+                    @click="setOverride(id, 'auto')"
+                  >
+                    Follow the difficulty
+                  </button>
+                </div>
+              </li>
+            </ul>
           </div>
 
           <div class="challenge-row">
@@ -352,8 +405,8 @@ import { gsap } from 'gsap'
 import InviteQrModal from '~/components/modal/InviteQrModal.vue'
 import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
-import TriStateChip from '~/components/input/TriStateChip.vue'
-import { categoryModes } from '~~/lib/challenge-labels'
+import ChallengeToggle from '~/components/input/ChallengeToggle.vue'
+import { categoryLineup, modesInPlay, type CategoryMode } from '~~/lib/challenge-labels'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { microNationsIncluded } from '~~/lib/game-rules'
 import { MOTION, prefersReducedMotion } from '~~/lib/motion'
@@ -368,6 +421,8 @@ import {
   CHALLENGE_GROUPS,
   type ChallengeGroup,
   type ChallengeGroupId,
+  type ChallengeOverrides,
+  type ChallengeToggleState,
 } from '~~/types/challenges/challenge-groups.type'
 import {
   gameLengths,
@@ -400,12 +455,78 @@ watch(
 const showSettings = ref(false)
 const settingsForm = ref<HTMLFormElement>()
 
-/** Overrides badge under the lobby's difficulty control. */
-const overrideCount = computed(() => Object.keys(game.value?.challengeOverrides ?? {}).length)
+// The optimistic overrides, mirroring `difficultyPreview`: the switches and
+// every count derived from them read this, so a tap moves the numbers on the
+// same frame instead of after the round trip. The server's echo still wins.
+const overridePreview = ref<ChallengeOverrides>({ ...(game.value?.challengeOverrides ?? {}) })
+watch(
+  () => game.value?.challengeOverrides,
+  overrides => (overridePreview.value = { ...(overrides ?? {}) }),
+  { deep: true }
+)
 
-const overrideValue = (id: ChallengeGroupId): string => {
-  const override = game.value?.challengeOverrides?.[id]
+/** Overrides badge under the lobby's difficulty control. */
+const overrideCount = computed(() => Object.keys(overridePreview.value).length)
+
+const overrideValue = (id: ChallengeGroupId): ChallengeToggleState => {
+  const override = overridePreview.value[id]
   return override === undefined ? 'auto' : override ? 'on' : 'off'
+}
+
+const setOverride = (id: ChallengeGroupId, state: ChallengeToggleState) => {
+  // AUTO is the ABSENCE of a key, not a stored value — `isGroupEnabled` reads
+  // `undefined` as "follow the difficulty", and a key set to anything else
+  // would pin the group forever.
+  const next = Object.fromEntries(
+    Object.entries(overridePreview.value).filter(([group]) => group !== id)
+  ) as ChallengeOverrides
+  if (state !== 'auto') next[id] = state === 'on'
+  overridePreview.value = next
+  updateConfiguration()
+}
+
+/** What the settings page is describing: the difficulty and overrides as the
+ *  host has them RIGHT NOW, which is what every count below is counted at. */
+const previewSettings = computed(() => ({
+  difficulty: difficultyPreview.value,
+  challengeOverrides: overridePreview.value,
+}))
+
+// Table size is not a setting but it benches modes all the same (manhunt wants
+// four seats), so the lineup is read at the size of the table as it stands.
+const contenders = computed(() => playersByPhase.value.all.length)
+
+const lineups = computed(
+  () =>
+    Object.fromEntries(
+      Object.keys(visibleChallengeGroups).map(id => [
+        id,
+        categoryLineup(id as ChallengeGroupId, previewSettings.value, contenders.value),
+      ])
+    ) as Record<ChallengeGroupId, ReturnType<typeof categoryLineup>>
+)
+
+/** The settings header's running total, across every group and the core. */
+const deck = computed(() => modesInPlay(previewSettings.value, contenders.value))
+
+const modeCount = (id: ChallengeGroupId): string => {
+  const { playing, total } = lineups.value[id]
+  return `${playing} of ${total} mode${total === 1 ? '' : 's'}`
+}
+
+/** Why a mode is benched. Playing modes say nothing — the row is the answer. */
+const modeNote = (mode: CategoryMode): string => {
+  if (mode.status === 'off') return 'switched off'
+  if (mode.status === 'hard-only') return 'hard games only'
+  if (mode.status === 'short-table') return `needs ${mode.minimumTable} players`
+  return ''
+}
+
+// One panel at a time: fourteen groups that can all stand open is a list whose
+// height nobody can predict, and the point of collapsing it was the scan.
+const openGroup = ref<ChallengeGroupId>()
+const toggleGroup = (id: ChallengeGroupId) => {
+  openGroup.value = openGroup.value === id ? undefined : id
 }
 
 /** Micro-nations tri-state, resolved exactly like the group overrides. */
@@ -424,12 +545,6 @@ const microNationsCaption = computed(() => {
     ? 'on'
     : `off below hard — now ${difficultyPreview.value}`
 })
-
-/** What this group's current tab means in modes, at the previewed difficulty. */
-// What the category deals, by name. The old caption was a count, which read
-// well when `culture` held eleven kinds and collapsed to the word "on" once
-// the groups were split down to one to three each.
-const groupCaption = (id: ChallengeGroupId): string => categoryModes(id, difficultyPreview.value)
 
 // Pulse the seat counter when the lobby size changes
 const playerCounter = ref<HTMLElement>()
@@ -523,15 +638,9 @@ const updateConfiguration = async () => {
   )
 
   const configuration: { [key: string]: FormDataEntryValue | boolean | object } = {}
-  const challengeOverrides: { [group: string]: boolean } = {}
   for (const [key, value] of entries) {
     const field = key.replace('game-', '')
-    // Group tri-states fold into one overrides object; 'auto' means no key.
-    if (field.startsWith('challenges-')) {
-      if (value !== 'auto') challengeOverrides[field.replace('challenges-', '')] = value === 'on'
-      continue
-    }
-    // Micro-nations is a tri-state too: 'auto' = no key (difficulty decides).
+    // Micro-nations is a tri-state: 'auto' = no key (difficulty decides).
     if (field === 'microNations') {
       if (value !== 'auto') configuration.includeMicroNations = value === 'on'
       continue
@@ -543,9 +652,10 @@ const updateConfiguration = async () => {
   }
 
   const settingsMounted = !!settingsForm.value
-  configuration.challengeOverrides = settingsMounted
-    ? challengeOverrides
-    : (game.value.challengeOverrides ?? {})
+  // The switches drive `overridePreview` directly rather than hidden inputs, so
+  // this is correct whether or not the settings page is open — no carrying the
+  // stored value across an unmounted form.
+  configuration.challengeOverrides = { ...overridePreview.value }
   // Every FormData value arrives as a string; the toggle wants a boolean.
   configuration.liveGuesses = settingsMounted
     ? configuration.liveGuesses === 'on'
@@ -978,6 +1088,18 @@ const startGame = () => {
   }
 }
 
+.deck-count {
+  opacity: 0.7;
+  margin: 0.2rem 0 0;
+  font-size: 1.3rem;
+
+  strong {
+    opacity: 1;
+    font-size: 1.5rem;
+    color: var(--dark-blue);
+  }
+}
+
 .settings-close {
   margin-left: 0;
 }
@@ -1019,40 +1141,135 @@ const startGame = () => {
 .challenge-grid {
   display: grid;
   gap: 0 2.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   grid-template-columns: 1fr;
   border-top: 0.1rem solid $hairline;
+}
+
+.challenge-group {
+  border-bottom: 0.1rem solid $hairline;
 }
 
 .challenge-line {
   gap: 1.2rem;
   display: flex;
-  padding: 0.8rem 0;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 0.1rem solid $hairline;
+}
 
-  // Two lines is the ceiling. Borders & routes names six modes and ran to
-  // three, which put its row back where the segmented control had it — the
-  // list stays scannable only while every line is the same height.
-  .challenge-caption {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+// The whole meta column is the disclosure target — a chevron alone is a
+// 12px hit area in a list meant to be opened.
+.challenge-summary {
+  gap: 0.8rem;
+  flex: 1;
+  border: 0;
+  padding: 0.8rem 0;
+  display: flex;
+  min-width: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  align-items: center;
+  background: none;
+}
+
+.chevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  opacity: 0.5;
+  background: var(--dark-blue);
+  mask: url('~/assets/icons/chevron.svg') no-repeat center / contain;
+  transition: transform var(--motion-quick) var(--ease-out-expressive);
+}
+
+.open .chevron {
+  transform: rotate(180deg);
+}
+
+.challenge-modes {
+  padding: 0 0 1.2rem 1.9rem;
+}
+
+.mode-list {
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  flex-flow: column nowrap;
+}
+
+.mode {
+  gap: 0.8rem;
+  display: flex;
+  font-size: 1.35rem;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--dark-blue);
+
+  // A benched mode still earns its row — the reader is here to find out what
+  // is missing — but it must not read as available.
+  &:not(.playing) {
+    opacity: 0.55;
+
+    .mode-name {
+      text-decoration: line-through;
+      text-decoration-thickness: 0.1rem;
+    }
   }
 }
 
-// Two columns as soon as the box can hold a name and a chip twice over — a
+.mode-name::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.7rem;
+  display: inline-block;
+  border-radius: 50%;
+  vertical-align: 0.25em;
+  background: ink(0.25);
+}
+
+.playing .mode-name::before {
+  background: var(--soft-mint);
+}
+
+.mode-note {
+  flex: none;
+  opacity: 0.8;
+  font-size: 1.2rem;
+}
+
+.follow-difficulty {
+  border: 0;
+  padding: 0.8rem 0 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.25rem;
+  background: none;
+  color: var(--dark-blue);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.3em;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-style: solid;
+  }
+}
+
+// Two columns as soon as the box can hold a name and a switch twice over — a
 // container query, not a viewport one, because this list lives in a modal
 // whose width is its own business.
 @container challenge-scope (min-width: 46rem) {
   .challenge-grid {
+    // An open panel grows its grid row; without this its collapsed neighbour
+    // stretches to match and its rule floats away from its own row.
+    align-items: start;
     grid-template-columns: 1fr 1fr;
-  }
-
-  // With two columns the last row's pair would draw a rule under nothing.
-  .challenge-line:nth-last-child(-n + 2):nth-child(odd) {
-    border-bottom: 0;
   }
 }
 

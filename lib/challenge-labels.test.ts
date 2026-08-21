@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { categoryModes, challengeCategory, roundKicker } from '~~/lib/challenge-labels'
+import {
+  categoryLineup,
+  challengeCategory,
+  modesInPlay,
+  roundKicker,
+} from '~~/lib/challenge-labels'
 import { KIND_LABELS } from '~~/lib/victory-stats'
 import {
   CHALLENGE_GROUP_BY_KIND,
@@ -74,27 +79,90 @@ describe('the move interstitial stays undressed', () => {
   })
 })
 
-describe('categoryModes', () => {
-  it('names what a category deals', () => {
-    expect(categoryModes('language', 'normal')).toBe('Mother Tongue, Opening Ceremony and Tongues')
-    expect(categoryModes('politics', 'normal')).toBe('Parliament')
+const TABLE = 8
+
+describe('categoryLineup', () => {
+  it('names every mode a category owns', () => {
+    const language = categoryLineup('language', { difficulty: 'normal' }, TABLE)
+    expect(language.modes.map(mode => mode.title)).toEqual([
+      'Mother Tongue',
+      'Opening Ceremony',
+      'Tongues',
+    ])
+    expect(language.playing).toBe(3)
+    expect(language.total).toBe(3)
   })
 
-  it('says when a difficulty is holding modes back', () => {
-    // Flashpoint is hard-only, and conflicts holds nothing else — the whole
-    // category is withheld below hard, which a bare name list cannot show.
-    expect(categoryModes('conflicts', 'normal')).toContain('hard games only')
-    expect(categoryModes('conflicts', 'hard')).toBe('Flashpoint')
+  it('separates the three ways a mode can be benched', () => {
+    // Flashpoint is hard-only, and conflicts holds nothing else.
+    const auto = categoryLineup('conflicts', { difficulty: 'normal' }, TABLE)
+    expect(auto.modes[0]?.status).toBe('hard-only')
+    expect(auto.playing).toBe(0)
+
+    // Forcing the group on lifts its own difficulty gate.
+    const forced = categoryLineup(
+      'conflicts',
+      { difficulty: 'normal', challengeOverrides: { conflicts: true } },
+      TABLE
+    )
+    expect(forced.modes[0]?.status).toBe('playing')
+
+    const off = categoryLineup(
+      'conflicts',
+      { difficulty: 'hard', challengeOverrides: { conflicts: false } },
+      TABLE
+    )
+    expect(off.modes[0]?.status).toBe('off')
+
+    // Manhunt needs four; no switch can buy the seats.
+    const solo = categoryLineup(
+      'navigation',
+      { difficulty: 'hard', challengeOverrides: { navigation: true } },
+      2
+    )
+    const manhunt = solo.modes.find(mode => mode.kind === 'manhunt')
+    expect(manhunt?.status).toBe('short-table')
+    expect(manhunt?.minimumTable).toBe(4)
   })
 
-  it('gives every visible category a caption', () => {
+  it('gives every visible category at least one mode to list', () => {
     for (const [id, group] of Object.entries(CHALLENGE_GROUPS)) {
       if ('hidden' in group && group.hidden) continue
-      const caption = categoryModes(id as never, 'normal')
-      expect(caption, `${id} has no caption`).toBeTruthy()
-      // The old caption collapsed to the bare word "on" for most groups once
-      // culture was split; that is the regression this guards.
-      expect(caption, `${id} caption says nothing`).not.toBe('on')
+      const lineup = categoryLineup(id as never, { difficulty: 'normal' }, TABLE)
+      expect(lineup.total, `${id} owns no modes`).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('modesInPlay', () => {
+  it('counts the core kinds no toggle can reach', () => {
+    const everythingOff = Object.fromEntries(
+      Object.keys(CHALLENGE_GROUPS).map(group => [group, false])
+    )
+    const { playing, total } = modesInPlay(
+      { difficulty: 'normal', challengeOverrides: everythingOff },
+      TABLE
+    )
+    expect(total).toBe(KINDS.length)
+    // Ranking and two truths — the floor that keeps a game playable.
+    expect(playing).toBe(2)
+  })
+
+  // The header count and the accordion's rows are read off separate
+  // functions; a table that agrees only by coincidence would drift.
+  it('agrees with the sum of every category lineup', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const contenders of [2, 4, 8]) {
+        const settings = { difficulty, challengeOverrides: { conflicts: true, water: false } }
+        const summed = Object.entries(CHALLENGE_GROUPS).reduce(
+          (running, [id]) => running + categoryLineup(id as never, settings, contenders).playing,
+          0
+        )
+        const core = KINDS.filter(kind => CHALLENGE_GROUP_BY_KIND[kind] === 'core').length
+        expect(modesInPlay(settings, contenders).playing, `${difficulty} at ${contenders}`).toBe(
+          summed + core
+        )
+      }
     }
   })
 })
