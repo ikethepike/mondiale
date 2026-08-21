@@ -236,11 +236,6 @@
           <div>
             <span class="eyebrow config-label">Game Settings</span>
             <h2>Challenges</h2>
-            <!-- The consequence, in one line. Switching a category off used to
-                 change nothing on screen but the chip that was tapped. -->
-            <p class="deck-count">
-              <strong>{{ deck.playing }}</strong> of {{ deck.total }} modes in play
-            </p>
           </div>
           <!-- The sheet is long on a phone; leaving only the Done button at the
                very bottom meant scrolling the whole list to get back out. -->
@@ -270,33 +265,63 @@
             />
           </div>
 
-          <!-- Fourteen categories, each a collapsed row carrying its own count
-               and one switch. The count is what the row is FOR: a name alone
-               cannot show that a category is standing empty because the
-               difficulty withheld it, or because the table is two people. -->
-          <div class="challenge-scope">
-            <ul class="challenge-grid">
-              <li
-                v-for="(group, id) in visibleChallengeGroups"
-                :key="id"
-                class="challenge-group"
-                :class="{ open: openGroup === id }"
+          <!-- The fourteen categories stand behind one row. Difficulty is the
+               setting a table actually reaches for; opening on a wall of
+               categories made the sheet look like fourteen decisions when it
+               is really one, and the count on the right is what the closed row
+               owes the reader in exchange for hiding them. -->
+          <section class="advanced" :class="{ open: showAdvanced }">
+            <h3 class="advanced-heading">
+              <button
+                type="button"
+                class="advanced-summary"
+                :aria-expanded="showAdvanced"
+                aria-controls="advanced-panel"
+                @click="showAdvanced = !showAdvanced"
               >
-                <div class="challenge-line">
-                  <button
-                    type="button"
-                    class="challenge-summary"
-                    :aria-expanded="openGroup === id"
-                    :aria-controls="`challenge-modes-${id}`"
-                    @click="toggleGroup(id)"
-                  >
-                    <span class="chevron" aria-hidden="true" />
-                    <span class="challenge-meta">
-                      <span class="challenge-name">{{ group.label }}</span>
-                      <span class="challenge-caption">{{ modeCount(id) }}</span>
-                    </span>
-                  </button>
-                  <!-- Outside the summary button: an interactive control may
+                <span class="chevron" aria-hidden="true" />
+                <span class="challenge-meta">
+                  <span class="challenge-name">Advanced customization</span>
+                  <span class="challenge-caption">Choose the categories this table plays.</span>
+                </span>
+                <span class="deck-count">
+                  <span class="deck-tally">
+                    <strong>{{ deck.playing }}</strong
+                    >/{{ deck.total }}
+                  </span>
+                  <span class="deck-unit">modes</span>
+                </span>
+              </button>
+            </h3>
+
+            <!-- Fourteen categories, each a collapsed row carrying its own
+                 count and one control. The count is what the row is FOR: a
+                 name alone cannot show that a category is standing empty
+                 because the difficulty withheld it, or because the table is
+                 two people. -->
+            <div v-show="showAdvanced" id="advanced-panel" class="challenge-scope">
+              <ul class="challenge-grid">
+                <li
+                  v-for="(group, id) in visibleChallengeGroups"
+                  :key="id"
+                  class="challenge-group"
+                  :class="{ open: openGroup === id }"
+                >
+                  <div class="challenge-line">
+                    <button
+                      type="button"
+                      class="challenge-summary"
+                      :aria-expanded="openGroup === id"
+                      :aria-controls="`challenge-modes-${id}`"
+                      @click="toggleGroup(id)"
+                    >
+                      <span class="chevron" aria-hidden="true" />
+                      <span class="challenge-meta">
+                        <span class="challenge-name">{{ group.label }}</span>
+                        <span class="challenge-caption">{{ modeCount(id) }}</span>
+                      </span>
+                    </button>
+                    <!-- Outside the summary button: an interactive control may
                        not nest inside one, and the control must stay reachable
                        without opening the panel.
                        All three states on the track, none of them inferred: ON
@@ -306,38 +331,39 @@
                        was already happening. What the choice RESOLVES to is
                        the count under the name, which reads it better than a
                        knob position could. -->
-                  <SegmentedControl
-                    :name="`game-challenges-${id}`"
-                    :label="group.label"
-                    :options="[...CHALLENGE_TOGGLE_STATES]"
-                    :model-value="overrideValue(id)"
-                    :disabled="!isPlayerHost"
-                    @update:model-value="state => setOverride(id, state as ChallengeToggleState)"
-                  />
-                </div>
+                    <SegmentedControl
+                      :name="`game-challenges-${id}`"
+                      :label="group.label"
+                      :options="[...CHALLENGE_TOGGLE_STATES]"
+                      :model-value="overrideValue(id)"
+                      :disabled="!isPlayerHost"
+                      @update:model-value="state => setOverride(id, state as ChallengeToggleState)"
+                    />
+                  </div>
 
-                <div
-                  v-show="openGroup === id"
-                  :id="`challenge-modes-${id}`"
-                  class="challenge-modes"
-                >
-                  <ul class="mode-list">
-                    <li
-                      v-for="mode in lineups[id].modes"
-                      :key="mode.kind"
-                      class="mode"
-                      :class="mode.status"
-                    >
-                      <span class="mode-name">{{ mode.title }}</span>
-                      <span v-if="mode.status !== 'playing'" class="mode-note">
-                        {{ modeNote(mode) }}
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-            </ul>
-          </div>
+                  <div
+                    v-show="openGroup === id"
+                    :id="`challenge-modes-${id}`"
+                    class="challenge-modes"
+                  >
+                    <ul class="mode-list">
+                      <li
+                        v-for="mode in lineups[id].modes"
+                        :key="mode.kind"
+                        class="mode"
+                        :class="mode.status"
+                      >
+                        <span class="mode-name">{{ mode.title }}</span>
+                        <span v-if="mode.status !== 'playing'" class="mode-note">
+                          {{ modeNote(mode) }}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
 
           <div class="challenge-row">
             <div class="challenge-meta">
@@ -521,6 +547,10 @@ const modeNote = (mode: CategoryMode): string => {
   if (mode.status === 'short-table') return `needs ${mode.minimumTable} players`
   return ''
 }
+
+// Shut on arrival, EXCEPT for a table that already has overrides: a returning
+// host must never have to go looking for a choice they already made.
+const showAdvanced = ref(overrideCount.value > 0)
 
 // One panel at a time: fourteen groups that can all stand open is a list whose
 // height nobody can predict, and the point of collapsing it was the scan.
@@ -1095,16 +1125,61 @@ const startGame = () => {
   }
 }
 
+// The door to the category list, shaped like the settings rows around it so
+// it reads as one of them rather than a new kind of thing.
+.advanced-heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  border-bottom: 0.1rem solid $hairline;
+}
+
+.advanced-summary {
+  gap: 1.2rem;
+  width: 100%;
+  border: 0;
+  padding: 1rem 0;
+  display: flex;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  align-items: center;
+  background: none;
+
+  .challenge-meta {
+    flex: 1;
+  }
+}
+
+// Far right, and readable at a glance with the panel shut — it is the only
+// thing standing in for fourteen hidden rows.
 .deck-count {
-  opacity: 0.7;
-  margin: 0.2rem 0 0;
-  font-size: 1.3rem;
+  gap: 0.1rem;
+  flex: none;
+  display: flex;
+  line-height: 1.1;
+  text-align: right;
+  flex-flow: column nowrap;
+  align-items: flex-end;
+}
+
+.deck-tally {
+  opacity: 0.6;
+  font-size: 1.4rem;
+  color: var(--dark-blue);
 
   strong {
     opacity: 1;
-    font-size: 1.5rem;
-    color: var(--dark-blue);
+    font-size: 1.9rem;
   }
+}
+
+.deck-unit {
+  opacity: 0.55;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .settings-close {
@@ -1143,6 +1218,9 @@ const startGame = () => {
   // its own columns off its own width without the query chasing itself.
   container-type: inline-size;
   container-name: challenge-scope;
+  // Stepped in from the settings rows so the categories read as living UNDER
+  // the row that opened them, not as more siblings of Difficulty.
+  padding-left: 1.6rem;
 }
 
 .challenge-grid {
@@ -1152,7 +1230,8 @@ const startGame = () => {
   padding: 0;
   list-style: none;
   grid-template-columns: 1fr;
-  border-top: 0.1rem solid $hairline;
+  // No rule of its own: the advanced row's own bottom border is the boundary,
+  // and a second hairline a millimetre under it just reads as a thick smudge.
 }
 
 .challenge-group {
@@ -1203,7 +1282,10 @@ const startGame = () => {
   transition: transform var(--motion-quick) var(--ease-out-expressive);
 }
 
-.open .chevron {
+// Each disclosure turns its OWN chevron. A descendant `.open .chevron` also
+// caught every category chevron nested inside the open advanced section.
+.challenge-group.open > .challenge-line .chevron,
+.advanced.open > .advanced-heading .chevron {
   transform: rotate(180deg);
 }
 
@@ -1315,6 +1397,14 @@ const startGame = () => {
   .config-row .configuration-block :deep(.segmented),
   .challenge-row :deep(.segmented) {
     width: 100%;
+  }
+
+  // The nesting step costs more than it buys on one column: those 1.6rem are
+  // what "Landmarks & heritage" needs to hold its line, and a row twice the
+  // height of its neighbours is a worse signal than no indent at all. The
+  // accordion above already says what these rows belong to.
+  .challenge-scope {
+    padding-left: 0;
   }
 }
 
