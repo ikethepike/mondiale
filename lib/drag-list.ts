@@ -50,14 +50,24 @@ export const DRAG_HOLD_MS = 220
 export const DRAG_HOLD_SLOP_PX = 6
 
 /**
- * The same list where the column ALSO scrolls (chronicle's cards outgrow a
- * phone): the browser keeps vertical pan, so a swipe scrolls and a hold picks
- * a card up. `delayOnTouchOnly` leaves pointer drags immediate — a mouse never
- * competes with a pan.
+ * The hold itself, spread onto EITHER list shape: a reorder hand (below) or a
+ * drop-target pair (the pyramid board's tray and plates, which share the
+ * screen with a scrolling board). `delayOnTouchOnly` leaves pointer drags
+ * immediate — a mouse never competes with a pan — and a release inside the
+ * hold never starts a drag at all, so a tap stays a tap.
  */
-export const HOLD_DRAG_LIST_OPTIONS = {
-  ...DRAG_LIST_OPTIONS,
+export const DRAG_HOLD_OPTIONS = {
   delay: DRAG_HOLD_MS,
   delayOnTouchOnly: true,
   touchStartThreshold: DRAG_HOLD_SLOP_PX,
+} as const
+
+/**
+ * The same list where the column ALSO scrolls (chronicle's cards outgrow a
+ * phone): the browser keeps vertical pan, so a swipe scrolls and a hold picks
+ * a card up.
+ */
+export const HOLD_DRAG_LIST_OPTIONS = {
+  ...DRAG_LIST_OPTIONS,
+  ...DRAG_HOLD_OPTIONS,
 } as const

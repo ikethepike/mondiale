@@ -32,18 +32,16 @@
     </ChallengePrompt>
 
     <section class="stage">
-      <!-- The clock of the round: sixty years sweeping past, ticking. -->
+      <!-- The clock of the round: sixty years sweeping past, ticking. On a
+           tight board it also carries the one key the cards have no room for —
+           the sexes sit on the same sides of every spine, so the board needs
+           to be told once, and a row of its own costs a row of pyramid. -->
       <div class="yearbar">
+        <span class="axis-flank">← men</span>
         <span class="odometer">{{ shownYear }}</span>
+        <span class="axis-flank">women →</span>
         <span class="span-label">{{ PYRAMID_YEARS[0] }} → {{ PYRAMID_YEARS.at(-1) }}</span>
       </div>
-
-      <!-- One key for the whole board where a card has no room to carry its
-           own: the sexes are on the same sides of every spine. -->
-      <p class="axis legend">
-        <span>← men</span>
-        <span>women →</span>
-      </p>
 
       <ul
         ref="cardsEl"
@@ -102,6 +100,8 @@
               class="plate"
               :data-slot="slot"
               @add="event => onDrop(event, slot)"
+              @start="onDragStart"
+              @end="stampDrag"
             >
               <template #item="{ element }">
                 <div class="draggable">
@@ -121,7 +121,6 @@
            round's one control strip — and because a phone scrolls the board
            past it, so a tray inside the stage scrolled out of reach. -->
       <Sortable
-        v-if="unplaced.length || !tapToPlace"
         :key="`tray-${revision}`"
         :list="unplaced"
         :item-key="(iso: ISOCountryCode) => iso"
@@ -129,15 +128,22 @@
         class="tray"
         :class="{ spent: !unplaced.length }"
         @add="onReturn"
+        @start="onDragStart"
+        @end="stampDrag"
       >
         <template #item="{ element }">
           <div class="draggable" :class="{ held: held === element }" @click="onTrayTap(element)">
             <CountryChip tag="span" :country="getCountry(element)" class="tray-chip" />
           </div>
         </template>
+        <!-- Inside the tray, not under it: the line describes THIS box, and an
+             emptied tray with nothing in it collapses to a sliver. -->
+        <template #footer>
+          <span v-if="!unplaced.length" class="tray-hint">{{ returnHint }}</span>
+        </template>
       </Sortable>
 
-      <p v-if="trayHint" class="tray-hint">{{ trayHint }}</p>
+      <p v-if="held" class="tray-hint">Now tap the pyramid that fits {{ countryName(held) }}</p>
 
       <ButtonFilled :disabled="unplaced.length > 0" @click="lockIn()">
         {{ unplaced.length ? `${unplaced.length} still to place` : 'Lock in answers' }}
@@ -159,7 +165,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { placedTotalFor } from '~~/lib/live-guess-policy'
-import { DRAG_SOURCE_OPTIONS, DROP_TARGET_OPTIONS } from '~~/lib/drag-list'
+import { DRAG_HOLD_OPTIONS, DRAG_SOURCE_OPTIONS, DROP_TARGET_OPTIONS } from '~~/lib/drag-list'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { PYRAMID_YEARS, pyramidPeakShare, pyramidScar, pyramidYearAt } from '~~/lib/pyramids'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -195,13 +201,12 @@ const isShort = useIsShortViewport()
 const tight = computed(() => isPhone.value || isShort.value)
 
 /**
- * Touch places by TAPPING, not by dragging. The board outgrows a phone, so the
- * cards scroll — and a drag cannot share a finger with a scroller (the tiles
- * refuse pans to be picked up at all) while the tray sits a screen away from
- * the pyramid it is aimed at. A pointer keeps the drag: it has the room, and
- * carrying a country onto its shape is the better gesture where it fits.
+ * Both gestures place a country on every device — carry it across, or tap it
+ * and tap its pyramid. This only decides which one the copy NAMES: the tap is
+ * what a finger reaches for first on a board it also has to scroll, and the
+ * carry is what a hand on a mouse reaches for.
  */
-const tapToPlace = useIsCoarsePointer()
+const touchFirst = useIsCoarsePointer()
 
 /** The country in hand between a tray tap and the pyramid tap that seats it. */
 const held = ref<ISOCountryCode>()
@@ -247,17 +252,16 @@ const verdictLine = computed(() => {
 
 // The instruction has to name the gesture the device actually answers to.
 const promptLine = computed(() =>
-  tapToPlace.value
+  touchFirst.value
     ? 'Tap a country, then tap its age pyramid'
     : 'Drag each country onto its own age pyramid'
 )
-const wellHint = computed(() => (tapToPlace.value ? 'tap to place here' : 'drop a country here'))
-const trayHint = computed(() => {
-  if (!tapToPlace.value)
-    return unplaced.value.length ? '' : 'drag a country back here to change your mind'
-  if (held.value) return `Now tap the pyramid that fits ${countryName(held.value)}`
-  return unplaced.value.length ? '' : 'tap a placed country to move it'
-})
+const wellHint = computed(() => (touchFirst.value ? 'tap to place here' : 'drop a country here'))
+const returnHint = computed(() =>
+  touchFirst.value
+    ? 'tap or drag a placed country back here'
+    : 'drag a country back here to change your mind'
+)
 
 const slotClass = (slot: number) => {
   if (!locked.value) return { filled: !!assignment.value[slot], awaiting: !!held.value }
@@ -298,8 +302,35 @@ const applyPlacement = (iso: ISOCountryCode, slot: number | undefined) => {
   })
 }
 
+/**
+ * A fallback drag ends in a real click on whatever it was dropped on:
+ * SortableJS only swallows that click when the drag never reached a target,
+ * which is the opposite of the case that needs swallowing here — untouched,
+ * the drop's own click would pick the country straight back up again.
+ *
+ * A tap that never became a drag is safe: `start`/`end` fire only once a drag
+ * has actually begun, and the hold in DRAG_HOLD_OPTIONS lets a finger rest on
+ * a tile and release without ever starting one.
+ */
+const DRAG_CLICK_GRACE_MS = 400
+
+/**
+ * When the drag lifecycle last spoke: its start, the drop that ends it, or its
+ * end. A stamp rather than an in-flight flag, because a drop RE-KEYS the list
+ * it came from — the `end` that would have cleared a flag is emitted by a
+ * component Vue has already thrown away, and the flag would latch on forever,
+ * taking every tap for the rest of the round with it.
+ */
+let dragAt = 0
+const stampDrag = () => (dragAt = performance.now())
+const onDragStart = () => {
+  stampDrag()
+  held.value = undefined
+}
+const tapAllowed = () => !locked.value && performance.now() - dragAt > DRAG_CLICK_GRACE_MS
+
 const onTrayTap = (iso: ISOCountryCode) => {
-  if (!tapToPlace.value || locked.value) return
+  if (!tapAllowed()) return
   held.value = held.value === iso ? undefined : iso
 }
 
@@ -310,7 +341,7 @@ const onTrayTap = (iso: ISOCountryCode) => {
  * it back to.
  */
 const onCardTap = (slot: number) => {
-  if (!tapToPlace.value || locked.value) return
+  if (!tapAllowed()) return
   const carried = held.value
   held.value = undefined
   if (carried) return applyPlacement(carried, slot)
@@ -361,6 +392,7 @@ const revision = ref(0)
 type DragMoveEvent = { item?: HTMLElement; from?: HTMLElement; oldIndex?: number }
 
 const place = (event: DragMoveEvent, slot: number | undefined) => {
+  stampDrag()
   const iso = isoFromEvent(event)
   undoDomMove(event)
   if (!iso || locked.value) return
@@ -374,15 +406,19 @@ const onReturn = (event: DragMoveEvent) => place(event, undefined)
  *  (`sort: false` on both ends) — a carried tile should be instant. */
 const NO_CARRY_LAG = { animation: 0 } as const
 
+// The hold is what lets the board keep BOTH: under it the gesture is a tap or
+// a pan of the scrolling board, past it the tile comes up in hand.
 const dropOptions = computed(() => ({
   ...DROP_TARGET_OPTIONS,
+  ...DRAG_HOLD_OPTIONS,
   ...NO_CARRY_LAG,
-  disabled: locked.value || tapToPlace.value,
+  disabled: locked.value,
 }))
 const sourceOptions = computed(() => ({
   ...DRAG_SOURCE_OPTIONS,
+  ...DRAG_HOLD_OPTIONS,
   ...NO_CARRY_LAG,
-  disabled: locked.value || tapToPlace.value,
+  disabled: locked.value,
 }))
 
 // --- the carry tilt ---------------------------------------------------------
@@ -531,17 +567,6 @@ watch(
   color: #{ink(0.55)};
 }
 
-.axis.legend {
-  display: none;
-}
-
-@media screen and (max-width: $tablet) {
-  // No room to sit the span beside the odometer on a phone.
-  .span-label {
-    display: none;
-  }
-}
-
 // One equal column per subject, driven by the deal rather than by `auto-fit`:
 // auto-fit re-packs the row at arbitrary widths, so four cards could come out
 // three-and-one, and a five-subject hard round wrapped differently again.
@@ -621,14 +646,22 @@ watch(
   font-size: 1.7rem;
 }
 
-.axis {
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
+.axis,
+.axis-flank {
   font-size: 1.05rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #{ink(0.55)};
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.axis-flank {
+  display: none;
 }
 
 // The drop well: ONE fixed-height box per card, so a card is exactly as tall
@@ -779,7 +812,15 @@ watch(
 // border and a shadow, sized past the 44px touch minimum so a finger can take
 // it without aiming.
 .draggable {
-  touch-action: none;
+  // `pan-y`, never `none`: the board behind these tiles scrolls, and refusing
+  // the browser's gestures over them leaves a phone with no scrollable surface
+  // at all. The hold in DRAG_HOLD_OPTIONS is what separates a carry from a pan
+  // — and from a tap.
+  touch-action: pan-y;
+  // A long press picks a country up; it must never start iOS text selection.
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   cursor: grab;
   display: flex;
   align-items: center;
@@ -853,16 +894,6 @@ watch(
   pointer-events: auto;
 }
 
-// A finger scrolls the board with the same gesture that would have dragged a
-// tile, so the tiles hand vertical panning back to the scroller and take taps
-// instead (`tapToPlace` disables Sortable at the same breakpoint).
-@media (pointer: coarse) {
-  .draggable {
-    touch-action: manipulation;
-    cursor: pointer;
-  }
-}
-
 // Tight for room: a phone, or a viewport with no height to give (a phone on
 // its side is both at once). The board divides the room it has so the whole
 // deal stays on one screen — comparing the shapes IS the round, and a shape
@@ -881,16 +912,28 @@ watch(
     font-size: 2.8rem;
   }
   // A card this size has no width for a key of its own, and it would say the
-  // same thing four times over. One key for the board instead.
+  // same thing four times over. One key for the board instead, beside the year
+  // — which is the row the span it replaces was using.
   .card .axis {
     display: none;
   }
-  .axis.legend {
-    display: flex;
-    flex: none;
-    gap: 1.4rem;
-    justify-content: center;
-    margin: -0.4rem 0 0;
+  .span-label {
+    display: none;
+  }
+  // Equal outer columns, so the odometer's fixed 4ch box stays dead centre
+  // whatever the two labels measure, and the ticking digits move neither.
+  .yearbar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .axis-flank {
+    display: block;
+    white-space: nowrap;
+    padding-inline: 1rem;
+
+    &:first-child {
+      text-align: right;
+    }
   }
   .cards {
     flex: 1 1 auto;
@@ -941,7 +984,9 @@ watch(
   .tray {
     gap: 0.6rem;
     padding: 0.7rem;
-    min-height: 0;
+    // Emptied it is still what a country is carried back TO, so it holds a
+    // tile's worth of height rather than collapsing to a hairline.
+    min-height: 4.6rem;
     border-radius: 1.4rem;
   }
   .shell-footer {
