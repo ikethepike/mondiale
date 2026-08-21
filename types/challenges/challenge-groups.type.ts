@@ -63,6 +63,11 @@ const GROUPS: Record<ChallengeGroupId, ChallengeGroup> = CHALLENGE_GROUPS
 
 export type ChallengeOverrides = Partial<Record<ChallengeGroupId, boolean>>
 
+/** One override as a control renders it — an absent key reads 'auto'. The
+ *  micro-nation gate is the same tri-state and shares this vocabulary. */
+export const CHALLENGE_TOGGLE_STATES = ['auto', 'on', 'off'] as const
+export type ChallengeToggleState = (typeof CHALLENGE_TOGGLE_STATES)[number]
+
 const isValidChallengeGroupId = (value: unknown): value is ChallengeGroupId =>
   // Object.hasOwn, not `in` — `in` walks the prototype chain, so keys like
   // 'toString' would validate and be stored into game state.
@@ -368,7 +373,7 @@ export const HEAVY_ACCESSORS: ReadonlySet<GroupChallengeAccessorId> = new Set(
     .flatMap(group => [...(groupAccessors[group] ?? [])])
 )
 
-type ChallengeSettings = {
+export type ChallengeSettings = {
   difficulty: GameDifficulty
   challengeOverrides?: ChallengeOverrides
 }
