@@ -297,14 +297,22 @@
                     </span>
                   </button>
                   <!-- Outside the summary button: an interactive control may
-                       not nest inside one, and the switch must stay reachable
-                       without opening the panel. -->
-                  <ChallengeToggle
+                       not nest inside one, and the control must stay reachable
+                       without opening the panel.
+                       All three states on the track, none of them inferred: ON
+                       is what forces a category ABOVE its difficulty gate
+                       (conflict rounds on a normal game), and a two-ended
+                       switch could only ever offer the opposite of whatever
+                       was already happening. What the choice RESOLVES to is
+                       the count under the name, which reads it better than a
+                       knob position could. -->
+                  <SegmentedControl
+                    :name="`game-challenges-${id}`"
                     :label="group.label"
+                    :options="[...CHALLENGE_TOGGLE_STATES]"
                     :model-value="overrideValue(id)"
-                    :playing="lineups[id].playing > 0"
                     :disabled="!isPlayerHost"
-                    @update:model-value="state => setOverride(id, state)"
+                    @update:model-value="state => setOverride(id, state as ChallengeToggleState)"
                   />
                 </div>
 
@@ -326,14 +334,6 @@
                       </span>
                     </li>
                   </ul>
-                  <button
-                    v-if="isPlayerHost && overrideValue(id) !== 'auto'"
-                    type="button"
-                    class="follow-difficulty"
-                    @click="setOverride(id, 'auto')"
-                  >
-                    Follow the difficulty
-                  </button>
                 </div>
               </li>
             </ul>
@@ -405,7 +405,6 @@ import { gsap } from 'gsap'
 import InviteQrModal from '~/components/modal/InviteQrModal.vue'
 import RegionOrbs from '~/components/input/RegionOrbs.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
-import ChallengeToggle from '~/components/input/ChallengeToggle.vue'
 import { categoryLineup, modesInPlay, type CategoryMode } from '~~/lib/challenge-labels'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { microNationsIncluded } from '~~/lib/game-rules'
@@ -419,6 +418,7 @@ import {
 import { roomInviteUrl, useInviteLink } from '~~/lib/use-invite-link'
 import {
   CHALLENGE_GROUPS,
+  CHALLENGE_TOGGLE_STATES,
   type ChallengeGroup,
   type ChallengeGroupId,
   type ChallengeOverrides,
@@ -640,6 +640,10 @@ const updateConfiguration = async () => {
   const configuration: { [key: string]: FormDataEntryValue | boolean | object } = {}
   for (const [key, value] of entries) {
     const field = key.replace('game-', '')
+    // The group tracks carry a hidden input like every SegmentedControl, but
+    // `overridePreview` is what this form sends — reading both would let a
+    // stale one win, and an unrecognised key would ride to the server.
+    if (field.startsWith('challenges-')) continue
     // Micro-nations is a tri-state: 'auto' = no key (difficulty decides).
     if (field === 'microNations') {
       if (value !== 'auto') configuration.includeMicroNations = value === 'on'
@@ -1012,7 +1016,10 @@ const startGame = () => {
 .settings-card {
   width: 100%;
   margin: auto;
-  max-width: 64rem;
+  // Wide enough that a category name and its three-segment track share a line
+  // without wrapping — at 64rem "Landmarks & heritage" broke over two, and a
+  // list whose rows are different heights stops being scannable.
+  max-width: 76rem;
   display: flex;
   flex-flow: column nowrap;
 
@@ -1157,6 +1164,16 @@ const startGame = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+
+  // Tighter than the settings rows above: three segments have to sit beside a
+  // category name in a half-width column, not across the sheet.
+  :deep(.segmented) {
+    flex: none;
+  }
+  :deep(.segment) {
+    font-size: 1.2rem;
+    padding: 0.4rem 0.9rem;
+  }
 }
 
 // The whole meta column is the disclosure target — a chevron alone is a
@@ -1244,27 +1261,11 @@ const startGame = () => {
   font-size: 1.2rem;
 }
 
-.follow-difficulty {
-  border: 0;
-  padding: 0.8rem 0 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 1.25rem;
-  background: none;
-  color: var(--dark-blue);
-  text-decoration: underline dotted;
-  text-underline-offset: 0.3em;
-
-  &:hover,
-  &:focus-visible {
-    text-decoration-style: solid;
-  }
-}
-
-// Two columns as soon as the box can hold a name and a switch twice over — a
-// container query, not a viewport one, because this list lives in a modal
-// whose width is its own business.
-@container challenge-scope (min-width: 46rem) {
+// Two columns only once the box can hold a name and a full three-segment
+// track twice over — a container query, not a viewport one, because this list
+// lives in a modal whose width is its own business. Splitting at 46rem gave
+// each column 21rem, which the track alone nearly filled.
+@container challenge-scope (min-width: 58rem) {
   .challenge-grid {
     // An open panel grows its grid row; without this its collapsed neighbour
     // stretches to match and its rule floats away from its own row.
