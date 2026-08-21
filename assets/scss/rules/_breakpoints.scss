@@ -1,7 +1,13 @@
 // The viewport ladder — every SCSS media query builds from these tokens.
-// (Script-side gates live in lib/use-viewport.ts — PHONE_MAX_PX mirrors $tablet.)
+// (Script-side gates live in lib/use-viewport.ts — PHONE_MAX_PX mirrors $tablet
+// and SHORT_MAX_PX mirrors $short.)
 $phone: 480px; // sub-phone squeeze: single-column reveals, tighter type
 $tablet: 640px;
 $tablet-wide: 900px; // where pin-drop stages trade the photo rail for a dock
 $laptop: 1024px;
 $desktop: 1920px;
+
+// The one HEIGHT rung: a viewport with no room to give a stage its natural
+// height. A phone on its side is short and wide at once, so a stage that only
+// squeezes by width keeps its desk layout in the 390px it has left.
+$short: 480px;
