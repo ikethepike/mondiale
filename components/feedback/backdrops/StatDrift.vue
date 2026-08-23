@@ -35,8 +35,11 @@ const TILT_MAX = 8
 
 const field = computed(() => {
   const random = seededRandom(props.seed)
-  const count = isPhone.value ? 11 : 12
-  const perBand = isPhone.value ? 11 : 28
+  // Chosen against the field's own box so the weave reads square: the pitch
+  // is width/perBand across and height/count down, and a band of large gaps
+  // between tight rows reads as stripes rather than a ground.
+  const count = 14
+  const perBand = isPhone.value ? 8 : 25
   const tilt = (random() < 0.5 ? -1 : 1) * (TILT_MIN + random() * (TILT_MAX - TILT_MIN))
   return {
     tilt,
