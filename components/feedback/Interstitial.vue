@@ -103,7 +103,14 @@ if (watching.value) onMounted(() => emit('done'))
 const root = ref<HTMLElement>()
 const { skip } = useIntroBeat(
   root,
-  { pieceSelector: '[data-interstitial]', holdFor: () => props.holdFor },
+  {
+    pieceSelector: '[data-interstitial]',
+    holdFor: () => props.holdFor,
+    // Reduced motion drops the choreography, not the reading time: the card
+    // holds its own beat either way, and stays inside the walk lead by the
+    // same construction (MOVE_INTERSTITIAL_TOTAL_MS bounds the animated one).
+    reducedMotionHoldMs: props.holdFor * 1000,
+  },
   () => emit('done')
 )
 
