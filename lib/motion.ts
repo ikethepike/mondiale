@@ -66,19 +66,17 @@ let modestDevice: boolean | undefined
  * on that hardware half the beat is a blank card followed by a rushed
  * entrance, which is worse than the plain card it replaced.
  *
- * `deviceMemory` and `hardwareConcurrency` are advisory and both absent on
- * Safari, so a missing answer is treated as capable: guessing "modest" on
- * every iPhone would be wrong far more often than the reverse.
+ * `deviceMemory` is advisory and absent outside Chromium, so a missing answer
+ * is treated as capable. `hardwareConcurrency` looks like the same kind of
+ * signal and is not: Safari clamps it to 4 on every iPhone as a fingerprinting
+ * defence, so reading it undressed the interstitial on the fastest phones we
+ * ship to.
  */
 export const prefersLightMotion = (): boolean => {
   if (typeof window === 'undefined') return false
   if (modestDevice !== undefined) return modestDevice
   const nav = navigator as Navigator & { deviceMemory?: number }
   const memory = nav.deviceMemory
-  const cores = nav.hardwareConcurrency
-  modestDevice =
-    prefersReducedMotion() ||
-    (memory !== undefined && memory <= 4) ||
-    (cores !== undefined && cores <= 4)
+  modestDevice = prefersReducedMotion() || (memory !== undefined && memory <= 4)
   return modestDevice
 }
