@@ -17,7 +17,6 @@
       <span v-if="category" data-interstitial class="category-pill">{{ category.label }}</span>
       <span data-interstitial class="kicker map-caption">
         {{ resolvedKicker }}
-        <!-- A mode may toss its emblem onto the sign's corner. -->
         <span v-if="$slots.emblem" class="kicker-emblem"><slot name="emblem" /></span>
       </span>
       <h1 data-interstitial>{{ title }}</h1>
@@ -40,14 +39,12 @@ import { useGameStore } from '~~/store/game.store'
 import ContourRipple from './ContourRipple.vue'
 
 /**
- * Full-screen beat announcing what's about to happen — a round starting,
- * pawns moving, a challenge with a win-or-fail state at the end. Auto
- * advances; a tap skips ahead. 'alert' (coral) marks challenges, 'info'
- * (blue) marks everything else.
+ * Full-screen beat announcing what's about to happen. Auto advances; a tap
+ * skips ahead. 'alert' marks challenges, 'info' everything else.
  */
 const props = defineProps({
-  /** Give it one and the card names itself. The board's move card and the
-   *  gates have no kind and stay bare. */
+  /** Give it one and the card names itself. The move card and the gates
+   *  have no kind and stay bare. */
   kind: {
     type: String as PropType<RoundChallengeKind>,
     default: undefined,
@@ -78,10 +75,8 @@ const props = defineProps({
 
 const emit = defineEmits<{ done: [] }>()
 
-// Watch mode: the booth's inert wrapper would make "tap to continue"
-// unskippable and every director cut would replay the beat — so the one
-// interstitial home skips itself and fires `done` immediately, letting every
-// view's state machine proceed exactly as if the beat had played.
+// Watch mode: the booth's wrapper is inert, so "tap to continue" could never
+// fire. The card skips itself and emits `done` as if the beat had played.
 const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
 const roundNumber = computed(() => gameStore.currentRound?.number ?? 1)
@@ -106,9 +101,7 @@ const { skip } = useIntroBeat(
   {
     pieceSelector: '[data-interstitial]',
     holdFor: () => props.holdFor,
-    // Reduced motion drops the choreography, not the reading time: the card
-    // holds its own beat either way, and stays inside the walk lead by the
-    // same construction (MOVE_INTERSTITIAL_TOTAL_MS bounds the animated one).
+    // Reduced motion drops the choreography, not the reading time.
     reducedMotionHoldMs: props.holdFor * 1000,
   },
   () => emit('done')
@@ -123,9 +116,8 @@ useKeyboardSkip(() => !watching.value, skip)
   background: milk(0.75);
 }
 
-// A dressed card is opaque. The backdrop is a CHILD, so the wash sits behind
-// it and the live round reads through the quarter that is left — which is why
-// per-backdrop grounds could never fix this from inside.
+// The backdrop is a CHILD, so a translucent wash sits behind it and the live
+// round reads through — a dressed card has to be opaque here, not inside.
 .interstitial.dressed {
   background: milk(1);
 }
@@ -140,7 +132,7 @@ useKeyboardSkip(() => !watching.value, skip)
 }
 
 // The lobby's own toggle name, so a player can place the round in the menu
-// they configured. Quieter than the kicker: it labels, the kicker announces.
+// they configured.
 .category-pill {
   padding: 0.3rem 1.2rem;
   font-size: 1.2rem;
@@ -165,8 +157,6 @@ useKeyboardSkip(() => !watching.value, skip)
   top: -2.4rem;
   right: -2rem;
   position: absolute;
-  // Tossed onto the sign's corner — a tilt keeps the silhouette readable
-  // where a full 45° hang dissolved it.
   transform: rotate(14deg);
 
   :deep(svg) {

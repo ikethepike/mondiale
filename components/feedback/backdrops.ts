@@ -40,6 +40,9 @@ const RouteDrift = defineAsyncComponent(
 const SocietyDrift = defineAsyncComponent(
   () => import('~~/components/feedback/backdrops/SocietyDrift.vue')
 )
+const StatDrift = defineAsyncComponent(
+  () => import('~~/components/feedback/backdrops/StatDrift.vue')
+)
 const TrendDrift = defineAsyncComponent(
   () => import('~~/components/feedback/backdrops/TrendDrift.vue')
 )
@@ -57,7 +60,8 @@ const WordDrift = defineAsyncComponent(
  */
 export interface InterstitialBackdropContext {
   kind: RoundChallengeKind
-  group: ChallengeGroupId
+  /** 'core' included: a core mode names no lobby toggle but may still have art. */
+  group: ChallengeGroupId | 'core'
   /** Stable per round, so every seat at the table sees one layout. */
   seed: number
 }
@@ -71,16 +75,14 @@ export interface InterstitialBackdrop {
 }
 
 /**
- * One entry per branded category — REAL imports, because `resolveComponent`
- * only resolves literal names and a dynamic one renders inert elements
- * (the lesson REGION_MAP_COMPONENTS already paid for).
+ * One ground per branded category — REAL imports, because `resolveComponent`
+ * only resolves literal names and a dynamic one renders inert elements (the
+ * lesson REGION_MAP_COMPONENTS already paid for).
  *
  * Partial on purpose, and that IS the degradation story: a group with no entry
- * renders exactly the card it renders today. No fallback component, no `v-if`
- * ladder, nothing to keep in sync — a category ships when its art is ready.
- * Keyed on the group rather than the kind so a new mode inherits its
- * category's ground for free; 'core' cannot appear, which is correct, since
- * ranking and two truths are the floor rather than a theme.
+ * renders the plain card. No fallback component, no `v-if` ladder — a category
+ * ships when its art is ready. Keyed on the group rather than the kind so a new
+ * mode inherits its category's ground for free.
  */
 export const INTERSTITIAL_BACKDROPS: Partial<Record<ChallengeGroupId, InterstitialBackdrop>> = {
   politics: {
@@ -91,27 +93,21 @@ export const INTERSTITIAL_BACKDROPS: Partial<Record<ChallengeGroupId, Interstiti
   conflicts: {
     component: ConflictDrift,
     props: ({ seed }) => ({ seed }),
-    // A swarm of points and an expanding ring are different gestures; the
-    // ripple still reads as the card's own flourish over them.
     ripple: 'keep',
   },
   empires: {
     component: EmpireDrift,
     props: ({ seed }) => ({ seed }),
-    // Rings over surfacing borders read as a second set of borders.
     ripple: 'replace',
   },
   navigation: {
     component: RouteDrift,
     props: ({ seed }) => ({ seed }),
-    // The lattice is already made of arcs.
     ripple: 'replace',
   },
   water: {
     component: WaterDrift,
     props: ({ seed }) => ({ seed }),
-    // Concentric rings ARE the contour idiom this borrows; two at once is one
-    // too many.
     ripple: 'replace',
   },
   flags: {
@@ -127,14 +123,11 @@ export const INTERSTITIAL_BACKDROPS: Partial<Record<ChallengeGroupId, Interstiti
   cities: {
     component: SkylineDrift,
     props: ({ seed }) => ({ seed }),
-    // The band sits below the copy rather than behind it, so the ripple still
-    // has the middle to itself.
     ripple: 'keep',
   },
   places: {
     component: PlaceDrift,
     props: ({ seed }) => ({ seed }),
-    // Pin rings and a ripple are the same shape.
     ripple: 'replace',
   },
   blocs: {
@@ -164,7 +157,23 @@ export const INTERSTITIAL_BACKDROPS: Partial<Record<ChallengeGroupId, Interstiti
   },
 }
 
-/** The one resolver. Undefined when the round's category has no art yet. */
+/**
+ * Grounds keyed on the KIND, for a mode whose category is not its subject.
+ * 'core' names no lobby toggle (see `challengeCategory`) — that is about the
+ * pill, not the art, and ranking's subject is real: every stat at once.
+ */
+export const INTERSTITIAL_BACKDROPS_BY_KIND: Partial<
+  Record<RoundChallengeKind, InterstitialBackdrop>
+> = {
+  ranking: {
+    component: StatDrift,
+    props: ({ seed }) => ({ seed }),
+    ripple: 'keep',
+  },
+}
+
+/** The one resolver. Kind first, then its category. Undefined when neither has
+ *  art yet. */
 export const backdropFor = (
   kind: RoundChallengeKind | undefined,
   seed: number
@@ -177,8 +186,9 @@ export const backdropFor = (
   | undefined => {
   if (!kind) return undefined
   const group = CHALLENGE_GROUP_BY_KIND[kind]
-  if (group === 'core') return undefined
-  const entry = INTERSTITIAL_BACKDROPS[group]
+  const entry =
+    INTERSTITIAL_BACKDROPS_BY_KIND[kind] ??
+    (group === 'core' ? undefined : INTERSTITIAL_BACKDROPS[group])
   const props = entry?.props({ kind, group, seed })
   if (!entry || !props) return undefined
   return { component: entry.component, props, ripple: entry.ripple ?? 'keep' }

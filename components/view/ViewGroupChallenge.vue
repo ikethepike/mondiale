@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kicker="`Round ${currentRound?.number ?? 1}`"
+      kind="ranking"
       :title="details?.phrasing || 'Group Challenge'"
       stakes="The better your ranking, the more steps you take."
       @done="begin()"
@@ -165,10 +165,9 @@ const options = ref({ ...DRAG_LIST_OPTIONS })
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
-// Full-size and positioned: the phase transition animates a transform on this
-// wrapper, which makes it the containing block for the absolutely-positioned
-// form below. Without explicit dimensions the form's height:100% would
-// collapse to zero mid-animation and jump back after — a hard layout shift.
+// The phase transition animates a transform here, making this the containing
+// block for the form below; without explicit dimensions the form's height
+// collapses to zero mid-animation.
 .group-challenge-wrapper {
   width: 100%;
   height: 100%;
@@ -200,8 +199,7 @@ const options = ref({ ...DRAG_LIST_OPTIONS })
 // No h1 font-size here: caption headings scale through the shared clamp in
 // templates/_map-caption.scss — a view override forks the type scale.
 
-// The view's top-right corner — the same berth ChallengePrompt gives the
-// provenance ⓘ in every other challenge view (its 2rem/4rem header padding).
+// The same berth ChallengePrompt gives the provenance ⓘ elsewhere.
 .question-source {
   top: 2rem;
   right: 4rem;
@@ -222,7 +220,6 @@ footer {
   padding: 0 2rem;
   transition: 0.6s;
   grid-template-rows: max-content 1fr;
-  // transition: 1s;
 }
 
 .indicators {
@@ -233,11 +230,8 @@ footer {
   grid-template-columns: 1fr max-content 1fr;
 }
 
-// The two poles frame the ranking: they tell the player which direction is
-// "more" and which is "less". They earn real prominence — an eyebrow-scale
-// small-caps label sitting beside a large arrow that drifts toward its extreme,
-// nudging the drag intent. Purely decorative and non-interactive, so the
-// ambient loop is safe here (see mondiale-dev-quirks: never on the button).
+// Decorative and non-interactive, so the ambient loop is safe here (see
+// mondiale-dev-quirks: never on the button).
 .pole {
   gap: 1rem;
   display: inline-flex;
@@ -262,10 +256,7 @@ footer {
 }
 
 // An inline SVG rather than a ⟵/⟶ glyph: the math-arrow characters sit on the
-// font's math axis, not the text baseline, so they rendered low and unevenly
-// across fonts. The SVG's ink is centred in its viewBox, so flex centring lands
-// it true against the label with no magic offset. Shares the label's accent
-// (currentColor) so the pole reads as one unit.
+// font's math axis, not the text baseline, and rendered low and unevenly.
 .pole-arrow {
   display: block;
   width: 3rem;
@@ -275,7 +266,6 @@ footer {
   color: var(--soft-blue);
 }
 
-// Entrance: the poles ease in from their own edge as the round settles.
 .pole-most {
   animation: pole-in-left var(--motion-slow) var(--ease-out-expressive) both;
 }
@@ -283,8 +273,6 @@ footer {
   animation: pole-in-right var(--motion-slow) var(--ease-out-expressive) both;
 }
 
-// Continuous, restrained drift on the arrow only — echoes the "drifting
-// backdrop" ambient language without pulling the eye off the tiles.
 .pole-most .pole-arrow {
   animation: nudge-left var(--motion-ambient) var(--ease-smooth) infinite;
 }

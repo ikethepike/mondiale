@@ -58,13 +58,9 @@ let modestDevice: boolean | undefined
 /**
  * A device that should be spared decorative extras.
  *
- * The cost is SETUP, not the animation. Once painted, an interstitial backdrop
- * holds 120fps even at 4x CPU throttle — the loops are transform and opacity,
- * which the compositor handles for free. What hurts is getting there: at 6x
- * throttle the party-logo wall takes ~2.0s to first paint and the forged flags
- * ~1.9s, against ~160ms and ~855ms unthrottled. The card only lives 4.5s, so
- * on that hardware half the beat is a blank card followed by a rushed
- * entrance, which is worse than the plain card it replaced.
+ * The cost is SETUP, not the animation: the loops are transform and opacity,
+ * but at 6x CPU throttle a backdrop takes ~2s to first paint against a 4.5s
+ * card — half the beat blank, which is worse than the plain card it replaced.
  *
  * `deviceMemory` is advisory and absent outside Chromium, so a missing answer
  * is treated as capable. `hardwareConcurrency` looks like the same kind of

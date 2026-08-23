@@ -4,9 +4,8 @@ import { EASE, prefersReducedMotion } from '~~/lib/motion'
 
 /**
  * The full-screen intro beat every announcement overlay shares (Interstitial,
- * GauntletIntro): fade the shell in, stagger the copy pieces up, draw the
- * rule, hold, fade out — tap to skip, exactly one `done`. Skins add their own
- * flourishes (spotlight beams, ripples) through `decorate`.
+ * GauntletIntro): fade in, stagger the copy up, draw the rule, hold, fade out
+ * — tap to skip, exactly one `done`. Skins flourish through `decorate`.
  */
 export const useIntroBeat = (
   root: Ref<HTMLElement | undefined>,
@@ -52,10 +51,9 @@ export const useIntroBeat = (
     timeline = gsap.timeline({ onComplete: finish })
     timeline.fromTo(root.value, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EASE.cross })
     options.decorate?.(timeline, root.value)
-    // Tightened 2026-08: the stagger tail was the longest pole in the beat and
-    // the walk lead is sized from this timeline (MOVE_INTERSTITIAL_OVERHEAD_MS
-    // in round-beats), so every frame here is a frame the pawn stands still.
-    // The pieces still land one after another — just closer together.
+    // The walk lead is sized from this timeline
+    // (MOVE_INTERSTITIAL_OVERHEAD_MS in round-beats): every frame added here
+    // is a frame the pawn stands still.
     timeline.fromTo(
       pieces,
       { opacity: 0, y: 22, scale: 0.96 },

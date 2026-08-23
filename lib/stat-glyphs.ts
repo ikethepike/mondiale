@@ -1159,3 +1159,24 @@ export const resolveGlyph = (accessor?: GroupChallengeAccessorId, topic?: string
   if (topic && NAMED_GLYPHS[topic]) return NAMED_GLYPHS[topic]
   return FALLBACK_GLYPH
 }
+
+/** Ink's literal, for the SVG string above — `ink()` in rules/_ink.scss owns the hue. */
+const GLYPH_INK = '#0d2f61'
+
+/**
+ * A glyph as a standalone SVG data URI, for fields that draw it through an
+ * `<img>` (DriftField) where `currentColor` and a stylesheet cannot reach.
+ * `non-scaling-stroke` holds the line weight steady however large the tile is
+ * drawn — a wall of these is one hairline drawing, not a wall of blobs.
+ */
+export const glyphDataUri = (glyph: Glyph, color = GLYPH_INK): string => {
+  const stroke = ' vector-effect="non-scaling-stroke"'
+  const body = [
+    ...(glyph.paths ?? []).map(d => `<path d="${d}"${stroke}/>`),
+    ...(glyph.circles ?? []).map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}"${stroke}/>`),
+  ].join('')
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" ` +
+    `stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
