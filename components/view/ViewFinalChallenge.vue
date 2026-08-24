@@ -112,6 +112,15 @@
       :revealed="!!status"
       @finished="onBoundaryFinished"
     />
+    <!-- The light table holds through the reveal: the ghost settles to its
+         honest size over the outline the player committed to -->
+    <FinalTrueSize
+      v-if="currentFinalChallenge?._type === 'true-size-challenge' && !showInterstitial"
+      :key="`true-size-${currentChallengeCount}`"
+      :challenge="currentFinalChallenge"
+      :revealed="!!status"
+      @finished="onTrueSizeFinished"
+    />
     <!-- The night survives the reveal — lit countries glow in the dark while
          the lesson shows, then the whole scene eases back to daylight -->
     <Transition name="sunset-fade">
@@ -209,6 +218,7 @@ import FinalBoundary from '~/components/challenge/FinalBoundary.vue'
 import FinalCityNocturne from '~/components/challenge/FinalCityNocturne.vue'
 import FinalScales, { type ScalesResult } from '~/components/challenge/FinalScales.vue'
 import FinalSunsetBlitz from '~/components/challenge/FinalSunsetBlitz.vue'
+import FinalTrueSize from '~/components/challenge/FinalTrueSize.vue'
 import { finalPromptSources, finalRevealFor } from '~/components/view/final/reveals'
 import FinalChangeStage from '~/components/challenge/FinalChangeStage.vue'
 import FinalYearbook from '~/components/challenge/FinalYearbook.vue'
@@ -236,6 +246,7 @@ import {
   isCorrectFinalAnswer,
   speaksLanguage,
   sunsetQuota,
+  trueSizeScene,
   weighScalesPicks,
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
@@ -560,6 +571,15 @@ const lesson = computed(() => {
     case 'city-nocturne-challenge':
       // NocturneReveal carries the whole scorecard
       return undefined
+    case 'true-size-challenge': {
+      // The table already snapped the ghost and captioned both areas — what
+      // it can't say is how far the projection had pushed it.
+      const scene = trueSizeScene(challenge.subject, challenge.anchor)
+      if (!scene) return undefined
+      const subject = countryName(COUNTRIES[challenge.subject])
+      const anchor = countryName(COUNTRIES[challenge.anchor])
+      return `On Mercator, ${subject} is drawn ${scene.exaggeration.toFixed(1)}× the area it really covers next to ${anchor} — which sits near the equator, where the projection barely lies, and was very nearly true all along.`
+    }
     case 'boundary-challenge': {
       // The border's story where the atlas has one; the easel overlay is the
       // visual lesson either way
@@ -717,8 +737,10 @@ const triggerMembershipChallenge = () => {
     gameStore.map.focus = [challenge.target]
   }
   // The world behind the easel goes silhouette — its drawn borders would
-  // hand the boundary round its answer
-  gameStore.map.solo = challenge?._type === 'boundary-challenge'
+  // hand the boundary round its answer, and behind the light table they would
+  // offer a second, Robinson-sized opinion on the same two countries
+  gameStore.map.solo =
+    challenge?._type === 'boundary-challenge' || challenge?._type === 'true-size-challenge'
 }
 
 watch(currentFinalChallenge, (challenge, previous) => {
@@ -865,6 +887,16 @@ const onBoundaryFinished = (drawn: [number, number][]) => {
   if (challenge?._type !== 'boundary-challenge') return
 
   const submittedAnswer = { _type: 'boundary-challenge', drawn } as const
+  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+
+  submitFinalAnswer(submittedAnswer)
+}
+
+const onTrueSizeFinished = (scale: number) => {
+  const challenge = currentFinalChallenge.value
+  if (challenge?._type !== 'true-size-challenge') return
+
+  const submittedAnswer = { _type: 'true-size-challenge', scale } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   submitFinalAnswer(submittedAnswer)
@@ -1142,7 +1174,9 @@ const onMapClick = (event: Event) => {
     case 'city-nocturne-challenge':
     case 'boundary-challenge':
     case 'yearbook-challenge':
-      // Off-map modes — the map is scenery while the easel, page or night holds
+    case 'true-size-challenge':
+      // Off-map modes — the map is scenery while the easel, page, table or
+      // night holds
       break
     default:
       console.error(`Unsupported final event type`, currentFinalChallenge.value)

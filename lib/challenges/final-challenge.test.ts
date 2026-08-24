@@ -10,6 +10,7 @@ import { playableCountries } from '~~/lib/game-rules'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
+  TrueSizeChallenge,
   ChangeChallenge,
   DiasporaChallenge,
   EndonymChallenge,
@@ -58,7 +59,13 @@ import {
   madeTopExporters,
   languageSpeakers,
   MINMAX_REVEAL_ROWS,
+  mercatorInflation,
   speaksLanguage,
+  TRUE_SIZE_AREA_AGREEMENT,
+  TRUE_SIZE_SCALE_RANGE,
+  TRUE_SIZE_TUNING,
+  trueSizeScene,
+  isTrueSizeWithin,
   YEARBOOK_TUNING,
   yearbookLeaksYear,
   yearbookYear,
@@ -1327,6 +1334,130 @@ describe('reveal selectors', () => {
       expect(facts.founded).toBeLessThanOrEqual(new Date().getFullYear())
       expect(facts.purpose.length).toBeGreaterThan(20)
       expect(facts.shortName.length).toBeGreaterThan(1)
+    }
+  })
+})
+
+describe('True Size', () => {
+  const dealt = (difficulty: GameDifficulty, rounds = DEAL_ROUNDS): TrueSizeChallenge[] => {
+    const found: TrueSizeChallenge[] = []
+    for (let round = 0; round < rounds; round++) {
+      for (const challenge of getFinalChallenges({ game: gameFor('world', difficulty) })
+        .challenges) {
+        if (challenge._type === 'true-size-challenge') found.push(challenge)
+      }
+    }
+    return found
+  }
+
+  it('deals a pair the projection genuinely lies about, at every difficulty', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      const tuning = TRUE_SIZE_TUNING[difficulty]
+      const challenges = dealt(difficulty)
+      expect(challenges.length).toBeGreaterThan(0)
+      for (const challenge of challenges) {
+        expect(challenge.tolerance).toBe(tuning.tolerance)
+        expect(challenge.subject).not.toBe(challenge.anchor)
+
+        const scene = trueSizeScene(challenge.subject, challenge.anchor)!
+        expect(scene).toBeDefined()
+        expect(scene.subject.inflation / scene.anchor.inflation).toBeGreaterThanOrEqual(
+          tuning.minDelta
+        )
+        expect(scene.subject.trueArea).toBeGreaterThanOrEqual(tuning.minSubjectArea)
+        expect(scene.anchor.trueArea).toBeGreaterThanOrEqual(tuning.minAnchorArea)
+        // The lie always runs one way: the ghost arrives too big and shrinks
+        expect(scene.trueScale).toBeLessThan(1)
+        expect(scene.exaggeration).toBeGreaterThan(1)
+      }
+    }
+  })
+
+  it('keeps every honest scale inside the rail, with room to overshoot', () => {
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      for (const challenge of dealt(difficulty)) {
+        const { trueScale } = trueSizeScene(challenge.subject, challenge.anchor)!
+        // Both edges of the passing band have to be reachable, or a player
+        // could be right and unable to say so
+        const band = Math.sqrt(1 + challenge.tolerance)
+        expect(trueScale / band).toBeGreaterThan(TRUE_SIZE_SCALE_RANGE.min)
+        expect(trueScale * band).toBeLessThan(TRUE_SIZE_SCALE_RANGE.max)
+      }
+    }
+  })
+
+  it('only deals countries whose outline agrees with their stated area', () => {
+    for (const challenge of dealt('hard')) {
+      for (const isoCode of [challenge.subject, challenge.anchor]) {
+        const shape = trueSizeScene(challenge.subject, challenge.anchor)!
+        const side = shape.subject.isoCode === isoCode ? shape.subject : shape.anchor
+        expect(side.trueArea).toBe(COUNTRIES[isoCode].geography.area.total?.amount)
+      }
+    }
+    // The guard's teeth: the countries it exists to keep out stay out. France's
+    // Factbook figure counts overseas departments its European outline never
+    // draws, and Chad carries no area at all.
+    expect(mercatorInflation('FR')).toBeUndefined()
+    expect(mercatorInflation('TD')).toBeUndefined()
+    expect(TRUE_SIZE_AREA_AGREEMENT).toBeLessThan(0.1)
+  })
+
+  it('leans the pick toward the pairs that teach most', () => {
+    const counts = new Map<string, number>()
+    for (const challenge of dealt('easy', 600)) {
+      const key = `${challenge.subject}/${challenge.anchor}`
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    const total = [...counts.values()].reduce((sum, count) => sum + count, 0)
+    // Canada and Russia over Brazil and Australia are the household version of
+    // this lesson; on easy they must be where most of the draws land
+    const household = ['CA/BR', 'CA/AU', 'RU/BR', 'RU/AU'].reduce(
+      (sum, key) => sum + (counts.get(key) ?? 0),
+      0
+    )
+    expect(household / total).toBeGreaterThan(0.15)
+    // …without collapsing to a single question
+    expect(counts.size).toBeGreaterThan(10)
+  })
+
+  it('judges the committed size on area, both ways off true', () => {
+    const challenge: TrueSizeChallenge = {
+      _type: 'true-size-challenge',
+      subject: 'CA',
+      anchor: 'BR',
+      tolerance: TRUE_SIZE_TUNING.normal.tolerance,
+    }
+    const { trueScale } = trueSizeScene('CA', 'BR')!
+
+    expect(isTrueSizeWithin(challenge, trueScale)).toBe(true)
+    // Area tolerance, so the scale band is its square root
+    expect(isTrueSizeWithin(challenge, trueScale * Math.sqrt(1.29))).toBe(true)
+    expect(isTrueSizeWithin(challenge, trueScale * Math.sqrt(0.71))).toBe(true)
+    expect(isTrueSizeWithin(challenge, trueScale * Math.sqrt(1.31))).toBe(false)
+    expect(isTrueSizeWithin(challenge, trueScale * Math.sqrt(0.69))).toBe(false)
+    // Never committing, or committing the lie the map arrived with, both fail
+    expect(isTrueSizeWithin(challenge, 1)).toBe(false)
+    expect(isTrueSizeWithin(challenge, 0)).toBe(false)
+    expect(isTrueSizeWithin(challenge, Number.NaN)).toBe(false)
+  })
+
+  it('grades the same on both sides of the wire', () => {
+    const pool = playableCountries(gameFor('world', 'normal'))
+    const challenge: TrueSizeChallenge = {
+      _type: 'true-size-challenge',
+      subject: 'NO',
+      anchor: 'CD',
+      tolerance: TRUE_SIZE_TUNING.easy.tolerance,
+    }
+    const { trueScale } = trueSizeScene('NO', 'CD')!
+    for (const scale of [trueScale, trueScale * 1.5, 1]) {
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'true-size-challenge', scale },
+          pool,
+        })
+      ).toBe(isTrueSizeWithin(challenge, scale))
     }
   })
 })

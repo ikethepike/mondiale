@@ -1150,6 +1150,7 @@ export const finalAnswerFor = async (
     madeAcceptedCountries,
     nocturneDealtCities,
     sunsetQuota,
+    trueSizeScene,
     weighScalesPicks,
     yearbookYear,
   } = await import('~~/lib/challenges/final-challenge')
@@ -1260,6 +1261,15 @@ export const finalAnswerFor = async (
       const drift = wantCorrect ? 0 : scene.span * question.tolerance * 3
       const drawn = scene.line.map(([x, y]) => [x + drift, y + drift] as [number, number])
       return { _type: question._type, drawn }
+    }
+    case 'true-size-challenge': {
+      const scene = trueSizeScene(question.subject, question.anchor)
+      if (!scene) return undefined
+      // Area tolerance is √-ed into the scale the bot actually commits: a
+      // correct call lands inside the band, a miss overshoots it.
+      const inside = Math.sqrt(1 + question.tolerance * 0.5)
+      const outside = Math.sqrt(1 + question.tolerance * 2)
+      return { _type: question._type, scale: scene.trueScale * (wantCorrect ? inside : outside) }
     }
     case 'change-challenge': {
       const accepted = changeAccepted(question)

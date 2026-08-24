@@ -48,6 +48,7 @@ export type FinalChallengeItem =
   | DiasporaChallenge
   | YearbookChallenge
   | ChangeChallenge
+  | TrueSizeChallenge
 
 /**
  * What the client submits per question type — verdicts come from the shared
@@ -79,6 +80,9 @@ export type FinalChallengeAnswer =
   /** The tapped country, plus the dialed decade where the difficulty asks for
    *  one — hard must land both. */
   | { _type: 'change-challenge'; isoCode: ISOCountryCode; decade?: number }
+  /** The committed size of the ghost, as a multiple of the size the map drew
+   *  it at. Below 1 the player shrank it. */
+  | { _type: 'true-size-challenge'; scale: number }
 
 export interface RegionChallenge {
   _type: 'region-challenge'
@@ -316,5 +320,33 @@ export interface ScalesChallenge {
   target: ISOCountryCode
   maxPicks: number
   /** Allowed deviation as a fraction of the target (0.2 = within 20%). */
+  tolerance: number
+}
+
+/**
+ * True Size: the subject's outline lifts off the map as a ghost, drifts over
+ * a near-equatorial anchor, and the player scales it until it shows the TRUE
+ * relative area. One control, and no numbers while adjusting — a live readout
+ * would solve the estimation, on the scales' precedent.
+ *
+ * The stage is MERCATOR, not the game's Robinson map: the pole-inflating lie
+ * this round exists to correct is Mercator's, and Robinson's is too mild to
+ * teach with (Canada renders 5× its honest share there against Mercator's
+ * 20×). Both outlines are re-projected from the map's own geometry, so no
+ * second coastline enters the codebase.
+ *
+ * Only the pair and the tolerance ride the wire. Every area, ring and honest
+ * scale is re-derived by `trueSizeScene` (lib/challenges/final-challenge.ts),
+ * which the dealer's guards, the verdict and the stage all share.
+ */
+export interface TrueSizeChallenge {
+  _type: 'true-size-challenge'
+  /** The high-latitude subject the projection inflates — the ghost. */
+  subject: ISOCountryCode
+  /** The near-equatorial country it is measured against, which Mercator draws
+   *  very nearly true. */
+  anchor: ISOCountryCode
+  /** Accepted deviation of the committed AREA ratio, as a fraction of the true
+   *  one (0.3 = the ghost may cover 30% more or less than it should). */
   tolerance: number
 }

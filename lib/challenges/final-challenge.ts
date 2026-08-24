@@ -11,7 +11,7 @@ import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
-import { MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
+import { MAP_PATHS, MAP_PROJECTION, MAP_REGIONS } from '~~/data/map.gen'
 import type {
   BornChallenge,
   BoundaryChallenge,
@@ -34,6 +34,7 @@ import type {
   ScalesAccessorKey,
   ScalesChallenge,
   SunsetBlitzChallenge,
+  TrueSizeChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import { GAUNTLET_LENGTH, oddOneOut } from '~~/types/challenges/final-challenge.type'
@@ -62,12 +63,20 @@ import {
 } from '../migration'
 import { isNeighbour } from '../traversal'
 import { editDistance } from '../strings'
-import { mainlandBox } from '../geo'
+import {
+  countryLatLng,
+  mainlandBox,
+  projectMercator,
+  sphericalRingAreaKm,
+  unprojectRing,
+} from '../geo'
 import {
   boundaryDeviation,
   largestRing,
   type OutlinePoint,
+  parsePolygons,
   polylineLength,
+  ringArea,
   sharedBoundary,
   unsharedRuns,
 } from '../outline'
@@ -106,6 +115,9 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     'yearbook-challenge',
     // Easy-friendly: the frames wear their years and neighbours are accepted
     'change-challenge',
+    // Easy-friendly: the widest tolerance, and the pair pick leans on the
+    // household giants (Canada over Brazil) where the lie is largest
+    'true-size-challenge',
   ]
   if (game.variant === 'world') types.push('region-challenge')
   if (game.difficulty !== 'easy') {
@@ -139,6 +151,7 @@ const FINAL_DEALERS: Record<FinalChallengeType, FinalDealer> = {
   'diaspora-challenge': (pool, difficulty) => getDiasporaChallenge(pool, difficulty),
   'yearbook-challenge': (_pool, difficulty) => getYearbookChallenge(difficulty),
   'change-challenge': (pool, difficulty) => getChangeChallenge(pool, difficulty),
+  'true-size-challenge': (pool, difficulty) => getTrueSizeChallenge(pool, difficulty),
 }
 
 // A dealer returns undefined (or throws, on source-data gaps) when the board
@@ -1297,6 +1310,284 @@ export const BORDER_STORIES: Partial<Record<string, string>> = {
 export const boundaryStory = (countries: [ISOCountryCode, ISOCountryCode]): string | undefined =>
   BORDER_STORIES[[...countries].sort().join('|')]
 
+// --- True Size -------------------------------------------------------------------
+//
+// The round corrects MERCATOR's area lie, not the game map's. Robinson (what
+// data/map.gen is projected through) inflates Canada to 5× its honest share of
+// the frame; Mercator takes it past 20×, and that is the misconception worth a
+// question. Both outlines are re-projected from the map's own geometry through
+// `mercatorRings` below, so the round adds no coastline the atlas doesn't
+// already have.
+
+export interface TrueSizeTuning {
+  /** Accepted deviation of the committed area ratio. */
+  tolerance: number
+  /** How much harder the projection must lie about the subject than about the
+   *  anchor before the pair teaches anything. */
+  minDelta: number
+  minSubjectArea: number
+  minAnchorArea: number
+}
+
+// Tolerance is on AREA, so the passing band in the player's actual control —
+// linear scale — is √(1±t): ±30% of the area is a scale between 0.84× and
+// 1.14× of the honest one.
+export const TRUE_SIZE_TUNING: { [difficulty in GameDifficulty]: TrueSizeTuning } = {
+  easy: { tolerance: 0.4, minDelta: 2.5, minSubjectArea: 300_000, minAnchorArea: 900_000 },
+  normal: { tolerance: 0.3, minDelta: 2, minSubjectArea: 200_000, minAnchorArea: 400_000 },
+  hard: { tolerance: 0.2, minDelta: 1.7, minSubjectArea: 150_000, minAnchorArea: 200_000 },
+}
+
+/**
+ * How far the stage's one control can travel, as a multiple of the size the map
+ * drew the ghost at. Every dealable pair's honest scale has to sit inside it
+ * with room to overshoot in both directions — pinned in the dealer's tests, so
+ * a retune of the guards can never put an answer out of the rail's reach.
+ */
+export const TRUE_SIZE_SCALE_RANGE = { min: 0.2, max: 1.25 }
+
+/** An anchor has to be near-honest itself, or "shrink it until it's true"
+ *  is measured against a second lie. */
+const ANCHOR_MAX_INFLATION = 1.3
+
+/**
+ * The map's geometry must agree with the Factbook area to this fraction before
+ * the pair may be dealt.
+ *
+ * The reveal quotes the Factbook figure while the verdict judges pixels, so a
+ * country whose outline and whose official area disagree would be asking for
+ * one thing and captioning another. It is also the only guard that catches bad
+ * source data: Chad and Niger carry no area figure at all, France's 643,801 km²
+ * counts overseas departments its European outline doesn't draw, and Morocco's
+ * depends on where you stand on Western Sahara.
+ */
+export const TRUE_SIZE_AREA_AGREEMENT = 0.06
+
+/** The ghost at its honest size must still read as a shape, and at the size
+ *  the map drew it must not swallow the frame whole. */
+const TRUE_SIZE_TRUE_RATIO = { min: 0.08, max: 2.5 }
+const TRUE_SIZE_APPARENT_RATIO = { min: 0.15, max: 12 }
+
+/** One country as the round sees it: the drawn outline, what Mercator makes of
+ *  it, and what it actually covers. */
+export interface TrueSizeShape {
+  isoCode: ISOCountryCode
+  /** Mercator rings, centred on the shape's own bounding box so a scale
+   *  transform grows it in place. */
+  rings: OutlinePoint[][]
+  /** Half-width and half-height of that box — what the stage frames on. */
+  reach: [number, number]
+  /** Where that box sits in absolute Mercator space. The stage draws its
+   *  parallels from it, and the ghost's entry drifts in from the real
+   *  direction of home. */
+  centre: [number, number]
+  /** Planar area of the Mercator rings — the size the projection claims. */
+  projectedArea: number
+  /** The Factbook figure, in km². */
+  trueArea: number
+  /** projectedArea per km²: how hard the projection is pushing. */
+  inflation: number
+}
+
+export interface TrueSizeScene {
+  subject: TrueSizeShape
+  anchor: TrueSizeShape
+  /** The scale that makes the ghost honest — always below 1, since the subject
+   *  is by construction the more inflated of the two. */
+  trueScale: number
+  /** How many times its honest area the projection draws the subject at,
+   *  measured against the anchor. */
+  exaggeration: number
+}
+
+/**
+ * Both shapes on a Mercator stage, plus the honest scale between them.
+ *
+ * Cached like `boundaryScene`: the dealer sweeps hundreds of pairs looking for
+ * one, and every ring costs an inverse Robinson per vertex.
+ */
+const trueSizeSceneCache = new Map<string, TrueSizeScene | undefined>()
+
+const trueSizeShape = (isoCode: ISOCountryCode): TrueSizeShape | undefined => {
+  const trueArea = COUNTRIES[isoCode]?.geography.area.total?.amount
+  const pathData = MAP_PATHS[isoCode]
+  if (!trueArea || !pathData) return undefined
+
+  const rings: OutlinePoint[][] = []
+  let projectedArea = 0
+  let drawnArea = 0
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const ring of parsePolygons(pathData)) {
+    const globe = unprojectRing(ring, MAP_PROJECTION)
+    if (!globe) continue
+    drawnArea += sphericalRingAreaKm(globe)
+    const projected = globe.map(projectMercator)
+    projectedArea += Math.abs(ringArea(projected))
+    for (const [x, y] of projected) {
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
+    }
+    rings.push(projected)
+  }
+  if (!rings.length || !projectedArea) return undefined
+  if (Math.abs(drawnArea / trueArea - 1) > TRUE_SIZE_AREA_AGREEMENT) return undefined
+
+  const centreX = (minX + maxX) / 2
+  const centreY = (minY + maxY) / 2
+  return {
+    isoCode,
+    rings: rings.map(ring => ring.map(([x, y]) => [x - centreX, y - centreY] as OutlinePoint)),
+    reach: [(maxX - minX) / 2, (maxY - minY) / 2],
+    centre: [centreX, centreY],
+    projectedArea,
+    trueArea,
+    inflation: projectedArea / trueArea,
+  }
+}
+
+const shapeCache = new Map<ISOCountryCode, TrueSizeShape | undefined>()
+const cachedShape = (isoCode: ISOCountryCode): TrueSizeShape | undefined => {
+  if (!shapeCache.has(isoCode)) shapeCache.set(isoCode, trueSizeShape(isoCode))
+  return shapeCache.get(isoCode)
+}
+
+export const trueSizeScene = (
+  subject: ISOCountryCode,
+  anchor: ISOCountryCode
+): TrueSizeScene | undefined => {
+  const cacheKey = `${subject}|${anchor}`
+  if (trueSizeSceneCache.has(cacheKey)) return trueSizeSceneCache.get(cacheKey)
+
+  const build = (): TrueSizeScene | undefined => {
+    const subjectShape = cachedShape(subject)
+    const anchorShape = cachedShape(anchor)
+    if (!subjectShape || !anchorShape || subject === anchor) return undefined
+
+    const trueRatio = subjectShape.trueArea / anchorShape.trueArea
+    const apparentRatio = subjectShape.projectedArea / anchorShape.projectedArea
+    return {
+      subject: subjectShape,
+      anchor: anchorShape,
+      trueScale: Math.sqrt(trueRatio / apparentRatio),
+      exaggeration: apparentRatio / trueRatio,
+    }
+  }
+
+  const scene = build()
+  trueSizeSceneCache.set(cacheKey, scene)
+  return scene
+}
+
+/**
+ * The pass/fail ruling, shared by the server handler and the stage's own
+ * verdict beat. Judged on AREA — the ghost covers `scale²` of what the map drew
+ * — because area is what the question asks about and what the eye is bad at.
+ */
+export const isTrueSizeWithin = (challenge: TrueSizeChallenge, scale: number): boolean => {
+  const scene = trueSizeScene(challenge.subject, challenge.anchor)
+  if (!scene || !Number.isFinite(scale) || scale <= 0) return false
+  const committedArea = (scale / scene.trueScale) ** 2
+  return Math.abs(committedArea - 1) <= challenge.tolerance
+}
+
+/**
+ * How engaging a pair is, as one number for `weightedPick`.
+ *
+ * Two things make the lesson land: the size of the lie (a player who shrinks
+ * Canada over Brazil learns more than one who trims Romania over Indonesia),
+ * and whether both countries are shapes a player can name on sight. Area is
+ * the only recognisability signal the atlas carries for a country, and it is a
+ * good one here — the round is about area, so a pair that is too obscure to
+ * place is also too small to read at a glance.
+ */
+const trueSizeAppeal = (scene: TrueSizeScene, tuning: TrueSizeTuning): number =>
+  (scene.subject.inflation / scene.anchor.inflation) *
+  Math.sqrt(Math.min(scene.subject.trueArea, scene.anchor.trueArea) / tuning.minSubjectArea)
+
+/** How far off the line a country may sit and still count as calibration. */
+const EQUATOR_BAND_DEGREES = 5
+
+/** Equatorial baseline: what Mercator's inflation reads as where it barely
+ *  lies, so a country's `inflation` can be stated as a multiple of honest. */
+const equatorInflation = (): number => {
+  const onTheLine = ISOCountryCodes.filter(
+    isoCode => Math.abs(countryLatLng(isoCode)?.lat ?? 90) < EQUATOR_BAND_DEGREES
+  )
+    .map(isoCode => cachedShape(isoCode))
+    .filter((shape): shape is TrueSizeShape => !!shape)
+  if (!onTheLine.length) throw new ReferenceError('No equatorial shape to calibrate Mercator on')
+  return onTheLine.reduce((total, shape) => total + shape.inflation, 0) / onTheLine.length
+}
+
+let equatorBaseline: number | undefined
+
+/** A country's Mercator inflation as a multiple of what the equator gets. */
+export const mercatorInflation = (isoCode: ISOCountryCode): number | undefined => {
+  const shape = cachedShape(isoCode)
+  if (!shape) return undefined
+  equatorBaseline ??= equatorInflation()
+  return shape.inflation / equatorBaseline
+}
+
+const getTrueSizeChallenge = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+): TrueSizeChallenge | undefined => {
+  const tuning = TRUE_SIZE_TUNING[difficulty]
+  // Area-gate BEFORE shaping: building a shape costs an inverse Robinson per
+  // vertex, and neither side of a dealable pair can be small.
+  const floor = Math.min(tuning.minSubjectArea, tuning.minAnchorArea)
+  const shapes = pool
+    .filter(isoCode => (COUNTRIES[isoCode]?.geography.area.total?.amount ?? 0) >= floor)
+    .map(isoCode => cachedShape(isoCode))
+    .filter((shape): shape is TrueSizeShape => !!shape)
+  const baseline = (equatorBaseline ??= equatorInflation())
+
+  const anchors = shapes.filter(
+    shape =>
+      shape.trueArea >= tuning.minAnchorArea && shape.inflation / baseline <= ANCHOR_MAX_INFLATION
+  )
+  if (!anchors.length) return undefined
+
+  const candidates: [[ISOCountryCode, ISOCountryCode], number][] = []
+  for (const subject of shapes) {
+    if (subject.trueArea < tuning.minSubjectArea) continue
+    for (const anchor of anchors) {
+      if (subject.isoCode === anchor.isoCode) continue
+      if (subject.inflation / anchor.inflation < tuning.minDelta) continue
+
+      const scene = trueSizeScene(subject.isoCode, anchor.isoCode)
+      if (!scene) continue
+      const trueRatio = subject.trueArea / anchor.trueArea
+      const apparentRatio = subject.projectedArea / anchor.projectedArea
+      if (trueRatio < TRUE_SIZE_TRUE_RATIO.min || trueRatio > TRUE_SIZE_TRUE_RATIO.max) continue
+      if (
+        apparentRatio < TRUE_SIZE_APPARENT_RATIO.min ||
+        apparentRatio > TRUE_SIZE_APPARENT_RATIO.max
+      ) {
+        continue
+      }
+      candidates.push([[subject.isoCode, anchor.isoCode], trueSizeAppeal(scene, tuning)])
+    }
+  }
+  if (!candidates.length) return undefined
+
+  const drawn = weightedPick(candidates)
+  if (!drawn) return undefined
+  return {
+    _type: 'true-size-challenge',
+    subject: drawn[0],
+    anchor: drawn[1],
+    tolerance: tuning.tolerance,
+  }
+}
+
 const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => {
   const country = shuffleArray(pool.map(isoCode => COUNTRIES[isoCode])).find(country => {
     return !!country.government.leader
@@ -1496,6 +1787,10 @@ export const isCorrectFinalAnswer = ({
       ).length
       return hits >= challenge.quota
     }
+    case 'true-size-challenge': {
+      if (submittedAnswer._type !== 'true-size-challenge') return throwTypeMismatch()
+      return isTrueSizeWithin(challenge, submittedAnswer.scale)
+    }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
       // Client-trust like higher-lower gates. The whole board is nameable
@@ -1614,6 +1909,10 @@ export const getFinalChallengeDetails = ({
           challenge.decadeTolerance === undefined
             ? 'This place changed — tap where on earth it is happening'
             : 'This place changed — tap where on earth, and dial the decade it started',
+      }
+    case 'true-size-challenge':
+      return {
+        question: `Mercator flatters the poles — resize ${COUNTRIES[challenge.subject].name.english} to its TRUE area beside ${COUNTRIES[challenge.anchor].name.english}`,
       }
     default:
       return {

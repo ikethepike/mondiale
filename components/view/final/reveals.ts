@@ -8,7 +8,12 @@ import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
 import OddOneOutReveal from '~/components/challenge/OddOneOutReveal.vue'
 import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
-import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
+import {
+  attributionFor,
+  datasetAttribution,
+  dedupeAttributions,
+  type Attribution,
+} from '~~/lib/attribution'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -112,6 +117,8 @@ export const FINAL_REVEALS: Record<FinalChallengeItem['_type'], FinalReveal | un
   'boundary-challenge': undefined,
   // The stamped page IS the reveal.
   'yearbook-challenge': undefined,
+  // The light table snaps the ghost to true and captions both areas.
+  'true-size-challenge': undefined,
   'change-challenge': undefined,
 }
 
@@ -160,6 +167,10 @@ export const FINAL_PROMPT_SOURCES: Record<
   'boundary-challenge': () => datasetAttribution('map'),
   'yearbook-challenge': () => datasetAttribution('events'),
   'change-challenge': () => datasetAttribution('changes'),
+  // Two sources, one question: the outlines it re-projects and the areas it
+  // judges them against.
+  'true-size-challenge': () =>
+    dedupeAttributions([attributionFor('geography.area.total'), ...datasetAttribution('map')]),
 }
 
 export const finalPromptSources = (

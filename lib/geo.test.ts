@@ -4,15 +4,19 @@ import {
   LOGO_MAX_SIDE,
   LOGO_MIN_RATIO,
   LOGO_MIN_SIDE,
+  MERCATOR_MAX_LAT,
   WORLD_BOX,
   logoBox,
   logoPaintedArea,
   relaxLogoPlacements,
+  projectMercator,
+  sphericalRingAreaKm,
+  unprojectRing,
   zoomOutStartView,
   type MapBox,
 } from './geo'
-import { largestRing, poleOfInaccessibility, ringContains } from './outline'
-import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
+import { largestRing, parsePolygons, poleOfInaccessibility, ringContains } from './outline'
+import { MAP_BOUNDS, MAP_PATHS, MAP_PROJECTION, MAP_REGIONS } from '~~/data/map.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { isShapeFriendly } from './challenges'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -369,5 +373,64 @@ describe('logoBox', () => {
     ]
     const areas = frame.map(([isoCode, ratio]) => logoPaintedArea(radiusFor(isoCode)!, ratio))
     expect(Math.max(...areas) / Math.min(...areas)).toBeLessThan(2.1)
+  })
+})
+
+describe('back onto the globe, and out again through Mercator', () => {
+  /** Every ring of a country, as lat/lng runs. */
+  const globeRings = (isoCode: ISOCountryCode) =>
+    parsePolygons(MAP_PATHS[isoCode]!)
+      .map(ring => unprojectRing(ring, MAP_PROJECTION))
+      .filter(ring => !!ring)
+
+  const drawnAreaKm = (isoCode: ISOCountryCode) =>
+    globeRings(isoCode).reduce((total, ring) => total + sphericalRingAreaKm(ring), 0)
+
+  it('measures a country the atlas already knows the size of', () => {
+    // Simplified Natural Earth geometry against the Factbook's own figure —
+    // close enough that the True Size round can quote one while judging the
+    // other (lib/challenges/final-challenge.ts's agreement guard).
+    for (const isoCode of ['BR', 'CA', 'AU', 'IN', 'NO', 'CD'] as ISOCountryCode[]) {
+      const stated = COUNTRIES[isoCode].geography.area.total!.amount
+      expect(Math.abs(drawnAreaKm(isoCode) / stated - 1), isoCode).toBeLessThan(0.05)
+    }
+  })
+
+  it('keeps a country that crosses the antimeridian in one piece', () => {
+    // Natural Earth draws Chukotka a hair past 180°, so two of Russia's 2260
+    // mainland vertices fall outside Robinson's silhouette. Losing the ring
+    // over them cost 98% of the country; unwrapping the longitudes is what
+    // stops the rest folding back across the planet.
+    const stated = COUNTRIES.RU.geography.area.total!.amount
+    expect(Math.abs(drawnAreaKm('RU') / stated - 1)).toBeLessThan(0.05)
+  })
+
+  it('inflates area with latitude, the way the lesson says it does', () => {
+    const inflation = (isoCode: ISOCountryCode) => {
+      const rings = globeRings(isoCode)
+      const projected = rings.reduce((total, ring) => {
+        const merc = ring.map(projectMercator)
+        let twice = 0
+        for (let index = 0; index < merc.length; index++) {
+          const [ax, ay] = merc[index]
+          const [bx, by] = merc[(index + 1) % merc.length]
+          twice += ax * by - bx * ay
+        }
+        return total + Math.abs(twice / 2)
+      }, 0)
+      return projected / drawnAreaKm(isoCode)
+    }
+    // Congo sits on the line, Brazil straddles the tropics, Canada is arctic
+    expect(inflation('BR')).toBeGreaterThan(inflation('CD'))
+    expect(inflation('CA')).toBeGreaterThan(inflation('BR') * 3)
+  })
+
+  it('clips at the latitude every web map stops at', () => {
+    const [, beyond] = projectMercator({ lat: 89.9, lng: 0 })
+    const [, cutoff] = projectMercator({ lat: MERCATOR_MAX_LAT, lng: 0 })
+    expect(beyond).toBe(cutoff)
+    expect(Number.isFinite(cutoff)).toBe(true)
+    // SVG's y grows downward: north is up
+    expect(cutoff).toBeLessThan(projectMercator({ lat: 0, lng: 0 })[1])
   })
 })

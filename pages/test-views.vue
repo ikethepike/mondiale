@@ -177,6 +177,7 @@ import {
   BOUNDARY_TOLERANCE,
   GAUNTLET_LIVES,
   getFinalChallenges,
+  TRUE_SIZE_TUNING,
 } from '~~/lib/challenges/final-challenge'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
 import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
@@ -3928,6 +3929,32 @@ const scenarios: Scenario[] = [
           _type: 'boundary-challenge',
           countries: ['KZ', 'UZ'],
           tolerance: BOUNDARY_TOLERANCE.hard,
+        },
+      ]),
+  },
+  {
+    id: 'final-true-size',
+    label: 'Final: true size (scale, CA over BR)',
+    build: () =>
+      finalGame([
+        {
+          _type: 'true-size-challenge',
+          subject: 'CA',
+          anchor: 'BR',
+          tolerance: TRUE_SIZE_TUNING.normal.tolerance,
+        },
+      ]),
+  },
+  {
+    id: 'final-true-size-nordic',
+    label: 'Final: true size (scale, NO over CD)',
+    build: () =>
+      finalGame([
+        {
+          _type: 'true-size-challenge',
+          subject: 'NO',
+          anchor: 'CD',
+          tolerance: TRUE_SIZE_TUNING.easy.tolerance,
         },
       ]),
   },

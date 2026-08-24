@@ -634,3 +634,78 @@ export const invertRobinson = (
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return undefined
   return { lat, lng }
 }
+
+// --- Mercator projection --------------------------------------------------------
+//
+// The world map is Robinson, which flatters the poles only mildly — Canada
+// renders 5× its honest share of the frame, not Mercator's 20×. Mercator is
+// the projection whose area lie is famous, and the one True Size asks a player
+// to correct, so that round re-projects the map's OWN outlines through here:
+// invertRobinson back onto the globe, then forward from it. No second geometry
+// file, and no second answer about where a country's coastline runs.
+
+/** Mercator's cutoff. y diverges at the poles, so the ends clip — the same
+ *  latitude every web map stops at. */
+export const MERCATOR_MAX_LAT = 85
+
+/** Mercator forward, in unit space with SVG's downward y — a projected ring
+ *  drops straight into a viewBox the way a map-space ring does. */
+export const projectMercator = ({ lat, lng }: LatLng): [number, number] => {
+  const phi = (clamp(lat, -MERCATOR_MAX_LAT, MERCATOR_MAX_LAT) * Math.PI) / 180
+  return [(lng * Math.PI) / 180, -Math.log(Math.tan(Math.PI / 4 + phi / 2))]
+}
+
+/** A ring that loses more than this share of its vertices to the inverse has
+ *  not survived the trip — see `unprojectRing`. */
+const RING_INVERT_KEEP = 0.95
+
+/**
+ * A map-space ring back on the globe, as one continuous lat/lng run.
+ *
+ * Two things a naive point-by-point inverse gets wrong. Vertices the
+ * projection cannot invert are DROPPED rather than fatal: Natural Earth draws
+ * Chukotka a hair past the antimeridian, and two points of Russia's
+ * 2260-point mainland land outside Robinson's silhouette — losing the ring
+ * over them cost 98% of Russia's area. And longitudes are unwrapped, so a ring
+ * that crosses ±180° stays one polygon instead of a shape folded back across
+ * the whole planet.
+ *
+ * Returns undefined when too little of the ring survives to trust its shape.
+ */
+export const unprojectRing = (
+  ring: readonly (readonly [number, number])[],
+  projection: MapProjection
+): LatLng[] | undefined => {
+  const points: LatLng[] = []
+  for (const [x, y] of ring) {
+    const latLng = invertRobinson(x, y, projection)
+    if (!latLng) continue
+    const previous = points[points.length - 1]
+    let { lng } = latLng
+    if (previous) {
+      while (lng - previous.lng > 180) lng -= 360
+      while (lng - previous.lng < -180) lng += 360
+    }
+    points.push({ lat: latLng.lat, lng })
+  }
+  if (points.length < 3 || points.length < ring.length * RING_INVERT_KEEP) return undefined
+  return points
+}
+
+/**
+ * The area a ring actually covers on the globe, in km² — spherical excess over
+ * the same sphere haversineKm measures on. This is the figure every flat
+ * projection is lying about, so it is what a projection's inflation is
+ * measured against.
+ */
+export const sphericalRingAreaKm = (ring: readonly LatLng[]): number => {
+  let excess = 0
+  for (let index = 0; index < ring.length; index++) {
+    const from = ring[index]
+    const to = ring[(index + 1) % ring.length]
+    excess +=
+      (((to.lng - from.lng) * Math.PI) / 180) *
+      (2 + Math.sin((from.lat * Math.PI) / 180) + Math.sin((to.lat * Math.PI) / 180))
+  }
+  return Math.abs((excess * EARTH_RADIUS_KM * EARTH_RADIUS_KM) / 2)
+}
