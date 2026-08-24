@@ -2,6 +2,7 @@
   <section v-if="scene" class="true-size-stage">
     <div ref="table" class="light-table">
       <svg
+        ref="stage"
         :viewBox="viewBox"
         @pointerdown="grab"
         @pointermove="drag"
@@ -55,7 +56,7 @@
 
         <g
           class="ghost"
-          :class="{ settling: revealed, arriving }"
+          :class="{ settling: revealed, arriving, gliding }"
           :transform="`translate(${ghostAt[0]} ${ghostAt[1]}) scale(${shownScale})`"
         >
           <path v-for="(ring, index) in subjectPaths" :key="index" :d="ring" />
@@ -63,7 +64,7 @@
       </svg>
 
       <Transition name="caption">
-        <p v-if="showHint && !revealed" class="gesture-hint map-caption">{{ hint }}</p>
+        <p v-if="hintUp" class="gesture-hint map-caption">{{ hint }}</p>
       </Transition>
     </div>
 
@@ -85,6 +86,7 @@
       <div
         ref="rail"
         class="scale-rail"
+        :class="{ gesturing: gesture.pointerCount.value > 1, railing }"
         role="slider"
         tabindex="0"
         aria-label="Ghost size"
@@ -119,6 +121,7 @@ import { getCountry } from '~~/lib/country'
 import { MERCATOR_MAX_LAT, projectMercator } from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
 import type { OutlinePoint } from '~~/lib/outline'
+import { usePinchPan } from '~~/lib/use-pinch-pan'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import type { TrueSizeChallenge } from '~~/types/challenges/final-challenge.type'
 
@@ -142,22 +145,40 @@ const FRAME_PAD = 0.12
 const ANCHOR_MIN_SHARE = 1 / 2.8
 /** Parallels every this many degrees. */
 const PARALLEL_STEP = 10
-/** How long the gesture hint stays up. */
-const HINT_MS = 5200
+/** The hint outstays a fumbled first touch, but never the round. */
+const HINT_MS = 9000
+/** Wheel delta into a scale factor. */
+const WHEEL_GAIN = 0.0012
+/** How long the entry drift and the reveal's settle animate for. */
+const GLIDE_MS = 1250
 
 const scene = computed(() => trueSizeScene(props.challenge.subject, props.challenge.anchor))
 
-const scale = ref(1)
 const committed = ref<number>()
 const submitted = ref(false)
-const drift = ref<OutlinePoint>([0, 0])
 const arriving = ref(true)
-const showHint = ref(false)
+/** True while the transform is being ANIMATED — the entry drift and the
+ *  reveal's settle. A gesture must never inherit that transition: bound to a
+ *  finger, a 1.1s ease reads as a shape swimming after the touch. */
+const gliding = ref(false)
+const resized = ref(false)
 
 const isCoarse = useIsCoarsePointer()
 const hint = computed(() =>
   isCoarse.value ? 'Drag to move · pinch to resize' : 'Drag to move · scroll to resize'
 )
+
+// Scale and position are ONE gesture, in the stage's own coordinates (see
+// lib/use-pinch-pan.ts): a pinch grows what is between the fingers and travels
+// with them, and a one-finger drag is the same math with nothing to spread.
+const gesture = usePinchPan({
+  min: TRUE_SIZE_SCALE_RANGE.min,
+  max: TRUE_SIZE_SCALE_RANGE.max,
+  reach: () => [frame.value.right, frame.value.bottom],
+  onStart: () => settle(),
+})
+const scale = gesture.scale
+const drift = gesture.offset
 
 const ringPath = (ring: OutlinePoint[]) =>
   `M ${ring.map(([x, y]) => `${x.toFixed(4)},${y.toFixed(4)}`).join(' L ')} Z`
@@ -259,14 +280,12 @@ const railSpan = Math.log(TRUE_SIZE_SCALE_RANGE.max / TRUE_SIZE_SCALE_RANGE.min)
 const railFraction = computed(() => Math.log(scale.value / TRUE_SIZE_SCALE_RANGE.min) / railSpan)
 
 const setFraction = (fraction: number) => {
-  scale.value = TRUE_SIZE_SCALE_RANGE.min * Math.exp(clamp(fraction, 0, 1) * railSpan)
-}
-const nudgeScale = (factor: number) => {
-  scale.value = clamp(scale.value * factor, TRUE_SIZE_SCALE_RANGE.min, TRUE_SIZE_SCALE_RANGE.max)
+  resized.value = true
+  gesture.scaleTo(TRUE_SIZE_SCALE_RANGE.min * Math.exp(clamp(fraction, 0, 1) * railSpan))
 }
 
 const rail = ref<HTMLElement>()
-let railing = false
+const railing = ref(false)
 
 const railTo = (event: PointerEvent) => {
   const box = rail.value?.getBoundingClientRect()
@@ -276,16 +295,16 @@ const railTo = (event: PointerEvent) => {
 
 const railGrab = (event: PointerEvent) => {
   if (props.revealed || submitted.value) return
-  railing = true
+  railing.value = true
   settle()
   rail.value?.setPointerCapture(event.pointerId)
   railTo(event)
 }
 const railDrag = (event: PointerEvent) => {
-  if (railing) railTo(event)
+  if (railing.value) railTo(event)
 }
 const railRelease = () => {
-  railing = false
+  railing.value = false
 }
 const railKey = (event: KeyboardEvent) => {
   const step = event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -0.02 : 0.02
@@ -295,69 +314,68 @@ const railKey = (event: KeyboardEvent) => {
   setFraction(railFraction.value + step)
 }
 
-// --- The stage: drag to move, pinch or wheel to resize ---------------------
+// --- The stage: one finger moves it, two resize it, the wheel does too -----
 
-const pointers = new Map<number, OutlinePoint>()
-let pinchStart: { spread: number; scale: number } | undefined
-let dragFrom: OutlinePoint | undefined
+const stage = ref<SVGSVGElement>()
 
-const spread = (): number => {
-  const [a, b] = [...pointers.values()]
-  return a && b ? Math.hypot(a[0] - b[0], a[1] - b[1]) : 0
+/** A client point in the stage's own coordinates. `getScreenCTM()` inverts the
+ *  whole viewBox mapping — letterboxing included — so a gesture is exact at
+ *  any table shape, which a pixels-per-unit ratio never was. */
+const stagePoint = (event: PointerEvent): OutlinePoint | undefined => {
+  const matrix = stage.value?.getScreenCTM()
+  if (!matrix) return undefined
+  const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+  return [point.x, point.y]
 }
 
 /** The ghost has arrived: the entry drift retires the moment the player
- *  touches anything, so a gesture can never fight the transition for the
- *  same transform. */
+ *  touches anything, so a gesture never fights a transition for the same
+ *  transform. */
 const settle = () => {
   arriving.value = false
-  showHint.value = false
+  gliding.value = false
+  if (glideTimeout) clearTimeout(glideTimeout)
 }
 
+const live = () => !props.revealed && !submitted.value
+
 const grab = (event: PointerEvent) => {
-  if (props.revealed || submitted.value) return
-  ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
-  pointers.set(event.pointerId, [event.clientX, event.clientY])
-  settle()
-  if (pointers.size === 2) pinchStart = { spread: spread(), scale: scale.value }
-  else dragFrom = [event.clientX, event.clientY]
+  if (!live()) return
+  const point = stagePoint(event)
+  if (!point) return
+  gesture.start(event.pointerId, point)
+  // Capture keeps a finger that wanders off the table in the gesture. It is a
+  // courtesy, never a gate: it throws on a pointer the browser no longer holds,
+  // and taking it BEFORE the line above meant one such throw swallowed the
+  // whole pinch.
+  try {
+    stage.value?.setPointerCapture(event.pointerId)
+  } catch {
+    // The gesture runs on the events themselves either way
+  }
 }
 
 const drag = (event: PointerEvent) => {
-  if (!pointers.has(event.pointerId)) return
-  pointers.set(event.pointerId, [event.clientX, event.clientY])
-
-  if (pointers.size >= 2 && pinchStart?.spread) {
-    const factor = spread() / pinchStart.spread
-    scale.value = clamp(
-      pinchStart.scale * factor,
-      TRUE_SIZE_SCALE_RANGE.min,
-      TRUE_SIZE_SCALE_RANGE.max
-    )
-    return
-  }
-  if (!dragFrom) return
-  // Screen pixels into stage units: `meet` fits the frame's longer side to the
-  // element's shorter one, so one ratio serves both axes.
-  const box = (event.currentTarget as Element).getBoundingClientRect()
-  const perPixel = frame.value.span / Math.min(box.width, box.height)
-  drift.value = [
-    drift.value[0] + (event.clientX - dragFrom[0]) * perPixel,
-    drift.value[1] + (event.clientY - dragFrom[1]) * perPixel,
-  ]
-  dragFrom = [event.clientX, event.clientY]
+  if (!live()) return
+  const point = stagePoint(event)
+  if (!point) return
+  const before = scale.value
+  gesture.move(event.pointerId, point)
+  if (scale.value !== before) resized.value = true
 }
 
 const release = (event: PointerEvent) => {
-  pointers.delete(event.pointerId)
-  if (pointers.size < 2) pinchStart = undefined
-  if (!pointers.size) dragFrom = undefined
+  gesture.end(event.pointerId)
 }
 
 const wheelScale = (event: WheelEvent) => {
-  if (props.revealed || submitted.value) return
-  settle()
-  nudgeScale(Math.exp(-event.deltaY * 0.0012))
+  if (!live()) return
+  const matrix = stage.value?.getScreenCTM()
+  const at = matrix
+    ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+    : undefined
+  resized.value = true
+  gesture.scaleBy(Math.exp(-event.deltaY * WHEEL_GAIN), at ? [at.x, at.y] : undefined)
 }
 
 const commit = () => {
@@ -375,7 +393,13 @@ function areaLine(isoCode: TrueSizeChallenge['subject']): string {
   return area ? `${Math.round(area.amount).toLocaleString()} km²` : ''
 }
 
+// It teaches the one gesture that isn't obvious, so it stays until the player
+// has actually resized something — moving the ghost around doesn't count.
+const hintExpired = ref(false)
+const hintUp = computed(() => !hintExpired.value && !resized.value && !props.revealed)
+
 let hintTimeout: ReturnType<typeof setTimeout> | undefined
+let glideTimeout: ReturnType<typeof setTimeout> | undefined
 onMounted(() => {
   if (table.value) {
     const measure = () => {
@@ -386,14 +410,22 @@ onMounted(() => {
     tableObserver = new ResizeObserver(measure)
     tableObserver.observe(table.value)
   }
-  showHint.value = true
-  hintTimeout = setTimeout(() => (showHint.value = false), HINT_MS)
+  hintTimeout = setTimeout(() => (hintExpired.value = true), HINT_MS)
   // One frame at the approach position, then the drift home plays as a
-  // transition rather than a tween this component has to drive.
-  requestAnimationFrame(() => requestAnimationFrame(() => (arriving.value = false)))
+  // transition rather than a tween this component has to drive. The glide
+  // window closes on its own so a drag that starts a second later is 1:1.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      if (!arriving.value) return
+      arriving.value = false
+      gliding.value = true
+      glideTimeout = setTimeout(() => (gliding.value = false), GLIDE_MS)
+    })
+  )
 })
 onBeforeUnmount(() => {
   clearTimeout(hintTimeout)
+  clearTimeout(glideTimeout)
   tableObserver?.disconnect()
 })
 
@@ -403,10 +435,10 @@ watch(
   () => props.revealed,
   revealed => {
     if (revealed) return
-    scale.value = 1
+    gesture.reset()
     committed.value = undefined
     submitted.value = false
-    drift.value = [0, 0]
+    resized.value = false
   }
 )
 </script>
@@ -444,10 +476,14 @@ $land: color.mix(ink(), milk(), 26%);
     width: 100%;
     height: 100%;
     display: block;
+    // The stage owns every touch on it: without this the browser pans and
+    // pinch-zooms the PAGE and the round can't be played on a phone at all.
     touch-action: none;
     cursor: grab;
     user-select: none;
     -webkit-user-select: none;
+    // iOS raises a share/copy callout on a long press over SVG, mid-drag
+    -webkit-touch-callout: none;
 
     &:active {
       cursor: grabbing;
@@ -487,6 +523,10 @@ $land: color.mix(ink(), milk(), 26%);
   vector-effect: non-scaling-stroke;
 }
 
+// A transition here is a bug in every state but two. Bound to a finger, an
+// eased transform reads as a shape swimming after the touch — so only the
+// entry drift (`gliding`) and the reveal's settle animate; a live gesture
+// writes the transform raw, one frame per move.
 .ghost {
   filter: drop-shadow(0 0.3rem 0.5rem ink(0.22));
 
@@ -494,7 +534,7 @@ $land: color.mix(ink(), milk(), 26%);
     opacity: 0;
   }
 
-  &:not(.arriving) {
+  &.gliding {
     transition:
       transform 1.1s var(--ease-out-expressive),
       opacity var(--motion-slow) var(--ease-smooth);
@@ -619,6 +659,15 @@ footer {
   border: 0.2rem solid flame();
   transform: translate(-50%, -50%);
   box-shadow: 0 0.2rem 0.6rem ink(0.25);
+  transition: transform var(--motion-quick) var(--ease-out-expressive);
+}
+
+// A pinch writes the same scale the rail does, so the handle tracks the
+// fingers — the two controls are visibly one, and a player who found the
+// pinch can see where it has taken them.
+.scale-rail.gesturing .handle,
+.scale-rail.railing .handle {
+  transform: translate(-50%, -50%) scale(1.2);
 }
 
 @media screen and (max-width: $tablet) {
@@ -641,7 +690,7 @@ footer {
     align-items: stretch;
 
     .scale-rail {
-      padding: 1.2rem 0.4rem;
+      padding: 1.4rem 0.4rem;
     }
 
     :deep(.button) {
@@ -650,9 +699,28 @@ footer {
   }
 }
 
+// A thumb is not a mouse: a taller grab band and a handle it can cover
+// without hiding the whole track.
+@media (pointer: coarse) {
+  .scale-rail {
+    padding: 1.4rem 0;
+  }
+
+  .track {
+    height: 0.6rem;
+  }
+
+  .handle {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ghost,
-  .ghost.settling {
+  .ghost.gliding,
+  .ghost.settling,
+  .handle {
     transition: none;
   }
 }
