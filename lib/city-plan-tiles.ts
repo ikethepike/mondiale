@@ -1,19 +1,28 @@
 /**
- * Lazy access to the city-plan tiles.
+ * Fetch a city-plan tile.
  *
- * Split from `lib/ground-plan.ts` because `import.meta.glob` is a Vite feature
- * and the generator imports that module under Bun, where it is undefined. Only
- * the view needs this half.
+ * The tiles are static JSON under `public/`, not bundled modules, and that is a
+ * build constraint rather than a preference: as `.gen.ts` each one was a module
+ * Rollup had to parse, transform and hold in the bundle graph, and at 172 of
+ * them the production build exhausted its heap. Vite copies `public/` verbatim,
+ * so the roster costs the build nothing and can grow without threatening it.
  *
- * A glob rather than a template-literal import: Vite can only code-split a
- * glob, and a bare dynamic path would bundle the whole roster into every round.
+ * A round still pays for exactly the city it deals — one request, 20-30KB, and
+ * the browser caches it.
  */
 import type { CityPlanPaths } from '~~/types/challenges/group-modes.type'
 
-const TILE_LOADERS = import.meta.glob<{ CITY_PLAN: CityPlanPaths }>('~~/data/city-plans/*.gen.ts')
+/** Tiles already fetched this session, so a repeated city is free. */
+const cache = new Map<string, CityPlanPaths>()
 
 export const loadCityPlan = async (slug: string): Promise<CityPlanPaths | undefined> => {
-  const path = Object.keys(TILE_LOADERS).find(key => key.endsWith(`/${slug}.gen.ts`))
-  if (!path) return undefined
-  return (await TILE_LOADERS[path]().catch(() => undefined))?.CITY_PLAN
+  const held = cache.get(slug)
+  if (held) return held
+
+  const response = await fetch(`/city-plans/${slug}.json`).catch(() => undefined)
+  if (!response?.ok) return undefined
+
+  const paths = (await response.json().catch(() => undefined)) as CityPlanPaths | undefined
+  if (paths) cache.set(slug, paths)
+  return paths
 }

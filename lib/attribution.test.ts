@@ -86,6 +86,15 @@ describe('dataset coverage', () => {
     expect(generated.filter(file => !claimed.includes(file))).toEqual([])
   })
 
+  // The city-plan tiles are static assets rather than generated modules, so
+  // the scan above cannot see them. They are the one dataset whose payload
+  // lives outside data/, and this is what stops it shipping unattributed.
+  it('claims the city-plan tiles, which live outside data/', () => {
+    const tiles = readdirSync(`${ROOT}public/city-plans`).filter(file => file.endsWith('.json'))
+    expect(tiles.length).toBeGreaterThan(0)
+    expect(DATASETS['city-plans'].origins.some(origin => 'source' in origin)).toBe(true)
+  })
+
   it('claims no file twice, and none that is missing', () => {
     expect(claimed.length).toBe(new Set(claimed).size)
     expect(claimed.filter(file => !existsSync(`${ROOT}${file}`))).toEqual([])
