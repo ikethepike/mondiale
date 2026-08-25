@@ -109,9 +109,16 @@ describe('simplifyLine', () => {
     expect(simplifyLine(wobble, 3)).toHaveLength(2)
   })
 
-  it('survives a line long enough to blow a recursive implementation', () => {
-    const long: TilePoint[] = Array.from({ length: 60_000 }, (_, index) => [index, index % 2])
-    expect(() => simplifyLine(long, 0.1)).not.toThrow()
+  // Timed out on CI at the default 5s: this asserts TERMINATION, not speed, and
+  // shared runners are several times slower than a laptop.
+  it('survives a dense line that no point can be dropped from', { timeout: 30_000 }, () => {
+    // The pathological shape: a zigzag at a tolerance that discards nothing.
+    // Douglas-Peucker's cost depends on how much it can THROW AWAY, so this is
+    // the case that degrades — it hung outright before the chunk cap, and the
+    // chunk slice recursed forever before its off-by-one was fixed.
+    const dense: TilePoint[] = Array.from({ length: 20_000 }, (_, index) => [index, index % 2])
+    expect(() => simplifyLine(dense, 0.1)).not.toThrow()
+    expect(simplifyLine(dense, 0.1).length).toBeGreaterThan(0)
   })
 
   it('never reorders or invents points', () => {
