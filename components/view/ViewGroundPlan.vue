@@ -250,6 +250,14 @@ const commit = () => {
   position: relative;
   align-items: center;
   justify-content: center;
+
+  // The tile is square; the stage rarely is. Cap it to the shorter axis so the
+  // whole cut stays in frame on any viewport.
+  :deep(.city-plan) {
+    width: auto;
+    aspect-ratio: 1;
+    max-width: 100%;
+  }
 }
 
 // The tile is the whole question, so it fills the stage behind the chrome.

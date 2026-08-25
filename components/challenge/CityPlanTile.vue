@@ -2,7 +2,7 @@
   <svg
     class="city-plan"
     :viewBox="`0 0 ${CITY_TILE_SPAN} ${CITY_TILE_SPAN}`"
-    preserveAspectRatio="xMidYMid slice"
+    preserveAspectRatio="xMidYMid meet"
     aria-hidden="true"
   >
     <!-- Water is the base frame, never a ladder rung: the city is where it is
@@ -23,7 +23,13 @@
   </svg>
 </template>
 <script lang="ts" setup>
-/** A city's plan, drawn one layer class at a time on cream paper. */
+/**
+ * A city's plan, drawn one layer class at a time on cream paper.
+ *
+ * The tile FITS rather than fills: the cut is square and the composition is the
+ * question, so slicing it to a wide stage would crop away the shape the round
+ * is asking about.
+ */
 import type { CityPlanPaths, GroundPlanLayer } from '~~/types/challenges/group-modes.type'
 import { CITY_TILE_SPAN } from '~~/lib/ground-plan'
 
@@ -41,10 +47,9 @@ const drawn = computed(() => props.layers.filter(layer => props.paths[layer]))
 @use '~/assets/scss/rules/ink' as *;
 
 .city-plan {
-  inset: 0;
   width: 100%;
   height: 100%;
-  position: absolute;
+  max-height: 100%;
   background: milk();
 }
 
