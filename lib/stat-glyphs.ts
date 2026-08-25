@@ -1173,7 +1173,9 @@ export const glyphDataUri = (glyph: Glyph, color = GLYPH_INK): string => {
   const stroke = ' vector-effect="non-scaling-stroke"'
   const body = [
     ...(glyph.paths ?? []).map(d => `<path d="${d}"${stroke}/>`),
-    ...(glyph.circles ?? []).map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}"${stroke}/>`),
+    ...(glyph.circles ?? []).map(
+      ([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}"${stroke}/>`
+    ),
   ].join('')
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" ` +
