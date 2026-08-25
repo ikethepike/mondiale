@@ -47,7 +47,7 @@ import {
 } from '~~/types/geography.types'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
-import { sample, sampleMany, shuffleArray, weightedPick } from '../arrays'
+import { sample, sampleMany, shuffleArray, weightedPick, weightedShuffle } from '../arrays'
 import {
   countryEndonym,
   isLargeCountry,
@@ -85,6 +85,26 @@ import { playableCountries } from '../game-rules'
 import { REGION_LABELS } from '../variant'
 
 type FinalChallengeType = FinalChallengeItem['_type']
+
+/**
+ * How often a gauntlet type comes up, relative to the rest. 1 is the ordinary
+ * rate (the default for anything unlisted); below it is a deliberate rarity.
+ *
+ * Weights only ever bias the ORDER of the draw, never exclude: a type that
+ * can't deal still hands off to the next, so a rarity can't leave a run short.
+ */
+export const FINAL_TYPE_WEIGHTS: Partial<Record<FinalChallengeType, number>> = {
+  // The set piece of the run — its own projection, its own stage, and a gesture
+  // nothing else in the game uses. It lands hardest as a surprise, so it comes
+  // up at about a third of an ordinary type's rate.
+  'true-size-challenge': 0.35,
+}
+
+/** The order the draw walks the eligible types in, rarities pushed back. */
+const drawOrder = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[] =>
+  weightedShuffle(
+    eligibleTypes(game, pool).map(type => [type, FINAL_TYPE_WEIGHTS[type] ?? 1] as const)
+  )
 
 /** Extra misses a run can absorb before the knockout. */
 export const GAUNTLET_LIVES: { [difficulty in GameDifficulty]: number } = {
@@ -173,7 +193,7 @@ export const getFinalChallenges = ({ game }: { game: Game }): FinalChallenge => 
   const count = GAUNTLET_LENGTH[game.difficulty]
 
   const drawn: FinalChallengeItem[] = []
-  for (const type of shuffleArray(eligibleTypes(game, pool))) {
+  for (const type of drawOrder(game, pool)) {
     if (drawn.length >= count) break
     const item = dealChallenge(type, pool, game.difficulty)
     if (item) drawn.push(item)
@@ -209,7 +229,7 @@ export const dealReplacementChallenge = ({
   exclude: FinalChallengeType[]
 }): FinalChallengeItem | undefined => {
   const pool = playableCountries(game)
-  const types = shuffleArray(eligibleTypes(game, pool))
+  const types = drawOrder(game, pool)
   for (const type of [...types.filter(t => !exclude.includes(t)), ...types]) {
     const item = dealChallenge(type, pool, game.difficulty)
     if (item) return item
@@ -1385,8 +1405,10 @@ export interface TrueSizeShape {
   projectedArea: number
   /** The Factbook figure, in km². */
   trueArea: number
-  /** projectedArea per km²: how hard the projection is pushing. */
-  inflation: number
+  /** Projected area per real km². A RAW reading, not a multiple of anything —
+   *  `mercatorInflation` is the normalised one a caller should quote. Only
+   *  ratios of this are meaningful, and ratios are all it is used for. */
+  stretchPerKm: number
 }
 
 export interface TrueSizeScene {
@@ -1447,7 +1469,7 @@ const trueSizeShape = (isoCode: ISOCountryCode): TrueSizeShape | undefined => {
     centre: [centreX, centreY],
     projectedArea,
     trueArea,
-    inflation: projectedArea / trueArea,
+    stretchPerKm: projectedArea / trueArea,
   }
 }
 
@@ -1507,7 +1529,7 @@ export const isTrueSizeWithin = (challenge: TrueSizeChallenge, scale: number): b
  * place is also too small to read at a glance.
  */
 const trueSizeAppeal = (scene: TrueSizeScene, tuning: TrueSizeTuning): number =>
-  (scene.subject.inflation / scene.anchor.inflation) *
+  (scene.subject.stretchPerKm / scene.anchor.stretchPerKm) *
   Math.sqrt(Math.min(scene.subject.trueArea, scene.anchor.trueArea) / tuning.minSubjectArea)
 
 /** How far off the line a country may sit and still count as calibration. */
@@ -1522,7 +1544,7 @@ const equatorInflation = (): number => {
     .map(isoCode => cachedShape(isoCode))
     .filter((shape): shape is TrueSizeShape => !!shape)
   if (!onTheLine.length) throw new ReferenceError('No equatorial shape to calibrate Mercator on')
-  return onTheLine.reduce((total, shape) => total + shape.inflation, 0) / onTheLine.length
+  return onTheLine.reduce((total, shape) => total + shape.stretchPerKm, 0) / onTheLine.length
 }
 
 let equatorBaseline: number | undefined
@@ -1532,7 +1554,7 @@ export const mercatorInflation = (isoCode: ISOCountryCode): number | undefined =
   const shape = cachedShape(isoCode)
   if (!shape) return undefined
   equatorBaseline ??= equatorInflation()
-  return shape.inflation / equatorBaseline
+  return shape.stretchPerKm / equatorBaseline
 }
 
 /**
@@ -1549,7 +1571,10 @@ export const mercatorInflation = (isoCode: ISOCountryCode): number | undefined =
  */
 export const mercatorLatitude = (isoCode: ISOCountryCode): number | undefined => {
   const inflation = mercatorInflation(isoCode)
-  if (!inflation || inflation < 1) return 0
+  // A country the round can't shape has no rung at all — answering 0° would
+  // put it on the equator, which is a different claim entirely.
+  if (inflation === undefined) return undefined
+  if (inflation < 1) return 0
   const latitude = (Math.acos(Math.min(1, 1 / Math.sqrt(inflation))) * 180) / Math.PI
   return (countryLatLng(isoCode)?.lat ?? 0) < 0 ? -latitude : latitude
 }
@@ -1570,7 +1595,8 @@ const getTrueSizeChallenge = (
 
   const anchors = shapes.filter(
     shape =>
-      shape.trueArea >= tuning.minAnchorArea && shape.inflation / baseline <= ANCHOR_MAX_INFLATION
+      shape.trueArea >= tuning.minAnchorArea &&
+      shape.stretchPerKm / baseline <= ANCHOR_MAX_INFLATION
   )
   if (!anchors.length) return undefined
 
@@ -1579,7 +1605,7 @@ const getTrueSizeChallenge = (
     if (subject.trueArea < tuning.minSubjectArea) continue
     for (const anchor of anchors) {
       if (subject.isoCode === anchor.isoCode) continue
-      if (subject.inflation / anchor.inflation < tuning.minDelta) continue
+      if (subject.stretchPerKm / anchor.stretchPerKm < tuning.minDelta) continue
 
       const scene = trueSizeScene(subject.isoCode, anchor.isoCode)
       if (!scene) continue

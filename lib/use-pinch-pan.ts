@@ -91,7 +91,9 @@ export interface PinchPanOptions {
   /** How far the offset may travel from the origin, per axis. An object dragged
    *  past its stage is an object the player has lost. */
   reach?: () => PinchPoint
-  /** Fires once per gesture, on the pointer that begins it. */
+  /** Fires when the object is about to move: on the pointer that begins a
+   *  gesture (not on the ones that join it), and on every `scaleBy`/`scaleTo`,
+   *  which have no gesture to begin. For retiring an idle-state affordance. */
   onStart?: () => void
 }
 

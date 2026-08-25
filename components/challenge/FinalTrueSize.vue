@@ -45,11 +45,14 @@
 
         <!-- What the player committed to, left standing while the truth
              settles over it — the boundary easel's rule: the attempt stays
-             readable beside the answer, in the same ink. -->
+             readable beside the answer, in the same ink.
+             Only where there IS a call: a watcher's stage, and a question the
+             cap burned unanswered, would otherwise wear the untouched opening
+             size as though someone had chosen it. -->
         <g
-          v-if="revealed"
+          v-if="revealed && committed !== undefined"
           class="your-call"
-          :transform="`translate(${drift[0]} ${drift[1]}) scale(${committedScale})`"
+          :transform="`translate(${drift[0]} ${drift[1]}) scale(${committed})`"
         >
           <path v-for="(ring, index) in subjectPaths" :key="index" :d="ring" />
         </g>
@@ -112,7 +115,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import { trueSizeScene, TRUE_SIZE_SCALE_RANGE } from '~~/lib/challenges/final-challenge'
 import { getCountry } from '~~/lib/country'
-import { MERCATOR_MAX_LAT, projectMercator } from '~~/lib/geo'
+import { formatLatitude, MERCATOR_MAX_LAT, projectMercator } from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
 import type { OutlinePoint } from '~~/lib/outline'
 import { usePinchPan } from '~~/lib/use-pinch-pan'
@@ -137,17 +140,19 @@ const FRAME_PAD = 0.12
  *  ghost the projection has blown up past it overflows instead — that clipped
  *  first frame IS the lie, and shrinking brings it back into the world. */
 const ANCHOR_MIN_SHARE = 1 / 2.8
-/** Parallel spacings to choose between, finest first — the frame takes the
- *  finest one that doesn't crowd. A fixed step bunched the labels into an
- *  unreadable stack the moment the verdict card squeezed the table short. */
-const PARALLEL_STEPS = [10, 15, 30, 45]
-/** Rungs a frame may hold before it reads as a stack rather than a scale. */
-const MAX_PARALLELS = 7
+/** Graticule spacings to choose between, finest first. A fixed step bunched
+ *  the labels into an unreadable stack the moment the verdict card squeezed
+ *  the table short. */
+const GRATICULE_STEPS = [10, 15, 30, 45]
+/** Lines a frame may hold on one axis before it reads as a stack, not a scale. */
+const MAX_GRATICULE_LINES = 7
 /** The hint outstays a fumbled first touch, but never the round. */
 const HINT_MS = 9000
 /** Wheel delta into a scale factor. */
 const WHEEL_GAIN = 0.0012
-/** How long the entry drift and the reveal's settle animate for. */
+/** How long the entry glide is allowed to run before the transform goes back
+ *  to being written raw. Must OUTLAST the `.ghost.gliding` transition in this
+ *  file's styles, or the drift is cut off mid-flight. */
 const GLIDE_MS = 1250
 
 const scene = computed(() => trueSizeScene(props.challenge.subject, props.challenge.anchor))
@@ -227,32 +232,46 @@ const viewBox = computed(() => {
 // The projection's own signature, drawn faintly behind the pair: on Mercator
 // the parallels pull apart as they climb, which is the whole reason the ghost
 // arrives too big.
+/** The finest step that doesn't crowd the frame. Both axes need it: a short
+ *  frame stacks the parallels, a wide one stacks the meridians. */
+const uncrowded = <T,>(build: (step: number) => T[]): T[] => {
+  let last: T[] = []
+  for (const step of GRATICULE_STEPS) {
+    last = build(step)
+    if (last.length <= MAX_GRATICULE_LINES) return last
+  }
+  return last
+}
+
+// The projection's own signature, drawn faintly behind the pair: on Mercator
+// the parallels pull apart as they climb, which is the whole reason the ghost
+// arrives too big.
 const parallels = computed(() => {
   const active = scene.value
   if (!active) return []
-  const rungs = (step: number) => {
+  return uncrowded(step => {
     const rows: { y: number; label: string }[] = []
     for (let lat = -MERCATOR_MAX_LAT; lat <= MERCATOR_MAX_LAT; lat += step) {
       const y = projectMercator({ lat, lng: 0 })[1] - active.anchor.centre[1]
       if (y < frame.value.top || y > frame.value.bottom) continue
-      rows.push({ y, label: lat === 0 ? '0°' : `${Math.abs(lat)}°${lat > 0 ? 'N' : 'S'}` })
+      rows.push({ y, label: formatLatitude(lat) })
     }
     return rows
-  }
-  const stepped = PARALLEL_STEPS.map(rungs)
-  return stepped.find(rows => rows.length <= MAX_PARALLELS) ?? stepped[stepped.length - 1]
+  })
 })
 
 const meridians = computed(() => {
   const active = scene.value
   if (!active) return []
-  const columns: number[] = []
-  for (let lng = -180; lng <= 180; lng += PARALLEL_STEPS[0]) {
-    const x = projectMercator({ lat: 0, lng })[0] - active.anchor.centre[0]
-    if (x < frame.value.left || x > frame.value.right) continue
-    columns.push(x)
-  }
-  return columns
+  return uncrowded(step => {
+    const columns: number[] = []
+    for (let lng = -180; lng <= 180; lng += step) {
+      const x = projectMercator({ lat: 0, lng })[0] - active.anchor.centre[0]
+      if (x < frame.value.left || x > frame.value.right) continue
+      columns.push(x)
+    }
+    return columns
+  })
 })
 
 /** Where the ghost enters from: the real bearing of its home, pushed clear of
@@ -271,7 +290,6 @@ const homeApproach = computed((): OutlinePoint => {
 
 const ghostAt = computed((): OutlinePoint => (arriving.value ? homeApproach.value : drift.value))
 
-const committedScale = computed(() => committed.value ?? scale.value)
 const shownScale = computed(() =>
   props.revealed ? (scene.value?.trueScale ?? scale.value) : scale.value
 )
@@ -290,16 +308,22 @@ const rail = ref<HTMLElement>()
 const railing = ref(false)
 
 const railTo = (event: PointerEvent) => {
-  const box = rail.value?.getBoundingClientRect()
-  if (!box?.width) return
-  setFraction((event.clientX - box.left) / box.width)
+  const track = rail.value?.getBoundingClientRect()
+  if (!track?.width) return
+  setFraction((event.clientX - track.left) / track.width)
 }
 
 const railGrab = (event: PointerEvent) => {
-  if (props.revealed || submitted.value) return
+  if (!live()) return
   railing.value = true
   settle()
-  rail.value?.setPointerCapture(event.pointerId)
+  // Same courtesy, same rule as the stage's: capture may throw, and it must
+  // never be able to swallow the grab it precedes
+  try {
+    rail.value?.setPointerCapture(event.pointerId)
+  } catch {
+    // The drag runs on the events either way
+  }
   railTo(event)
 }
 const railDrag = (event: PointerEvent) => {
@@ -308,12 +332,22 @@ const railDrag = (event: PointerEvent) => {
 const railRelease = () => {
   railing.value = false
 }
+/** A slider's keyboard contract: arrows step, Home and End take the stops. */
+const RAIL_KEY_STEP = 0.02
 const railKey = (event: KeyboardEvent) => {
-  const step = event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -0.02 : 0.02
-  if (!/^Arrow(Left|Right|Up|Down)$/.test(event.key)) return
+  if (!live()) return
+  const target = {
+    ArrowLeft: railFraction.value - RAIL_KEY_STEP,
+    ArrowDown: railFraction.value - RAIL_KEY_STEP,
+    ArrowRight: railFraction.value + RAIL_KEY_STEP,
+    ArrowUp: railFraction.value + RAIL_KEY_STEP,
+    Home: 0,
+    End: 1,
+  }[event.key]
+  if (target === undefined) return
   event.preventDefault()
   settle()
-  setFraction(railFraction.value + step)
+  setFraction(target)
 }
 
 // --- The stage: one finger moves it, two resize it, the wheel does too -----
@@ -323,7 +357,7 @@ const stage = ref<SVGSVGElement>()
 /** A client point in the stage's own coordinates. `getScreenCTM()` inverts the
  *  whole viewBox mapping — letterboxing included — so a gesture is exact at
  *  any table shape, which a pixels-per-unit ratio never was. */
-const stagePoint = (event: PointerEvent): OutlinePoint | undefined => {
+const stagePoint = (event: { clientX: number; clientY: number }): OutlinePoint | undefined => {
   const matrix = stage.value?.getScreenCTM()
   if (!matrix) return undefined
   const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
@@ -372,12 +406,8 @@ const release = (event: PointerEvent) => {
 
 const wheelScale = (event: WheelEvent) => {
   if (!live()) return
-  const matrix = stage.value?.getScreenCTM()
-  const at = matrix
-    ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
-    : undefined
   resized.value = true
-  gesture.scaleBy(Math.exp(-event.deltaY * WHEEL_GAIN), at ? [at.x, at.y] : undefined)
+  gesture.scaleBy(Math.exp(-event.deltaY * WHEEL_GAIN), stagePoint(event))
 }
 
 const commit = () => {

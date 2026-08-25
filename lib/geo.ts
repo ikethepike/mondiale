@@ -84,9 +84,23 @@ export const compassLabel = (bearing: number): string =>
 
 const COMPASS_ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']
 
+/**
+ * One latitude with its hemisphere — "64°N", "12.5°S". The lat half of
+ * `formatLatLng`, and the spelling a graticule or a latitude ladder labels its
+ * rungs with.
+ *
+ * At whole-degree grain the equator is written plain: "0°N" claims a
+ * hemisphere the line itself does not have. Finer grains keep the suffix, so
+ * `formatLatLng` reads exactly as it always has.
+ */
+export const formatLatitude = (lat: number, digits = 0): string =>
+  digits === 0 && Math.round(lat) === 0
+    ? '0°'
+    : `${Math.abs(lat).toFixed(digits)}°${lat >= 0 ? 'N' : 'S'}`
+
 /** "12.5°N, 3.2°E" — the one lat/lng display format (views and harnesses alike). */
 export const formatLatLng = ({ lat, lng }: LatLng): string =>
-  `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(1)}°${lng >= 0 ? 'E' : 'W'}`
+  `${formatLatitude(lat, 1)}, ${Math.abs(lng).toFixed(1)}°${lng >= 0 ? 'E' : 'W'}`
 
 export const compassArrow = (bearing: number): string =>
   COMPASS_ARROWS[Math.round(bearing / 45) % 8]

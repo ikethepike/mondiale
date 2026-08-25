@@ -121,9 +121,17 @@ export const FINAL_REVEALS: Record<FinalChallengeItem['_type'], FinalReveal | un
   // The stamped page IS the reveal.
   'yearbook-challenge': undefined,
   // The stage settles the ghost; the card teaches why it had to move at all.
+  // Its sources are handed down from FINAL_PROMPT_SOURCES below rather than
+  // composed again inside it — this file is where a gauntlet item's card and
+  // its provenance are declared together, and a card that reached back up here
+  // for them would close an import cycle.
   'true-size-challenge': {
     component: TrueSizeReveal,
-    props: ({ challenge, trueSizeScale }) => ({ challenge, committed: trueSizeScale }),
+    props: ({ challenge, trueSizeScale }) => ({
+      challenge,
+      committed: trueSizeScale,
+      sources: FINAL_PROMPT_SOURCES['true-size-challenge'](challenge),
+    }),
   },
   'change-challenge': undefined,
 }
@@ -174,7 +182,8 @@ export const FINAL_PROMPT_SOURCES: Record<
   'yearbook-challenge': () => datasetAttribution('events'),
   'change-challenge': () => datasetAttribution('changes'),
   // Two sources, one question: the outlines it re-projects and the areas it
-  // judges them against.
+  // judges them against. TrueSizeReveal reads this same entry back through
+  // `finalPromptSources` rather than composing a second copy of it.
   'true-size-challenge': () =>
     dedupeAttributions([attributionFor('geography.area.total'), ...datasetAttribution('map')]),
 }

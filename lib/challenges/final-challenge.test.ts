@@ -7,6 +7,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
+import { mercatorAreaStretch } from '~~/lib/geo'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
@@ -58,8 +59,10 @@ import {
   madeAcceptedCountries,
   madeTopExporters,
   languageSpeakers,
+  FINAL_TYPE_WEIGHTS,
   MINMAX_REVEAL_ROWS,
   mercatorInflation,
+  mercatorLatitude,
   speaksLanguage,
   TRUE_SIZE_AREA_AGREEMENT,
   TRUE_SIZE_SCALE_RANGE,
@@ -1361,7 +1364,7 @@ describe('True Size', () => {
 
         const scene = trueSizeScene(challenge.subject, challenge.anchor)!
         expect(scene).toBeDefined()
-        expect(scene.subject.inflation / scene.anchor.inflation).toBeGreaterThanOrEqual(
+        expect(scene.subject.stretchPerKm / scene.anchor.stretchPerKm).toBeGreaterThanOrEqual(
           tuning.minDelta
         )
         expect(scene.subject.trueArea).toBeGreaterThanOrEqual(tuning.minSubjectArea)
@@ -1418,6 +1421,44 @@ describe('True Size', () => {
     expect(household / total).toBeGreaterThan(0.15)
     // …without collapsing to a single question
     expect(counts.size).toBeGreaterThan(10)
+  })
+
+  it('is a rarity: it turns up, but well short of an ordinary type', () => {
+    const RUNS = 800
+    let withTrueSize = 0
+    let trueSizeItems = 0
+    // A weight-1 type that is eligible on every board and always deals — the
+    // yardstick for what "ordinary" looks like under the same draw
+    let ordinaryItems = 0
+    for (let round = 0; round < RUNS; round++) {
+      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
+      const drawn = challenges.filter(c => c._type === 'true-size-challenge').length
+      trueSizeItems += drawn
+      ordinaryItems += challenges.filter(c => c._type === 'leadership-challenge').length
+      if (drawn) withTrueSize++
+    }
+    // Rare, not extinct — a mode nobody ever sees is a mode not worth having
+    expect(withTrueSize / RUNS).toBeGreaterThan(0.03)
+    // …and clearly rarer than its weight-1 neighbours, which is the whole point
+    expect(trueSizeItems).toBeLessThan(ordinaryItems * 0.6)
+    expect(FINAL_TYPE_WEIGHTS['true-size-challenge']).toBeLessThan(1)
+  })
+
+  it('places a country on the ladder at the latitude it was charged for', () => {
+    // The reveal's ladder reads the measured inflation back through sec²φ, so
+    // the rung has to round-trip to the number the round actually used.
+    for (const isoCode of ['CA', 'NO', 'DE', 'BR', 'NZ', 'CL'] as ISOCountryCode[]) {
+      const latitude = mercatorLatitude(isoCode)!
+      expect(latitude, isoCode).toBeDefined()
+      expect(mercatorAreaStretch(latitude), isoCode).toBeCloseTo(mercatorInflation(isoCode)!, 5)
+    }
+    // Signed by the hemisphere it is actually in — a southern subject pins south
+    expect(mercatorLatitude('NZ')!).toBeLessThan(0)
+    expect(mercatorLatitude('CL')!).toBeLessThan(0)
+    expect(mercatorLatitude('CA')!).toBeGreaterThan(0)
+    // A country the round can't shape has no rung at all. 0° would put France
+    // on the equator, which is a different claim from "no answer".
+    expect(mercatorLatitude('FR')).toBeUndefined()
   })
 
   it('judges the committed size on area, both ways off true', () => {

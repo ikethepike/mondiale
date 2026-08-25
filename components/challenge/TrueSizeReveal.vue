@@ -45,7 +45,7 @@
 
     <span class="yardstick" :style="{ '--i': ladder.length }">{{ yardstick }}</span>
 
-    <span class="credit-row">
+    <span v-if="sources?.length" class="credit-row">
       <SourceInfo :attributions="sources" />
       <span class="credit">{{ sources[0].credit }}</span>
     </span>
@@ -55,11 +55,12 @@
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { attributionFor, datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
+import type { Attribution } from '~~/lib/attribution'
 import { mercatorLatitude, trueSizeScene } from '~~/lib/challenges/final-challenge'
 import { rankedBarWidths } from '~~/lib/charts'
 import { countryName } from '~~/lib/country'
-import { mercatorAreaStretch } from '~~/lib/geo'
+import { formatLatitude, mercatorAreaStretch } from '~~/lib/geo'
+import { formatAmount } from '~~/lib/number'
 import type { TrueSizeChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -76,6 +77,9 @@ const props = defineProps<{
   /** What the player locked in, as a multiple of the size the map drew. Absent
    *  for a watcher, and for a question the question cap burned unanswered. */
   committed?: number
+  /** Handed down from the reveal registry, which is where this item's card and
+   *  its provenance are declared together. */
+  sources?: Attribution[]
 }>()
 
 /** The rungs the ladder is drawn at. Past 75° Mercator runs away far enough to
@@ -95,9 +99,6 @@ const headline = computed(() =>
     ? `${subjectName.value} is drawn ${scene.value.exaggeration.toFixed(1)}× its true area`
     : ''
 )
-
-const degrees = (latitude: number) =>
-  latitude === 0 ? '0°' : `${Math.round(Math.abs(latitude))}°${latitude > 0 ? 'N' : 'S'}`
 
 interface Rung {
   key: string
@@ -123,7 +124,7 @@ const ladder = computed((): Rung[] => {
 
   return rows.map((row, index) => ({
     key: row.isoCode ?? `rung-${row.latitude}`,
-    latitude: degrees(row.latitude),
+    latitude: formatLatitude(row.latitude),
     label: row.isoCode ? countryName(COUNTRIES[row.isoCode]) : '',
     stretch: stretches[index].toFixed(stretches[index] < 10 ? 1 : 0),
     width: widths[index],
@@ -139,7 +140,7 @@ const figures = computed(() =>
     const area = COUNTRIES[isoCode].geography.area.total
     return {
       name: countryName(COUNTRIES[isoCode]),
-      area: area ? `${Math.round(area.amount).toLocaleString()} km²` : '',
+      area: area ? formatAmount(area) : '',
     }
   })
 )
@@ -170,12 +171,8 @@ const yardstick = computed(() => {
   if (!anchor) return ''
   const latitude = mercatorLatitude(props.challenge.anchor) ?? 0
   const off = Math.round(Math.abs(mercatorAreaStretch(latitude) - 1) * 100)
-  return `Down at ${degrees(latitude)}, ${anchorName.value} is drawn within ${Math.max(off, 1)}% of its true area — which is what made it a fair thing to measure against.`
+  return `Down at ${formatLatitude(latitude)}, ${anchorName.value} is drawn within ${Math.max(off, 1)}% of its true area — which is what made it a fair thing to measure against.`
 })
-
-const sources = computed(() =>
-  dedupeAttributions([attributionFor('geography.area.total'), ...datasetAttribution('map')])
-)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

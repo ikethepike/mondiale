@@ -43,6 +43,30 @@ export const weightedPick = <T>(
   return entries[entries.length - 1]?.[0]
 }
 
+/**
+ * The whole set ordered by weighted draw without replacement — a shuffle where
+ * a heavier entry is likelier to land early, and a lighter one still lands.
+ *
+ * `weightedPick` run down to nothing, so the two can never disagree about what
+ * a weight means. Use it where a caller wants a rarity but must still be able
+ * to fall through the whole list (the gauntlet's draw: a type that can't deal
+ * hands off to the next one).
+ */
+export const weightedShuffle = <T>(
+  entries: readonly (readonly [T, number])[],
+  random: () => number = Math.random
+): T[] => {
+  const pool = [...entries]
+  const order: T[] = []
+  while (pool.length) {
+    const drawn = weightedPick(pool, random)
+    const index = pool.findIndex(([value]) => value === drawn)
+    const [taken] = pool.splice(index < 0 ? 0 : index, 1)
+    order.push(taken[0])
+  }
+  return order
+}
+
 export const shuffleArray = <T>(array: Array<T>, random: () => number = Math.random) => {
   let currentIndex = array.length,
     randomIndex
