@@ -300,6 +300,12 @@ export const SOURCES: Record<SourceId, Source> = {
     title: 'World Leaders',
     url: 'https://www.cia.gov/resources/world-leaders/',
     license: 'Public domain',
+    // Off the listing alongside the Factbook, which leaves the CIA off the
+    // page entirely. The registry still resolves it, so the leader roster it
+    // backs stays credited wherever a reveal names its source — hiding the
+    // provider is not the same as dropping the attribution, and the data is
+    // public domain either way.
+    unlisted: true,
   },
   'cepii-baci': {
     provider: 'cepii',
@@ -381,7 +387,10 @@ export const SOURCES: Record<SourceId, Source> = {
   'osm-overpass': {
     provider: 'openstreetmap',
     title: 'OpenStreetMap via Overpass',
-    url: 'https://overpass-api.de',
+    // OSM's own copyright page, not the Overpass endpoint: ODbL asks the
+    // credit to point at the database and its licence, and Overpass is only
+    // how the extract was taken.
+    url: 'https://www.openstreetmap.org/copyright',
     // OSM has no vintage year — the extract's own timestamp is the edition.
     edition: '2026-08-25 extract',
     license: 'ODbL-1.0',
