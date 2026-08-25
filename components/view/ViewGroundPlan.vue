@@ -78,12 +78,15 @@
             ref="guessInput"
             v-model="entry"
             type="text"
+            aria-label="Name the city"
             autocomplete="off"
+            autocapitalize="words"
             autocorrect="off"
             spellcheck="false"
+            enterkeyhint="go"
             :disabled="submitted || !started"
           />
-          <span v-if="!entry" class="ghost-placeholder">Name the city…</span>
+          <span v-if="!entry" class="ghost-placeholder" aria-hidden="true">Name the city…</span>
         </form>
       </ChallengeConsole>
     </footer>
@@ -281,10 +284,11 @@ const commit = () => {
   justify-content: center;
 }
 
+// The card sizes itself (`width: max-content` up to 60rem). Clamping it here
+// squeezed a two-sentence lesson into a column barely wider than the heading.
 .verdict {
   z-index: 3;
   pointer-events: auto;
-  max-width: min(92vw, 34rem);
 }
 
 .crossings {
@@ -298,6 +302,34 @@ footer {
   padding-bottom: 0.6rem;
   align-items: center;
   flex-direction: column;
+}
+
+// The console is a bare input rather than CountryGuessInput — this mode refuses
+// a suggestion list — so it dresses the field itself, matching the day console
+// the country box ships.
+.guess-form {
+  width: 100%;
+  position: relative;
+  padding: 0.6rem;
+  pointer-events: auto;
+
+  input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: none;
+    font-size: 2.2rem;
+    text-align: center;
+    font-family: inherit;
+    color: var(--dark-blue);
+  }
+
+  // Geometry from templates/_ghost-placeholder.scss; the dress is local.
+  .ghost-placeholder {
+    opacity: 0.45;
+    font-size: 2.2rem;
+    color: var(--dark-blue);
+  }
 }
 
 .footer-clock {
