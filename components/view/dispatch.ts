@@ -4,6 +4,7 @@ import ViewAnthemBuzz from '~/components/view/ViewAnthemBuzz.vue'
 import ViewAtlas from '~/components/view/ViewAtlas.vue'
 import ViewBorderChain from '~/components/view/ViewBorderChain.vue'
 import ViewCapitalGuess from '~/components/view/ViewCapitalGuess.vue'
+import ViewGroundPlan from '~/components/view/ViewGroundPlan.vue'
 import ViewCleanSweep from '~/components/view/ViewCleanSweep.vue'
 import ViewComposition from '~/components/view/ViewComposition.vue'
 import ViewEmpire from '~/components/view/ViewEmpire.vue'
@@ -79,6 +80,7 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   'mother-tongue': ViewMotherTongue,
   'flag-palette': ViewFlagPalette,
   'capital-guess': ViewCapitalGuess,
+  'ground-plan': ViewGroundPlan,
   'star-chart': ViewStarChart,
   government: ViewGovernment,
   'terra-incognita': ViewTerraIncognita,

@@ -97,6 +97,8 @@
  *   /test-views
  */
 import { computed, defineComponent, h, nextTick, ref, watch } from 'vue'
+import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
+import { groundPlanHints, groundPlanImage } from '~~/lib/ground-plan'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
@@ -154,8 +156,10 @@ import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import {
   BEAT_VERDICT_HOLD_MS,
-  isClassicGroupRound,
+  GROUND_PLAN_SECONDS_PER_HINT,
   TIMELINE_BROWSE_CAP_MS,
+  groundPlanSeconds,
+  isClassicGroupRound,
 } from '~~/lib/round-beats'
 import { settleGroupRound } from '~~/lib/harness/settle-group-round'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
@@ -798,6 +802,43 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
+
+/**
+ * A Ground Plan round for one roster city, at whichever cut the variant asks
+ * for. Reads the shipped roster rather than a fixture so the harness always
+ * offers exactly the cities that have tiles.
+ */
+const groundPlanGame = (city: string | undefined, signature: boolean): Game => {
+  const entry =
+    GROUND_PLAN_CITIES.find(candidate => candidate.city === city) ?? GROUND_PLAN_CITIES[0]
+  const cut = entry.cuts.find(candidate => candidate.signature === signature) ?? entry.cuts[0]
+  const decoys = GROUND_PLAN_CITIES.filter(other => other.city !== entry.city)
+    .slice(0, 3)
+    .map(other => other.city)
+  const hints = signature ? groundPlanHints(entry) : []
+
+  return mockGame('group-challenge', [
+    groupRound({
+      _type: 'ground-plan-challenge',
+      country: entry.country,
+      city: entry.city,
+      cut,
+      crossings: CITY_PLAN_INDEX[cut.slug]?.crossings ?? 0,
+      ...(entry.lesson ? { lesson: entry.lesson } : {}),
+      ...(groundPlanImage(entry) ? { image: groundPlanImage(entry) } : {}),
+      layers: ['fabric', 'arterials', 'rail', 'bridges'],
+      secondsPerLayer: 8,
+      // Hints ride the non-hard variant, matching how the dealer splits them.
+      ...(signature ? { hints } : {}),
+      secondsPerHint: GROUND_PLAN_SECONDS_PER_HINT,
+      // The signature cut offers the option table; the generic one free-types,
+      // which is how the dealer splits them by difficulty.
+      ...(signature ? { options: [entry.city, ...decoys].sort(), maximumGuesses: 2 } : {}),
+      durationSeconds: groundPlanSeconds(4, hints.length),
+      maximumPoints: MAXIMUM_POINTS,
+    }),
+  ])
+}
 
 /**
  * A deal of the SAME mode with different data — the anthem's country, a
@@ -1591,6 +1632,34 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
+  },
+  {
+    id: 'ground-plan',
+    label: 'Ground Plan (signature cut)',
+    // One scenario per variant rather than per city: the roster runs to well
+    // over a hundred cities, and a scenario each would bury every other mode
+    // in the picker.
+    //
+    // EVERY city is listed in both scenarios, not just the ones holding a cut
+    // of that kind. A third of the roster is generic-only — the capitals whose
+    // centres are honestly not diagnostic — and listing them in one picker
+    // alone left them findable only by knowing that in advance. A city with no
+    // cut of the asked-for kind falls back to the one it has, and its label
+    // says so.
+    variants: GROUND_PLAN_CITIES.map(entry => ({
+      id: entry.city,
+      label: entry.cuts.some(cut => cut.signature) ? entry.city : `${entry.city} (generic only)`,
+    })),
+    build: variant => groundPlanGame(variant?.id, true),
+  },
+  {
+    id: 'ground-plan-generic',
+    label: 'Ground Plan (generic cut, free-typed)',
+    variants: GROUND_PLAN_CITIES.map(entry => ({
+      id: entry.city,
+      label: entry.cuts.some(cut => !cut.signature) ? entry.city : `${entry.city} (signature only)`,
+    })),
+    build: variant => groundPlanGame(variant?.id, false),
   },
   {
     id: 'capital-guess',
@@ -4206,6 +4275,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Ghosts of Empires', ['empire']],
   ['Flashpoint', ['flashpoint']],
   ['Capital Guess', ['capital-guess']],
+  ['Ground Plan', ['ground-plan']],
   ['Star Chart', ['star-chart']],
   ['Terra Incognita', ['terra-incognita']],
   ['Stat Detective', ['stat-detective']],

@@ -249,6 +249,127 @@ export interface CapitalGuessChallenge {
   maximumPoints: number
 }
 
+/** A city-plan tile's layers, each an SVG path in the tile frame. */
+export interface CityPlanPaths {
+  /** Filled water bodies — rivers with banks, lakes, docks. */
+  waterFill: string
+  /** Water too narrow for banks: canals, minor rivers. */
+  waterLine: string
+  /** Stroke width for `waterLine`, sized to this tile's own canal spacing. */
+  waterLineWidth?: number
+  /** The sea, where the city's edge is tidal and has no water polygon. */
+  sea: string
+  fabric: string
+  arterials: string
+  rail: string
+  bridges: string
+  green: string
+}
+
+/** What the roster index knows about a tile without loading it. */
+export interface CityPlanIndexEntry {
+  /** Distinct water crossings — what the reveal states out loud. */
+  crossings: number
+}
+
+/** A city on the Ground Plan roster, as the generator emits it. */
+export interface GroundPlanCity {
+  /** The country that scores. */
+  country: ISOCountryCode
+  /** The city as the reveal names it. */
+  city: string
+  /** Other spellings a typed answer may arrive as. */
+  aliases?: string[]
+  /** Framings with a usable tile, at least one of them signature. */
+  cuts: GroundPlanCut[]
+  /** The form and whose decision it was — the teaching payload. */
+  lesson?: string
+  /** Reveal photo, where the country's capital photo is not the subject. */
+  image?: string
+}
+
+/**
+ * What a Ground Plan hint tells you. Ordered as the ladder deals them, each
+ * narrowing the field further than the last.
+ */
+export type GroundPlanHintKind = 'region' | 'size' | 'currency' | 'language' | 'initial'
+
+export interface GroundPlanHint {
+  kind: GroundPlanHintKind
+  /** Rendered copy — the dealer resolves it so both ends read one string. */
+  text: string
+}
+
+/** One layer class of a city's plan, in the order the ladder lands them. */
+export type GroundPlanLayer = 'fabric' | 'arterials' | 'rail' | 'bridges' | 'green'
+
+/** A framing of a city — the bbox is the content, never a centre point. */
+export interface GroundPlanCut {
+  /** Tile slug: the `data/city-plans/<slug>.gen.ts` this cut draws from. */
+  slug: string
+  /**
+   * Whether the city's diagnostic shape is in frame. Ruled on by a human at
+   * generation time, because no measure tells you that the Battery reads as
+   * New York and Midtown does not.
+   */
+  signature: boolean
+}
+
+/**
+ * Ground Plan — a city drawn one layer at a time on cream paper, in the street-
+ * print register: water first (it was there before the streets and they
+ * answered to it), then the residential grain, the arterials, the rail, and
+ * finally the bridges snapping the two banks together. Name the city before it
+ * finishes.
+ *
+ * Type the city, score the COUNTRY: only the ISO code travels, and the view
+ * resolves a typed name through `cityCountryByName` (lib/cities.ts) before it
+ * submits — the Star Chart's arrangement, though this grades as a single buzz
+ * rather than a collected set.
+ *
+ * `durationSeconds` is stamped from the same `groundPlanSeconds` the round's
+ * beat clocks with. It looks redundant beside the derived `playSeconds` and is
+ * not: `useGroupChallenge` reads `durationSeconds` off the challenge directly,
+ * so without it the view's clock never arms and its buzz fraction is stuck at
+ * zero while the server window stays correct.
+ */
+export interface GroundPlanChallenge {
+  _type: 'ground-plan-challenge'
+  /** The country that scores — the city's own. */
+  country: ISOCountryCode
+  /** The city, as the reveal names it and a typed answer must match. */
+  city: string
+  /** The cut in play. */
+  cut: GroundPlanCut
+  /** Distinct water crossings in this frame — stated at the reveal. */
+  crossings: number
+  /** The form and whose decision it was, where the roster carries one. */
+  lesson?: string
+  /** The city's own skyline photo, shown at the reveal. Absent for a
+   *  non-capital, which has no `CAPITALS` entry to draw one from. */
+  image?: string
+  /** Layer classes that draw during play, in order. */
+  layers: GroundPlanLayer[]
+  secondsPerLayer: number
+  /**
+   * Facts that land one by one once the plan has finished drawing.
+   *
+   * The plan alone is a hard question — most players will not read a street
+   * grid cold — and a round everyone fails teaches nothing. Each rung is a fact
+   * about the country worth knowing on its own, so the time spent waiting is
+   * still time spent learning.
+   */
+  hints?: GroundPlanHint[]
+  secondsPerHint: number
+  /** Multiple-choice cities (includes `city`) — offered outside hard mode,
+   *  where players free-type against the whole register. */
+  options?: string[]
+  /** Picks allowed before the round resolves. Set only with `options`. */
+  maximumGuesses?: number
+  durationSeconds: number
+  maximumPoints: number
+}
+
 /**
  * The Star Chart — capital-guess's mirror, at map scale. The world goes
  * nocturne-dark and a few stars pulse at their capitals' TRUE coordinates:
@@ -1142,6 +1263,7 @@ export type GroupModeChallenge =
   | MotherTongueChallenge
   | FlagPaletteChallenge
   | CapitalGuessChallenge
+  | GroundPlanChallenge
   | StarChartChallenge
   | GovernmentChallenge
   | FlashpointChallenge

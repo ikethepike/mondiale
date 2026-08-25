@@ -35,6 +35,13 @@
   // and the scorecard's mark must read as one thing, so it is a token too.
   --night-cold: hsl(216, 30%, 55%);
 
+  // The street-print palette (Ground Plan). Washes of the map's own --soft-blue
+  // and --soft-mint rather than new hues: the tile is the brand's paper and ink
+  // with water and planting laid under them.
+  --plan-water: hsla(197.6, 51.2%, 41.8%, 0.2);
+  --plan-water-edge: hsla(197.6, 51.2%, 41.8%, 0.5);
+  --plan-green: hsla(170.5, 24.7%, 65.1%, 0.3);
+
   --black: hsl(0, 0%, 7.5%);
   --white: hsl(0, 0%, 94.9%);
 }

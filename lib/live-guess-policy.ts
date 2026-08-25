@@ -34,6 +34,9 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // ~195 candidates, free-typed: one wrong name is noise, not a clue.
   'flag-palette': 'label',
   'capital-guess': 'label',
+  // The whole city register free-typed: a wrong name is noise, not a clue,
+  // and someone guessing Tunis at Atlanta is the best moment in the round.
+  'ground-plan': 'label',
   flashpoint: 'label',
   // ~195 capitals, free-typed with no suggestion list: a wrong city is noise
   // and worth seeing. The mode's HITS travel unlabelled anyway — the view
@@ -144,7 +147,7 @@ export const guessPolicyFor = (
   // `options` field too (government's party list, trend-race's cards), and a
   // bare truthiness check silently overrode their BASE_POLICY rows.
   if (
-    (kind === 'capital-guess' || kind === 'flashpoint') &&
+    (kind === 'capital-guess' || kind === 'flashpoint' || kind === 'ground-plan') &&
     'options' in challenge &&
     challenge.options
   ) {

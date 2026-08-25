@@ -157,6 +157,7 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'mother-tongue': true,
   'flag-palette': true,
   'capital-guess': true,
+  'ground-plan': true,
   'star-chart': true,
   government: true,
   // Nothing local gates it: the world falls apart on a schedule the booth

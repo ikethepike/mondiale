@@ -29,6 +29,7 @@ export type ProviderId =
   | 'untc'
   | 'ucdp'
   | 'naturalearth'
+  | 'openstreetmap'
   | 'geonames'
   | 'wikidata'
   | 'commons'
@@ -61,6 +62,8 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description: 'Country profiles and world leaders: geography, people, government and economy.',
   },
   imf: {
+    logo: 'imf.svg',
+    dimLogo: true,
     name: 'International Monetary Fund',
     url: 'https://www.imf.org/en/Publications/WEO',
     description:
@@ -111,6 +114,9 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
   untc: {
     name: 'UN Treaty Collection',
     url: 'https://treaties.un.org',
+    // The same UN wordmark the Population Division entries carry — one
+    // organisation, three desks.
+    logo: 'un-wpp.svg',
     description:
       'The depositary’s own record for multilateral treaties: who signed, who ratified, and who never got round to it.',
   },
@@ -119,6 +125,13 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     url: 'https://ucdp.uu.se',
     logo: 'uppsala.svg',
     description: 'Armed-conflict data from Uppsala University.',
+  },
+  openstreetmap: {
+    logo: 'openstreetmap.svg',
+    name: 'OpenStreetMap',
+    url: 'https://www.openstreetmap.org',
+    description:
+      'The world mapped by volunteers: every street, railway, river and park, down to the lane.',
   },
   naturalearth: {
     name: 'Natural Earth',
@@ -182,12 +195,14 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description: 'Currency codes and spoken languages per country.',
   },
   mozilla: {
+    logo: 'mozilla.svg',
     name: 'Mozilla Common Voice',
     url: 'https://commonvoice.mozilla.org',
     description:
       'Crowd-sourced speech recordings in over a hundred languages, donated and validated by volunteers and released into the public domain.',
   },
   mondiale: {
+    logo: 'mondiale.svg',
     name: 'Mondiale',
     url: 'https://github.com/ikethepike/mondiale',
     description:
@@ -201,6 +216,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
       'Matched satellite pairs of one place decades apart, from the Landsat and Terra archives.',
   },
   usgs: {
+    logo: 'usgs.svg',
     name: 'U.S. Geological Survey',
     url: 'https://eros.usgs.gov',
     description:
@@ -223,6 +239,7 @@ export type SourceId =
   | 'ucdp-acd'
   | 'ucdp-ged'
   | 'naturalearth-10m'
+  | 'osm-overpass'
   | 'geonames-cities15000'
   | 'wikidata-items'
   | 'commons-media'
@@ -292,6 +309,12 @@ export const SOURCES: Record<SourceId, Source> = {
     title: 'World Leaders',
     url: 'https://www.cia.gov/resources/world-leaders/',
     license: 'Public domain',
+    // Off the listing alongside the Factbook, which leaves the CIA off the
+    // page entirely. The registry still resolves it, so the leader roster it
+    // backs stays credited wherever a reveal names its source — hiding the
+    // provider is not the same as dropping the attribution, and the data is
+    // public domain either way.
+    unlisted: true,
   },
   'cepii-baci': {
     provider: 'cepii',
@@ -369,6 +392,17 @@ export const SOURCES: Record<SourceId, Source> = {
     edition: 'v25.1',
     license: 'CC BY 4.0',
     year: 2024,
+  },
+  'osm-overpass': {
+    provider: 'openstreetmap',
+    title: 'OpenStreetMap via Overpass',
+    // OSM's own copyright page, not the Overpass endpoint: ODbL asks the
+    // credit to point at the database and its licence, and Overpass is only
+    // how the extract was taken.
+    url: 'https://www.openstreetmap.org/copyright',
+    // OSM has no vintage year — the extract's own timestamp is the edition.
+    edition: '2026-08-25 extract',
+    license: 'ODbL-1.0',
   },
   'naturalearth-10m': {
     provider: 'naturalearth',
@@ -773,6 +807,7 @@ export type DataSetId =
   | 'borders'
   | 'straits'
   | 'cities'
+  | 'city-plans'
   | 'capitals'
   | 'anthems'
   | 'anthem-lyrics'
@@ -892,6 +927,15 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'naturalearth-10m', dataset: 'Coastline distances between country shapes' },
       { source: 'mondiale-editorial', dataset: 'generators/data/strait-overrides.ts' },
     ],
+  },
+  'city-plans': {
+    label: 'City street plans',
+    // Only the index is listed: the tiles themselves are static JSON under
+    // public/city-plans, not generated modules, so the coverage scan over
+    // data/ has nothing to catch. attribution.test.ts checks that directory
+    // still holds tiles, which is what keeps the claim honest.
+    files: ['data/city-plans.gen.ts'],
+    origins: [{ source: 'osm-overpass', dataset: 'Highways, railways, water and green space' }],
   },
   cities: {
     label: 'City lights',

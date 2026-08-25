@@ -53,6 +53,8 @@ export const ROUND_WEIGHTS = {
   'mother-tongue': 0.063,
   'flag-palette': 0.08,
   'capital-guess': 0.056,
+  // A set piece: the whole city draws itself, so it must stay an event.
+  'ground-plan': 0.05,
   // Shy of its mirror on purpose: the dark map asks more of a player than a
   // skyline photo does, and two city rounds in a game is plenty.
   'star-chart': 0.042,
@@ -143,6 +145,7 @@ export const MECHANIC_BY_KIND = {
   silhouette: 'typed',
   'mother-tongue': 'typed',
   'capital-guess': 'typed',
+  'ground-plan': 'typed',
   'star-chart': 'typed',
   composition: 'typed',
   'name-that-water': 'typed',

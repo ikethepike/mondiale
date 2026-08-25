@@ -1,5 +1,7 @@
 # Generated files
 *.gen.ts
+# City-plan tiles: generated JSON, minified on purpose
+public/city-plans
 .nuxt
 .output
 node_modules

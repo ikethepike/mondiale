@@ -286,13 +286,17 @@ onMounted(() => {
 // The WebGL contour canvas is a full-cover backdrop behind the views. Its
 // draw-in sweep and dim-to-ambient fade are driven inside the component
 // (a shader uniform), so there's no per-frame DOM cost here.
+// Fixed, not absolute: an absolute backdrop takes the DOCUMENT's height, so on
+// a long scrolling page (the sources list) the contours stretched to the full
+// content and the pattern ballooned. Pinned to the viewport it keeps one scale
+// however far the page runs, and scrolls under the content rather than with it.
 .contour-backdrop {
   top: 0;
   left: 0;
   z-index: 0;
   width: 100%;
-  height: 100%;
-  position: absolute;
+  height: 100dvh;
+  position: fixed;
   pointer-events: none;
 }
 

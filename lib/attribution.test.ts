@@ -73,7 +73,10 @@ describe('the registry', () => {
 describe('dataset coverage', () => {
   // The guarantee: a new generated data file is unattributed until it is
   // claimed by a DATASETS entry, and this fails until it is.
-  const generated = readdirSync(`${ROOT}data`)
+  // Recursive: the city-plan tiles live in a subdirectory, and a flat read
+  // would let a whole roster ship unattributed — the exact gap this guards.
+  const generated = readdirSync(`${ROOT}data`, { recursive: true })
+    .map(file => String(file))
     .filter(file => file.endsWith('.gen.ts'))
     .map(file => `data/${file}`)
 
@@ -81,6 +84,15 @@ describe('dataset coverage', () => {
 
   it('attributes every generated data file', () => {
     expect(generated.filter(file => !claimed.includes(file))).toEqual([])
+  })
+
+  // The city-plan tiles are static assets rather than generated modules, so
+  // the scan above cannot see them. They are the one dataset whose payload
+  // lives outside data/, and this is what stops it shipping unattributed.
+  it('claims the city-plan tiles, which live outside data/', () => {
+    const tiles = readdirSync(`${ROOT}public/city-plans`).filter(file => file.endsWith('.json'))
+    expect(tiles.length).toBeGreaterThan(0)
+    expect(DATASETS['city-plans'].origins.some(origin => 'source' in origin)).toBe(true)
   })
 
   it('claims no file twice, and none that is missing', () => {

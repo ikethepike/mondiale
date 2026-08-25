@@ -94,6 +94,10 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
       return context.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
         : "The sooner you name it, the more it's worth."
+    case 'ground-plan':
+      return context.maximumGuesses
+        ? 'Name it first try for full marks — the second guess is worth less.'
+        : 'The fewer layers you needed, the bigger the score.'
     case 'flashpoint':
       return context.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
@@ -152,6 +156,8 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
         return { submitted: 'Your Verdict', correct: 'The Country' }
       case 'capital-guess':
         return { submitted: 'Your Answer', correct: 'The Country' }
+      case 'ground-plan':
+        return { submitted: 'Your Answer', correct: 'The City' }
       // The star chart renders StarChartReveal instead of the shared ledger, so
       // these only ever reach the tally line beneath the score.
       case 'star-chart':

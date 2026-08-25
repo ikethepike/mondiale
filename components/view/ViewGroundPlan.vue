@@ -1,0 +1,436 @@
+<template>
+  <div v-if="challenge" class="ground-plan challenge-shell passthrough">
+    <Interstitial
+      v-if="showInterstitial"
+      tone="info"
+      kind="ground-plan"
+      title="Name the city"
+      :stakes="stakes"
+      @done="start"
+    />
+
+    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
+      <template v-if="!resolved">
+        <h1 class="map-caption">Which city is this?</h1>
+        <span class="map-caption sub">{{ ladderCaption }}</span>
+      </template>
+    </ChallengePrompt>
+
+    <!-- The plan is the whole surface, not a picture on it: it runs edge to
+         edge behind the chrome, which floats over it wearing its own scrim. -->
+    <CityPlanTile
+      v-if="paths"
+      class="plan-backdrop"
+      :paths="paths"
+      :layers="shownLayers"
+      :show-green="resolved"
+      :fit="fitPlan"
+    />
+
+    <section class="stage">
+      <ChallengeResult
+        v-if="resolved"
+        class="verdict"
+        :status="wasCorrect ? 'correct' : 'incorrect'"
+        :correct-message="`${challenge.city} — ${countryName(challenge.country)}`"
+        :incorrect-message="`It was ${challenge.city}, ${countryName(challenge.country)}`"
+      >
+        <img
+          v-if="challenge.image"
+          class="skyline"
+          :src="challenge.image"
+          :alt="`${challenge.city} from street level`"
+        />
+        <p v-if="challenge.lesson">{{ challenge.lesson }}</p>
+        <p v-if="crossingLine" class="crossings">{{ crossingLine }}</p>
+      </ChallengeResult>
+      <GuessTicker v-else :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </section>
+
+    <!-- No `suggest-berth`: this console refuses a suggestion list (a dropdown
+         of cities would be the answer sheet), so reserving room below it just
+         floats the console 200px off the floor. -->
+    <footer v-if="!resolved">
+      <!-- The rungs stack against the console, newest last, so the freshest
+           fact sits closest to where the player is typing. -->
+      <TransitionGroup v-if="ladder.length" tag="ul" name="hint" class="hint-ladder">
+        <li
+          v-for="(rung, index) in ladder"
+          :key="rung.kind"
+          class="hint-chip"
+          :style="{ '--rung-age': ladder.length - 1 - index }"
+        >
+          {{ rung.text }}
+        </li>
+      </TransitionGroup>
+      <template v-if="challenge.options">
+        <ChallengeTimerRadial
+          class="footer-clock"
+          :value="secondsLeft"
+          :total="challenge.durationSeconds"
+        />
+        <div class="options card-options">
+          <button
+            v-for="option in challenge.options"
+            :key="option"
+            class="option card-option"
+            :class="{ 'is-spent': isSpent(option) }"
+            type="button"
+            :disabled="submitted || !started || isSpent(option)"
+            @click="onOption(option)"
+          >
+            <span>{{ option }}</span>
+          </button>
+        </div>
+      </template>
+      <ChallengeConsole
+        v-else
+        class="console"
+        :value="secondsLeft"
+        :total="challenge.durationSeconds"
+      >
+        <!-- No suggestion list: a dropdown of cities would be the answer sheet,
+             the same refusal the Star Chart makes. -->
+        <form class="guess-form" @submit.prevent="commit">
+          <input
+            ref="guessInput"
+            v-model="entry"
+            type="text"
+            aria-label="Name the city"
+            autocomplete="off"
+            autocapitalize="words"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="go"
+            :disabled="submitted || !started"
+          />
+          <span v-if="!entry" class="ghost-placeholder" aria-hidden="true">Name the city…</span>
+        </form>
+      </ChallengeConsole>
+    </footer>
+  </div>
+</template>
+<script lang="ts" setup>
+import CityPlanTile from '~/components/challenge/CityPlanTile.vue'
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
+import Interstitial from '~/components/feedback/Interstitial.vue'
+import type { CityPlanPaths } from '~~/types/challenges/group-modes.type'
+import { countryName, getCountry } from '~~/lib/country'
+import { cityCountryByName } from '~~/lib/cities'
+import { loadCityPlan } from '~~/lib/city-plan-tiles'
+import { groundPlanRemainingFraction, revealedLayers } from '~~/lib/ground-plan'
+import { buzzScore } from '~~/lib/scoring'
+import { classicPlaySeconds, GROUND_PLAN_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
+import { formatNumber } from '~~/lib/number'
+import { useIsPortrait } from '~~/lib/use-viewport'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useAttemptOptions } from '~~/lib/use-attempt-options'
+
+const {
+  challenge,
+  showInterstitial,
+  started,
+  submitted,
+  secondsLeft,
+  remainingFraction,
+  begin,
+  hint,
+  hintTone,
+  announce,
+  entries,
+  submitOnce,
+  stopCountdown,
+  gameStore,
+} = useGroupChallenge('ground-plan-challenge')
+
+// A cut is wider than it is tall, so a portrait screen cannot fill without
+// cropping into the safe zone. Fit there, fill everywhere else.
+const fitPlan = useIsPortrait()
+
+const guessInput = ref<HTMLInputElement>()
+const entry = ref('')
+const resolved = ref(false)
+const wasCorrect = ref(false)
+const paths = ref<CityPlanPaths>()
+
+/** The whole window on one derivation — the server clocks the same number. */
+const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
+
+/**
+ * Layers land on the clock rather than on a timer of their own: the composable
+ * already runs the countdown this kind needs (a derived `playSeconds` puts it
+ * on the local decrement), so a second interval could only drift from it.
+ */
+const revealedCount = computed(() => {
+  const active = challenge.value
+  if (!active || !started.value) return 0
+  const elapsed = totalSeconds.value - secondsLeft.value
+  return Math.min(active.layers.length, Math.floor(elapsed / active.secondsPerLayer) + 1)
+})
+
+const shownLayers = computed(() => {
+  const active = challenge.value
+  if (!active) return []
+  return resolved.value ? active.layers : revealedLayers(active, revealedCount.value)
+})
+
+/**
+ * The ladder opens once every layer has landed, plus a breath — the plan gets
+ * first refusal before the words step in — then releases one rung per interval.
+ */
+const shownHints = computed(() => {
+  const active = challenge.value
+  if (!active?.hints?.length || !started.value) return 0
+  const drawn = active.layers.length * active.secondsPerLayer
+  const elapsed = totalSeconds.value - secondsLeft.value
+  const sinceLadder = elapsed - drawn - GROUND_PLAN_HINT_LEAD_SECONDS
+  if (sinceLadder < 0) return 0
+  return Math.min(active.hints.length, 1 + Math.floor(sinceLadder / active.secondsPerHint))
+})
+
+const ladder = computed(() => (challenge.value?.hints ?? []).slice(0, shownHints.value))
+
+const ladderCaption = computed(() => {
+  const active = challenge.value
+  if (!active || !started.value) return 'Watch it build'
+  return `Layer ${revealedCount.value} of ${active.layers.length}`
+})
+
+const crossingLine = computed(() => {
+  const count = challenge.value?.crossings ?? 0
+  if (!count) return ''
+  const plural = count === 1 ? 'crossing' : 'crossings'
+  return `${formatNumber(count)} water ${plural} in frame — a river is a barrier, and bridges are expensive.`
+})
+
+const stakes = computed(() =>
+  challenge.value?.maximumGuesses
+    ? `A city draws itself layer by layer. Name it before the bridges land — you get ${challenge.value.maximumGuesses} guesses, and the second is worth less.`
+    : 'A city draws itself layer by layer, water first. Name it before the bridges land — the fewer layers you need, the more it pays.'
+)
+
+watch(
+  challenge,
+  async active => {
+    if (!active) return
+    paths.value = await loadCityPlan(active.cut.slug)
+  },
+  { immediate: true }
+)
+
+/** The reveal is display-only; the server's flip ends the beat. */
+const resolve = (correct: boolean, score: number) => {
+  if (resolved.value) return
+  resolved.value = true
+  wasCorrect.value = correct
+  stopCountdown()
+  gameStore.map.status = correct ? 'correct' : undefined
+  submitOnce(correct && challenge.value ? [challenge.value.country] : [], score)
+}
+
+const submitRound = (score: number) => resolve(score > 0, score)
+
+const start = () => {
+  begin({ onTimeout: () => submitRound(0) })
+  nextTick(() => guessInput.value?.focus())
+}
+
+// Options pay by attempt through the shared table; the typed variant pays by
+// LADDER instead, so it must not route through the same helper — its clock
+// branch would price the answer on seconds, which is not this round's tension.
+const { spent, onGuess } = useAttemptOptions({
+  challenge: computed(() =>
+    challenge.value
+      ? {
+          country: challenge.value.country,
+          maximumGuesses: challenge.value.maximumGuesses,
+          maximumPoints: challenge.value.maximumPoints,
+        }
+      : undefined
+  ),
+  submitted,
+  started,
+  remainingFraction,
+  announce,
+  submitRound,
+})
+
+/**
+ * `spent` tracks the COUNTRY a pick resolved to, because that is what the
+ * shared attempt table scores. The buttons are city names, so the spent test
+ * has to go through the same resolution rather than comparing the labels.
+ */
+const isSpent = (option: string): boolean => {
+  const isoCode = cityCountryByName(option)
+  return !!isoCode && spent.value.includes(isoCode)
+}
+
+const onOption = (option: string) => {
+  const isoCode = cityCountryByName(option)
+  if (!isoCode || !challenge.value) return
+  onGuess(getCountry(isoCode))
+}
+
+const commit = () => {
+  const active = challenge.value
+  const typed = entry.value.trim()
+  if (!active || !typed || !started.value || resolved.value || submitted.value) return
+
+  const isoCode = cityCountryByName(typed)
+  // An unmatched name spends nothing — there is no city to score, and a
+  // near-miss spelling is one edit from right.
+  if (!isoCode) return announce({ hint: `No city called “${typed}”` })
+
+  entry.value = ''
+  if (isoCode !== active.country) {
+    return announce({ hint: `${typed} isn't this city`, tone: 'alert' })
+  }
+  resolve(
+    true,
+    buzzScore(active.maximumPoints, groundPlanRemainingFraction(active, revealedCount.value))
+  )
+}
+</script>
+<style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/ink' as *;
+
+// The plan is the ground the round is played on, so it sits under everything
+// and takes the whole viewport. The shell is `passthrough`; the chrome opts
+// itself back in.
+.plan-backdrop {
+  inset: 0;
+  z-index: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
+.stage {
+  flex: 1;
+  z-index: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+// The card sizes itself (`width: max-content` up to 60rem). Clamping it here
+// squeezed a two-sentence lesson into a column barely wider than the heading.
+.verdict {
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.crossings {
+  opacity: 0.8;
+}
+
+// The plan answers "where"; the skyline answers "what it looks like from the
+// pavement" — the two together are the whole reveal.
+.skyline {
+  width: 100%;
+  display: block;
+  max-height: 14rem;
+  object-fit: cover;
+  margin-bottom: 0.9rem;
+  border-radius: 0.8rem;
+}
+
+footer {
+  z-index: 2;
+  display: flex;
+  gap: 1.4rem;
+  padding-bottom: 0.6rem;
+  align-items: center;
+  flex-direction: column;
+}
+
+// The console is a bare input rather than CountryGuessInput — this mode refuses
+// a suggestion list — so it dresses the field itself, matching the day console
+// the country box ships.
+.guess-form {
+  width: 100%;
+  position: relative;
+  padding: 0.6rem;
+  pointer-events: auto;
+
+  input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: none;
+    font-size: 2.2rem;
+    text-align: center;
+    font-family: inherit;
+    color: var(--dark-blue);
+  }
+
+  // Geometry from templates/_ghost-placeholder.scss; the dress is local.
+  .ghost-placeholder {
+    opacity: 0.45;
+    font-size: 2.2rem;
+    color: var(--dark-blue);
+  }
+}
+
+.footer-clock {
+  flex: none;
+  pointer-events: auto;
+}
+
+// Rungs climb and dim as newer ones land beneath them, so the freshest fact is
+// always the brightest thing above the console.
+.hint-ladder {
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  align-items: center;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.hint-chip {
+  @include caption-surface(1rem);
+  padding: 0.5rem 1.1rem;
+  font-size: 1.4rem;
+  text-align: center;
+  color: var(--dark-blue);
+  opacity: calc(1 - var(--rung-age, 0) * 0.22);
+}
+
+.hint-enter-active {
+  transition:
+    opacity var(--motion-quick),
+    transform var(--motion-quick);
+}
+
+.hint-enter-from {
+  opacity: 0;
+  transform: translateY(0.6rem);
+}
+
+// Over a busy plan the cards need their cream back — the shared option card is
+// translucent by default, which reads as noise on top of street work.
+.card-options {
+  pointer-events: auto;
+  grid-template-columns: repeat(2, minmax(14rem, 20rem));
+
+  :deep(.card-option) {
+    backdrop-filter: blur(0.6rem);
+  }
+}
+
+@media (max-width: $tablet) {
+  .card-options {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>
