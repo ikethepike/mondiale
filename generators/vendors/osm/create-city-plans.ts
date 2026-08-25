@@ -11,7 +11,14 @@
  *   bun run generate:city-plans --city london   one city's cuts
  *   bun run generate:city-plans --cached        re-encode, no network
  */
-import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { jsonParseLiteral } from '../../lib/emit'
 import { MINIMUM_STREET_DENSITY } from '../../lib/city-plan-geometry'
 import { CITY_CUTS, type CityEntry } from '../../data/city-cuts'
@@ -32,6 +39,17 @@ const only = process.argv.includes('--city')
 const cacheOnly = process.argv.includes('--cached')
 
 const slugFile = (slug: string) => `${OUTPUT_DIRECTORY}/${slug}.gen.ts`
+
+/** The previous run's crossing counts, so a kept tile does not lose the number
+ *  its reveal states out loud. */
+const previousIndex: Record<string, { crossings: number }> = existsSync(INDEX_FILE)
+  ? ((): Record<string, { crossings: number }> => {
+      const match = readFileSync(INDEX_FILE, 'utf-8').match(
+        /CITY_PLAN_INDEX: Record<string, CityPlanIndexEntry> = JSON\.parse\((".*?")\)/s
+      )
+      return match ? JSON.parse(JSON.parse(match[1])) : {}
+    })()
+  : {}
 
 const writeTile = (slug: string, tile: CityPlanTile, extractedAt: string) => {
   // The measurements stay in the report and the index; the shipped tile is
@@ -57,21 +75,33 @@ const run = async () => {
   const wanted = new Set<string>()
   let extractedAt = new Date().toISOString().slice(0, 10)
 
-  const entries: CityEntry[] = only
-    ? CITY_CUTS.filter(entry => entry.cuts.some(cut => cut.slug.startsWith(only)))
-    : CITY_CUTS
-
-  for (const entry of entries) {
+  // The whole roster is always walked, whatever `--city` narrows: the index and
+  // the shipped roster are rebuilt from scratch each run, so visiting only one
+  // city would drop every other city's tiles out of the game while leaving
+  // their files on disk.
+  for (const entry of CITY_CUTS) {
     const dealt: { slug: string; signature: boolean }[] = []
     for (const cut of entry.cuts) {
-      if (only && !cut.slug.startsWith(only)) continue
       wanted.add(cut.slug)
+      // Outside the named city, keep whatever is already encoded rather than
+      // re-fetching it.
+      const scoped = !only || cut.slug.startsWith(only)
 
       // The tile is cheap to rebuild from the query cache, and rebuilding is
       // what keeps the index's crossing count true — carrying a stale entry
       // forward would have the reveal state a bridge count nobody measured.
-      const response = await overpassQuery(tileQuery(cut.box), { label: cut.slug, cacheOnly })
+      const response = await overpassQuery(tileQuery(cut.box), {
+        label: cut.slug,
+        cacheOnly: cacheOnly || !scoped,
+      })
       if (!response) {
+        if (existsSync(slugFile(cut.slug))) {
+          // Already encoded and not in scope: keep it in the game.
+          dealt.push({ slug: cut.slug, signature: cut.signature })
+          index[cut.slug] = { crossings: previousIndex[cut.slug]?.crossings ?? 0 }
+          report.push(`${cut.slug.padEnd(28)} kept`)
+          continue
+        }
         report.push(`${cut.slug.padEnd(28)} NOT FETCHED — no tile written`)
         continue
       }
@@ -119,7 +149,7 @@ const run = async () => {
 
   // A tile whose cut left the roster would keep its DATASETS claim and fail
   // the attribution suite, so a full run sweeps the directory.
-  if (!only) {
+  {
     for (const file of readdirSync(OUTPUT_DIRECTORY)) {
       const slug = file.replace(/\.gen\.ts$/, '')
       if (file.endsWith('.gen.ts') && !wanted.has(slug)) {
@@ -146,9 +176,15 @@ export const GROUND_PLAN_CITIES: GroundPlanCity[] = ${jsonParseLiteral(roster)}
   // DATASETS.files takes literal paths, so the claim is rewritten here rather
   // than hand-maintained: a tile that shipped unclaimed would fail the
   // attribution suite, and one claimed after being dropped fails it too.
-  const claim = [INDEX_FILE, ...Object.keys(index).sort().map(slugFile)]
-    .map(file => `      '${file}',`)
-    .join('\n')
+  //
+  // Read from DISK, not from this run's index: a `--city` run only touches one
+  // city's tiles and would otherwise drop the claim on every other tile that
+  // is still shipped.
+  const onDisk = readdirSync(OUTPUT_DIRECTORY)
+    .filter(file => file.endsWith('.gen.ts'))
+    .map(file => `${OUTPUT_DIRECTORY}/${file}`)
+    .sort()
+  const claim = [INDEX_FILE, ...onDisk].map(file => `      '${file}',`).join('\n')
   const attribution = readFileSync(ATTRIBUTION_FILE, 'utf-8')
   writeFileSync(
     ATTRIBUTION_FILE,

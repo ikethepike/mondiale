@@ -5,7 +5,7 @@
  * tile fails on. Lives in generators/lib so the test runner covers it — the
  * vendor module beside it runs its whole fetch at import.
  */
-import { CITY_TILE_SPAN } from '../../lib/ground-plan'
+import { CITY_TILE_HEIGHT, CITY_TILE_SPAN } from '../../lib/ground-plan'
 
 /** A point in tile space: [x, y] inside a CITY_TILE_SPAN square. */
 export type TilePoint = [number, number]
@@ -41,7 +41,7 @@ const COORDINATE_DECIMALS = 0
  * stays one line — but a way running to the next city would otherwise carry
  * thousands of unseen units into the payload.
  */
-const OVERSHOOT = CITY_TILE_SPAN / 5
+const OVERSHOOT = CITY_TILE_HEIGHT / 5
 
 /**
  * Project lat/lng into the tile's square frame. A local equirectangular scaled
@@ -57,13 +57,16 @@ export const tileProjection = (box: BoundingBox): ((point: GeoPoint) => TilePoin
   const convergence = Math.cos(((south + north) / 2) * (Math.PI / 180))
   const spanX = (east - west) * convergence
   const spanY = north - south
-  const scale = CITY_TILE_SPAN / Math.max(spanX, spanY)
+  // One scale for both axes — ground must stay square on screen, whatever the
+  // cut's own proportions. The cut is authored at the frame's aspect, so the
+  // centring below is a rounding allowance rather than a real letterbox.
+  const scale = Math.min(CITY_TILE_SPAN / spanX, CITY_TILE_HEIGHT / spanY)
   const offsetX = (CITY_TILE_SPAN - spanX * scale) / 2
-  const offsetY = (CITY_TILE_SPAN - spanY * scale) / 2
+  const offsetY = (CITY_TILE_HEIGHT - spanY * scale) / 2
 
   return ({ lat, lon }) => [
     offsetX + (lon - west) * convergence * scale,
-    CITY_TILE_SPAN - offsetY - (lat - south) * scale,
+    CITY_TILE_HEIGHT - offsetY - (lat - south) * scale,
   ]
 }
 
@@ -345,7 +348,7 @@ export const waterSpan = (
  * apart but overlap end to end.
  */
 export const countCrossings = (spans: readonly (readonly TilePoint[])[]): number => {
-  const NEARBY = CITY_TILE_SPAN / 25
+  const NEARBY = CITY_TILE_HEIGHT / 25
 
   const near = (a: readonly TilePoint[], b: readonly TilePoint[]): boolean =>
     a.some(([ax, ay]) => b.some(([bx, by]) => Math.hypot(ax - bx, ay - by) < NEARBY))

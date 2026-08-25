@@ -17,11 +17,19 @@ import { isHardMode } from '~~/lib/game-rules'
 import { sample } from '~~/lib/arrays'
 
 /**
- * The tile's square frame in SVG user units. Shared rather than a constant on
- * either side: the generator projects into it and the view's `viewBox` reads
- * it, so a second copy would silently mis-scale every tile.
+ * The tile frame in SVG user units. Shared rather than a constant on either
+ * side: the generator projects into it and the view's `viewBox` reads it, so a
+ * second copy would silently mis-scale every tile.
+ *
+ * Wider than it is tall so the tile can fill a screen of any shape. The height
+ * is the SAFE ZONE — a centred square of `CITY_TILE_HEIGHT` holds the city's
+ * diagnostic shape, and the wings either side are what a landscape screen gets
+ * to show instead of cropping into it.
  */
-export const CITY_TILE_SPAN = 1000
+export const CITY_TILE_HEIGHT = 1000
+
+/** 16:9, matching the widest screen the tile has to fill. */
+export const CITY_TILE_SPAN = Math.round((CITY_TILE_HEIGHT * 16) / 9)
 
 /**
  * The layers, in the order they land. Water is not among them — it is the base

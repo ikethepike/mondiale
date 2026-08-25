@@ -1,20 +1,20 @@
-london-westminster             5880 verts   23.2 km/km²   3 crossings  signature
-london-isle-of-dogs            3361 verts   12.4 km/km²  10 crossings  signature
-london-chelsea                 3663 verts   18.9 km/km²   4 crossings  generic
-new-york-battery               5785 verts   29.0 km/km²   1 crossings  signature
-new-york-midtown               3406 verts   25.9 km/km²   0 crossings  generic
-paris-ile-de-la-cite           5218 verts   30.6 km/km²  15 crossings  signature
-paris-etoile                   2710 verts   24.7 km/km²   0 crossings  signature
-paris-belleville               3252 verts   22.3 km/km²   0 crossings  generic
-barcelona-eixample             3458 verts   29.2 km/km²   0 crossings  signature
-barcelona-gothic               4735 verts   35.1 km/km²   0 crossings  generic
-fez-medina                     1780 verts   12.6 km/km²   1 crossings  signature
-fez-ville-nouvelle             1987 verts   24.7 km/km²   0 crossings  generic
-turin-centro                   7346 verts   30.2 km/km²   4 crossings  signature
-amsterdam-grachtengordel       5193 verts   30.4 km/km²  47 crossings  signature
-tokyo-marunouchi               4213 verts   33.5 km/km²   9 crossings  signature
-tokyo-shinjuku                 4515 verts   36.8 km/km²   1 crossings  generic
-moscow-kremlin                 2364 verts   13.2 km/km²   4 crossings  signature
+london-westminster             9382 verts   23.2 km/km²   6 crossings  signature
+london-isle-of-dogs            5193 verts   13.1 km/km²  12 crossings  signature
+london-chelsea                 5901 verts   17.5 km/km²   6 crossings  generic
+new-york-battery               7408 verts   22.4 km/km²   2 crossings  signature
+new-york-midtown               6458 verts   25.0 km/km²   0 crossings  generic
+paris-ile-de-la-cite           7370 verts   26.8 km/km²  18 crossings  signature
+paris-etoile                   5632 verts   23.6 km/km²   0 crossings  signature
+paris-belleville               6049 verts   22.1 km/km²   0 crossings  generic
+barcelona-eixample           kept
+barcelona-gothic             kept
+fez-medina                   kept
+fez-ville-nouvelle           kept
+turin-centro                 kept
+amsterdam-grachtengordel     kept
+tokyo-marunouchi             kept
+tokyo-shinjuku               kept
+moscow-kremlin               kept
 buenos-aires-microcentro     NOT FETCHED — no tile written
 Buenos Aires                 DROPPED — no usable cut
 new-delhi-lutyens            NOT FETCHED — no tile written

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="ground-plan challenge-shell">
+  <div v-if="challenge" class="ground-plan challenge-shell passthrough">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -16,8 +16,18 @@
       </template>
     </ChallengePrompt>
 
+    <!-- The plan is the whole surface, not a picture on it: it runs edge to
+         edge behind the chrome, which floats over it wearing its own scrim. -->
+    <CityPlanTile
+      v-if="paths"
+      class="plan-backdrop"
+      :paths="paths"
+      :layers="shownLayers"
+      :show-green="resolved"
+      :fit="fitPlan"
+    />
+
     <section class="stage">
-      <CityPlanTile v-if="paths" :paths="paths" :layers="shownLayers" :show-green="resolved" />
       <ChallengeResult
         v-if="resolved"
         class="verdict"
@@ -31,7 +41,10 @@
       <GuessTicker v-else :entries="entries" :players="gameStore.game?.players ?? {}" />
     </section>
 
-    <footer v-if="!resolved" :class="{ 'suggest-berth': !challenge.options }">
+    <!-- No `suggest-berth`: this console refuses a suggestion list (a dropdown
+         of cities would be the answer sheet), so reserving room below it just
+         floats the console 200px off the floor. -->
+    <footer v-if="!resolved">
       <template v-if="challenge.options">
         <ChallengeTimerRadial
           class="footer-clock"
@@ -92,6 +105,7 @@ import { groundPlanRemainingFraction, revealedLayers } from '~~/lib/ground-plan'
 import { buzzScore } from '~~/lib/scoring'
 import { classicPlaySeconds } from '~~/lib/round-beats'
 import { formatNumber } from '~~/lib/number'
+import { useIsPortrait } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
 
@@ -111,6 +125,10 @@ const {
   stopCountdown,
   gameStore,
 } = useGroupChallenge('ground-plan-challenge')
+
+// A cut is wider than it is tall, so a portrait screen cannot fill without
+// cropping into the safe zone. Fit there, fill everywhere else.
+const fitPlan = useIsPortrait()
 
 const guessInput = ref<HTMLInputElement>()
 const entry = ref('')
@@ -243,29 +261,29 @@ const commit = () => {
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
 
+// The plan is the ground the round is played on, so it sits under everything
+// and takes the whole viewport. The shell is `passthrough`; the chrome opts
+// itself back in.
+.plan-backdrop {
+  inset: 0;
+  z-index: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
 .stage {
   flex: 1;
-  z-index: 2;
+  z-index: 1;
   min-height: 0;
   display: flex;
   position: relative;
   align-items: center;
   justify-content: center;
-  padding: 0.8rem 0;
-
-  // The tile is square and the stage rarely is, so it is capped to the shorter
-  // axis — the whole cut has to stay in frame or the round asks a different
-  // question than the one it dealt.
-  :deep(.city-plan) {
-    width: auto;
-    aspect-ratio: 1;
-    max-width: 100%;
-  }
 }
 
 .verdict {
   z-index: 3;
-  position: absolute;
+  pointer-events: auto;
   max-width: min(92vw, 34rem);
 }
 
@@ -274,18 +292,28 @@ const commit = () => {
 }
 
 footer {
+  z-index: 2;
   display: flex;
   gap: 1.4rem;
+  padding-bottom: 0.6rem;
   align-items: center;
   flex-direction: column;
 }
 
 .footer-clock {
   flex: none;
+  pointer-events: auto;
 }
 
+// Over a busy plan the cards need their cream back — the shared option card is
+// translucent by default, which reads as noise on top of street work.
 .card-options {
+  pointer-events: auto;
   grid-template-columns: repeat(2, minmax(14rem, 20rem));
+
+  :deep(.card-option) {
+    backdrop-filter: blur(0.6rem);
+  }
 }
 
 @media (max-width: $tablet) {

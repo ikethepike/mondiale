@@ -17,25 +17,35 @@ import {
   type BoundingBox,
   type TilePoint,
 } from './city-plan-geometry'
-import { CITY_TILE_SPAN } from '../../lib/ground-plan'
+import { CITY_TILE_HEIGHT, CITY_TILE_SPAN } from '../../lib/ground-plan'
+import { cutAround } from '../data/city-cuts'
 import { parsePolygons } from '../../lib/outline'
 
-const LONDON: BoundingBox = [51.497, -0.135, 51.515, -0.105]
+// Authored the way the roster authors every cut, so the fixture cannot drift
+// from the real geometry.
+const LONDON: BoundingBox = cutAround(51.506, -0.12)
 
 describe('tileProjection', () => {
-  it('fits the longer axis to the frame and letterboxes the other', () => {
+  it('fills the frame on both axes for a cut authored at its aspect', () => {
     const project = tileProjection(LONDON)
     const [south, west, north, east] = LONDON
 
     const southWest = project({ lat: south, lon: west })
     const northEast = project({ lat: north, lon: east })
 
-    // This cut is wider than it is tall, so longitude spans the full frame
-    // and latitude sits inset — never the reverse, or the tile would crop.
     expect(southWest[0]).toBeCloseTo(0, 0)
     expect(northEast[0]).toBeCloseTo(CITY_TILE_SPAN, 0)
-    expect(northEast[1]).toBeGreaterThan(0)
-    expect(southWest[1]).toBeLessThan(CITY_TILE_SPAN)
+    expect(northEast[1]).toBeCloseTo(0, 0)
+    expect(southWest[1]).toBeCloseTo(CITY_TILE_HEIGHT, 0)
+  })
+
+  it('keeps the safe zone centred — the square a portrait screen shows', () => {
+    const project = tileProjection(LONDON)
+    const [south, west, north, east] = LONDON
+    const centre = project({ lat: (south + north) / 2, lon: (west + east) / 2 })
+
+    expect(centre[0]).toBeCloseTo(CITY_TILE_SPAN / 2, 0)
+    expect(centre[1]).toBeCloseTo(CITY_TILE_HEIGHT / 2, 0)
   })
 
   it('keeps north up and east right', () => {

@@ -34,7 +34,7 @@ import {
   type GeoPoint,
   type TilePoint,
 } from '../../lib/city-plan-geometry'
-import { CITY_TILE_SPAN } from '../../../lib/ground-plan'
+import { CITY_TILE_HEIGHT, CITY_TILE_SPAN } from '../../../lib/ground-plan'
 
 const FABRIC = new Set<string>(FABRIC_HIGHWAYS)
 const ARTERIAL = new Set<string>(ARTERIAL_HIGHWAYS)
@@ -111,22 +111,25 @@ const geometriesOf = (element: OverpassElement): GeoPoint[][] => {
 const CORNERS: TilePoint[] = [
   [0, 0],
   [CITY_TILE_SPAN, 0],
-  [CITY_TILE_SPAN, CITY_TILE_SPAN],
-  [0, CITY_TILE_SPAN],
+  [CITY_TILE_SPAN, CITY_TILE_HEIGHT],
+  [0, CITY_TILE_HEIGHT],
 ]
 
 /** Distance clockwise around the frame from the top-left corner. */
 const perimeterAt = ([x, y]: TilePoint): number => {
   const top = Math.abs(y)
   const right = Math.abs(x - CITY_TILE_SPAN)
-  const bottom = Math.abs(y - CITY_TILE_SPAN)
+  const bottom = Math.abs(y - CITY_TILE_HEIGHT)
   const left = Math.abs(x)
   const nearest = Math.min(top, right, bottom, left)
   if (nearest === top) return x
   if (nearest === right) return CITY_TILE_SPAN + y
-  if (nearest === bottom) return 3 * CITY_TILE_SPAN - x
-  return 4 * CITY_TILE_SPAN - y
+  if (nearest === bottom) return CITY_TILE_SPAN + CITY_TILE_HEIGHT + (CITY_TILE_SPAN - x)
+  return 2 * CITY_TILE_SPAN + CITY_TILE_HEIGHT + (CITY_TILE_HEIGHT - y)
 }
+
+/** The frame's perimeter length, for wrapping the clockwise walk. */
+const PERIMETER = 2 * (CITY_TILE_SPAN + CITY_TILE_HEIGHT)
 
 /**
  * Push a chain's ends out to the frame edge along their own heading.
@@ -146,7 +149,7 @@ const reachFrame = (chain: TilePoint[]): TilePoint[] => {
     // How far along the heading each frame edge lies; take the nearest ahead.
     const steps = [
       dx > 0 ? (CITY_TILE_SPAN - from[0]) / dx : dx < 0 ? -from[0] / dx : Infinity,
-      dy > 0 ? (CITY_TILE_SPAN - from[1]) / dy : dy < 0 ? -from[1] / dy : Infinity,
+      dy > 0 ? (CITY_TILE_HEIGHT - from[1]) / dy : dy < 0 ? -from[1] / dy : Infinity,
     ].filter(step => step > 0)
     const step = Math.min(...steps)
     if (!Number.isFinite(step)) return from
@@ -156,7 +159,7 @@ const reachFrame = (chain: TilePoint[]): TilePoint[] => {
   const head = chain[0]
   const tail = chain.at(-1)!
   const onEdge = ([x, y]: TilePoint) =>
-    x <= 1 || y <= 1 || x >= CITY_TILE_SPAN - 1 || y >= CITY_TILE_SPAN - 1
+    x <= 1 || y <= 1 || x >= CITY_TILE_SPAN - 1 || y >= CITY_TILE_HEIGHT - 1
   return [
     ...(onEdge(head) ? [] : [extend(head, chain[1])]),
     ...chain,
@@ -167,14 +170,16 @@ const reachFrame = (chain: TilePoint[]): TilePoint[] => {
 /** Frame corners passed walking clockwise from one edge point to another. */
 const cornersBetween = (from: TilePoint, to: TilePoint): TilePoint[] => {
   const start = perimeterAt(from)
-  const span = (perimeterAt(to) - start + 4 * CITY_TILE_SPAN) % (4 * CITY_TILE_SPAN)
-  const walk: TilePoint[] = []
-  for (let step = 0; step < 4; step++) {
-    const corner = (step + 1) * CITY_TILE_SPAN
-    const distance = (corner - start + 4 * CITY_TILE_SPAN) % (4 * CITY_TILE_SPAN)
-    if (distance <= span) walk.push([CORNERS[(step + 1) % 4], distance] as never)
-  }
-  return (walk as unknown as [TilePoint, number][])
+  const span = (perimeterAt(to) - start + PERIMETER) % PERIMETER
+  const corners: [TilePoint, number][] = [
+    [CORNERS[1], CITY_TILE_SPAN],
+    [CORNERS[2], CITY_TILE_SPAN + CITY_TILE_HEIGHT],
+    [CORNERS[3], 2 * CITY_TILE_SPAN + CITY_TILE_HEIGHT],
+    [CORNERS[0], PERIMETER],
+  ]
+  return corners
+    .map(([corner, at]) => [corner, (at - start + PERIMETER) % PERIMETER] as [TilePoint, number])
+    .filter(([, distance]) => distance <= span)
     .sort((a, b) => a[1] - b[1])
     .map(([corner]) => corner)
 }

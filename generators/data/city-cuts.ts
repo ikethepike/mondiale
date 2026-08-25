@@ -37,15 +37,29 @@ export interface CityEntry {
 }
 
 /**
- * A cut is ~2km across. Wider and the grain stops reading; narrower and a grid
- * city becomes indistinguishable from any other grid.
+ * The cut's SHORT side, ~2km. Wider and the grain stops reading; narrower and a
+ * grid city becomes indistinguishable from any other grid. This is the safe
+ * zone: a centred square of this size holds the city's diagnostic shape and is
+ * visible whatever the screen.
  */
 export const CUT_SPAN_DEGREES = 0.018
 
-/** Frame a box of the standard span around a point. */
+/**
+ * The cut is WIDER than its safe zone so the tile can fill a screen of any
+ * shape without cropping the shape the round is asking about.
+ *
+ * A square tile filled edge to edge loses 44% of one axis on a 16:9 display —
+ * measured, not estimated. Extending to 16:9 means a landscape fill shows the
+ * whole safe zone plus real city in the wings, and a portrait fill shows it
+ * plus city above and below. The extra ground costs about nine kilobytes a
+ * city, against the 212KB reveal photo the round already ships.
+ */
+export const CUT_ASPECT = 16 / 9
+
+/** Frame a cut of the standard span around a point. */
 export const cutAround = (lat: number, lng: number): [number, number, number, number] => {
   const halfLat = CUT_SPAN_DEGREES / 2
-  const halfLng = halfLat / Math.cos(lat * (Math.PI / 180))
+  const halfLng = (halfLat * CUT_ASPECT) / Math.cos(lat * (Math.PI / 180))
   return [lat - halfLat, lng - halfLng, lat + halfLat, lng + halfLng]
 }
 

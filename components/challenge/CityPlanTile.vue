@@ -1,8 +1,8 @@
 <template>
   <svg
     class="city-plan"
-    :viewBox="`0 0 ${CITY_TILE_SPAN} ${CITY_TILE_SPAN}`"
-    preserveAspectRatio="xMidYMid meet"
+    :viewBox="`0 0 ${CITY_TILE_SPAN} ${CITY_TILE_HEIGHT}`"
+    :preserveAspectRatio="fit ? 'xMidYMid meet' : 'xMidYMid slice'"
     aria-hidden="true"
   >
     <!-- Water is the base frame, never a ladder rung: the city is where it is
@@ -28,7 +28,7 @@
 
     <defs>
       <clipPath v-for="layer in drawn" :id="wipeId(layer)" :key="layer">
-        <rect class="wipe" x="0" y="0" :height="CITY_TILE_SPAN" :width="CITY_TILE_SPAN" />
+        <rect class="wipe" x="0" y="0" :height="CITY_TILE_HEIGHT" :width="CITY_TILE_SPAN" />
       </clipPath>
     </defs>
   </svg>
@@ -37,12 +37,13 @@
 /**
  * A city's plan, drawn one layer class at a time on cream paper.
  *
- * The tile FITS rather than fills: the cut is square and its composition is the
- * question, so slicing it to a wide stage would crop away the shape the round
- * is asking about.
+ * The tile FILLS its stage edge to edge. It can afford to: the cut is authored
+ * 16:9 around a centred square safe zone that holds the city's diagnostic
+ * shape, so a landscape screen crops into the wings and a portrait one crops
+ * the sides, and neither reaches the shape the round is asking about.
  */
 import type { CityPlanPaths, GroundPlanLayer } from '~~/types/challenges/group-modes.type'
-import { CITY_TILE_SPAN } from '~~/lib/ground-plan'
+import { CITY_TILE_HEIGHT, CITY_TILE_SPAN } from '~~/lib/ground-plan'
 
 const props = defineProps<{
   paths: CityPlanPaths
@@ -50,6 +51,14 @@ const props = defineProps<{
   layers: GroundPlanLayer[]
   /** Parks and cemeteries land at the reveal, not during play. */
   showGreen?: boolean
+  /**
+   * Show the whole cut rather than filling the stage.
+   *
+   * A 16:9 cut filled into a portrait screen keeps only 46% of the safe zone's
+   * width — measured — which crops the very shape the round is asking about.
+   * Taller-than-wide viewports fit instead, and the plan floats on its paper.
+   */
+  fit?: boolean
 }>()
 
 const uid = useId()
@@ -61,9 +70,10 @@ const drawn = computed(() => props.layers.filter(layer => props.paths[layer]))
 @use '~/assets/scss/rules/ink' as *;
 
 .city-plan {
+  inset: 0;
   width: 100%;
   height: 100%;
-  max-height: 100%;
+  position: absolute;
   background: milk();
 }
 

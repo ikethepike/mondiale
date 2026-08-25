@@ -28,6 +28,10 @@ export const SHORT_MAX_PX = 480
  *  window dragged down to a strip. Independent of width: landscape is wide. */
 export const useIsShortViewport = () => useMediaMatch(`(max-height: ${SHORT_MAX_PX}px)`)
 
+/** Taller than it is wide. A stage sized for a landscape frame has to fit
+ *  rather than fill here, or it crops into its own subject. */
+export const useIsPortrait = () => useMediaMatch('(orientation: portrait)')
+
 /** Coarse-pointer (touch-first) device, independent of viewport size. */
 export const useIsCoarsePointer = () => useMediaMatch('(pointer: coarse)')
 
