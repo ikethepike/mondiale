@@ -122,10 +122,12 @@ export const groundPlanImage = (entry: GroundPlanCity): string | undefined =>
  * there, what it pays with — so the wait is still time spent learning rather
  * than time spent stuck.
  *
- * Ordered so each narrows further than the last. The city's initial comes
- * last because it is the one that gives the answer away rather than teaching
- * anything, and a rung whose fact is missing is skipped instead of shipping
- * a hint that says nothing.
+ * Ordered so each narrows further than the last, which puts the two strongest
+ * tells at the end: a language usually names one country outright, and a
+ * currency very nearly does, so both wait until the plan has had its chance.
+ * The city's initial comes last of all — it gives the answer away rather than
+ * teaching anything. A rung whose fact is missing is skipped instead of
+ * shipping a hint that says nothing.
  */
 export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
   const country = COUNTRIES[entry.country]
@@ -136,6 +138,16 @@ export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
   const region = REGION_LABELS[country.region]
   if (region) hints.push({ kind: 'region', text: `Somewhere in ${region}` })
 
+  if (country.currency) hints.push({ kind: 'currency', text: `Paid for in ${country.currency}` })
+
+  const population = capitalStar(entry.country)?.population
+  if (population) {
+    hints.push({
+      kind: 'size',
+      text: `About ${formatCompact(population)} people live in the city itself`,
+    })
+  }
+
   const spoken = country.officialLanguages?.length ? country.officialLanguages : country.languages
   const language = spoken?.[0]
   if (language) {
@@ -145,16 +157,6 @@ export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
         spoken.length > 1
           ? `They speak ${language} here, among others`
           : `They speak ${language} here`,
-    })
-  }
-
-  if (country.currency) hints.push({ kind: 'currency', text: `Paid for in ${country.currency}` })
-
-  const population = capitalStar(entry.country)?.population
-  if (population) {
-    hints.push({
-      kind: 'size',
-      text: `About ${formatCompact(population)} people live in the city itself`,
     })
   }
 

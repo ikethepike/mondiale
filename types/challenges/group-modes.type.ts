@@ -292,7 +292,7 @@ export interface GroundPlanCity {
  * What a Ground Plan hint tells you. Ordered as the ladder deals them, each
  * narrowing the field further than the last.
  */
-export type GroundPlanHintKind = 'region' | 'language' | 'currency' | 'size' | 'initial'
+export type GroundPlanHintKind = 'region' | 'currency' | 'size' | 'language' | 'initial'
 
 export interface GroundPlanHint {
   kind: GroundPlanHintKind
