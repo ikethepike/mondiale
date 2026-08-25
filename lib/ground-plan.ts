@@ -53,9 +53,6 @@ export const GROUND_PLAN_LAYERS = [
   'bridges',
 ] as const satisfies readonly GroundPlanLayer[]
 
-/** Layers a tile carries but the ladder never plays — reveal only. */
-export const GROUND_PLAN_REVEAL_LAYERS = ['green'] as const satisfies readonly GroundPlanLayer[]
-
 /** Cities with at least one usable tile. */
 export const groundPlanCities = (): GroundPlanCity[] => GROUND_PLAN_CITIES
 
@@ -165,9 +162,3 @@ export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
 
   return hints
 }
-
-/** Every spelling a typed answer may arrive as, for one roster city. */
-export const citySpellings = (entry: GroundPlanCity): string[] => [
-  entry.city,
-  ...(entry.aliases ?? []),
-]

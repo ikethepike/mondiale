@@ -247,10 +247,9 @@ export const buildTile = (
 
   const waterEdges = [...seaRings, ...islandRings, ...outerRings, ...innerRings, ...waterLine]
 
-  // The bridge layer withholds ONLY water crossings. A 2km cut of central
-  // London carries 171 bridge-tagged ways and 16 real crossings — withholding
-  // the other 155 ordinary overpasses would punch the road network full of
-  // holes miles from the river, and the frame would just look broken.
+  // The bridge layer withholds ONLY water crossings. Most bridge-tagged ways in
+  // a city are ordinary overpasses; withholding those punches holes through the
+  // road network miles from any river and the frame just looks broken.
   const bridges: TilePoint[][] = []
   const spans: TilePoint[][] = []
   for (const { line, layer } of bridgeCandidates) {

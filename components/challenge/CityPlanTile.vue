@@ -56,13 +56,8 @@ const props = defineProps<{
   layers: GroundPlanLayer[]
   /** Parks and cemeteries land at the reveal, not during play. */
   showGreen?: boolean
-  /**
-   * Show the whole cut rather than filling the stage.
-   *
-   * A 16:9 cut filled into a portrait screen keeps only 46% of the safe zone's
-   * width — measured — which crops the very shape the round is asking about.
-   * Taller-than-wide viewports fit instead, and the plan floats on its paper.
-   */
+  /** Show the whole cut rather than filling the stage — a portrait screen
+   *  cannot fill a 16:9 cut without cropping into its safe zone. */
   fit?: boolean
 }>()
 

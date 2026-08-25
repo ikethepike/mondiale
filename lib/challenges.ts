@@ -1139,12 +1139,14 @@ const getGroundPlanChallenge = (game: gameTypes.Game): GroundPlanChallenge | und
 
   let options: string[] | undefined
   if (game.difficulty !== 'hard') {
-    // Decoys are other ROSTER cities, so every option is a city whose plan the
-    // round could equally have drawn — a table of unrelated names would give
-    // the answer away by tone alone.
-    const decoys = shuffleArray(
-      groundPlanCities().filter(other => other.city !== entry.city)
-    ).slice(0, game.difficulty === 'easy' ? 2 : 3)
+    // Decoys come from the cities this game could actually deal, not the whole
+    // roster: in a Europe game only 47 of 162 are in play, so drawing freely
+    // offered Tokyo and Sydney beside a European answer and gave the round away
+    // by elimination.
+    const decoys = shuffleArray(roster.filter(other => other.city !== entry.city)).slice(
+      0,
+      game.difficulty === 'easy' ? 2 : 3
+    )
     if (decoys.length) options = shuffleArray([entry.city, ...decoys.map(other => other.city)])
   }
 

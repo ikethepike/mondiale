@@ -85,11 +85,9 @@ const perpendicularDistance = (point: TilePoint, start: TilePoint, end: TilePoin
 /**
  * The point count above which a way is split before simplifying.
  *
- * Douglas-Peucker rescans its whole range at each split, so its cost depends on
- * how much it can DISCARD: a 60k-point coastline simplifies in 10ms because
- * most points go, but a way where every point must be kept degrades to O(n²)
- * and measured 20 seconds at the same size. Chunking bounds that worst case at
- * a barely-visible cost — one extra retained vertex per chunk boundary.
+ * Douglas-Peucker rescans its range at each split, so a way it can discard
+ * nothing from degrades to O(n²) and hangs. Chunking bounds that, costing one
+ * retained vertex per boundary.
  */
 const SIMPLIFY_CHUNK = 4096
 
@@ -204,14 +202,12 @@ export const stitchChains = <T>(
  * — the frame closes them — so the question cannot be answered by point-in-
  * polygon on any single ring, and a 2km cut routinely holds several unrelated
  * shores. It is the WINDING NUMBER of a rightward ray: each crossing counts +1
- * where the coast runs down the frame and -1 where it runs up, and the sign of
- * the total is the side. Measured against every street vertex in three tidal
- * cities — New York, Stockholm, Helsinki — this misplaces 0.2%, 0.5% and 0.0%
- * of them, and what remains is bridges, which really are over water.
+ * where the coast runs down the frame and -1 where it runs up.
  *
- * The sign carries the answer, so the polarity is still calibrated against
- * points known to be land: which way a coast runs through a frame is an
- * accident of the cut, and a rule that assumed one had Helsinki 84% inverted.
+ * Which SIGN means wet is not fixed — the frame cuts the coastline wherever it
+ * happens to, and an island city's streets sit at several winding values at
+ * once — so the polarity is calibrated against points known to be land rather
+ * than assumed. Every rule derived analytically inverted on some city.
  *
  * Ways must arrive UNSTITCHED and in their original direction: stitching
  * reverses fragments to make chains meet, which destroys the left-hand rule.
@@ -534,12 +530,9 @@ export interface WaterBody {
  * body first, so a chain of nested names (sea → bay → inlet) collapses onto
  * the one that actually paints.
  *
- * The threshold is deliberately below half, because the commonest case is not
- * nesting at all: OSM often maps ONE body of water twice under two names —
- * Sydney Harbour and Port Jackson are the same harbour, clipping to areas
- * within 0.1% of each other — and two coincident outers cancel just as surely
- * as a nested pair. Anything sharing most of its ground with a body already
- * kept is a second name for it.
+ * The commonest case is not nesting at all: OSM often maps ONE body of water
+ * twice under two names (Sydney Harbour and Port Jackson are the same water),
+ * and two coincident outers cancel just as surely as a nested pair.
  */
 /** Share of a body that must sit inside a larger one to count as nested. */
 const ENCLOSED_NESTED_SHARE = 0.9
@@ -566,17 +559,13 @@ export const dropEnclosedBodies = (bodies: readonly WaterBody[]): WaterBody[] =>
   for (const body of ordered) {
     const mine = area(body)
     const duplicate = kept.some(larger => {
-      // Same water under two names: OSM maps Sydney Harbour and Port Jackson as
-      // separate relations covering the same harbour, and two coincident outers
-      // cancel under even-odd exactly as a nested pair would. Judged on AREA
-      // rather than containment, because neither encloses the other cleanly —
-      // sampled overlap sat at 55%/43%, either side of any threshold — while
-      // their areas agree to a tenth of a percent.
+      // Judged on AREA, not containment: two tracings of one shoreline overlap
+      // only partly, either side of any threshold, while their areas agree
+      // almost exactly.
       const theirs = area(larger)
       const ratio = theirs > 0 ? Math.min(mine, theirs) / Math.max(mine, theirs) : 0
-      // Coincident bodies need only overlap materially; their equal areas are
-      // the real evidence, and sampled overlap between two tracings of the same
-      // shoreline sits well below full containment (Sydney measured 43%).
+      // Equal area is the evidence; the overlap test only rules out two
+      // genuinely separate waters that happen to be the same size.
       if (ratio > COINCIDENT_AREA_SHARE && sharedWith(body, larger) > COINCIDENT_OVERLAP)
         return true
       // Genuinely nested: a bay inside its parent lake, wholly contained.
