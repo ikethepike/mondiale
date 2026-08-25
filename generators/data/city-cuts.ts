@@ -345,7 +345,10 @@ export const CITY_CUTS: CityEntry[] = [
   {
     country: 'PL',
     city: 'Warsaw',
-    cuts: [{ slug: 'warsaw-centre', box: cutAround(52.2298, 21.0118), signature: true }],
+    // Framed on the Old Town and the escarpment it stands on rather than the
+    // commercial centre: the first cut sat west of the Vistula and showed 1%
+    // water, which loses the river the city was built to watch over.
+    cuts: [{ slug: 'warsaw-centre', box: cutAround(52.245, 21.025), signature: true }],
     lesson:
       "Warsaw's old town is a 1950s reconstruction of what the Wehrmacht demolished in 1944 — the medieval plan rebuilt deliberately, from Canaletto's paintings.",
   },
@@ -983,7 +986,7 @@ export const CITY_CUTS: CityEntry[] = [
   {
     country: 'MD',
     city: 'Chișinău',
-    cuts: [{ slug: 'chi-in-u-centre', box: cutAround(47.0245, 28.8325), signature: true }],
+    cuts: [{ slug: 'chisinau-centre', box: cutAround(47.0245, 28.8325), signature: true }],
     lesson:
       'Chișinău was laid out on a Russian imperial grid in the 1830s and rebuilt after 1944, its streets unusually wide and green for the region.',
   },
