@@ -62,6 +62,8 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description: 'Country profiles and world leaders: geography, people, government and economy.',
   },
   imf: {
+    logo: 'imf.svg',
+    dimLogo: true,
     name: 'International Monetary Fund',
     url: 'https://www.imf.org/en/Publications/WEO',
     description:
@@ -112,6 +114,9 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
   untc: {
     name: 'UN Treaty Collection',
     url: 'https://treaties.un.org',
+    // The same UN wordmark the Population Division entries carry — one
+    // organisation, three desks.
+    logo: 'un-wpp.svg',
     description:
       'The depositary’s own record for multilateral treaties: who signed, who ratified, and who never got round to it.',
   },
@@ -122,6 +127,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description: 'Armed-conflict data from Uppsala University.',
   },
   openstreetmap: {
+    logo: 'openstreetmap.svg',
     name: 'OpenStreetMap',
     url: 'https://www.openstreetmap.org',
     description:
@@ -189,6 +195,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description: 'Currency codes and spoken languages per country.',
   },
   mozilla: {
+    logo: 'mozilla.svg',
     name: 'Mozilla Common Voice',
     url: 'https://commonvoice.mozilla.org',
     description:
@@ -209,6 +216,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
       'Matched satellite pairs of one place decades apart, from the Landsat and Terra archives.',
   },
   usgs: {
+    logo: 'usgs.svg',
     name: 'U.S. Geological Survey',
     url: 'https://eros.usgs.gov',
     description:
