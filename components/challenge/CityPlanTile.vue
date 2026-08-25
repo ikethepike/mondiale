@@ -8,7 +8,7 @@
     <!-- Water is the base frame, never a ladder rung: the city is where it is
          because of the water, so withholding it would invert what the round
          teaches. Even-odd carves the river islands out of their own water. -->
-    <path v-if="paths.shore" class="shore" :d="paths.shore" />
+    <path v-if="paths.sea" class="sea" :d="paths.sea" />
     <path v-if="paths.waterFill" class="water-fill" :d="paths.waterFill" />
     <path v-if="paths.waterLine" class="water-line" :d="paths.waterLine" />
     <path v-if="showGreen && paths.green" class="green" :d="paths.green" />
@@ -77,8 +77,11 @@ const drawn = computed(() => props.layers.filter(layer => props.paths[layer]))
   background: milk();
 }
 
-.shore {
-  fill: milk();
+// Even-odd, matching the water fill: the sea path carries its islands as
+// nested rings, and parity is what knocks them out.
+.sea {
+  fill: var(--plan-water);
+  fill-rule: evenodd;
   stroke: none;
 }
 

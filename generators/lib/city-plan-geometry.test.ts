@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   boxAreaKm2,
+  dropEnclosedBodies,
+  clipChainToFrame,
+  clipRingToFrame,
+  closeSea,
+  pointInRings,
+  stitchDirected,
   signedArea,
   stitchChains,
   countCrossings,
@@ -514,5 +520,301 @@ describe('signedArea', () => {
       [0, 0],
     ]
     expect(signedArea(ring)).toBeCloseTo(-signedArea([...ring].reverse()), 6)
+  })
+})
+
+describe('clipRingToFrame', () => {
+  const W = 1777
+  const H = 1000
+
+  it('clips a ring that spills past one edge', () => {
+    const ring = clipRingToFrame(
+      [
+        [-200, 100],
+        [300, 100],
+        [300, 400],
+        [-200, 400],
+        [-200, 100],
+      ],
+      W,
+      H
+    )
+    expect(ring.length).toBeGreaterThanOrEqual(4)
+    expect(Math.min(...ring.map(([x]) => x))).toBeGreaterThanOrEqual(0)
+    expect(pointInRings([ring], [100, 250])).toBe(true)
+  })
+
+  it('reduces a ring that swallows the whole frame to the frame itself', () => {
+    // The Mälaren case: the lake's outer ring runs a hundred kilometres past
+    // the cut. The tile's share of it is simply the frame.
+    const ring = clipRingToFrame(
+      [
+        [-90000, -90000],
+        [90000, -90000],
+        [90000, 90000],
+        [-90000, 90000],
+        [-90000, -90000],
+      ],
+      W,
+      H
+    )
+    expect(pointInRings([ring], [W / 2, H / 2])).toBe(true)
+    expect(pointInRings([ring], [10, 10])).toBe(true)
+  })
+
+  it('discards a ring entirely outside', () => {
+    expect(
+      clipRingToFrame(
+        [
+          [-500, -500],
+          [-100, -500],
+          [-100, -100],
+          [-500, -100],
+          [-500, -500],
+        ],
+        W,
+        H
+      )
+    ).toEqual([])
+  })
+})
+
+describe('clipChainToFrame', () => {
+  const W = 1777
+  const H = 1000
+
+  it('clips a crossing line to one piece with both ends on the boundary', () => {
+    const pieces = clipChainToFrame(
+      [
+        [-100, 500],
+        [W + 100, 500],
+      ],
+      W,
+      H
+    )
+    expect(pieces).toHaveLength(1)
+    expect(pieces[0][0][0]).toBeCloseTo(0, 5)
+    expect(pieces[0].at(-1)![0]).toBeCloseTo(W, 5)
+  })
+
+  it('splits a chain that leaves and re-enters into separate pieces', () => {
+    const pieces = clipChainToFrame(
+      [
+        [-100, 200],
+        [400, 200],
+        [400, -300],
+        [900, -300],
+        [900, 200],
+        [W + 100, 200],
+      ],
+      W,
+      H
+    )
+    expect(pieces).toHaveLength(2)
+  })
+
+  it('pushes an endpoint stranded mid-frame out to the boundary', () => {
+    // Overpass never returned the next way along the coast, so the chain just
+    // stops. The sea closure needs both ends on the boundary.
+    const pieces = clipChainToFrame(
+      [
+        [-100, 500],
+        [600, 500],
+      ],
+      W,
+      H
+    )
+    expect(pieces).toHaveLength(1)
+    const end = pieces[0].at(-1)!
+    expect(end[0] <= 0 || end[0] >= W || end[1] <= 0 || end[1] >= H).toBe(true)
+  })
+})
+
+describe('closeSea', () => {
+  const W = 1777
+  const H = 1000
+
+  it('encloses the south for an east-running coast — the pinned example', () => {
+    // OSM: land on the left of the way. Heading east, land is north, water
+    // south. This single case fixes the walk direction for everything else.
+    const rings = closeSea(
+      [
+        [
+          [0, 500],
+          [W, 500],
+        ],
+      ],
+      W,
+      H
+    )
+    expect(rings).toHaveLength(1)
+    expect(pointInRings(rings, [W / 2, 750])).toBe(true)
+    expect(pointInRings(rings, [W / 2, 250])).toBe(false)
+  })
+
+  it('encloses the north when the coast runs the other way', () => {
+    const rings = closeSea(
+      [
+        [
+          [W, 500],
+          [0, 500],
+        ],
+      ],
+      W,
+      H
+    )
+    expect(pointInRings(rings, [W / 2, 250])).toBe(true)
+    expect(pointInRings(rings, [W / 2, 750])).toBe(false)
+  })
+
+  it('joins facing shores into one strait — the Manhattan case', () => {
+    // Two banks of a channel: the west bank walked north (land west of it) and
+    // the east bank walked south (land east). Self-closure gives two rings
+    // that each swallow half the frame; the boundary walk gives the channel.
+    const rings = closeSea(
+      [
+        [
+          [500, H],
+          [500, 0],
+        ],
+        [
+          [1200, 0],
+          [1200, H],
+        ],
+      ],
+      W,
+      H
+    )
+    expect(rings).toHaveLength(1)
+    expect(pointInRings(rings, [850, 500])).toBe(true)
+    expect(pointInRings(rings, [200, 500])).toBe(false)
+    expect(pointInRings(rings, [1500, 500])).toBe(false)
+  })
+
+  it('hands each of two separate waters its own ring', () => {
+    // Land in the middle band: the north coast keeps its land to the south
+    // (west-running), the south coast keeps its land to the north
+    // (east-running). Two waters, one strip of dry ground between them.
+    const rings = closeSea(
+      [
+        [
+          [W, 300],
+          [0, 300],
+        ],
+        [
+          [0, 700],
+          [W, 700],
+        ],
+      ],
+      W,
+      H
+    )
+    expect(rings).toHaveLength(2)
+    expect(pointInRings(rings, [W / 2, 150])).toBe(true)
+    expect(pointInRings(rings, [W / 2, 500])).toBe(false)
+    expect(pointInRings(rings, [W / 2, 850])).toBe(true)
+  })
+})
+
+describe('stitchDirected', () => {
+  const meets = (a: TilePoint, b: TilePoint) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1
+
+  it('joins end to start', () => {
+    const chains = stitchDirected(
+      [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+        [
+          [10, 0],
+          [20, 0],
+        ],
+      ],
+      meets
+    )
+    expect(chains).toHaveLength(1)
+    expect(chains[0].at(-1)).toEqual([20, 0])
+  })
+
+  it('refuses to reverse a fragment — direction is the meaning', () => {
+    // Head-to-head fragments are a data error, not a joint: reversing one
+    // would put its stretch of water on the wrong side of the world.
+    const chains = stitchDirected(
+      [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+        [
+          [20, 0],
+          [10, 0],
+        ],
+      ],
+      meets
+    )
+    expect(chains).toHaveLength(2)
+  })
+})
+
+describe('pointInRings', () => {
+  const square: TilePoint[] = [
+    [0, 0],
+    [100, 0],
+    [100, 100],
+    [0, 100],
+    [0, 0],
+  ]
+  const hole: TilePoint[] = [
+    [40, 40],
+    [60, 40],
+    [60, 60],
+    [40, 60],
+    [40, 40],
+  ]
+
+  it('is even-odd, like the fill it validates', () => {
+    expect(pointInRings([square], [50, 50])).toBe(true)
+    expect(pointInRings([square, hole], [50, 50])).toBe(false)
+    expect(pointInRings([square, hole], [20, 20])).toBe(true)
+    expect(pointInRings([square], [200, 50])).toBe(false)
+  })
+})
+
+describe('dropEnclosedBodies', () => {
+  const ring = (x0: number, y0: number, x1: number, y1: number): TilePoint[] => [
+    [x0, y0],
+    [x1, y0],
+    [x1, y1],
+    [x0, y1],
+    [x0, y0],
+  ]
+
+  it('drops a bay mapped on top of its parent lake', () => {
+    // The Mälaren/Riddarfjärden arrangement: painted together in one even-odd
+    // path, the two outers cancel and the bay reads as land.
+    const kept = dropEnclosedBodies([
+      { outers: [ring(100, 100, 200, 200)], inners: [] },
+      { outers: [ring(0, 0, 1000, 1000)], inners: [ring(400, 400, 500, 500)] },
+    ])
+    expect(kept).toHaveLength(1)
+    expect(kept[0].inners).toHaveLength(1)
+  })
+
+  it('keeps genuinely separate waters', () => {
+    const kept = dropEnclosedBodies([
+      { outers: [ring(0, 0, 300, 300)], inners: [] },
+      { outers: [ring(700, 700, 1000, 1000)], inners: [] },
+    ])
+    expect(kept).toHaveLength(2)
+  })
+
+  it('collapses a chain of nested names onto the one that paints', () => {
+    const kept = dropEnclosedBodies([
+      { outers: [ring(0, 0, 1000, 1000)], inners: [] },
+      { outers: [ring(100, 100, 800, 800)], inners: [] },
+      { outers: [ring(200, 200, 600, 600)], inners: [] },
+    ])
+    expect(kept).toHaveLength(1)
   })
 })

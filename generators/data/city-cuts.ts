@@ -285,4 +285,12 @@ export const CITY_CUTS: CityEntry[] = [
     lesson:
       'Havana Vieja is a Laws of the Indies grid bent to its harbour, and the Malecón is the seawall the city later grew a boulevard along.',
   },
+  {
+    country: 'FI',
+    city: 'Helsinki',
+    aliases: ['Helsingfors'],
+    cuts: [{ slug: 'helsinki-kruununhaka', box: cutAround(60.169, 24.952), signature: true }],
+    lesson:
+      'Helsinki was rebuilt on a grid after 1812 to look like an imperial capital, and the sea reaches into it from three sides at once.',
+  },
 ]

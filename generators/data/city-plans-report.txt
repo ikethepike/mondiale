@@ -1,11 +1,11 @@
-london-westminster             9382 verts   23.2 km/km²   6 crossings  signature
-london-isle-of-dogs            5193 verts   13.1 km/km²  12 crossings  signature
-london-chelsea                 5901 verts   17.5 km/km²   6 crossings  generic
-new-york-battery               7408 verts   22.4 km/km²   2 crossings  signature
-new-york-midtown               6458 verts   25.0 km/km²   0 crossings  generic
-paris-ile-de-la-cite           7370 verts   26.8 km/km²  18 crossings  signature
-paris-etoile                   5632 verts   23.6 km/km²   0 crossings  signature
-paris-belleville               6049 verts   22.1 km/km²   0 crossings  generic
+london-westminster             8415 verts   23.2 km/km²   9 crossings   12% wet  strand 0.4%  signature
+london-isle-of-dogs            4488 verts   13.1 km/km²  13 crossings   29% wet  strand 1.5%  signature
+london-chelsea                 4926 verts   17.5 km/km²   7 crossings   10% wet  strand 0.2%  generic
+new-york-battery               6426 verts   22.4 km/km²   2 crossings   47% wet  strand 0.4%  signature
+new-york-midtown               5422 verts   25.0 km/km²   0 crossings    6% wet  strand 0.1%  generic
+paris-ile-de-la-cite           6877 verts   26.8 km/km²  18 crossings    8% wet  strand 0.6%  signature
+paris-etoile                   5508 verts   23.6 km/km²   0 crossings    0% wet  strand 0.0%  signature
+paris-belleville               5944 verts   22.1 km/km²   1 crossings    1% wet  strand 0.0%  generic
 barcelona-eixample           kept
 barcelona-gothic             kept
 fez-medina                   kept
@@ -37,8 +37,7 @@ Venice                       DROPPED — no usable cut
 washington-mall              NOT FETCHED — no tile written
 washington-dupont            NOT FETCHED — no tile written
 Washington                   DROPPED — no usable cut
-stockholm-gamla-stan         NOT FETCHED — no tile written
-Stockholm                    DROPPED — no usable cut
+stockholm-gamla-stan           5722 verts   19.8 km/km²  17 crossings   36% wet  strand 1.1%  signature
 seoul-jongno                 NOT FETCHED — no tile written
 Seoul                        DROPPED — no usable cut
 lagos-island                 NOT FETCHED — no tile written
@@ -51,3 +50,4 @@ saint-petersburg-nevsky      NOT FETCHED — no tile written
 Saint Petersburg             DROPPED — no usable cut
 havana-vieja                 NOT FETCHED — no tile written
 Havana                       DROPPED — no usable cut
+helsinki-kruununhaka          10566 verts   17.4 km/km²   3 crossings   31% wet  strand 0.9%  signature

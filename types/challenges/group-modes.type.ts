@@ -255,8 +255,8 @@ export interface CityPlanPaths {
   waterFill: string
   /** Water too narrow for banks: canals, minor rivers. */
   waterLine: string
-  /** The LAND side of a coastline, closed against the frame. */
-  shore: string
+  /** The sea, where the city's edge is tidal and has no water polygon. */
+  sea: string
   fabric: string
   arterials: string
   rail: string

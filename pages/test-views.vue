@@ -1911,6 +1911,50 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'ground-plan-stockholm',
+    label: 'Stockholm (signature cut, options)',
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'ground-plan-challenge',
+          country: 'SE',
+          city: 'Stockholm',
+          cut: { slug: 'stockholm-gamla-stan', signature: true },
+          crossings: 18,
+          lesson:
+            'Stockholm is built across fourteen islands where Lake Mälaren meets the Baltic, so almost every route is a bridge and the old town is the plug in the middle.',
+          layers: ['fabric', 'arterials', 'rail', 'bridges'],
+          secondsPerLayer: 8,
+          options: ['London', 'New York', 'Paris', 'Stockholm'],
+          maximumGuesses: 2,
+          durationSeconds: 38,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
+    id: 'ground-plan-helsinki',
+    label: 'Helsinki (signature cut, options)',
+    build: () =>
+      mockGame('group-challenge', [
+        groupRound({
+          _type: 'ground-plan-challenge',
+          country: 'FI',
+          city: 'Helsinki',
+          cut: { slug: 'helsinki-kruununhaka', signature: true },
+          crossings: 2,
+          lesson:
+            'Helsinki was rebuilt on a grid after 1812 to look like an imperial capital, and the sea reaches into it from three sides at once.',
+          layers: ['fabric', 'arterials', 'rail', 'bridges'],
+          secondsPerLayer: 8,
+          options: ['Helsinki', 'London', 'New York', 'Paris'],
+          maximumGuesses: 2,
+          durationSeconds: 38,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ]),
+  },
+  {
     id: 'capital-guess',
     label: 'Capital guess (options)',
     build: () =>
