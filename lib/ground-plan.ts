@@ -12,6 +12,7 @@ import type {
   GroundPlanLayer,
 } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty } from '~~/types/game.types'
+import { CAPITALS } from '~~/data/capitals.gen'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
 import { isHardMode } from '~~/lib/game-rules'
 import { sample } from '~~/lib/arrays'
@@ -94,6 +95,18 @@ export const groundPlanRemainingFraction = (
   if (!total) return 0
   return Math.max(0, (total - revealedCount) / total)
 }
+
+/**
+ * The reveal's photograph for a roster city.
+ *
+ * A city that is its country's capital already ships a skyline in `CAPITALS`,
+ * so the roster carries an `image` only where that would be the wrong picture
+ * — New York is not Washington. Resolved here rather than in the view so the
+ * dealer stamps it and the reveal stays display-only.
+ */
+export const groundPlanImage = (entry: GroundPlanCity): string | undefined =>
+  entry.image ??
+  (CAPITALS[entry.country]?.name === entry.city ? CAPITALS[entry.country]?.image : undefined)
 
 /** Every spelling a typed answer may arrive as, for one roster city. */
 export const citySpellings = (entry: GroundPlanCity): string[] => [

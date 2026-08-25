@@ -331,6 +331,9 @@ export interface GroundPlanChallenge {
   crossings: number
   /** The form and whose decision it was, where the roster carries one. */
   lesson?: string
+  /** The city's own skyline photo, shown at the reveal. Absent for a
+   *  non-capital, which has no `CAPITALS` entry to draw one from. */
+  image?: string
   /** Layer classes that draw during play, in order. */
   layers: GroundPlanLayer[]
   secondsPerLayer: number

@@ -35,6 +35,12 @@
         :correct-message="`${challenge.city} — ${countryName(challenge.country)}`"
         :incorrect-message="`It was ${challenge.city}, ${countryName(challenge.country)}`"
       >
+        <img
+          v-if="challenge.image"
+          class="skyline"
+          :src="challenge.image"
+          :alt="`${challenge.city} from street level`"
+        />
         <p v-if="challenge.lesson">{{ challenge.lesson }}</p>
         <p v-if="crossingLine" class="crossings">{{ crossingLine }}</p>
       </ChallengeResult>
@@ -293,6 +299,17 @@ const commit = () => {
 
 .crossings {
   opacity: 0.8;
+}
+
+// The plan answers "where"; the skyline answers "what it looks like from the
+// pavement" — the two together are the whole reveal.
+.skyline {
+  width: 100%;
+  display: block;
+  max-height: 14rem;
+  object-fit: cover;
+  margin-bottom: 0.9rem;
+  border-radius: 0.8rem;
 }
 
 footer {

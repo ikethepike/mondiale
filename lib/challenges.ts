@@ -96,6 +96,7 @@ import {
   crossingsForCut,
   cutForDifficulty,
   groundPlanCities,
+  groundPlanImage,
   GROUND_PLAN_LAYERS,
 } from '~~/lib/ground-plan'
 import { GROUND_PLAN_SECONDS_PER_LAYER, groundPlanSeconds } from '~~/lib/round-beats'
@@ -1149,6 +1150,9 @@ const getGroundPlanChallenge = (game: gameTypes.Game): GroundPlanChallenge | und
     cut,
     crossings: crossingsForCut(cut.slug),
     ...(entry.lesson ? { lesson: entry.lesson } : {}),
+    // The skyline the reveal lands on. A roster city that is its country's
+    // capital already ships a photo; a non-capital carries its own or none.
+    ...(groundPlanImage(entry) ? { image: groundPlanImage(entry) } : {}),
     layers,
     secondsPerLayer: GROUND_PLAN_SECONDS_PER_LAYER,
     options,
