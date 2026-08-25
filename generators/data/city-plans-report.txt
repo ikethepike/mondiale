@@ -37,281 +37,146 @@ saint-petersburg-nevsky        4365 verts   15.7 km/km²  23 crossings   10% wet
                              ^ STREETS IN WATER — the water geometry is wrong
 havana-vieja                   2514 verts   19.7 km/km²   0 crossings   32% wet  strand 0.9%  signature
 helsinki-kruununhaka          10576 verts   17.4 km/km²   3 crossings   31% wet  strand 0.9%  signature
-beijing-centre               NOT FETCHED — no tile written
-Beijing                      DROPPED — no usable cut
-madrid-centre                NOT FETCHED — no tile written
-Madrid                       DROPPED — no usable cut
-rome-centre                  NOT FETCHED — no tile written
-Rome                         DROPPED — no usable cut
-ottawa-centre                NOT FETCHED — no tile written
-Ottawa                       DROPPED — no usable cut
-oslo-centre                  NOT FETCHED — no tile written
-Oslo                         DROPPED — no usable cut
-mexico-city-centre           NOT FETCHED — no tile written
-Mexico City                  DROPPED — no usable cut
-prague-centre                NOT FETCHED — no tile written
-Prague                       DROPPED — no usable cut
-warsaw-centre                NOT FETCHED — no tile written
-Warsaw                       DROPPED — no usable cut
-jakarta-centre               NOT FETCHED — no tile written
-Jakarta                      DROPPED — no usable cut
-canberra-centre              NOT FETCHED — no tile written
-Canberra                     DROPPED — no usable cut
-tehran-centre                NOT FETCHED — no tile written
-Tehran                       DROPPED — no usable cut
-vienna-centre                NOT FETCHED — no tile written
-Vienna                       DROPPED — no usable cut
-bern-centre                  NOT FETCHED — no tile written
-Bern                         DROPPED — no usable cut
-brussels-centre              NOT FETCHED — no tile written
-Brussels                     DROPPED — no usable cut
-wellington-centre            NOT FETCHED — no tile written
-Wellington                   DROPPED — no usable cut
-copenhagen-centre            NOT FETCHED — no tile written
-Copenhagen                   DROPPED — no usable cut
-dublin-centre                NOT FETCHED — no tile written
-Dublin                       DROPPED — no usable cut
-kyiv-centre                  NOT FETCHED — no tile written
-Kyiv                         DROPPED — no usable cut
-ankara-centre                NOT FETCHED — no tile written
-Ankara                       DROPPED — no usable cut
-taipei-centre                NOT FETCHED — no tile written
-Taipei                       DROPPED — no usable cut
-bucharest-centre             NOT FETCHED — no tile written
-Bucharest                    DROPPED — no usable cut
-budapest-centre              NOT FETCHED — no tile written
-Budapest                     DROPPED — no usable cut
-athens-centre                NOT FETCHED — no tile written
-Athens                       DROPPED — no usable cut
-lisbon-centre                NOT FETCHED — no tile written
-Lisbon                       DROPPED — no usable cut
-kuala-lumpur-centre          NOT FETCHED — no tile written
-Kuala Lumpur                 DROPPED — no usable cut
-bangkok-centre               NOT FETCHED — no tile written
-Bangkok                      DROPPED — no usable cut
-lima-centre                  NOT FETCHED — no tile written
-Lima                         DROPPED — no usable cut
-santiago-centre              NOT FETCHED — no tile written
-Santiago                     DROPPED — no usable cut
-bogota-centre                NOT FETCHED — no tile written
-Bogotá                       DROPPED — no usable cut
-manila-centre                NOT FETCHED — no tile written
-Manila                       DROPPED — no usable cut
-hanoi-centre                 NOT FETCHED — no tile written
-Hanoi                        DROPPED — no usable cut
-singapore-centre             NOT FETCHED — no tile written
-Singapore                    DROPPED — no usable cut
-belgrade-centre              NOT FETCHED — no tile written
-Belgrade                     DROPPED — no usable cut
-zagreb-centre                NOT FETCHED — no tile written
-Zagreb                       DROPPED — no usable cut
-dhaka-centre                 NOT FETCHED — no tile written
-Dhaka                        DROPPED — no usable cut
-astana-centre                NOT FETCHED — no tile written
-Astana                       DROPPED — no usable cut
-montevideo-centre            NOT FETCHED — no tile written
-Montevideo                   DROPPED — no usable cut
-nairobi-centre               NOT FETCHED — no tile written
-Nairobi                      DROPPED — no usable cut
-pretoria-centre              NOT FETCHED — no tile written
-Pretoria                     DROPPED — no usable cut
-rabat-centre                 NOT FETCHED — no tile written
-Rabat                        DROPPED — no usable cut
-jerusalem-centre             NOT FETCHED — no tile written
-Jerusalem                    DROPPED — no usable cut
-ljubljana-centre             NOT FETCHED — no tile written
-Ljubljana                    DROPPED — no usable cut
-minsk-centre                 NOT FETCHED — no tile written
-Minsk                        DROPPED — no usable cut
-yerevan-centre               NOT FETCHED — no tile written
-Yerevan                      DROPPED — no usable cut
-bratislava-centre            NOT FETCHED — no tile written
-Bratislava                   DROPPED — no usable cut
-sofia-centre                 NOT FETCHED — no tile written
-Sofia                        DROPPED — no usable cut
-vilnius-centre               NOT FETCHED — no tile written
-Vilnius                      DROPPED — no usable cut
-tallinn-centre               NOT FETCHED — no tile written
-Tallinn                      DROPPED — no usable cut
-riga-centre                  NOT FETCHED — no tile written
-Riga                         DROPPED — no usable cut
-caracas-centre               NOT FETCHED — no tile written
-Caracas                      DROPPED — no usable cut
-algiers-centre               NOT FETCHED — no tile written
-Algiers                      DROPPED — no usable cut
-kampala-centre               NOT FETCHED — no tile written
-Kampala                      DROPPED — no usable cut
-kabul-centre                 NOT FETCHED — no tile written
-Kabul                        DROPPED — no usable cut
-skopje-centre                NOT FETCHED — no tile written
-Skopje                       DROPPED — no usable cut
-sarajevo-centre              NOT FETCHED — no tile written
-Sarajevo                     DROPPED — no usable cut
-naypyidaw-centre             NOT FETCHED — no tile written
-Naypyidaw                    DROPPED — no usable cut
-kinshasa-centre              NOT FETCHED — no tile written
-Kinshasa                     DROPPED — no usable cut
-luanda-centre                NOT FETCHED — no tile written
-Luanda                       DROPPED — no usable cut
-addis-ababa-centre           NOT FETCHED — no tile written
-Addis Ababa                  DROPPED — no usable cut
-accra-centre                 NOT FETCHED — no tile written
-Accra                        DROPPED — no usable cut
-dodoma-centre                NOT FETCHED — no tile written
-Dodoma                       DROPPED — no usable cut
-dakar-centre                 NOT FETCHED — no tile written
-Dakar                        DROPPED — no usable cut
-yamoussoukro-centre          NOT FETCHED — no tile written
-Yamoussoukro                 DROPPED — no usable cut
-panama-city-centre           NOT FETCHED — no tile written
-Panama City                  DROPPED — no usable cut
-san-jose-centre              NOT FETCHED — no tile written
-San José                     DROPPED — no usable cut
-guatemala-city-centre        NOT FETCHED — no tile written
-Guatemala City               DROPPED — no usable cut
-quito-centre                 NOT FETCHED — no tile written
-Quito                        DROPPED — no usable cut
-la-paz-centre                NOT FETCHED — no tile written
-La Paz                       DROPPED — no usable cut
-asuncion-centre              NOT FETCHED — no tile written
-Asunción                     DROPPED — no usable cut
-amman-centre                 NOT FETCHED — no tile written
-Amman                        DROPPED — no usable cut
-beirut-centre                NOT FETCHED — no tile written
-Beirut                       DROPPED — no usable cut
-doha-centre                  NOT FETCHED — no tile written
-Doha                         DROPPED — no usable cut
-abu-dhabi-centre             NOT FETCHED — no tile written
-Abu Dhabi                    DROPPED — no usable cut
-kuwait-city-centre           NOT FETCHED — no tile written
-Kuwait City                  DROPPED — no usable cut
-riyadh-centre                NOT FETCHED — no tile written
-Riyadh                       DROPPED — no usable cut
-tashkent-centre              NOT FETCHED — no tile written
-Tashkent                     DROPPED — no usable cut
-baku-centre                  NOT FETCHED — no tile written
-Baku                         DROPPED — no usable cut
-tbilisi-centre               NOT FETCHED — no tile written
-Tbilisi                      DROPPED — no usable cut
-kathmandu-centre             NOT FETCHED — no tile written
-Kathmandu                    DROPPED — no usable cut
-colombo-centre               NOT FETCHED — no tile written
-Colombo                      DROPPED — no usable cut
-ulaanbaatar-centre           NOT FETCHED — no tile written
-Ulaanbaatar                  DROPPED — no usable cut
-phnom-penh-centre            NOT FETCHED — no tile written
-Phnom Penh                   DROPPED — no usable cut
-vientiane-centre             NOT FETCHED — no tile written
-Vientiane                    DROPPED — no usable cut
-abuja-centre                 NOT FETCHED — no tile written
-Abuja                        DROPPED — no usable cut
-sanaa-centre                 NOT FETCHED — no tile written
-Sanaa                        DROPPED — no usable cut
-yaounde-centre               NOT FETCHED — no tile written
-Yaoundé                      DROPPED — no usable cut
-reykjavik-centre             NOT FETCHED — no tile written
-Reykjavík                    DROPPED — no usable cut
-tunis-centre                 NOT FETCHED — no tile written
-Tunis                        DROPPED — no usable cut
-baghdad-centre               NOT FETCHED — no tile written
-Baghdad                      DROPPED — no usable cut
-damascus-centre              NOT FETCHED — no tile written
-Damascus                     DROPPED — no usable cut
-tirana-centre                NOT FETCHED — no tile written
-Tirana                       DROPPED — no usable cut
-santo-domingo-centre         NOT FETCHED — no tile written
-Santo Domingo                DROPPED — no usable cut
-khartoum-centre              NOT FETCHED — no tile written
-Khartoum                     DROPPED — no usable cut
-harare-centre                NOT FETCHED — no tile written
-Harare                       DROPPED — no usable cut
-luxembourg-centre            NOT FETCHED — no tile written
-Luxembourg                   DROPPED — no usable cut
-nicosia-centre               NOT FETCHED — no tile written
-Nicosia                      DROPPED — no usable cut
-ouagadougou-centre           NOT FETCHED — no tile written
-Ouagadougou                  DROPPED — no usable cut
-tripoli-centre               NOT FETCHED — no tile written
-Tripoli                      DROPPED — no usable cut
-chi-in-u-centre              NOT FETCHED — no tile written
-Chișinău                     DROPPED — no usable cut
-lusaka-centre                NOT FETCHED — no tile written
-Lusaka                       DROPPED — no usable cut
-bishkek-centre               NOT FETCHED — no tile written
-Bishkek                      DROPPED — no usable cut
-podgorica-centre             NOT FETCHED — no tile written
-Podgorica                    DROPPED — no usable cut
-maputo-centre                NOT FETCHED — no tile written
-Maputo                       DROPPED — no usable cut
-antananarivo-centre          NOT FETCHED — no tile written
-Antananarivo                 DROPPED — no usable cut
-tegucigalpa-centre           NOT FETCHED — no tile written
-Tegucigalpa                  DROPPED — no usable cut
-pyongyang-centre             NOT FETCHED — no tile written
-Pyongyang                    DROPPED — no usable cut
-brazzaville-centre           NOT FETCHED — no tile written
-Brazzaville                  DROPPED — no usable cut
-port-au-prince-centre        NOT FETCHED — no tile written
-Port-au-Prince               DROPPED — no usable cut
-valletta-centre              NOT FETCHED — no tile written
-Valletta                     DROPPED — no usable cut
-bamako-centre                NOT FETCHED — no tile written
-Bamako                       DROPPED — no usable cut
-mogadishu-centre             NOT FETCHED — no tile written
-Mogadishu                    DROPPED — no usable cut
-kigali-centre                NOT FETCHED — no tile written
-Kigali                       DROPPED — no usable cut
-niamey-centre                NOT FETCHED — no tile written
-Niamey                       DROPPED — no usable cut
-lilongwe-centre              NOT FETCHED — no tile written
-Lilongwe                     DROPPED — no usable cut
+beijing-centre                 3089 verts   15.4 km/km²   2 crossings    7% wet  strand 0.6%  signature
+madrid-centre                  7364 verts   26.7 km/km²   2 crossings    2% wet  strand 0.1%  signature
+rome-centre                    5071 verts   19.8 km/km²   0 crossings    0% wet  strand 0.2%  signature
+ottawa-centre                  3314 verts   18.5 km/km²   9 crossings    3% wet  strand 0.1%  signature
+oslo-centre                    6743 verts   19.9 km/km²  13 crossings   13% wet  strand 0.9%  signature
+mexico-city-centre             2222 verts   23.2 km/km²   1 crossings    0% wet  strand 0.0%  signature
+prague-centre                  6247 verts   16.9 km/km²   9 crossings   10% wet  strand 0.0%  signature
+warsaw-centre                 10244 verts   15.6 km/km²   1 crossings    1% wet  strand 0.0%  signature
+jakarta-centre                 3724 verts   15.9 km/km²  14 crossings    2% wet  strand 0.4%  signature
+canberra-centre                3658 verts   13.0 km/km²   4 crossings   14% wet  strand 0.6%  signature
+tehran-centre                  3218 verts   24.1 km/km²   0 crossings    0% wet  strand 0.0%  signature
+vienna-centre                  9167 verts   22.4 km/km²  11 crossings    2% wet  strand 0.1%  signature
+bern-centre                    5289 verts   20.2 km/km²   8 crossings    3% wet  strand 0.0%  signature
+brussels-centre                7161 verts   29.0 km/km²   7 crossings    1% wet  strand 0.0%  signature
+wellington-centre              4040 verts   15.2 km/km²   0 crossings   24% wet  strand 0.8%  signature
+copenhagen-centre              6130 verts   20.5 km/km²  15 crossings    9% wet  strand 1.0%  signature
+dublin-centre                  7668 verts   21.3 km/km²  24 crossings    4% wet  strand 0.5%  signature
+kyiv-centre                    3677 verts    8.9 km/km²   0 crossings   12% wet  strand 0.0%  signature
+ankara-centre                  3588 verts   20.1 km/km²   0 crossings    0% wet  strand 0.0%  generic
+taipei-centre                  4536 verts   23.9 km/km²   2 crossings    3% wet  strand 0.0%  signature
+bucharest-centre               4750 verts   22.6 km/km²   3 crossings    1% wet  strand 0.0%  signature
+budapest-centre                5576 verts   19.8 km/km²   5 crossings   10% wet  strand 0.0%  signature
+athens-centre                  5154 verts   26.8 km/km²   1 crossings    0% wet  strand 0.0%  signature
+lisbon-centre                  4980 verts   18.9 km/km²   0 crossings   34% wet  strand 0.1%  signature
+kuala-lumpur-centre            4142 verts   15.7 km/km²  12 crossings    2% wet  strand 0.1%  signature
+bangkok-centre                 3492 verts   17.1 km/km²  24 crossings    8% wet  strand 0.3%  signature
+lima-centre                    3321 verts   21.8 km/km²   6 crossings    2% wet  strand 0.2%  signature
+santiago-centre                4534 verts   24.5 km/km²  10 crossings    2% wet  strand 1.6%  signature
+bogota-centre                  3970 verts   22.9 km/km²   0 crossings    0% wet  strand 0.0%  signature
+manila-centre                  3305 verts   14.6 km/km²  22 crossings   13% wet  strand 1.6%  signature
+hanoi-centre                   4056 verts   15.8 km/km²   2 crossings   17% wet  strand 0.2%  signature
+singapore-centre               6442 verts   16.9 km/km²  18 crossings   13% wet  strand 0.6%  signature
+belgrade-centre                5114 verts   13.1 km/km²   2 crossings   11% wet  strand 0.0%  signature
+zagreb-centre                  5841 verts   16.4 km/km²   0 crossings    0% wet  strand 0.0%  signature
+dhaka-centre                   3745 verts   23.7 km/km²   3 crossings   10% wet  strand 0.0%  signature
+astana-centre                  5705 verts   10.0 km/km²   2 crossings    6% wet  strand 0.3%  signature
+montevideo-centre              1706 verts   14.6 km/km²   0 crossings   31% wet  strand 0.0%  signature
+nairobi-centre                 2502 verts   16.0 km/km²   3 crossings    0% wet  strand 0.0%  signature
+pretoria-centre                1484 verts   13.2 km/km²   4 crossings    0% wet  strand 0.0%  signature
+rabat-centre                   3680 verts   19.9 km/km²   0 crossings   15% wet  strand 0.0%  signature
+jerusalem-centre               6084 verts   17.6 km/km²   0 crossings    0% wet  strand 0.0%  signature
+ljubljana-centre               5483 verts   13.8 km/km²  19 crossings    2% wet  strand 0.5%  signature
+minsk-centre                   5157 verts   10.8 km/km²   6 crossings    3% wet  strand 0.2%  signature
+yerevan-centre                 3715 verts   15.9 km/km²   4 crossings    0% wet  strand 0.0%  signature
+bratislava-centre              4786 verts   15.0 km/km²   3 crossings   13% wet  strand 0.0%  signature
+sofia-centre                   6016 verts   22.4 km/km²  14 crossings    1% wet  strand 0.1%  signature
+vilnius-centre                 3577 verts   12.5 km/km²   4 crossings    2% wet  strand 0.1%  signature
+tallinn-centre                 7101 verts   17.2 km/km²   0 crossings    2% wet  strand 0.0%  signature
+riga-centre                    5948 verts   15.1 km/km²  13 crossings   22% wet  strand 0.0%  signature
+caracas-centre                 2897 verts   20.4 km/km²   9 crossings    1% wet  strand 0.1%  signature
+algiers-centre                 3081 verts   15.7 km/km²   0 crossings   38% wet  strand 0.0%  signature
+kampala-centre                 2781 verts   16.0 km/km²   2 crossings    0% wet  strand 0.0%  generic
+kabul-centre                   1385 verts   13.9 km/km²   1 crossings    0% wet  strand 0.0%  generic
+skopje-centre                  4043 verts   18.6 km/km²   7 crossings    2% wet  strand 0.0%  signature
+sarajevo-centre                5489 verts   20.8 km/km²   9 crossings    1% wet  strand 0.1%  signature
+naypyidaw-centre                618 verts    8.3 km/km²   0 crossings    1% wet  strand 0.0%  signature
+kinshasa-centre                 967 verts   14.3 km/km²   1 crossings   17% wet  strand 0.0%  signature
+luanda-centre                  2895 verts   16.2 km/km²   0 crossings   13% wet  strand 0.0%  signature
+addis-ababa-centre             2836 verts   21.6 km/km²  11 crossings    0% wet  strand 0.2%  generic
+accra-centre                   1557 verts   11.8 km/km²   0 crossings    9% wet  strand 0.0%  generic
+dodoma-centre                  2078 verts   19.1 km/km²   5 crossings    0% wet  strand 0.0%  generic
+dakar-centre                   1665 verts   20.0 km/km²   0 crossings    3% wet  strand 0.0%  signature
+yamoussoukro-centre             786 verts    8.8 km/km²   0 crossings    7% wet  strand 0.0%  generic
+panama-city-centre             2485 verts   11.2 km/km²   2 crossings   53% wet  strand 0.6%  signature
+san-jose-centre                2719 verts   19.2 km/km²   5 crossings    0% wet  strand 0.0%  generic
+guatemala-city-centre          1831 verts   23.5 km/km²   0 crossings    0% wet  strand 0.0%  signature
+quito-centre                   3561 verts   21.9 km/km²   0 crossings    0% wet  strand 0.0%  signature
+la-paz-centre                  4582 verts   24.6 km/km²   5 crossings    0% wet  strand 0.1%  signature
+asuncion-centre                1923 verts   17.0 km/km²   0 crossings   12% wet  strand 0.0%  generic
+amman-centre                   2509 verts   21.2 km/km²   0 crossings    0% wet  strand 0.0%  generic
+beirut-centre                  3973 verts   26.9 km/km²   0 crossings    5% wet  strand 0.0%  signature
+doha-centre                    4513 verts   20.4 km/km²   0 crossings    9% wet  strand 0.0%  signature
+abu-dhabi-centre               2486 verts   23.9 km/km²   0 crossings    0% wet  strand 0.0%  signature
+kuwait-city-centre             1897 verts   16.3 km/km²   0 crossings   19% wet  strand 0.0%  signature
+riyadh-centre                  3872 verts   41.8 km/km²   0 crossings    0% wet  strand 0.0%  generic
+tashkent-centre                3919 verts   13.2 km/km²   5 crossings    1% wet  strand 0.0%  signature
+baku-centre                    4270 verts   11.6 km/km²   0 crossings   26% wet  strand 0.0%  signature
+tbilisi-centre                 3416 verts   16.1 km/km²   5 crossings    4% wet  strand 0.1%  signature
+kathmandu-centre               2990 verts   16.3 km/km²   9 crossings    1% wet  strand 0.0%  signature
+colombo-centre                 2056 verts   12.4 km/km²  12 crossings   14% wet  strand 0.0%  generic
+ulaanbaatar-centre             3570 verts   17.0 km/km²   4 crossings    0% wet  strand 0.0%  signature
+phnom-penh-centre              2047 verts   23.2 km/km²   0 crossings    1% wet  strand 0.0%  signature
+vientiane-centre               3638 verts   18.7 km/km²   1 crossings   14% wet  strand 0.0%  generic
+abuja-centre                   1072 verts   15.5 km/km²   0 crossings    0% wet  strand 0.0%  signature
+sanaa-centre                   2500 verts   25.5 km/km²   0 crossings    0% wet  strand 0.0%  signature
+yaounde-centre                 2664 verts   17.0 km/km²   8 crossings    2% wet  strand 0.0%  generic
+reykjavik-centre               3815 verts   14.2 km/km²   1 crossings   36% wet  strand 0.1%  signature
+tunis-centre                   4316 verts   28.7 km/km²   3 crossings    5% wet  strand 0.1%  signature
+baghdad-centre                 3079 verts   16.7 km/km²   3 crossings    2% wet  strand 0.0%  signature
+damascus-centre                3392 verts   24.8 km/km²   5 crossings    0% wet  strand 0.0%  signature
+tirana-centre                  4552 verts   22.9 km/km²   8 crossings    1% wet  strand 0.0%  signature
+santo-domingo-centre           2352 verts   23.2 km/km²   2 crossings   18% wet  strand 0.0%  signature
+khartoum-centre                1251 verts   24.2 km/km²   0 crossings    0% wet  strand 0.0%  signature
+harare-centre                  1040 verts   16.5 km/km²   2 crossings    0% wet  strand 0.0%  generic
+luxembourg-centre              6258 verts   16.5 km/km²   8 crossings    0% wet  strand 0.0%  signature
+nicosia-centre                 4082 verts   22.6 km/km²   4 crossings    0% wet  strand 0.0%  signature
+ouagadougou-centre             1159 verts   19.8 km/km²   3 crossings    0% wet  strand 0.0%  generic
+tripoli-centre                 2029 verts   18.0 km/km²   1 crossings   34% wet  strand 0.0%  signature
+chi-in-u-centre                1998 verts   11.3 km/km²   1 crossings    4% wet  strand 0.0%  signature
+lusaka-centre                   996 verts   13.6 km/km²   0 crossings    0% wet  strand 0.0%  generic
+bishkek-centre                 1934 verts   13.3 km/km²   4 crossings    0% wet  strand 0.0%  signature
+podgorica-centre               3593 verts   16.0 km/km²  12 crossings    3% wet  strand 0.0%  generic
+maputo-centre                  1604 verts   18.7 km/km²   0 crossings    2% wet  strand 0.0%  signature
+antananarivo-centre            2168 verts   14.4 km/km²   6 crossings    3% wet  strand 0.0%  signature
+tegucigalpa-centre             2363 verts   19.5 km/km²   5 crossings    3% wet  strand 0.1%  generic
+pyongyang-centre               4723 verts   10.3 km/km²   4 crossings   16% wet  strand 0.4%  signature
+brazzaville-centre             1545 verts   22.1 km/km²   2 crossings    7% wet  strand 0.0%  signature
+port-au-prince-centre          1483 verts   15.6 km/km²   8 crossings   10% wet  strand 0.0%  generic
+valletta-centre                2591 verts    9.7 km/km²   1 crossings   53% wet  strand 0.2%  signature
+bamako-centre                  1783 verts   24.1 km/km²   1 crossings    0% wet  strand 0.0%  generic
+mogadishu-centre               2590 verts   27.8 km/km²   0 crossings    8% wet  strand 0.0%  generic
+kigali-centre                  1725 verts   15.7 km/km²   2 crossings    0% wet  strand 0.0%  signature
+niamey-centre                  1512 verts   18.5 km/km²   5 crossings   10% wet  strand 0.2%  generic
+lilongwe-centre                 945 verts   11.3 km/km²   5 crossings    0% wet  strand 0.0%  generic
 san-salvador-centre          NOT FETCHED — no tile written
 San Salvador                 DROPPED — no usable cut
-muscat-centre                NOT FETCHED — no tile written
+muscat-centre                THIN — 4.5 km/km² below the 8 floor
 Muscat                       DROPPED — no usable cut
-pristina-centre              NOT FETCHED — no tile written
-Pristina                     DROPPED — no usable cut
-kingston-centre              NOT FETCHED — no tile written
-Kingston                     DROPPED — no usable cut
-managua-centre               NOT FETCHED — no tile written
-Managua                      DROPPED — no usable cut
-gaborone-centre              NOT FETCHED — no tile written
-Gaborone                     DROPPED — no usable cut
-dushanbe-centre              NOT FETCHED — no tile written
-Dushanbe                     DROPPED — no usable cut
-windhoek-centre              NOT FETCHED — no tile written
-Windhoek                     DROPPED — no usable cut
-libreville-centre            NOT FETCHED — no tile written
-Libreville                   DROPPED — no usable cut
-paramaribo-centre            NOT FETCHED — no tile written
-Paramaribo                   DROPPED — no usable cut
-port-of-spain-centre         NOT FETCHED — no tile written
-Port of Spain                DROPPED — no usable cut
-nouakchott-centre            NOT FETCHED — no tile written
-Nouakchott                   DROPPED — no usable cut
-freetown-centre              NOT FETCHED — no tile written
-Freetown                     DROPPED — no usable cut
-nassau-centre                NOT FETCHED — no tile written
-Nassau                       DROPPED — no usable cut
-djibouti-centre              NOT FETCHED — no tile written
-Djibouti                     DROPPED — no usable cut
-georgetown-centre            NOT FETCHED — no tile written
-Georgetown                   DROPPED — no usable cut
-andorra-la-vella-centre      NOT FETCHED — no tile written
-Andorra la Vella             DROPPED — no usable cut
-monaco-centre                NOT FETCHED — no tile written
-Monaco                       DROPPED — no usable cut
-port-louis-centre            NOT FETCHED — no tile written
-Port Louis                   DROPPED — no usable cut
-manama-centre                NOT FETCHED — no tile written
-Manama                       DROPPED — no usable cut
-lome-centre                  NOT FETCHED — no tile written
-Lomé                         DROPPED — no usable cut
-ashgabat-centre              NOT FETCHED — no tile written
-Ashgabat                     DROPPED — no usable cut
-thimphu-centre               NOT FETCHED — no tile written
-Thimphu                      DROPPED — no usable cut
-bandar-seri-begawan-centre   NOT FETCHED — no tile written
+pristina-centre                3956 verts   17.6 km/km²   0 crossings    0% wet  strand 0.0%  generic
+kingston-centre                1459 verts   18.8 km/km²   0 crossings    0% wet  strand 0.0%  signature
+managua-centre                 2462 verts   23.8 km/km²   0 crossings    0% wet  strand 0.0%  generic
+gaborone-centre                1231 verts   16.4 km/km²   0 crossings    0% wet  strand 0.0%  generic
+dushanbe-centre                1027 verts    9.0 km/km²   2 crossings    3% wet  strand 0.0%  signature
+windhoek-centre                1962 verts   16.2 km/km²   5 crossings    0% wet  strand 0.0%  generic
+libreville-centre              1598 verts   10.7 km/km²   4 crossings   13% wet  strand 0.0%  generic
+paramaribo-centre              2066 verts   13.6 km/km²   0 crossings   13% wet  strand 0.0%  signature
+port-of-spain-centre           2051 verts   16.5 km/km²   6 crossings    8% wet  strand 0.0%  generic
+nouakchott-centre              2577 verts   28.5 km/km²   0 crossings    0% wet  strand 0.0%  generic
+freetown-centre                1686 verts   15.4 km/km²   0 crossings    7% wet  strand 0.0%  generic
+nassau-centre                  1427 verts    9.7 km/km²   3 crossings   36% wet  strand 0.0%  signature
+djibouti-centre                1844 verts   17.1 km/km²   0 crossings   29% wet  strand 0.0%  signature
+georgetown-centre              1457 verts   16.8 km/km²  15 crossings    5% wet  strand 0.0%  signature
+andorra-la-vella-centre        4018 verts   11.9 km/km²  10 crossings    1% wet  strand 0.7%  signature
+monaco-centre                  2820 verts   11.1 km/km²   0 crossings   39% wet  strand 0.0%  signature
+port-louis-centre              1855 verts   15.9 km/km²   4 crossings    9% wet  strand 0.0%  signature
+manama-centre                  3539 verts   24.8 km/km²   0 crossings    7% wet  strand 0.0%  signature
+lome-centre                    1325 verts   21.5 km/km²   0 crossings    6% wet  strand 0.0%  generic
+ashgabat-centre                9758 verts   19.8 km/km²   0 crossings    0% wet  strand 0.0%  signature
+thimphu-centre                 1646 verts   11.4 km/km²   2 crossings    1% wet  strand 0.0%  signature
+bandar-seri-begawan-centre   THIN — 7.4 km/km² below the 8 floor
 Bandar Seri Begawan          DROPPED — no usable cut
-male-centre                  NOT FETCHED — no tile written
+male-centre                  THIN — 7.9 km/km² below the 8 floor
 Malé                         DROPPED — no usable cut
