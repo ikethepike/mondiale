@@ -1639,17 +1639,26 @@ const scenarios: Scenario[] = [
     // One scenario per variant rather than per city: the roster runs to well
     // over a hundred cities, and a scenario each would bury every other mode
     // in the picker.
-    variants: GROUND_PLAN_CITIES.filter(entry => entry.cuts.some(cut => cut.signature)).map(
-      entry => ({ id: entry.city, label: entry.city })
-    ),
+    //
+    // EVERY city is listed in both scenarios, not just the ones holding a cut
+    // of that kind. A third of the roster is generic-only — the capitals whose
+    // centres are honestly not diagnostic — and listing them in one picker
+    // alone left them findable only by knowing that in advance. A city with no
+    // cut of the asked-for kind falls back to the one it has, and its label
+    // says so.
+    variants: GROUND_PLAN_CITIES.map(entry => ({
+      id: entry.city,
+      label: entry.cuts.some(cut => cut.signature) ? entry.city : `${entry.city} (generic only)`,
+    })),
     build: variant => groundPlanGame(variant?.id, true),
   },
   {
     id: 'ground-plan-generic',
     label: 'Ground Plan (generic cut, free-typed)',
-    variants: GROUND_PLAN_CITIES.filter(entry => entry.cuts.some(cut => !cut.signature)).map(
-      entry => ({ id: entry.city, label: entry.city })
-    ),
+    variants: GROUND_PLAN_CITIES.map(entry => ({
+      id: entry.city,
+      label: entry.cuts.some(cut => !cut.signature) ? entry.city : `${entry.city} (signature only)`,
+    })),
     build: variant => groundPlanGame(variant?.id, false),
   },
   {
