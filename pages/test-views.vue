@@ -97,6 +97,8 @@
  *   /test-views
  */
 import { computed, defineComponent, h, nextTick, ref, watch } from 'vue'
+import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
+import { groundPlanImage } from '~~/lib/ground-plan'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
@@ -798,6 +800,39 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
+
+/**
+ * A Ground Plan round for one roster city, at whichever cut the variant asks
+ * for. Reads the shipped roster rather than a fixture so the harness always
+ * offers exactly the cities that have tiles.
+ */
+const groundPlanGame = (city: string | undefined, signature: boolean): Game => {
+  const entry =
+    GROUND_PLAN_CITIES.find(candidate => candidate.city === city) ?? GROUND_PLAN_CITIES[0]
+  const cut = entry.cuts.find(candidate => candidate.signature === signature) ?? entry.cuts[0]
+  const decoys = GROUND_PLAN_CITIES.filter(other => other.city !== entry.city)
+    .slice(0, 3)
+    .map(other => other.city)
+
+  return mockGame('group-challenge', [
+    groupRound({
+      _type: 'ground-plan-challenge',
+      country: entry.country,
+      city: entry.city,
+      cut,
+      crossings: CITY_PLAN_INDEX[cut.slug]?.crossings ?? 0,
+      ...(entry.lesson ? { lesson: entry.lesson } : {}),
+      ...(groundPlanImage(entry) ? { image: groundPlanImage(entry) } : {}),
+      layers: ['fabric', 'arterials', 'rail', 'bridges'],
+      secondsPerLayer: 8,
+      // The signature cut offers the option table; the generic one free-types,
+      // which is how the dealer splits them by difficulty.
+      ...(signature ? { options: [entry.city, ...decoys].sort(), maximumGuesses: 2 } : {}),
+      durationSeconds: 38,
+      maximumPoints: MAXIMUM_POINTS,
+    }),
+  ])
+}
 
 /**
  * A deal of the SAME mode with different data — the anthem's country, a
@@ -1593,366 +1628,23 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
-    id: 'ground-plan-london',
-    label: 'London (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'GB',
-          city: 'London',
-          cut: { slug: 'london-westminster', signature: true },
-          crossings: 5,
-          lesson:
-            'The Thames curves where London could not build, and the embankment answers it: one continuous road hugging the bank, everything else meeting it obliquely.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Barcelona', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
+    id: 'ground-plan',
+    label: 'Ground Plan (signature cut)',
+    // One scenario per variant rather than per city: the roster runs to well
+    // over a hundred cities, and a scenario each would bury every other mode
+    // in the picker.
+    variants: GROUND_PLAN_CITIES.filter(entry => entry.cuts.some(cut => cut.signature)).map(
+      entry => ({ id: entry.city, label: entry.city })
+    ),
+    build: variant => groundPlanGame(variant?.id, true),
   },
   {
-    id: 'ground-plan-london-hard',
-    label: 'London (generic cut, free-typed)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'GB',
-          city: 'London',
-          cut: { slug: 'london-chelsea', signature: false },
-          crossings: 4,
-          lesson:
-            'The Thames curves where London could not build, and the embankment answers it: one continuous road hugging the bank, everything else meeting it obliquely.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-new-york',
-    label: 'New York (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'US',
-          city: 'New York',
-          cut: { slug: 'new-york-battery', signature: true },
-          crossings: 1,
-          lesson:
-            "The 1811 Commissioners' Plan ruled a grid over farmland and the old Dutch lanes below Wall Street survived underneath it — which is why downtown bends and everything above it does not.",
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Barcelona', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-new-york-hard',
-    label: 'New York (generic cut, free-typed)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'US',
-          city: 'New York',
-          cut: { slug: 'new-york-midtown', signature: false },
-          crossings: 0,
-          lesson:
-            "The 1811 Commissioners' Plan ruled a grid over farmland and the old Dutch lanes below Wall Street survived underneath it — which is why downtown bends and everything above it does not.",
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-paris',
-    label: 'Paris (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'FR',
-          city: 'Paris',
-          cut: { slug: 'paris-ile-de-la-cite', signature: true },
-          crossings: 15,
-          lesson:
-            'Haussmann cut boulevards straight through the medieval city from 1853, which is why Paris radiates: the star junctions are new, the fabric between them is old.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Barcelona', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-paris-hard',
-    label: 'Paris (generic cut, free-typed)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'FR',
-          city: 'Paris',
-          cut: { slug: 'paris-belleville', signature: false },
-          crossings: 0,
-          lesson:
-            'Haussmann cut boulevards straight through the medieval city from 1853, which is why Paris radiates: the star junctions are new, the fabric between them is old.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-barcelona',
-    label: 'Barcelona (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'ES',
-          city: 'Barcelona',
-          cut: { slug: 'barcelona-eixample', signature: true },
-          crossings: 0,
-          lesson:
-            'Eixample, 1859: Cerdà chamfered every corner so trams could turn, giving Barcelona a grid of octagons no other city has.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Barcelona', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-barcelona-hard',
-    label: 'Barcelona (generic cut, free-typed)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'ES',
-          city: 'Barcelona',
-          cut: { slug: 'barcelona-gothic', signature: false },
-          crossings: 0,
-          lesson:
-            'Eixample, 1859: Cerdà chamfered every corner so trams could turn, giving Barcelona a grid of octagons no other city has.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-fez',
-    label: 'Fez (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'MA',
-          city: 'Fez',
-          cut: { slug: 'fez-medina', signature: true },
-          crossings: 1,
-          lesson:
-            'Fes el-Bali grew without wheeled traffic, so its lanes answer only to footfall and property lines — the densest car-free fabric on earth.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Fez', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-fez-hard',
-    label: 'Fez (generic cut, free-typed)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'MA',
-          city: 'Fez',
-          cut: { slug: 'fez-ville-nouvelle', signature: false },
-          crossings: 0,
-          lesson:
-            'Fes el-Bali grew without wheeled traffic, so its lanes answer only to footfall and property lines — the densest car-free fabric on earth.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-turin',
-    label: 'Turin (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'IT',
-          city: 'Turin',
-          cut: { slug: 'turin-centro', signature: true },
-          crossings: 4,
-          lesson:
-            'Augusta Taurinorum was a Roman camp, and the grid inside the old walls is still its cardo and decumanus, two thousand years on.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['London', 'New York', 'Paris', 'Turin'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-amsterdam',
-    label: 'Amsterdam (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'NL',
-          city: 'Amsterdam',
-          cut: { slug: 'amsterdam-grachtengordel', signature: true },
-          crossings: 47,
-          lesson:
-            'The canal ring was speculative property development, dug from 1613 outward in concentric arcs — infrastructure and real estate in one gesture.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Amsterdam', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-tokyo',
-    label: 'Tokyo (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'JP',
-          city: 'Tokyo',
-          cut: { slug: 'tokyo-marunouchi', signature: true },
-          crossings: 9,
-          lesson:
-            "The void at the centre is the Imperial Palace, and the moats around it are Edo Castle's — the city still bends around a shogun's defences.",
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['London', 'New York', 'Paris', 'Tokyo'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-tokyo-hard',
-    label: 'Tokyo (generic cut, free-typed)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'JP',
-          city: 'Tokyo',
-          cut: { slug: 'tokyo-shinjuku', signature: false },
-          crossings: 1,
-          lesson:
-            "The void at the centre is the Imperial Palace, and the moats around it are Edo Castle's — the city still bends around a shogun's defences.",
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-moscow',
-    label: 'Moscow (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'RU',
-          city: 'Moscow',
-          cut: { slug: 'moscow-kremlin', signature: true },
-          crossings: 4,
-          lesson:
-            'Moscow is rings and radials because it grew outward from a fortified centre, each ring a former city wall.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['London', 'Moscow', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-stockholm',
-    label: 'Stockholm (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'SE',
-          city: 'Stockholm',
-          cut: { slug: 'stockholm-gamla-stan', signature: true },
-          crossings: 18,
-          lesson:
-            'Stockholm is built across fourteen islands where Lake Mälaren meets the Baltic, so almost every route is a bridge and the old town is the plug in the middle.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['London', 'New York', 'Paris', 'Stockholm'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'ground-plan-helsinki',
-    label: 'Helsinki (signature cut, options)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'ground-plan-challenge',
-          country: 'FI',
-          city: 'Helsinki',
-          cut: { slug: 'helsinki-kruununhaka', signature: true },
-          crossings: 2,
-          lesson:
-            'Helsinki was rebuilt on a grid after 1812 to look like an imperial capital, and the sea reaches into it from three sides at once.',
-          layers: ['fabric', 'arterials', 'rail', 'bridges'],
-          secondsPerLayer: 8,
-          options: ['Helsinki', 'London', 'New York', 'Paris'],
-          maximumGuesses: 2,
-          durationSeconds: 38,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
+    id: 'ground-plan-generic',
+    label: 'Ground Plan (generic cut, free-typed)',
+    variants: GROUND_PLAN_CITIES.filter(entry => entry.cuts.some(cut => !cut.signature)).map(
+      entry => ({ id: entry.city, label: entry.city })
+    ),
+    build: variant => groundPlanGame(variant?.id, false),
   },
   {
     id: 'capital-guess',

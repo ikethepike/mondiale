@@ -195,6 +195,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
       'Crowd-sourced speech recordings in over a hundred languages, donated and validated by volunteers and released into the public domain.',
   },
   mondiale: {
+    logo: 'mondiale.svg',
     name: 'Mondiale',
     url: 'https://github.com/ikethepike/mondiale',
     description:
