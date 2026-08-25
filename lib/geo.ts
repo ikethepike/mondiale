@@ -655,6 +655,20 @@ export const projectMercator = ({ lat, lng }: LatLng): [number, number] => {
   return [(lng * Math.PI) / 180, -Math.log(Math.tan(Math.PI / 4 + phi / 2))]
 }
 
+/**
+ * Mercator's area lie in one line: a square kilometre at latitude φ is drawn
+ * sec²φ times the size of one on the equator.
+ *
+ * The whole of True Size is this function — the round measures it off real
+ * geometry rather than trusting it, and `mercatorLatitude`
+ * (lib/challenges/final-challenge.ts) reads it backwards to place a country on
+ * the ladder. That the two agree to a degree for a compact country is the check
+ * that the Robinson inverse and the spherical areas behind them are honest
+ * (pinned in geo.test.ts).
+ */
+export const mercatorAreaStretch = (lat: number): number =>
+  1 / Math.cos((clamp(lat, -MERCATOR_MAX_LAT, MERCATOR_MAX_LAT) * Math.PI) / 180) ** 2
+
 /** A ring that loses more than this share of its vertices to the inverse has
  *  not survived the trip — see `unprojectRing`. */
 const RING_INVERT_KEEP = 0.95

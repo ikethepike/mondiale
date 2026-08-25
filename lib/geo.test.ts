@@ -5,6 +5,7 @@ import {
   LOGO_MIN_RATIO,
   LOGO_MIN_SIDE,
   MERCATOR_MAX_LAT,
+  mercatorAreaStretch,
   WORLD_BOX,
   logoBox,
   logoPaintedArea,
@@ -423,6 +424,48 @@ describe('back onto the globe, and out again through Mercator', () => {
     // Congo sits on the line, Brazil straddles the tropics, Canada is arctic
     expect(inflation('BR')).toBeGreaterThan(inflation('CD'))
     expect(inflation('CA')).toBeGreaterThan(inflation('BR') * 3)
+  })
+
+  it('states the lie analytically, and the geometry agrees with it', () => {
+    // sec²φ — the textbook figure, and what the reveal's ladder shows
+    expect(mercatorAreaStretch(0)).toBeCloseTo(1)
+    expect(mercatorAreaStretch(45)).toBeCloseTo(2)
+    expect(mercatorAreaStretch(60)).toBeCloseTo(4)
+    expect(mercatorAreaStretch(-60)).toBeCloseTo(4)
+    expect(mercatorAreaStretch(75)).toBeCloseTo(14.9, 1)
+
+    // The round measures the same quantity the long way round — Robinson
+    // inverse, spherical area, Mercator area — so the two had better meet.
+    const stretchPerKm = (isoCode: ISOCountryCode) => {
+      const projected = globeRings(isoCode).reduce((total, ring) => {
+        const merc = ring.map(projectMercator)
+        let twice = 0
+        for (let index = 0; index < merc.length; index++) {
+          const [ax, ay] = merc[index]
+          const [bx, by] = merc[(index + 1) % merc.length]
+          twice += ax * by - bx * ay
+        }
+        return total + Math.abs(twice / 2)
+      }, 0)
+      return projected / drawnAreaKm(isoCode)
+    }
+
+    // Congo straddles the equator, so its own reading is the ×1 yardstick
+    const onTheLine = stretchPerKm('CD')
+    for (const [isoCode, centroid] of [
+      ['DE', 51],
+      ['PL', 52],
+      ['GB', 54],
+      ['FI', 64],
+      ['NZ', -41],
+    ] as [ISOCountryCode, number][]) {
+      const ratio = stretchPerKm(isoCode) / onTheLine / mercatorAreaStretch(centroid)
+      // Never BELOW the formula: sec² is convex, so a country spread over a
+      // band of latitudes is always charged more than its middle would pay.
+      // Finland, 60°N to 70°N, is the one that shows it.
+      expect(ratio, isoCode).toBeGreaterThanOrEqual(0.99)
+      expect(ratio, isoCode).toBeLessThan(1.08)
+    }
   })
 
   it('clips at the latitude every web map stops at', () => {

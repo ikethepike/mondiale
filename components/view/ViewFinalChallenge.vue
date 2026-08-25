@@ -246,7 +246,6 @@ import {
   isCorrectFinalAnswer,
   speaksLanguage,
   sunsetQuota,
-  trueSizeScene,
   weighScalesPicks,
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
@@ -428,6 +427,8 @@ const sunsetResult = ref<
   { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number } | undefined
 >(undefined)
 const nocturneResult = ref<string[] | undefined>(undefined)
+// True Size: the scale the player locked in, for the reveal's accuracy line
+const trueSizeScale = ref<number | undefined>(undefined)
 const yearbookDialed = ref<number | undefined>(undefined)
 // The made-in reveal waits a beat so the lit map registers before the card
 const madeRevealReady = ref(false)
@@ -571,15 +572,11 @@ const lesson = computed(() => {
     case 'city-nocturne-challenge':
       // NocturneReveal carries the whole scorecard
       return undefined
-    case 'true-size-challenge': {
-      // The table already snapped the ghost and captioned both areas — what
-      // it can't say is how far the projection had pushed it.
-      const scene = trueSizeScene(challenge.subject, challenge.anchor)
-      if (!scene) return undefined
-      const subject = countryName(COUNTRIES[challenge.subject])
-      const anchor = countryName(COUNTRIES[challenge.anchor])
-      return `On Mercator, ${subject} is drawn ${scene.exaggeration.toFixed(1)}× the area it really covers next to ${anchor} — which sits near the equator, where the projection barely lies, and was very nearly true all along.`
-    }
+    case 'true-size-challenge':
+      // TrueSizeReveal carries the whole lesson: the exaggeration, how far the
+      // committed size landed from true, and the latitude ladder that explains
+      // both. A line here would only restate its headline.
+      return undefined
     case 'boundary-challenge': {
       // The border's story where the atlas has one; the easel overlay is the
       // visual lesson either way
@@ -660,6 +657,7 @@ const finalReveal = computed(() => {
     pool: challengePool.value,
     sunset: sunsetResult.value,
     nocturneCities: nocturneResult.value,
+    trueSizeScale: trueSizeScale.value,
     endonymPicks: endonymPicks.value,
     diasporaPicks: diasporaPicks.value,
     madeReady: madeRevealReady.value,
@@ -768,6 +766,7 @@ watch(currentFinalChallenge, (challenge, previous) => {
   scalesResult.value = undefined
   sunsetResult.value = undefined
   nocturneResult.value = undefined
+  trueSizeScale.value = undefined
   yearbookDialed.value = undefined
   bornPicks.value = []
   endonymPicks.value = []
@@ -896,6 +895,7 @@ const onTrueSizeFinished = (scale: number) => {
   const challenge = currentFinalChallenge.value
   if (challenge?._type !== 'true-size-challenge') return
 
+  trueSizeScale.value = scale
   const submittedAnswer = { _type: 'true-size-challenge', scale } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 

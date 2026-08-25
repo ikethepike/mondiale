@@ -68,18 +68,13 @@
       </Transition>
     </div>
 
-    <!-- Which shape is which. The chips take their areas at the reveal, so the
-         numbers arrive on the two labels the player has been reading all round
-         rather than in a band of their own. They stand under the table rather
-         than over it: the table is only as wide as the PAIR is, and a chip
-         reading "Democratic Republic of the Congo" is wider than that. -->
+    <!-- Which shape is which, and nothing else. The areas belong to the reveal
+         card, which has room for them: hung on these chips they pushed the
+         anchor's name onto a second line that the squeezed column then clipped,
+         and the anchor's area was the only place that figure appeared. -->
     <ul class="legend country-chip-list">
-      <CountryChip compact class="ghost-chip" :country="getCountry(challenge.subject)">
-        <span v-if="revealed" class="chip-area">{{ subjectArea }}</span>
-      </CountryChip>
-      <CountryChip compact class="anchor-chip" :country="getCountry(challenge.anchor)">
-        <span v-if="revealed" class="chip-area">{{ anchorArea }}</span>
-      </CountryChip>
+      <CountryChip compact class="ghost-chip" :country="getCountry(challenge.subject)" />
+      <CountryChip compact class="anchor-chip" :country="getCountry(challenge.anchor)" />
     </ul>
 
     <footer v-if="!revealed" class="shell-footer">
@@ -115,7 +110,6 @@
 <script lang="ts" setup>
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
-import { COUNTRIES } from '~~/data/countries.gen'
 import { trueSizeScene, TRUE_SIZE_SCALE_RANGE } from '~~/lib/challenges/final-challenge'
 import { getCountry } from '~~/lib/country'
 import { MERCATOR_MAX_LAT, projectMercator } from '~~/lib/geo'
@@ -143,8 +137,12 @@ const FRAME_PAD = 0.12
  *  ghost the projection has blown up past it overflows instead — that clipped
  *  first frame IS the lie, and shrinking brings it back into the world. */
 const ANCHOR_MIN_SHARE = 1 / 2.8
-/** Parallels every this many degrees. */
-const PARALLEL_STEP = 10
+/** Parallel spacings to choose between, finest first — the frame takes the
+ *  finest one that doesn't crowd. A fixed step bunched the labels into an
+ *  unreadable stack the moment the verdict card squeezed the table short. */
+const PARALLEL_STEPS = [10, 15, 30, 45]
+/** Rungs a frame may hold before it reads as a stack rather than a scale. */
+const MAX_PARALLELS = 7
 /** The hint outstays a fumbled first touch, but never the round. */
 const HINT_MS = 9000
 /** Wheel delta into a scale factor. */
@@ -232,20 +230,24 @@ const viewBox = computed(() => {
 const parallels = computed(() => {
   const active = scene.value
   if (!active) return []
-  const rows: { y: number; label: string }[] = []
-  for (let lat = -MERCATOR_MAX_LAT; lat <= MERCATOR_MAX_LAT; lat += PARALLEL_STEP) {
-    const y = projectMercator({ lat, lng: 0 })[1] - active.anchor.centre[1]
-    if (y < frame.value.top || y > frame.value.bottom) continue
-    rows.push({ y, label: lat === 0 ? '0°' : `${Math.abs(lat)}°${lat > 0 ? 'N' : 'S'}` })
+  const rungs = (step: number) => {
+    const rows: { y: number; label: string }[] = []
+    for (let lat = -MERCATOR_MAX_LAT; lat <= MERCATOR_MAX_LAT; lat += step) {
+      const y = projectMercator({ lat, lng: 0 })[1] - active.anchor.centre[1]
+      if (y < frame.value.top || y > frame.value.bottom) continue
+      rows.push({ y, label: lat === 0 ? '0°' : `${Math.abs(lat)}°${lat > 0 ? 'N' : 'S'}` })
+    }
+    return rows
   }
-  return rows
+  const stepped = PARALLEL_STEPS.map(rungs)
+  return stepped.find(rows => rows.length <= MAX_PARALLELS) ?? stepped[stepped.length - 1]
 })
 
 const meridians = computed(() => {
   const active = scene.value
   if (!active) return []
   const columns: number[] = []
-  for (let lng = -180; lng <= 180; lng += PARALLEL_STEP) {
+  for (let lng = -180; lng <= 180; lng += PARALLEL_STEPS[0]) {
     const x = projectMercator({ lat: 0, lng })[0] - active.anchor.centre[0]
     if (x < frame.value.left || x > frame.value.right) continue
     columns.push(x)
@@ -385,14 +387,6 @@ const commit = () => {
   emit('finished', scale.value)
 }
 
-const subjectArea = computed(() => areaLine(props.challenge.subject))
-const anchorArea = computed(() => areaLine(props.challenge.anchor))
-
-function areaLine(isoCode: TrueSizeChallenge['subject']): string {
-  const area = COUNTRIES[isoCode].geography.area.total
-  return area ? `${Math.round(area.amount).toLocaleString()} km²` : ''
-}
-
 // It teaches the one gesture that isn't obvious, so it stays until the player
 // has actually resized something — moving the ghost around doesn't count.
 const hintExpired = ref(false)
@@ -461,9 +455,11 @@ $land: color.mix(ink(), milk(), 26%);
   justify-content: center;
 }
 
+// The stage yields room to the verdict card, but only so far: below this the
+// ghost stops being a shape and the parallels stop being a scale.
 .light-table {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: min(26rem, 34vh);
   width: min(76rem, 94vw);
   position: relative;
   border-radius: 1.2rem;
@@ -581,11 +577,6 @@ $land: color.mix(ink(), milk(), 26%);
   box-shadow: inset 0.35rem 0 0 $land;
 }
 
-.chip-area {
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
-}
-
 .gesture-hint {
   left: 50%;
   bottom: 1rem;
@@ -677,9 +668,11 @@ footer {
 
   .light-table {
     width: 100%;
+    min-height: min(15rem, 20dvh);
   }
 
   .legend {
+    gap: 0.6rem;
     font-size: 0.85em;
   }
 

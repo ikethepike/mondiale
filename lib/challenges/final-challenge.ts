@@ -1535,6 +1535,25 @@ export const mercatorInflation = (isoCode: ISOCountryCode): number | undefined =
   return shape.inflation / equatorBaseline
 }
 
+/**
+ * The latitude Mercator is effectively treating a country's land as sitting
+ * at — `mercatorAreaStretch` read backwards from its measured inflation, and
+ * signed by the hemisphere it is actually in.
+ *
+ * Not its centroid, and it should not be captioned as one. sec² is convex, so
+ * the area-weighted stretch of a country spread over many latitudes always
+ * exceeds the stretch at its middle: Chile's strip reads 9° further from the
+ * equator than its centre, and the United States reads 10° north of its own
+ * because Alaska is in the average. That is the honest number for placing it
+ * on the ladder, because it is the one the projection actually charged it.
+ */
+export const mercatorLatitude = (isoCode: ISOCountryCode): number | undefined => {
+  const inflation = mercatorInflation(isoCode)
+  if (!inflation || inflation < 1) return 0
+  const latitude = (Math.acos(Math.min(1, 1 / Math.sqrt(inflation))) * 180) / Math.PI
+  return (countryLatLng(isoCode)?.lat ?? 0) < 0 ? -latitude : latitude
+}
+
 const getTrueSizeChallenge = (
   pool: ISOCountryCode[],
   difficulty: GameDifficulty

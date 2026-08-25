@@ -7,6 +7,7 @@ import MinMaxReveal from '~/components/challenge/MinMaxReveal.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
 import OddOneOutReveal from '~/components/challenge/OddOneOutReveal.vue'
 import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
+import TrueSizeReveal from '~/components/challenge/TrueSizeReveal.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import {
   attributionFor,
@@ -29,6 +30,8 @@ export interface FinalRevealContext {
   /** Per-round tallies the multi-pick rounds accumulate in the view. */
   sunset?: { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number }
   nocturneCities?: string[]
+  /** What True Size's player locked in, as a multiple of the drawn size. */
+  trueSizeScale?: number
   endonymPicks: ISOCountryCode[]
   diasporaPicks: ISOCountryCode[]
   /** The made round waits on its lazily-loaded exporter table. */
@@ -117,8 +120,11 @@ export const FINAL_REVEALS: Record<FinalChallengeItem['_type'], FinalReveal | un
   'boundary-challenge': undefined,
   // The stamped page IS the reveal.
   'yearbook-challenge': undefined,
-  // The light table snaps the ghost to true and captions both areas.
-  'true-size-challenge': undefined,
+  // The stage settles the ghost; the card teaches why it had to move at all.
+  'true-size-challenge': {
+    component: TrueSizeReveal,
+    props: ({ challenge, trueSizeScale }) => ({ challenge, committed: trueSizeScale }),
+  },
   'change-challenge': undefined,
 }
 
