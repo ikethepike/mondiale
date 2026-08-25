@@ -4,7 +4,11 @@
  * into the same frame these selectors read, and the view, the dealer and the
  * grader all resolve a cut through here — never by indexing `cuts` themselves.
  */
-import type { GroundPlanChallenge, GroundPlanCut, GroundPlanLayer } from '~~/types/challenges/group-modes.type'
+import type {
+  GroundPlanChallenge,
+  GroundPlanCut,
+  GroundPlanLayer,
+} from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty } from '~~/types/game.types'
 import { isHardMode } from '~~/lib/game-rules'
 import { sample } from '~~/lib/arrays'
@@ -25,7 +29,12 @@ export const CITY_TILE_SPAN = 1000
  * snapping together, is the round's strongest beat and nothing should follow
  * it. `green` is in the tile but lands at the reveal.
  */
-export const GROUND_PLAN_LAYERS = ['fabric', 'arterials', 'rail', 'bridges'] as const satisfies readonly GroundPlanLayer[]
+export const GROUND_PLAN_LAYERS = [
+  'fabric',
+  'arterials',
+  'rail',
+  'bridges',
+] as const satisfies readonly GroundPlanLayer[]
 
 /** Layers a tile carries but the ladder never plays — reveal only. */
 export const GROUND_PLAN_REVEAL_LAYERS = ['green'] as const satisfies readonly GroundPlanLayer[]

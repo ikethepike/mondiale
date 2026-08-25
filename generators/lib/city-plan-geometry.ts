@@ -160,14 +160,13 @@ export const lineLength = (points: readonly TilePoint[]): number => {
 
 /** Whether a line's ends meet — an area ring rather than an open way. */
 export const isRing = (points: readonly TilePoint[]): boolean =>
-  points.length > 3 && Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) < 1
+  points.length > 3 &&
+  Math.hypot(points[0][0] - points.at(-1)![0], points[0][1] - points.at(-1)![1]) < 1
 
 const straddles = (a: TilePoint, b: TilePoint, c: TilePoint, d: TilePoint): boolean => {
   const side = (p: TilePoint, q: TilePoint, r: TilePoint) =>
     (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
-  return (
-    side(a, b, c) > 0 !== side(a, b, d) > 0 && side(c, d, a) > 0 !== side(c, d, b) > 0
-  )
+  return side(a, b, c) > 0 !== side(a, b, d) > 0 && side(c, d, a) > 0 !== side(c, d, b) > 0
 }
 
 /**
@@ -193,46 +192,117 @@ export const crossesWater = (
   return false
 }
 
-/**
- * The span of a bridge that is over water, dropping the approaches on either
- * bank. A rail bridge way can run for hundreds of metres; drawn whole at bridge
- * weight it lands as a slab across the frame rather than a crossing.
- */
-export const waterSpan = (
-  line: readonly TilePoint[],
-  water: readonly (readonly TilePoint[])[]
-): TilePoint[] => {
-  let first = -1
-  let last = -1
-  for (let i = 1; i < line.length; i++) {
-    if (!crossesWater([line[i - 1], line[i]], water)) continue
-    if (first < 0) first = i - 1
-    last = i
-  }
-  if (first < 0) return [...line]
-  return line.slice(Math.max(0, first - 1), Math.min(line.length, last + 2))
+/** How far a drawn bridge reaches past the bank it lands on, in tile units. */
+export const BRIDGE_OVERHANG = 14
+
+/** Half-length of the deck laid over a water feature with no banks to span. */
+const MINIMUM_DECK = 6
+
+/** Where two segments cross, as a fraction along the first. */
+const crossingAt = (a: TilePoint, b: TilePoint, c: TilePoint, d: TilePoint): number | undefined => {
+  const denominator = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0])
+  if (!denominator) return undefined
+  const along = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / denominator
+  const across = ((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / denominator
+  if (along < 0 || along > 1 || across < 0 || across > 1) return undefined
+  return along
 }
 
 /**
- * Distinct crossings, not ways — what the reveal's bridge count states. One
- * span is routinely several ways (a carriageway each way, a footway alongside),
- * so counting ways would overstate every city. Ways whose spans overlap in the
- * frame are one crossing.
+ * The part of a bridge that is actually over water, cut at the banks.
+ *
+ * Clipping at the crossing POINTS rather than at existing vertices is the
+ * whole point: simplification leaves most bridge ways as two points, so there
+ * is no interior vertex to slice at, and a rail bridge kept whole lands as a
+ * slab running the length of the frame instead of a span across the river.
+ *
+ * `overhang` pads the deck past each bank so it visibly lands on both sides.
+ * It defaults to none, because the crossing COUNT must be taken from unpadded
+ * spans: padding two nearby bridges until they touch would merge them into one
+ * and understate the city.
+ */
+export const waterSpan = (
+  line: readonly TilePoint[],
+  water: readonly (readonly TilePoint[])[],
+  overhangUnits = 0
+): TilePoint[] => {
+  const hits: TilePoint[] = []
+
+  for (let i = 1; i < line.length; i++) {
+    const start = line[i - 1]
+    const end = line[i]
+    const fractions: number[] = []
+    for (const feature of water) {
+      for (let j = 1; j < feature.length; j++) {
+        const at = crossingAt(start, end, feature[j - 1], feature[j])
+        if (at !== undefined) fractions.push(at)
+      }
+    }
+    if (!fractions.length) continue
+    // Only the outermost crossings matter — the far banks, not each ripple of
+    // an inlet the way happens to clip on its run in.
+    for (const at of [Math.min(...fractions), Math.max(...fractions)]) {
+      hits.push([start[0] + (end[0] - start[0]) * at, start[1] + (end[1] - start[1]) * at])
+    }
+  }
+
+  if (!hits.length) return [...line]
+
+  const first = hits[0]
+  const last = hits.at(-1)!
+  let dx = last[0] - first[0]
+  let dy = last[1] - first[1]
+  let reach = Math.hypot(dx, dy)
+
+  // A bank-less water feature (a canal centreline, a narrow river) is crossed
+  // exactly once, so there is no span between banks to measure. Take the way's
+  // own heading and lay a minimum deck across the point where it meets the
+  // water — a zero-length span would be an invisible bridge.
+  if (reach < 1) {
+    const heading = line.at(-1)!
+    dx = heading[0] - line[0][0]
+    dy = heading[1] - line[0][1]
+    reach = Math.hypot(dx, dy)
+    if (!reach) return [...line]
+    const deck = Math.max(overhangUnits, MINIMUM_DECK) / reach
+    return [
+      [first[0] - dx * deck, first[1] - dy * deck],
+      [last[0] + dx * deck, last[1] + dy * deck],
+    ]
+  }
+
+  const overhang = overhangUnits / reach
+  return [
+    [first[0] - dx * overhang, first[1] - dy * overhang],
+    [last[0] + dx * overhang, last[1] + dy * overhang],
+  ]
+}
+
+/**
+ * Distinct crossings, not ways — what the reveal's bridge count states.
+ *
+ * One span is routinely several ways: a carriageway each direction, a footway
+ * alongside, and OSM often splits a single bridge into segments that run
+ * opposite ways. Counting ways overstates every city — Manhattan's two
+ * Brooklyn Bridge ways are one crossing, not two.
+ *
+ * Spans are one crossing when they share ground anywhere along their length,
+ * not merely at their midpoints: two halves of one bridge have midpoints far
+ * apart but overlap end to end.
  */
 export const countCrossings = (spans: readonly (readonly TilePoint[])[]): number => {
-  const centres = spans.map(span => {
-    const middle = span[Math.floor(span.length / 2)]
-    return middle
-  })
-  const claimed: TilePoint[] = []
   const NEARBY = CITY_TILE_SPAN / 25
-  for (const centre of centres) {
-    if (claimed.some(other => Math.hypot(other[0] - centre[0], other[1] - centre[1]) < NEARBY)) {
-      continue
-    }
-    claimed.push(centre)
+
+  const near = (a: readonly TilePoint[], b: readonly TilePoint[]): boolean =>
+    a.some(([ax, ay]) => b.some(([bx, by]) => Math.hypot(ax - bx, ay - by) < NEARBY))
+
+  const groups: (readonly TilePoint[])[][] = []
+  for (const span of spans) {
+    const joined = groups.find(group => group.some(member => near(member, span)))
+    if (joined) joined.push(span)
+    else groups.push([span])
   }
-  return claimed.length
+  return groups.length
 }
 
 const round = (value: number): number => Number(value.toFixed(COORDINATE_DECIMALS))
@@ -260,7 +330,9 @@ export const emitPath = (lines: readonly (readonly TilePoint[])[], close = false
 
     const deltas: string[] = []
     for (let i = 1; i < rounded.length; i++) {
-      deltas.push(`${round(rounded[i][0] - rounded[i - 1][0])},${round(rounded[i][1] - rounded[i - 1][1])}`)
+      deltas.push(
+        `${round(rounded[i][0] - rounded[i - 1][0])},${round(rounded[i][1] - rounded[i - 1][1])}`
+      )
     }
     subpaths.push(`M ${rounded[0][0]},${rounded[0][1]} l ${deltas.join(' ')}${close ? ' z' : ''}`)
   }
@@ -288,7 +360,10 @@ export const haversineKm = (a: GeoPoint, b: GeoPoint): number => {
 /** A cut's area in km², from its own corners. */
 export const boxAreaKm2 = (box: BoundingBox): number => {
   const [south, west, north, east] = box
-  const width = haversineKm({ lat: (south + north) / 2, lon: west }, { lat: (south + north) / 2, lon: east })
+  const width = haversineKm(
+    { lat: (south + north) / 2, lon: west },
+    { lat: (south + north) / 2, lon: east }
+  )
   const height = haversineKm({ lat: south, lon: west }, { lat: north, lon: west })
   return width * height
 }

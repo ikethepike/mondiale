@@ -68,7 +68,10 @@ describe('tileProjection', () => {
 
     expect(top[1]).toBeGreaterThan(0)
     expect(bottom[1]).toBeLessThan(CITY_TILE_SPAN)
-    expect(top[1] + (CITY_TILE_SPAN - bottom[1])).toBeCloseTo(CITY_TILE_SPAN - (bottom[1] - top[1]), 0)
+    expect(top[1] + (CITY_TILE_SPAN - bottom[1])).toBeCloseTo(
+      CITY_TILE_SPAN - (bottom[1] - top[1]),
+      0
+    )
   })
 })
 
@@ -239,6 +242,23 @@ describe('countCrossings', () => {
   it('counts nothing in a city with no crossings', () => {
     expect(countCrossings([])).toBe(0)
   })
+
+  it('joins the halves of one bridge that OSM split into opposing ways', () => {
+    // The Brooklyn Bridge as it actually arrives: two ways whose midpoints are
+    // far apart but which overlap end to end. A midpoint-only test read this
+    // as two crossings.
+    const spans: TilePoint[][] = [
+      [
+        [809, 497],
+        [1096, 798],
+      ],
+      [
+        [1101, 794],
+        [814, 492],
+      ],
+    ]
+    expect(countCrossings(spans)).toBe(1)
+  })
 })
 
 describe('emitPath', () => {
@@ -287,7 +307,14 @@ describe('emitPath', () => {
   })
 
   it('drops a line that collapses to one point after rounding', () => {
-    expect(emitPath([[[10.1, 20.1], [10.2, 20.2]]])).toBe('')
+    expect(
+      emitPath([
+        [
+          [10.1, 20.1],
+          [10.2, 20.2],
+        ],
+      ])
+    ).toBe('')
   })
 
   it('clamps runaway geometry to just outside the frame', () => {

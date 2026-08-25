@@ -90,14 +90,20 @@ export const overpassQuery = async (
     }
 
     if (attempt === MAXIMUM_ATTEMPTS) {
-      console.warn(`  ${label}: gave up after ${attempt} attempts (${response?.status ?? 'network'})`)
+      console.warn(
+        `  ${label}: gave up after ${attempt} attempts (${response?.status ?? 'network'})`
+      )
       return undefined
     }
 
     const retryAfter = Number(response?.headers.get('retry-after'))
     const backoff =
-      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : POLITE_PAUSE_MS * attempt * 2
-    console.warn(`  ${label}: ${response?.status ?? 'network'}, waiting ${(backoff / 1000).toFixed(0)}s`)
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : POLITE_PAUSE_MS * attempt * 2
+    console.warn(
+      `  ${label}: ${response?.status ?? 'network'}, waiting ${(backoff / 1000).toFixed(0)}s`
+    )
     await wait(backoff)
   }
 
@@ -105,7 +111,12 @@ export const overpassQuery = async (
 }
 
 /** Highway classes that draw as the residential grain. */
-export const FABRIC_HIGHWAYS = ['residential', 'unclassified', 'living_street', 'pedestrian'] as const
+export const FABRIC_HIGHWAYS = [
+  'residential',
+  'unclassified',
+  'living_street',
+  'pedestrian',
+] as const
 
 /** Highway classes that draw as the skeleton. */
 export const ARTERIAL_HIGHWAYS = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'] as const
@@ -138,7 +149,12 @@ out geom;`
 
 /** Street length in km inside a box — the coverage floor's probe, cheap enough
  *  to run over many candidate cuts before committing to a full tile pull. */
-export const densityQuery = ([south, west, north, east]: [number, number, number, number]): string => {
+export const densityQuery = ([south, west, north, east]: [
+  number,
+  number,
+  number,
+  number,
+]): string => {
   const box = `${south},${west},${north},${east}`
   const highways = [...FABRIC_HIGHWAYS, ...ARTERIAL_HIGHWAYS].join('|')
   return `[out:json][timeout:120];
