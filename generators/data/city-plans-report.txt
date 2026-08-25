@@ -1,0 +1,53 @@
+london-westminster             5603 verts   23.2 km/km²   5 crossings  signature
+london-isle-of-dogs            3357 verts   12.4 km/km²  10 crossings  signature
+london-chelsea                 3378 verts   18.9 km/km²   4 crossings  generic
+new-york-battery               5778 verts   29.0 km/km²   1 crossings  signature
+new-york-midtown               3406 verts   25.9 km/km²   0 crossings  generic
+paris-ile-de-la-cite           5131 verts   30.6 km/km²  15 crossings  signature
+paris-etoile                   2710 verts   24.7 km/km²   0 crossings  signature
+paris-belleville               3241 verts   22.3 km/km²   0 crossings  generic
+barcelona-eixample             3455 verts   29.2 km/km²   0 crossings  signature
+barcelona-gothic               4722 verts   35.1 km/km²   0 crossings  generic
+fez-medina                     1780 verts   12.6 km/km²   1 crossings  signature
+fez-ville-nouvelle             1987 verts   24.7 km/km²   0 crossings  generic
+turin-centro                   6544 verts   30.2 km/km²   4 crossings  signature
+amsterdam-grachtengordel       5126 verts   30.4 km/km²  47 crossings  signature
+tokyo-marunouchi               4213 verts   33.5 km/km²   9 crossings  signature
+tokyo-shinjuku                 4489 verts   36.8 km/km²   1 crossings  generic
+moscow-kremlin                 2347 verts   13.2 km/km²   4 crossings  signature
+buenos-aires-microcentro     NOT FETCHED — no tile written
+Buenos Aires                 DROPPED — no usable cut
+new-delhi-lutyens            NOT FETCHED — no tile written
+New Delhi                    DROPPED — no usable cut
+brasilia-plano-piloto        NOT FETCHED — no tile written
+Brasília                     DROPPED — no usable cut
+istanbul-golden-horn         NOT FETCHED — no tile written
+istanbul-besiktas            NOT FETCHED — no tile written
+Istanbul                     DROPPED — no usable cut
+berlin-mitte                 NOT FETCHED — no tile written
+Berlin                       DROPPED — no usable cut
+cairo-downtown               NOT FETCHED — no tile written
+Cairo                        DROPPED — no usable cut
+sydney-harbour               NOT FETCHED — no tile written
+Sydney                       DROPPED — no usable cut
+chicago-loop                 NOT FETCHED — no tile written
+Chicago                      DROPPED — no usable cut
+venice-grand-canal           NOT FETCHED — no tile written
+Venice                       DROPPED — no usable cut
+washington-mall              NOT FETCHED — no tile written
+washington-dupont            NOT FETCHED — no tile written
+Washington                   DROPPED — no usable cut
+stockholm-gamla-stan         NOT FETCHED — no tile written
+Stockholm                    DROPPED — no usable cut
+seoul-jongno                 NOT FETCHED — no tile written
+Seoul                        DROPPED — no usable cut
+lagos-island                 NOT FETCHED — no tile written
+Lagos                        DROPPED — no usable cut
+salt-lake-city-temple        NOT FETCHED — no tile written
+Salt Lake City               DROPPED — no usable cut
+karlsruhe-schloss            NOT FETCHED — no tile written
+Karlsruhe                    DROPPED — no usable cut
+saint-petersburg-nevsky      NOT FETCHED — no tile written
+Saint Petersburg             DROPPED — no usable cut
+havana-vieja                 NOT FETCHED — no tile written
+Havana                       DROPPED — no usable cut

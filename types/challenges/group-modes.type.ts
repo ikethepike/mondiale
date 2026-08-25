@@ -249,6 +249,43 @@ export interface CapitalGuessChallenge {
   maximumPoints: number
 }
 
+/** A city-plan tile's layers, each an SVG path in the tile frame. */
+export interface CityPlanPaths {
+  /** Filled water bodies — rivers with banks, lakes, docks. */
+  waterFill: string
+  /** Water too narrow for banks: canals, minor rivers. */
+  waterLine: string
+  /** The LAND side of a coastline, closed against the frame. */
+  shore: string
+  fabric: string
+  arterials: string
+  rail: string
+  bridges: string
+  green: string
+}
+
+/** What the roster index knows about a tile without loading it. */
+export interface CityPlanIndexEntry {
+  /** Distinct water crossings — what the reveal states out loud. */
+  crossings: number
+}
+
+/** A city on the Ground Plan roster, as the generator emits it. */
+export interface GroundPlanCity {
+  /** The country that scores. */
+  country: ISOCountryCode
+  /** The city as the reveal names it. */
+  city: string
+  /** Other spellings a typed answer may arrive as. */
+  aliases?: string[]
+  /** Framings with a usable tile, at least one of them signature. */
+  cuts: GroundPlanCut[]
+  /** The form and whose decision it was — the teaching payload. */
+  lesson?: string
+  /** Reveal photo, where the country's capital photo is not the subject. */
+  image?: string
+}
+
 /** One layer class of a city's plan, in the order the ladder lands them. */
 export type GroundPlanLayer = 'fabric' | 'arterials' | 'rail' | 'bridges' | 'green'
 
@@ -290,6 +327,10 @@ export interface GroundPlanChallenge {
   city: string
   /** The cut in play. */
   cut: GroundPlanCut
+  /** Distinct water crossings in this frame — stated at the reveal. */
+  crossings: number
+  /** The form and whose decision it was, where the roster carries one. */
+  lesson?: string
   /** Layer classes that draw during play, in order. */
   layers: GroundPlanLayer[]
   secondsPerLayer: number

@@ -179,6 +179,13 @@ export const gradeGroupAnswer = async ({
       buzzOn(expectChallengeType(roundChallenge, 'capital-guess-challenge'))
       break
     }
+    case 'ground-plan': {
+      // The typed answer was a CITY, resolved to its country by the view before
+      // it left (`cityCountryByName`), so this grades as a plain buzz on the
+      // country — the same wire shape every other mode uses.
+      buzzOn(expectChallengeType(roundChallenge, 'ground-plan-challenge'))
+      break
+    }
     case 'star-chart': {
       // The typed answers were CITIES, but each one resolves to the country
       // whose capital it is before it leaves the view (`capitalCountryByName`),

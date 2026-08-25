@@ -29,6 +29,7 @@ export type ProviderId =
   | 'untc'
   | 'ucdp'
   | 'naturalearth'
+  | 'openstreetmap'
   | 'geonames'
   | 'wikidata'
   | 'commons'
@@ -119,6 +120,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     url: 'https://ucdp.uu.se',
     logo: 'uppsala.svg',
     description: 'Armed-conflict data from Uppsala University.',
+  },
+  openstreetmap: {
+    name: 'OpenStreetMap',
+    url: 'https://www.openstreetmap.org',
+    description:
+      'The world mapped by volunteers: every street, railway, river and park, down to the lane.',
   },
   naturalearth: {
     name: 'Natural Earth',
@@ -223,6 +230,7 @@ export type SourceId =
   | 'ucdp-acd'
   | 'ucdp-ged'
   | 'naturalearth-10m'
+  | 'osm-overpass'
   | 'geonames-cities15000'
   | 'wikidata-items'
   | 'commons-media'
@@ -369,6 +377,14 @@ export const SOURCES: Record<SourceId, Source> = {
     edition: 'v25.1',
     license: 'CC BY 4.0',
     year: 2024,
+  },
+  'osm-overpass': {
+    provider: 'openstreetmap',
+    title: 'OpenStreetMap via Overpass',
+    url: 'https://overpass-api.de',
+    // OSM has no vintage year — the extract's own timestamp is the edition.
+    edition: '2026-08-25 extract',
+    license: 'ODbL-1.0',
   },
   'naturalearth-10m': {
     provider: 'naturalearth',
@@ -773,6 +789,7 @@ export type DataSetId =
   | 'borders'
   | 'straits'
   | 'cities'
+  | 'city-plans'
   | 'capitals'
   | 'anthems'
   | 'anthem-lyrics'
@@ -892,6 +909,33 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'naturalearth-10m', dataset: 'Coastline distances between country shapes' },
       { source: 'mondiale-editorial', dataset: 'generators/data/strait-overrides.ts' },
     ],
+  },
+  'city-plans': {
+    label: 'City street plans',
+    // Every tile is enumerated rather than globbed because DATASETS.files takes
+    // literal paths; the generator rewrites this block so the list cannot drift
+    // from the roster.
+    files: [
+      'data/city-plans.gen.ts',
+      'data/city-plans/amsterdam-grachtengordel.gen.ts',
+      'data/city-plans/barcelona-eixample.gen.ts',
+      'data/city-plans/barcelona-gothic.gen.ts',
+      'data/city-plans/fez-medina.gen.ts',
+      'data/city-plans/fez-ville-nouvelle.gen.ts',
+      'data/city-plans/london-chelsea.gen.ts',
+      'data/city-plans/london-isle-of-dogs.gen.ts',
+      'data/city-plans/london-westminster.gen.ts',
+      'data/city-plans/moscow-kremlin.gen.ts',
+      'data/city-plans/new-york-battery.gen.ts',
+      'data/city-plans/new-york-midtown.gen.ts',
+      'data/city-plans/paris-belleville.gen.ts',
+      'data/city-plans/paris-etoile.gen.ts',
+      'data/city-plans/paris-ile-de-la-cite.gen.ts',
+      'data/city-plans/tokyo-marunouchi.gen.ts',
+      'data/city-plans/tokyo-shinjuku.gen.ts',
+      'data/city-plans/turin-centro.gen.ts',
+    ],
+    origins: [{ source: 'osm-overpass', dataset: 'Highways, railways, water and green space' }],
   },
   cities: {
     label: 'City lights',

@@ -120,6 +120,7 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // euro set is economic. Membership is its own axis.
   'clean-sweep': 'blocs',
   'capital-guess': 'cities',
+  'ground-plan': 'cities',
   // Capital-guess's mirror: the same cities, read off the map instead of a
   // photo, so it shares the toggle a table that wants city content flips.
   'star-chart': 'cities',
@@ -195,6 +196,7 @@ export const ANSWER_SHAPE_BY_KIND = {
   silhouette: 'set',
   'anthem-buzz': 'set',
   'capital-guess': 'set',
+  'ground-plan': 'set',
   flashpoint: 'set',
   'flag-palette': 'set',
   'stat-detective': 'set',

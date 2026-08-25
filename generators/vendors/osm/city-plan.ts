@@ -25,6 +25,8 @@ import {
   streetDensity,
   tileProjection,
   waterSpan,
+  signedArea,
+  stitchChains,
   BRIDGE_OVERHANG,
   MINIMUM_FABRIC_LENGTH,
   SIMPLIFY_TOLERANCE,
@@ -61,42 +63,7 @@ export interface CityPlanTile {
 const sameNode = (a: GeoPoint, b: GeoPoint): boolean =>
   Math.abs(a.lat - b.lat) < 1e-9 && Math.abs(a.lon - b.lon) < 1e-9
 
-/**
- * Stitch a multipolygon's member ways into closed rings.
- *
- * Overpass `out geom` does NOT assemble relations: the Thames arrives as one
- * relation whose outer boundary is 31 separate ways, in no particular order
- * and in either direction. Treating each member as its own ring renders a
- * river as a bundle of loose strokes rather than a channel, so the members
- * have to be walked end-to-end and reversed where they run backwards.
- */
-const assembleRings = (members: GeoPoint[][]): GeoPoint[][] => {
-  const pending = members.filter(member => member.length > 1)
-  const rings: GeoPoint[][] = []
-
-  while (pending.length) {
-    const ring = pending.shift()!
-    let joined = true
-    while (joined && !sameNode(ring[0], ring.at(-1)!)) {
-      joined = false
-      for (let i = 0; i < pending.length; i++) {
-        const candidate = pending[i]
-        const tail = ring.at(-1)!
-        if (sameNode(tail, candidate[0])) ring.push(...candidate.slice(1))
-        else if (sameNode(tail, candidate.at(-1)!)) ring.push(...candidate.slice(0, -1).reverse())
-        else if (sameNode(ring[0], candidate.at(-1)!)) ring.unshift(...candidate.slice(0, -1))
-        else if (sameNode(ring[0], candidate[0])) ring.unshift(...candidate.slice(1).reverse())
-        else continue
-        pending.splice(i, 1)
-        joined = true
-        break
-      }
-    }
-    rings.push(ring)
-  }
-
-  return rings
-}
+const samePoint = (a: TilePoint, b: TilePoint): boolean => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1
 
 /**
  * A relation's outer rings, assembled. Inner rings are dropped rather than
@@ -106,50 +73,127 @@ const assembleRings = (members: GeoPoint[][]): GeoPoint[][] => {
 const geometriesOf = (element: OverpassElement): GeoPoint[][] => {
   if (element.type === 'way' && element.geometry) return [element.geometry]
   if (element.type !== 'relation' || !element.members) return []
-  return assembleRings(
+  return stitchChains(
     element.members
       .filter(member => member.geometry && member.role !== 'inner')
-      .map(member => member.geometry!)
+      .map(member => member.geometry!),
+    sameNode
   )
 }
 
 /**
- * Whether a coastline ring encloses land or sea.
+ * Close coastline chains into land rings, walking the frame between the ends.
  *
- * `natural=coastline` ways are directional with land on the LEFT, and they do
- * not close — you close them against the frame yourself. Get the winding
- * backwards and the whole tile floods: every frame renders as open sea, which
- * is the classic failure of every OSM renderer and worth asserting on.
+ * `natural=coastline` is the fiddliest layer in the pull and the New York case
+ * depends on it: the Hudson and East River are tidal, so Manhattan's edge is
+ * not a water polygon at all. The ways arrive as fragments (16 of them for
+ * Lower Manhattan), chain end to end, and do not close — the frame edge closes
+ * them.
+ *
+ * OSM's rule is that LAND lies to the left of the way direction. That is what
+ * decides which side to fill; deriving it from the finished ring's area instead
+ * gets it backwards on a chain that exits the way it entered, and a backwards
+ * coastline floods the entire tile as open sea. It is the classic renderer bug
+ * and it is worth being explicit about.
  */
-const windsLandInward = (ring: readonly TilePoint[]): boolean => {
-  let area = 0
-  for (let i = 1; i < ring.length; i++) {
-    area += ring[i - 1][0] * ring[i][1] - ring[i][0] * ring[i - 1][1]
-  }
-  return area > 0
+const CORNERS: TilePoint[] = [
+  [0, 0],
+  [CITY_TILE_SPAN, 0],
+  [CITY_TILE_SPAN, CITY_TILE_SPAN],
+  [0, CITY_TILE_SPAN],
+]
+
+/** Distance clockwise around the frame from the top-left corner. */
+const perimeterAt = ([x, y]: TilePoint): number => {
+  const top = Math.abs(y)
+  const right = Math.abs(x - CITY_TILE_SPAN)
+  const bottom = Math.abs(y - CITY_TILE_SPAN)
+  const left = Math.abs(x)
+  const nearest = Math.min(top, right, bottom, left)
+  if (nearest === top) return x
+  if (nearest === right) return CITY_TILE_SPAN + y
+  if (nearest === bottom) return 3 * CITY_TILE_SPAN - x
+  return 4 * CITY_TILE_SPAN - y
 }
 
-const closeAgainstFrame = (line: TilePoint[]): TilePoint[] => {
-  const start = line[0]
-  const end = line.at(-1)!
-  if (Math.hypot(start[0] - end[0], start[1] - end[1]) < 1) return line
+/**
+ * Push a chain's ends out to the frame edge along their own heading.
+ *
+ * Overpass clips ways at the bbox, so a coastline chain routinely BEGINS in
+ * open space partway across the tile. Closing such a chain along the perimeter
+ * cuts a wedge straight through the middle of the frame — the flood, in its
+ * most obvious form. Extending first means the ends really are on the boundary
+ * before any perimeter walk happens.
+ */
+const reachFrame = (chain: TilePoint[]): TilePoint[] => {
+  const extend = (from: TilePoint, towards: TilePoint): TilePoint => {
+    const dx = from[0] - towards[0]
+    const dy = from[1] - towards[1]
+    const reach = Math.hypot(dx, dy)
+    if (!reach) return from
+    // How far along the heading each frame edge lies; take the nearest ahead.
+    const steps = [
+      dx > 0 ? (CITY_TILE_SPAN - from[0]) / dx : dx < 0 ? -from[0] / dx : Infinity,
+      dy > 0 ? (CITY_TILE_SPAN - from[1]) / dy : dy < 0 ? -from[1] / dy : Infinity,
+    ].filter(step => step > 0)
+    const step = Math.min(...steps)
+    if (!Number.isFinite(step)) return from
+    return [from[0] + dx * step, from[1] + dy * step]
+  }
 
-  // Walk the frame corners between the two ends so the ring closes outside the
-  // visible area rather than cutting a chord across the water.
-  const corners: TilePoint[] = [
-    [0, 0],
-    [CITY_TILE_SPAN, 0],
-    [CITY_TILE_SPAN, CITY_TILE_SPAN],
-    [0, CITY_TILE_SPAN],
+  const head = chain[0]
+  const tail = chain.at(-1)!
+  const onEdge = ([x, y]: TilePoint) =>
+    x <= 1 || y <= 1 || x >= CITY_TILE_SPAN - 1 || y >= CITY_TILE_SPAN - 1
+  return [
+    ...(onEdge(head) ? [] : [extend(head, chain[1])]),
+    ...chain,
+    ...(onEdge(tail) ? [] : [extend(tail, chain.at(-2)!)]),
   ]
-  const nearest = (point: TilePoint) =>
-    corners.reduce((best, corner) =>
-      Math.hypot(corner[0] - point[0], corner[1] - point[1]) <
-      Math.hypot(best[0] - point[0], best[1] - point[1])
-        ? corner
-        : best
-    )
-  return [...line, nearest(end), nearest(start), start]
+}
+
+/** Frame corners passed walking clockwise from one edge point to another. */
+const cornersBetween = (from: TilePoint, to: TilePoint): TilePoint[] => {
+  const start = perimeterAt(from)
+  const span = (perimeterAt(to) - start + 4 * CITY_TILE_SPAN) % (4 * CITY_TILE_SPAN)
+  const walk: TilePoint[] = []
+  for (let step = 0; step < 4; step++) {
+    const corner = (step + 1) * CITY_TILE_SPAN
+    const distance = (corner - start + 4 * CITY_TILE_SPAN) % (4 * CITY_TILE_SPAN)
+    if (distance <= span) walk.push([CORNERS[(step + 1) % 4], distance] as never)
+  }
+  return (walk as unknown as [TilePoint, number][])
+    .sort((a, b) => a[1] - b[1])
+    .map(([corner]) => corner)
+}
+
+/**
+ * The land side of every coastline chain in the tile, as closed rings.
+ *
+ * A chain that both begins and ends inside the frame is an island and closes on
+ * itself. One that leaves the frame is closed along the boundary, in the
+ * direction that keeps land on the left.
+ */
+const landRings = (chains: TilePoint[][]): TilePoint[][] => {
+  const rings: TilePoint[][] = []
+
+  for (const chain of chains) {
+    if (Math.hypot(chain[0][0] - chain.at(-1)![0], chain[0][1] - chain.at(-1)![1]) < 1) {
+      // An island: already closed. Land inside means a positive ring.
+      rings.push(signedArea(chain) > 0 ? chain : [...chain].reverse())
+      continue
+    }
+
+    const reached = reachFrame(chain)
+    const from = reached.at(-1)!
+    const to = reached[0]
+    const closed = [...reached, ...cornersBetween(from, to), to]
+    // Land on the left of the way means the closed ring runs clockwise in tile
+    // space, where y grows downward — a negative shoelace area.
+    rings.push(signedArea(closed) < 0 ? closed : [...closed].reverse())
+  }
+
+  return rings
 }
 
 export const buildTile = (
@@ -245,10 +289,7 @@ export const buildTile = (
   // as two shores plus a stripe down the middle.
   const uncoveredWaterLine = waterLine.filter(line => !crossesWater(line, waterFill))
 
-  const shore = coastline.map(line => {
-    const closed = closeAgainstFrame(line)
-    return windsLandInward(closed) ? closed : [...closed].reverse()
-  })
+  const shore = landRings(stitchChains(coastline, samePoint))
 
   const all = [
     ...waterFill,

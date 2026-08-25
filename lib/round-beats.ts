@@ -336,6 +336,18 @@ export const flashpointSeconds = (eras: number, hints: number): number =>
   hints * FLASHPOINT_SECONDS_PER_HINT +
   FLASHPOINT_TAIL_SECONDS
 
+/** One layer of a city plan's ladder. Long enough to read the grain before the
+ *  next class lands on top of it. */
+export const GROUND_PLAN_SECONDS_PER_LAYER = 8
+
+/** Thinking time after the bridges land, before the round settles. */
+export const GROUND_PLAN_TAIL_SECONDS = 6
+
+/** The one length formula for a ground-plan round, shared by the dealer (which
+ *  stamps `durationSeconds`) and `playSeconds` (which the server clocks). */
+export const groundPlanSeconds = (layers: number): number =>
+  layers * GROUND_PLAN_SECONDS_PER_LAYER + GROUND_PLAN_TAIL_SECONDS
+
 export interface RoundBeatSpec {
   /** Who runs this kind's server clock — the ONE home for the classic/engine
    *  taxonomy; nothing else may hand-roll a list of engine `_type`s. */
@@ -412,6 +424,17 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'mother-tongue': { owner: 'classic', revealHoldMs: 0 },
   'flag-palette': { owner: 'classic', revealHoldMs: 0 },
   'capital-guess': { owner: 'classic', revealHoldMs: 0 },
+  'ground-plan': {
+    owner: 'classic',
+    // Five things land at the reveal — the city, the withheld layers, the form,
+    // the crossing count and the photo. At 0 the scorecard covers the caption
+    // before anyone reads it.
+    revealHoldMs: 7000,
+    playSeconds: challenge =>
+      isChallengeOfType(challenge, 'ground-plan-challenge')
+        ? groundPlanSeconds(challenge.layers.length)
+        : undefined,
+  },
   // The reveal IS the lesson: every star — found and missed alike — names
   // itself on the dark map at its true spot, which is the one beat that
   // teaches position. At 0 the scorecard covered it before it landed.

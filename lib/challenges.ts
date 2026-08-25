@@ -40,6 +40,7 @@ import type {
   BorderChainChallenge,
   CapitalGuessChallenge,
   CleanSweepChallenge,
+  GroundPlanChallenge,
   CompositionChallenge,
   EmpireChallenge,
   FlagPaletteChallenge,
@@ -91,6 +92,13 @@ import {
   dominantConflict,
 } from '~~/types/vendor/ucdp/ucdp.types'
 import { sample, sampleMany, shuffleArray, weightedPick } from './arrays'
+import {
+  crossingsForCut,
+  cutForDifficulty,
+  groundPlanCities,
+  GROUND_PLAN_LAYERS,
+} from '~~/lib/ground-plan'
+import { GROUND_PLAN_SECONDS_PER_LAYER, groundPlanSeconds } from '~~/lib/round-beats'
 import { isBrainSeat } from './bots'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
@@ -1101,6 +1109,55 @@ const getCapitalGuessChallenge = (game: gameTypes.Game): CapitalGuessChallenge |
   }
 }
 
+/** Picks allowed in the Ground Plan option variants. */
+const GROUND_PLAN_ATTEMPTS = 2
+
+/**
+ * Ground Plan: a city draws itself one layer at a time on cream paper — water
+ * first, then the grain, the arterials, the rail, and finally the bridges.
+ * Name the city before it finishes.
+ *
+ * Deals only cities whose country is in play, so a win still moves a pawn
+ * somewhere the board can reach. Outside hard mode a four-city table is offered
+ * and the cut is a signature one; hard mode free-types a generic cut.
+ */
+const getGroundPlanChallenge = (game: gameTypes.Game): GroundPlanChallenge | undefined => {
+  const playable = new Set(playableCountries(game))
+  const roster = groundPlanCities().filter(entry => playable.has(entry.country))
+  const entry = sample(roster)
+  if (!entry) return undefined
+
+  const cut = cutForDifficulty(entry.cuts, game)
+  if (!cut) return undefined
+
+  let options: string[] | undefined
+  if (game.difficulty !== 'hard') {
+    // Decoys are other ROSTER cities, so every option is a city whose plan the
+    // round could equally have drawn — a table of unrelated names would give
+    // the answer away by tone alone.
+    const decoys = shuffleArray(
+      groundPlanCities().filter(other => other.city !== entry.city)
+    ).slice(0, game.difficulty === 'easy' ? 2 : 3)
+    if (decoys.length) options = shuffleArray([entry.city, ...decoys.map(other => other.city)])
+  }
+
+  const layers = [...GROUND_PLAN_LAYERS]
+  return {
+    _type: 'ground-plan-challenge',
+    country: entry.country,
+    city: entry.city,
+    cut,
+    crossings: crossingsForCut(cut.slug),
+    ...(entry.lesson ? { lesson: entry.lesson } : {}),
+    layers,
+    secondsPerLayer: GROUND_PLAN_SECONDS_PER_LAYER,
+    options,
+    ...(options ? { maximumGuesses: GROUND_PLAN_ATTEMPTS } : {}),
+    durationSeconds: groundPlanSeconds(layers.length),
+    maximumPoints: maximumRoundPoints(game),
+  }
+}
+
 /**
  * The Star Chart: the map goes dark and three capitals pulse at their true
  * coordinates — type which city each one is. Every rule of the deal (the
@@ -2014,6 +2071,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'mother-tongue': game => getMotherTongueChallenge(game),
   'flag-palette': game => getFlagPaletteChallenge(game),
   'capital-guess': game => getCapitalGuessChallenge(game),
+  'ground-plan': game => getGroundPlanChallenge(game),
   'star-chart': game => getStarChartChallenge(game),
   government: game => getGovernmentChallenge(game),
   'terra-incognita': game => getTerraIncognitaChallenge(game),

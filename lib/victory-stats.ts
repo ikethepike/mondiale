@@ -48,6 +48,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'mother-tongue': ['Polyglot', 'Tongue Twister', 'The Babel Fish', 'Lingua Franca'],
   'flag-palette': ['Colour Sommelier', 'Palette Pro', 'The Swatch Sleuth', 'Hue Hunter'],
   'capital-guess': ['Capital Idea', 'Skyline Seer', 'The City Slicker', 'Metropole Maven'],
+  'ground-plan': ['Street Reader', 'The Cartographer', 'Grid Whisperer', 'Plan Sight'],
   'star-chart': ['Star Reader', 'Celestial Navigator', 'The Night Pilot', 'Dead-Reckoning Ace'],
   government: ['Whip', 'Speaker of the House', 'Coalition Builder', 'Teller of the Benches'],
   'terra-incognita': [
@@ -101,6 +102,7 @@ export const KIND_LABELS: {
   'mother-tongue': { prose: 'mother tongue', title: 'Mother Tongue' },
   'flag-palette': { prose: 'flag palette', title: 'Flag Palette' },
   'capital-guess': { prose: 'capital guess', title: 'Capital Guess' },
+  'ground-plan': { prose: 'ground plan', title: 'Ground Plan' },
   'star-chart': { prose: 'star chart', title: 'The Star Chart' },
   government: { prose: 'parliament', title: 'Parliament' },
   'terra-incognita': { prose: 'terra incognita', title: 'Terra Incognita' },

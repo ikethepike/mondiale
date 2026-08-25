@@ -1,15 +1,18 @@
 /**
- * The Ground Plan round's shared vocabulary: the tile frame, the layer ladder
- * and the difficulty gate over a roster entry's cuts. The generator projects
- * into the same frame these selectors read, and the view, the dealer and the
- * grader all resolve a cut through here — never by indexing `cuts` themselves.
+ * The Ground Plan round's shared vocabulary: the tile frame, the layer ladder,
+ * the roster reads and the difficulty gate over a city's cuts. The generator
+ * projects into the same frame these selectors read, and the dealer, the view
+ * and the grader all resolve a cut through here rather than indexing the
+ * roster themselves.
  */
 import type {
   GroundPlanChallenge,
+  GroundPlanCity,
   GroundPlanCut,
   GroundPlanLayer,
 } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty } from '~~/types/game.types'
+import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
 import { isHardMode } from '~~/lib/game-rules'
 import { sample } from '~~/lib/arrays'
 
@@ -21,13 +24,13 @@ import { sample } from '~~/lib/arrays'
 export const CITY_TILE_SPAN = 1000
 
 /**
- * The layers, in the order they land. Water is not here — it is the base frame,
- * present from the first frame because the city answered to it rather than the
- * other way round.
+ * The layers, in the order they land. Water is not among them — it is the base
+ * frame, present from the first moment, because the city answered to it rather
+ * than the other way round.
  *
- * The ladder ends on bridges: two banks reading as two unconnected towns, then
- * snapping together, is the round's strongest beat and nothing should follow
- * it. `green` is in the tile but lands at the reveal.
+ * The ladder ends on bridges: two banks reading as unconnected towns and then
+ * snapping together is the round's strongest beat, and nothing should follow
+ * it. `green` ships in the tile but lands at the reveal.
  */
 export const GROUND_PLAN_LAYERS = [
   'fabric',
@@ -39,9 +42,12 @@ export const GROUND_PLAN_LAYERS = [
 /** Layers a tile carries but the ladder never plays — reveal only. */
 export const GROUND_PLAN_REVEAL_LAYERS = ['green'] as const satisfies readonly GroundPlanLayer[]
 
+/** Cities with at least one usable tile. */
+export const groundPlanCities = (): GroundPlanCity[] => GROUND_PLAN_CITIES
+
 /**
  * The cut a difficulty deals. The diagnostic shape being in frame is the whole
- * difficulty dial: Manhattan sliced at Midtown is two rivers and a grid and
+ * difficulty dial: Manhattan sliced at Midtown is two rivers and a grid that
  * could be anywhere, sliced at the Battery it is unmistakable.
  *
  * `signature` is stamped by the generator and ruled on by a human — never
@@ -57,17 +63,20 @@ export const cutForDifficulty = (
   return sample(wanted.length ? wanted : cuts)
 }
 
-/** Layers revealed by the time `elapsed` layer-intervals have passed. */
+/** Distinct water crossings in a cut — what the reveal states out loud. */
+export const crossingsForCut = (slug: string): number => CITY_PLAN_INDEX[slug]?.crossings ?? 0
+
+/** Layers revealed once `revealedCount` intervals have passed. */
 export const revealedLayers = (
   challenge: Pick<GroundPlanChallenge, 'layers'>,
   revealedCount: number
 ): GroundPlanLayer[] => challenge.layers.slice(0, Math.max(0, revealedCount))
 
 /**
- * What a correct answer is worth as a fraction of the pot: the ladder, not the
- * clock. The tension in this mode is how much of the city you needed, so a
+ * What a correct answer is worth as a fraction of the pot: the LADDER, not the
+ * clock. How much of the city you needed is the tension in this mode, so a
  * player who names it on the grain alone must out-score one who waited for the
- * bridges even though both beat the timer.
+ * bridges, even though both beat the timer.
  */
 export const groundPlanRemainingFraction = (
   challenge: Pick<GroundPlanChallenge, 'layers'>,
@@ -77,3 +86,9 @@ export const groundPlanRemainingFraction = (
   if (!total) return 0
   return Math.max(0, (total - revealedCount) / total)
 }
+
+/** Every spelling a typed answer may arrive as, for one roster city. */
+export const citySpellings = (entry: GroundPlanCity): string[] => [
+  entry.city,
+  ...(entry.aliases ?? []),
+]

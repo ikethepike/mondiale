@@ -19,11 +19,13 @@ const USER_AGENT =
   'mondiale-game-generator/1.0 (https://github.com/ikethepike/mondiale; city plans, issue 165)'
 
 /**
- * Minimum gap between requests. Measured: a 2km tile answers in 2-3s, but
- * three back-to-back queries earned a 504 and a 25s pause cleared it. The
- * endpoint is donated capacity — a roster sweep should take hours.
+ * Minimum gap between requests. A single tile answers in 2-3s, but a SUSTAINED
+ * sweep is metered differently: at a 12s gap the endpoint started returning
+ * 429 around the twentieth tile and stayed there. The endpoint is donated
+ * capacity, the whole roster is a one-off, and the cache means no tile is ever
+ * fetched twice — so the sweep is allowed to take hours.
  */
-const POLITE_PAUSE_MS = 12_000
+const POLITE_PAUSE_MS = 30_000
 
 /** A hung socket must not stall a several-hundred-tile run indefinitely. */
 const REQUEST_TIMEOUT_MS = 240_000
@@ -58,12 +60,16 @@ let lastRequestAt = 0
  */
 export const overpassQuery = async (
   query: string,
-  { label = 'query' }: { label?: string } = {}
+  { label = 'query', cacheOnly = false }: { label?: string; cacheOnly?: boolean } = {}
 ): Promise<OverpassResponse | undefined> => {
   const path = cachePath(query)
   if (existsSync(path)) {
     return JSON.parse(readFileSync(path, 'utf-8')) as OverpassResponse
   }
+  // Re-encoding a roster after a rendering change must not depend on the
+  // endpoint being reachable, and Overpass meters a sustained sweep hard enough
+  // that a run can be locked out mid-roster.
+  if (cacheOnly) return undefined
 
   for (let attempt = 1; attempt <= MAXIMUM_ATTEMPTS; attempt++) {
     const sinceLast = Date.now() - lastRequestAt

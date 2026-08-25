@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   boxAreaKm2,
+  signedArea,
+  stitchChains,
   countCrossings,
   countVertices,
   crossesWater,
@@ -377,5 +379,123 @@ describe('measurement helpers', () => {
     expect(area).toBeGreaterThan(3)
     expect(area).toBeLessThan(8)
     expect(streetDensity(95, LONDON)).toBeGreaterThan(10)
+  })
+})
+
+describe('stitchChains', () => {
+  const meets = (a: TilePoint, b: TilePoint) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1
+
+  it('walks fragments end to end into one chain', () => {
+    const chains = stitchChains(
+      [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+        [
+          [20, 0],
+          [30, 0],
+        ],
+        [
+          [10, 0],
+          [20, 0],
+        ],
+      ],
+      meets
+    )
+    expect(chains).toHaveLength(1)
+    expect(chains[0][0]).toEqual([0, 0])
+    expect(chains[0].at(-1)).toEqual([30, 0])
+  })
+
+  it('reverses a fragment that runs backwards', () => {
+    // The Thames arrives exactly like this: members in arbitrary direction.
+    const chains = stitchChains(
+      [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+        [
+          [20, 0],
+          [10, 0],
+        ],
+      ],
+      meets
+    )
+    expect(chains).toHaveLength(1)
+    expect(chains[0].at(-1)).toEqual([20, 0])
+  })
+
+  it('keeps genuinely separate chains apart', () => {
+    expect(
+      stitchChains(
+        [
+          [
+            [0, 0],
+            [10, 0],
+          ],
+          [
+            [500, 500],
+            [510, 500],
+          ],
+        ],
+        meets
+      )
+    ).toHaveLength(2)
+  })
+
+  it('closes a ring whose ends meet', () => {
+    const chains = stitchChains(
+      [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+        [
+          [10, 0],
+          [10, 10],
+        ],
+        [
+          [10, 10],
+          [0, 0],
+        ],
+      ],
+      meets
+    )
+    expect(chains).toHaveLength(1)
+    expect(meets(chains[0][0], chains[0].at(-1)!)).toBe(true)
+  })
+
+  it('drops degenerate single-point fragments', () => {
+    expect(stitchChains([[[0, 0]]], meets)).toEqual([])
+  })
+})
+
+describe('signedArea', () => {
+  it('signs a screen-clockwise ring positive', () => {
+    // Right, down, left, up — clockwise as drawn, since y grows downward.
+    // The coastline fill keys off this sign to decide which side is land, so
+    // the convention matters more than which name it goes by.
+    expect(
+      signedArea([
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0],
+      ])
+    ).toBeGreaterThan(0)
+  })
+
+  it('reverses sign with winding', () => {
+    const ring: TilePoint[] = [
+      [0, 0],
+      [10, 0],
+      [10, 10],
+      [0, 10],
+      [0, 0],
+    ]
+    expect(signedArea(ring)).toBeCloseTo(-signedArea([...ring].reverse()), 6)
   })
 })

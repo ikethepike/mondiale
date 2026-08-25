@@ -149,6 +149,60 @@ export const simplifyLine = (points: TilePoint[], tolerance: number): TilePoint[
   return coarse.filter((_, index) => keep[index])
 }
 
+/**
+ * Walk fragments end to end into the longest chains they form, reversing any
+ * that run backwards.
+ *
+ * Both of the pull's assembled layers need this and neither can skip it:
+ * Overpass `out geom` does not assemble multipolygons, so the Thames arrives as
+ * one relation whose outer boundary is 31 separate ways in arbitrary order and
+ * direction, and a tidal coastline arrives as a chain of fragments (16 for
+ * Lower Manhattan). Treating either as a set of independent lines draws a river
+ * as loose strokes and leaves a shore that cannot be filled.
+ *
+ * Generic over the point type so the geo-space and tile-space callers share one
+ * implementation rather than keeping two copies in step.
+ */
+export const stitchChains = <T>(
+  fragments: readonly T[][],
+  meets: (a: T, b: T) => boolean
+): T[][] => {
+  const pending = fragments.filter(fragment => fragment.length > 1).map(fragment => [...fragment])
+  const chains: T[][] = []
+
+  while (pending.length) {
+    const chain = pending.shift()!
+    let joined = true
+    while (joined && !meets(chain[0], chain.at(-1)!)) {
+      joined = false
+      for (let i = 0; i < pending.length; i++) {
+        const candidate = pending[i]
+        const tail = chain.at(-1)!
+        if (meets(tail, candidate[0])) chain.push(...candidate.slice(1))
+        else if (meets(tail, candidate.at(-1)!)) chain.push(...candidate.slice(0, -1).reverse())
+        else if (meets(chain[0], candidate.at(-1)!)) chain.unshift(...candidate.slice(0, -1))
+        else if (meets(chain[0], candidate[0])) chain.unshift(...candidate.slice(1).reverse())
+        else continue
+        pending.splice(i, 1)
+        joined = true
+        break
+      }
+    }
+    chains.push(chain)
+  }
+
+  return chains
+}
+
+/** Signed area of a ring; negative runs clockwise in tile space (y downward). */
+export const signedArea = (ring: readonly TilePoint[]): number => {
+  let area = 0
+  for (let i = 1; i < ring.length; i++) {
+    area += ring[i - 1][0] * ring[i][1] - ring[i][0] * ring[i - 1][1]
+  }
+  return area / 2
+}
+
 /** Total length of a polyline in tile units. */
 export const lineLength = (points: readonly TilePoint[]): number => {
   let total = 0

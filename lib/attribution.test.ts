@@ -73,7 +73,10 @@ describe('the registry', () => {
 describe('dataset coverage', () => {
   // The guarantee: a new generated data file is unattributed until it is
   // claimed by a DATASETS entry, and this fails until it is.
-  const generated = readdirSync(`${ROOT}data`)
+  // Recursive: the city-plan tiles live in a subdirectory, and a flat read
+  // would let a whole roster ship unattributed — the exact gap this guards.
+  const generated = readdirSync(`${ROOT}data`, { recursive: true })
+    .map(file => String(file))
     .filter(file => file.endsWith('.gen.ts'))
     .map(file => `data/${file}`)
 

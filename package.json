@@ -43,6 +43,7 @@
     "generate:places": "bun run generators/create-places-file.ts",
     "generate:events": "bun run generators/create-events-file.ts",
     "generate:changes": "bun run generators/create-change-file.ts",
+    "generate:city-plans": "bun run generators/vendors/osm/create-city-plans.ts",
     "generate:cities": "bun run generators/vendors/geonames/create-cities.ts",
     "generate:map": "bun run generators/vendors/naturalearth/create-map.ts",
     "generate:straits": "bun run generators/create-straits-file.ts",
