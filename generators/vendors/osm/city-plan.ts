@@ -42,6 +42,10 @@ import {
 } from '../../lib/city-plan-geometry'
 import { CITY_TILE_HEIGHT, CITY_TILE_SPAN } from '../../../lib/ground-plan'
 
+/** A lone canal still has to be visible; a dense grid of them must not merge. */
+const MINIMUM_WATER_LINE_WIDTH = 2
+const MAXIMUM_WATER_LINE_WIDTH = 8
+
 const FABRIC = new Set<string>(FABRIC_HIGHWAYS)
 const ARTERIAL = new Set<string>(ARTERIAL_HIGHWAYS)
 const RAIL = new Set<string>(RAILWAYS)
@@ -59,6 +63,12 @@ export interface CityPlanTile {
   rail: string
   bridges: string
   green: string
+  /** How wide a bank-less waterway draws, in tile units.
+   *
+   * Not a constant: a lone canal wants a stroke you can see, but Amsterdam's
+   * run twenty metres apart and a fixed width painted the streets between them
+   * as water. Sized from the tile's own spacing. */
+  waterLineWidth: number
   /** Distinct water crossings — the reveal's bridge count. */
   crossings: number
   /** Street km per km², the coverage floor's score. */
@@ -254,10 +264,39 @@ export const buildTile = (
   }
 
   // A centreline drawn over a river that already has banks renders the Thames
-  // as two shores plus a stripe down the middle.
-  const uncoveredWaterLine = waterLine.filter(
-    line => !crossesWater(line, [...outerRings, ...seaRings])
-  )
+  // as two shores plus a stripe down the middle, so a covered one is dropped.
+  //
+  // "Covered" has to mean MOSTLY INSIDE a water polygon, not merely touching
+  // one: an Amsterdam canal meets the harbour at its mouth, and testing for
+  // intersection threw the whole canal away for touching water at one end.
+  // Herengracht, the Amstel and the Fontanka all vanished that way.
+  const painted = [...outerRings, ...seaRings]
+  const uncoveredWaterLine = waterLine.filter(line => {
+    let inside = 0
+    for (const point of line) if (pointInRings(painted, point)) inside++
+    return inside <= line.length * 0.6
+  })
+
+  // How close the drawn waterways run to each other decides how wide they may
+  // be drawn: half the nearest-neighbour spacing, so two parallel canals never
+  // merge into one band of water with the street between them inside it.
+  const waterLineWidth = (() => {
+    const samples: TilePoint[] = []
+    for (const line of uncoveredWaterLine) {
+      for (let i = 0; i < line.length; i += 3) samples.push(line[i])
+    }
+    if (samples.length < 2) return MAXIMUM_WATER_LINE_WIDTH
+    let closest = Infinity
+    for (let i = 0; i < samples.length; i += 7) {
+      for (let j = 0; j < samples.length; j += 7) {
+        if (i === j) continue
+        const gap = Math.hypot(samples[i][0] - samples[j][0], samples[i][1] - samples[j][1])
+        if (gap > 1 && gap < closest) closest = gap
+      }
+    }
+    if (!Number.isFinite(closest)) return MAXIMUM_WATER_LINE_WIDTH
+    return Math.max(MINIMUM_WATER_LINE_WIDTH, Math.min(MAXIMUM_WATER_LINE_WIDTH, closest * 0.5))
+  })()
 
   // Validation, not mechanism: the same even-odd parity the SVG fill uses,
   // probed against the frame (wet share) and against every street vertex —
@@ -307,6 +346,7 @@ export const buildTile = (
     rail: emitPath(layers.rail),
     bridges: emitPath(bridges),
     green: emitPath(green, true),
+    waterLineWidth: Number(waterLineWidth.toFixed(1)),
     crossings: countCrossings(spans),
     density: streetDensity(streetKm, box),
     vertices: countVertices(all),

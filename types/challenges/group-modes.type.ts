@@ -255,6 +255,8 @@ export interface CityPlanPaths {
   waterFill: string
   /** Water too narrow for banks: canals, minor rivers. */
   waterLine: string
+  /** Stroke width for `waterLine`, sized to this tile's own canal spacing. */
+  waterLineWidth?: number
   /** The sea, where the city's edge is tidal and has no water polygon. */
   sea: string
   fabric: string

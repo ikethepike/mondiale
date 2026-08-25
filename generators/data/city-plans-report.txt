@@ -1,53 +1,317 @@
-london-westminster             8415 verts   23.2 km/km²   9 crossings   12% wet  strand 0.4%  signature
-london-isle-of-dogs            4488 verts   13.1 km/km²  13 crossings   29% wet  strand 1.5%  signature
-london-chelsea                 4926 verts   17.5 km/km²   7 crossings   10% wet  strand 0.2%  generic
-new-york-battery               6426 verts   22.4 km/km²   2 crossings   47% wet  strand 0.4%  signature
+london-westminster             8444 verts   23.2 km/km²   9 crossings   12% wet  strand 0.4%  signature
+london-isle-of-dogs            4532 verts   13.1 km/km²  13 crossings   29% wet  strand 1.5%  signature
+london-chelsea                 4952 verts   17.5 km/km²   7 crossings   10% wet  strand 0.2%  generic
+new-york-battery               6431 verts   22.4 km/km²   2 crossings   47% wet  strand 0.4%  signature
 new-york-midtown               5422 verts   25.0 km/km²   0 crossings    6% wet  strand 0.1%  generic
-paris-ile-de-la-cite           6877 verts   26.8 km/km²  18 crossings    8% wet  strand 0.6%  signature
+paris-ile-de-la-cite           6925 verts   26.8 km/km²  18 crossings    8% wet  strand 0.6%  signature
 paris-etoile                   5508 verts   23.6 km/km²   0 crossings    0% wet  strand 0.0%  signature
-paris-belleville               5944 verts   22.1 km/km²   1 crossings    1% wet  strand 0.0%  generic
-barcelona-eixample           kept
-barcelona-gothic             kept
-fez-medina                   kept
-fez-ville-nouvelle           kept
-turin-centro                 kept
-amsterdam-grachtengordel     kept
-tokyo-marunouchi             kept
-tokyo-shinjuku               kept
-moscow-kremlin               kept
-buenos-aires-microcentro     NOT FETCHED — no tile written
-Buenos Aires                 DROPPED — no usable cut
-new-delhi-lutyens            NOT FETCHED — no tile written
-New Delhi                    DROPPED — no usable cut
-brasilia-plano-piloto        NOT FETCHED — no tile written
-Brasília                     DROPPED — no usable cut
-istanbul-golden-horn         NOT FETCHED — no tile written
-istanbul-besiktas            NOT FETCHED — no tile written
-Istanbul                     DROPPED — no usable cut
-berlin-mitte                 NOT FETCHED — no tile written
-Berlin                       DROPPED — no usable cut
-cairo-downtown               NOT FETCHED — no tile written
-Cairo                        DROPPED — no usable cut
-sydney-harbour               NOT FETCHED — no tile written
-Sydney                       DROPPED — no usable cut
-chicago-loop                 NOT FETCHED — no tile written
-Chicago                      DROPPED — no usable cut
-venice-grand-canal           NOT FETCHED — no tile written
-Venice                       DROPPED — no usable cut
-washington-mall              NOT FETCHED — no tile written
-washington-dupont            NOT FETCHED — no tile written
-Washington                   DROPPED — no usable cut
-stockholm-gamla-stan           5722 verts   19.8 km/km²  17 crossings   36% wet  strand 1.1%  signature
-seoul-jongno                 NOT FETCHED — no tile written
-Seoul                        DROPPED — no usable cut
-lagos-island                 NOT FETCHED — no tile written
-Lagos                        DROPPED — no usable cut
-salt-lake-city-temple        NOT FETCHED — no tile written
-Salt Lake City               DROPPED — no usable cut
-karlsruhe-schloss            NOT FETCHED — no tile written
-Karlsruhe                    DROPPED — no usable cut
-saint-petersburg-nevsky      NOT FETCHED — no tile written
-Saint Petersburg             DROPPED — no usable cut
-havana-vieja                 NOT FETCHED — no tile written
-Havana                       DROPPED — no usable cut
-helsinki-kruununhaka          10566 verts   17.4 km/km²   3 crossings   31% wet  strand 0.9%  signature
+paris-belleville               5970 verts   22.1 km/km²   1 crossings    1% wet  strand 0.0%  generic
+barcelona-eixample             5966 verts   28.9 km/km²   0 crossings    0% wet  strand 0.0%  signature
+barcelona-gothic               6564 verts   29.5 km/km²   0 crossings   10% wet  strand 0.5%  generic
+fez-medina                     2909 verts   15.4 km/km²   1 crossings    0% wet  strand 0.0%  signature
+fez-ville-nouvelle             3084 verts   21.9 km/km²   0 crossings    0% wet  strand 0.0%  generic
+turin-centro                   5645 verts   30.3 km/km²   5 crossings    3% wet  strand 0.0%  signature
+amsterdam-grachtengordel       9224 verts   26.9 km/km²  82 crossings   16% wet  strand 2.5%  signature
+                             ^ STREETS IN WATER — the water geometry is wrong
+tokyo-marunouchi               6216 verts   29.7 km/km²  23 crossings    9% wet  strand 0.8%  signature
+tokyo-shinjuku                 6525 verts   33.3 km/km²   4 crossings    0% wet  strand 0.1%  generic
+moscow-kremlin                 3305 verts   13.8 km/km²   7 crossings    5% wet  strand 0.2%  signature
+buenos-aires-microcentro       3316 verts   20.5 km/km²   3 crossings    6% wet  strand 0.1%  signature
+new-delhi-lutyens              2455 verts   14.9 km/km²   0 crossings    1% wet  strand 0.0%  signature
+brasilia-plano-piloto          2870 verts   15.0 km/km²   0 crossings    1% wet  strand 0.0%  signature
+istanbul-golden-horn           4897 verts   22.5 km/km²   3 crossings   26% wet  strand 0.1%  signature
+istanbul-besiktas              3409 verts   14.6 km/km²   0 crossings   34% wet  strand 0.0%  generic
+berlin-mitte                   8213 verts   16.0 km/km²  26 crossings    5% wet  strand 0.2%  signature
+cairo-downtown                 3978 verts   28.8 km/km²   3 crossings   11% wet  strand 0.1%  signature
+sydney-harbour                 3265 verts    9.0 km/km²   1 crossings    0% wet  strand 0.0%  signature
+chicago-loop                   7279 verts   22.5 km/km²  37 crossings   18% wet  strand 0.6%  signature
+venice-grand-canal             7624 verts   29.5 km/km²   9 crossings   31% wet  strand 0.6%  signature
+washington-mall                6850 verts   15.5 km/km²   1 crossings    5% wet  strand 0.3%  signature
+washington-dupont              4111 verts   19.2 km/km²   7 crossings    1% wet  strand 0.1%  generic
+stockholm-gamla-stan           5725 verts   19.8 km/km²  17 crossings   36% wet  strand 1.1%  signature
+seoul-jongno                   5627 verts   25.5 km/km²   8 crossings    0% wet  strand 0.0%  signature
+lagos-island                   1645 verts   16.3 km/km²   7 crossings   20% wet  strand 0.0%  signature
+salt-lake-city-temple          3998 verts   18.6 km/km²   0 crossings    0% wet  strand 0.0%  signature
+karlsruhe-schloss              6575 verts   13.6 km/km²   0 crossings    0% wet  strand 0.0%  signature
+saint-petersburg-nevsky        4365 verts   15.7 km/km²  23 crossings   10% wet  strand 2.7%  signature
+                             ^ STREETS IN WATER — the water geometry is wrong
+havana-vieja                   2514 verts   19.7 km/km²   0 crossings   32% wet  strand 0.9%  signature
+helsinki-kruununhaka          10576 verts   17.4 km/km²   3 crossings   31% wet  strand 0.9%  signature
+beijing-centre               NOT FETCHED — no tile written
+Beijing                      DROPPED — no usable cut
+madrid-centre                NOT FETCHED — no tile written
+Madrid                       DROPPED — no usable cut
+rome-centre                  NOT FETCHED — no tile written
+Rome                         DROPPED — no usable cut
+ottawa-centre                NOT FETCHED — no tile written
+Ottawa                       DROPPED — no usable cut
+oslo-centre                  NOT FETCHED — no tile written
+Oslo                         DROPPED — no usable cut
+mexico-city-centre           NOT FETCHED — no tile written
+Mexico City                  DROPPED — no usable cut
+prague-centre                NOT FETCHED — no tile written
+Prague                       DROPPED — no usable cut
+warsaw-centre                NOT FETCHED — no tile written
+Warsaw                       DROPPED — no usable cut
+jakarta-centre               NOT FETCHED — no tile written
+Jakarta                      DROPPED — no usable cut
+canberra-centre              NOT FETCHED — no tile written
+Canberra                     DROPPED — no usable cut
+tehran-centre                NOT FETCHED — no tile written
+Tehran                       DROPPED — no usable cut
+vienna-centre                NOT FETCHED — no tile written
+Vienna                       DROPPED — no usable cut
+bern-centre                  NOT FETCHED — no tile written
+Bern                         DROPPED — no usable cut
+brussels-centre              NOT FETCHED — no tile written
+Brussels                     DROPPED — no usable cut
+wellington-centre            NOT FETCHED — no tile written
+Wellington                   DROPPED — no usable cut
+copenhagen-centre            NOT FETCHED — no tile written
+Copenhagen                   DROPPED — no usable cut
+dublin-centre                NOT FETCHED — no tile written
+Dublin                       DROPPED — no usable cut
+kyiv-centre                  NOT FETCHED — no tile written
+Kyiv                         DROPPED — no usable cut
+ankara-centre                NOT FETCHED — no tile written
+Ankara                       DROPPED — no usable cut
+taipei-centre                NOT FETCHED — no tile written
+Taipei                       DROPPED — no usable cut
+bucharest-centre             NOT FETCHED — no tile written
+Bucharest                    DROPPED — no usable cut
+budapest-centre              NOT FETCHED — no tile written
+Budapest                     DROPPED — no usable cut
+athens-centre                NOT FETCHED — no tile written
+Athens                       DROPPED — no usable cut
+lisbon-centre                NOT FETCHED — no tile written
+Lisbon                       DROPPED — no usable cut
+kuala-lumpur-centre          NOT FETCHED — no tile written
+Kuala Lumpur                 DROPPED — no usable cut
+bangkok-centre               NOT FETCHED — no tile written
+Bangkok                      DROPPED — no usable cut
+lima-centre                  NOT FETCHED — no tile written
+Lima                         DROPPED — no usable cut
+santiago-centre              NOT FETCHED — no tile written
+Santiago                     DROPPED — no usable cut
+bogota-centre                NOT FETCHED — no tile written
+Bogotá                       DROPPED — no usable cut
+manila-centre                NOT FETCHED — no tile written
+Manila                       DROPPED — no usable cut
+hanoi-centre                 NOT FETCHED — no tile written
+Hanoi                        DROPPED — no usable cut
+singapore-centre             NOT FETCHED — no tile written
+Singapore                    DROPPED — no usable cut
+belgrade-centre              NOT FETCHED — no tile written
+Belgrade                     DROPPED — no usable cut
+zagreb-centre                NOT FETCHED — no tile written
+Zagreb                       DROPPED — no usable cut
+dhaka-centre                 NOT FETCHED — no tile written
+Dhaka                        DROPPED — no usable cut
+astana-centre                NOT FETCHED — no tile written
+Astana                       DROPPED — no usable cut
+montevideo-centre            NOT FETCHED — no tile written
+Montevideo                   DROPPED — no usable cut
+nairobi-centre               NOT FETCHED — no tile written
+Nairobi                      DROPPED — no usable cut
+pretoria-centre              NOT FETCHED — no tile written
+Pretoria                     DROPPED — no usable cut
+rabat-centre                 NOT FETCHED — no tile written
+Rabat                        DROPPED — no usable cut
+jerusalem-centre             NOT FETCHED — no tile written
+Jerusalem                    DROPPED — no usable cut
+ljubljana-centre             NOT FETCHED — no tile written
+Ljubljana                    DROPPED — no usable cut
+minsk-centre                 NOT FETCHED — no tile written
+Minsk                        DROPPED — no usable cut
+yerevan-centre               NOT FETCHED — no tile written
+Yerevan                      DROPPED — no usable cut
+bratislava-centre            NOT FETCHED — no tile written
+Bratislava                   DROPPED — no usable cut
+sofia-centre                 NOT FETCHED — no tile written
+Sofia                        DROPPED — no usable cut
+vilnius-centre               NOT FETCHED — no tile written
+Vilnius                      DROPPED — no usable cut
+tallinn-centre               NOT FETCHED — no tile written
+Tallinn                      DROPPED — no usable cut
+riga-centre                  NOT FETCHED — no tile written
+Riga                         DROPPED — no usable cut
+caracas-centre               NOT FETCHED — no tile written
+Caracas                      DROPPED — no usable cut
+algiers-centre               NOT FETCHED — no tile written
+Algiers                      DROPPED — no usable cut
+kampala-centre               NOT FETCHED — no tile written
+Kampala                      DROPPED — no usable cut
+kabul-centre                 NOT FETCHED — no tile written
+Kabul                        DROPPED — no usable cut
+skopje-centre                NOT FETCHED — no tile written
+Skopje                       DROPPED — no usable cut
+sarajevo-centre              NOT FETCHED — no tile written
+Sarajevo                     DROPPED — no usable cut
+naypyidaw-centre             NOT FETCHED — no tile written
+Naypyidaw                    DROPPED — no usable cut
+kinshasa-centre              NOT FETCHED — no tile written
+Kinshasa                     DROPPED — no usable cut
+luanda-centre                NOT FETCHED — no tile written
+Luanda                       DROPPED — no usable cut
+addis-ababa-centre           NOT FETCHED — no tile written
+Addis Ababa                  DROPPED — no usable cut
+accra-centre                 NOT FETCHED — no tile written
+Accra                        DROPPED — no usable cut
+dodoma-centre                NOT FETCHED — no tile written
+Dodoma                       DROPPED — no usable cut
+dakar-centre                 NOT FETCHED — no tile written
+Dakar                        DROPPED — no usable cut
+yamoussoukro-centre          NOT FETCHED — no tile written
+Yamoussoukro                 DROPPED — no usable cut
+panama-city-centre           NOT FETCHED — no tile written
+Panama City                  DROPPED — no usable cut
+san-jose-centre              NOT FETCHED — no tile written
+San José                     DROPPED — no usable cut
+guatemala-city-centre        NOT FETCHED — no tile written
+Guatemala City               DROPPED — no usable cut
+quito-centre                 NOT FETCHED — no tile written
+Quito                        DROPPED — no usable cut
+la-paz-centre                NOT FETCHED — no tile written
+La Paz                       DROPPED — no usable cut
+asuncion-centre              NOT FETCHED — no tile written
+Asunción                     DROPPED — no usable cut
+amman-centre                 NOT FETCHED — no tile written
+Amman                        DROPPED — no usable cut
+beirut-centre                NOT FETCHED — no tile written
+Beirut                       DROPPED — no usable cut
+doha-centre                  NOT FETCHED — no tile written
+Doha                         DROPPED — no usable cut
+abu-dhabi-centre             NOT FETCHED — no tile written
+Abu Dhabi                    DROPPED — no usable cut
+kuwait-city-centre           NOT FETCHED — no tile written
+Kuwait City                  DROPPED — no usable cut
+riyadh-centre                NOT FETCHED — no tile written
+Riyadh                       DROPPED — no usable cut
+tashkent-centre              NOT FETCHED — no tile written
+Tashkent                     DROPPED — no usable cut
+baku-centre                  NOT FETCHED — no tile written
+Baku                         DROPPED — no usable cut
+tbilisi-centre               NOT FETCHED — no tile written
+Tbilisi                      DROPPED — no usable cut
+kathmandu-centre             NOT FETCHED — no tile written
+Kathmandu                    DROPPED — no usable cut
+colombo-centre               NOT FETCHED — no tile written
+Colombo                      DROPPED — no usable cut
+ulaanbaatar-centre           NOT FETCHED — no tile written
+Ulaanbaatar                  DROPPED — no usable cut
+phnom-penh-centre            NOT FETCHED — no tile written
+Phnom Penh                   DROPPED — no usable cut
+vientiane-centre             NOT FETCHED — no tile written
+Vientiane                    DROPPED — no usable cut
+abuja-centre                 NOT FETCHED — no tile written
+Abuja                        DROPPED — no usable cut
+sanaa-centre                 NOT FETCHED — no tile written
+Sanaa                        DROPPED — no usable cut
+yaounde-centre               NOT FETCHED — no tile written
+Yaoundé                      DROPPED — no usable cut
+reykjavik-centre             NOT FETCHED — no tile written
+Reykjavík                    DROPPED — no usable cut
+tunis-centre                 NOT FETCHED — no tile written
+Tunis                        DROPPED — no usable cut
+baghdad-centre               NOT FETCHED — no tile written
+Baghdad                      DROPPED — no usable cut
+damascus-centre              NOT FETCHED — no tile written
+Damascus                     DROPPED — no usable cut
+tirana-centre                NOT FETCHED — no tile written
+Tirana                       DROPPED — no usable cut
+santo-domingo-centre         NOT FETCHED — no tile written
+Santo Domingo                DROPPED — no usable cut
+khartoum-centre              NOT FETCHED — no tile written
+Khartoum                     DROPPED — no usable cut
+harare-centre                NOT FETCHED — no tile written
+Harare                       DROPPED — no usable cut
+luxembourg-centre            NOT FETCHED — no tile written
+Luxembourg                   DROPPED — no usable cut
+nicosia-centre               NOT FETCHED — no tile written
+Nicosia                      DROPPED — no usable cut
+ouagadougou-centre           NOT FETCHED — no tile written
+Ouagadougou                  DROPPED — no usable cut
+tripoli-centre               NOT FETCHED — no tile written
+Tripoli                      DROPPED — no usable cut
+chi-in-u-centre              NOT FETCHED — no tile written
+Chișinău                     DROPPED — no usable cut
+lusaka-centre                NOT FETCHED — no tile written
+Lusaka                       DROPPED — no usable cut
+bishkek-centre               NOT FETCHED — no tile written
+Bishkek                      DROPPED — no usable cut
+podgorica-centre             NOT FETCHED — no tile written
+Podgorica                    DROPPED — no usable cut
+maputo-centre                NOT FETCHED — no tile written
+Maputo                       DROPPED — no usable cut
+antananarivo-centre          NOT FETCHED — no tile written
+Antananarivo                 DROPPED — no usable cut
+tegucigalpa-centre           NOT FETCHED — no tile written
+Tegucigalpa                  DROPPED — no usable cut
+pyongyang-centre             NOT FETCHED — no tile written
+Pyongyang                    DROPPED — no usable cut
+brazzaville-centre           NOT FETCHED — no tile written
+Brazzaville                  DROPPED — no usable cut
+port-au-prince-centre        NOT FETCHED — no tile written
+Port-au-Prince               DROPPED — no usable cut
+valletta-centre              NOT FETCHED — no tile written
+Valletta                     DROPPED — no usable cut
+bamako-centre                NOT FETCHED — no tile written
+Bamako                       DROPPED — no usable cut
+mogadishu-centre             NOT FETCHED — no tile written
+Mogadishu                    DROPPED — no usable cut
+kigali-centre                NOT FETCHED — no tile written
+Kigali                       DROPPED — no usable cut
+niamey-centre                NOT FETCHED — no tile written
+Niamey                       DROPPED — no usable cut
+lilongwe-centre              NOT FETCHED — no tile written
+Lilongwe                     DROPPED — no usable cut
+san-salvador-centre          NOT FETCHED — no tile written
+San Salvador                 DROPPED — no usable cut
+muscat-centre                NOT FETCHED — no tile written
+Muscat                       DROPPED — no usable cut
+pristina-centre              NOT FETCHED — no tile written
+Pristina                     DROPPED — no usable cut
+kingston-centre              NOT FETCHED — no tile written
+Kingston                     DROPPED — no usable cut
+managua-centre               NOT FETCHED — no tile written
+Managua                      DROPPED — no usable cut
+gaborone-centre              NOT FETCHED — no tile written
+Gaborone                     DROPPED — no usable cut
+dushanbe-centre              NOT FETCHED — no tile written
+Dushanbe                     DROPPED — no usable cut
+windhoek-centre              NOT FETCHED — no tile written
+Windhoek                     DROPPED — no usable cut
+libreville-centre            NOT FETCHED — no tile written
+Libreville                   DROPPED — no usable cut
+paramaribo-centre            NOT FETCHED — no tile written
+Paramaribo                   DROPPED — no usable cut
+port-of-spain-centre         NOT FETCHED — no tile written
+Port of Spain                DROPPED — no usable cut
+nouakchott-centre            NOT FETCHED — no tile written
+Nouakchott                   DROPPED — no usable cut
+freetown-centre              NOT FETCHED — no tile written
+Freetown                     DROPPED — no usable cut
+nassau-centre                NOT FETCHED — no tile written
+Nassau                       DROPPED — no usable cut
+djibouti-centre              NOT FETCHED — no tile written
+Djibouti                     DROPPED — no usable cut
+georgetown-centre            NOT FETCHED — no tile written
+Georgetown                   DROPPED — no usable cut
+andorra-la-vella-centre      NOT FETCHED — no tile written
+Andorra la Vella             DROPPED — no usable cut
+monaco-centre                NOT FETCHED — no tile written
+Monaco                       DROPPED — no usable cut
+port-louis-centre            NOT FETCHED — no tile written
+Port Louis                   DROPPED — no usable cut
+manama-centre                NOT FETCHED — no tile written
+Manama                       DROPPED — no usable cut
+lome-centre                  NOT FETCHED — no tile written
+Lomé                         DROPPED — no usable cut
+ashgabat-centre              NOT FETCHED — no tile written
+Ashgabat                     DROPPED — no usable cut
+thimphu-centre               NOT FETCHED — no tile written
+Thimphu                      DROPPED — no usable cut
+bandar-seri-begawan-centre   NOT FETCHED — no tile written
+Bandar Seri Begawan          DROPPED — no usable cut
+male-centre                  NOT FETCHED — no tile written
+Malé                         DROPPED — no usable cut

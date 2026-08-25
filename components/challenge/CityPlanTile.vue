@@ -10,7 +10,12 @@
          teaches. Even-odd carves the river islands out of their own water. -->
     <path v-if="paths.sea" class="sea" :d="paths.sea" />
     <path v-if="paths.waterFill" class="water-fill" :d="paths.waterFill" />
-    <path v-if="paths.waterLine" class="water-line" :d="paths.waterLine" />
+    <path
+      v-if="paths.waterLine"
+      class="water-line"
+      :d="paths.waterLine"
+      :stroke-width="paths.waterLineWidth ?? 8"
+    />
     <path v-if="showGreen && paths.green" class="green" :d="paths.green" />
 
     <!-- A layer wipes on rather than drawing its strokes end to end: the
@@ -95,7 +100,6 @@ const drawn = computed(() => props.layers.filter(layer => props.paths[layer]))
 .water-line {
   fill: none;
   stroke: var(--plan-water);
-  stroke-width: 8;
   stroke-linecap: round;
 }
 
