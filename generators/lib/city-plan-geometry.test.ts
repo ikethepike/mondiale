@@ -820,6 +820,18 @@ describe('dropEnclosedBodies', () => {
     expect(kept[0].inners).toHaveLength(1)
   })
 
+  it('drops one of two names for the same water', () => {
+    // Sydney Harbour and Port Jackson are the same harbour mapped twice, and
+    // neither encloses the other cleanly — sampled overlap sat at 55%/43%.
+    // Their near-equal AREA is the evidence; two coincident outers otherwise
+    // cancel under even-odd and the harbour paints as land.
+    const kept = dropEnclosedBodies([
+      { outers: [ring(0, 0, 1000, 600)], inners: [] },
+      { outers: [ring(20, 20, 1020, 620)], inners: [] },
+    ])
+    expect(kept).toHaveLength(1)
+  })
+
   it('keeps genuinely separate waters', () => {
     const kept = dropEnclosedBodies([
       { outers: [ring(0, 0, 300, 300)], inners: [] },

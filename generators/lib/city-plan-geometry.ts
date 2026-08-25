@@ -508,6 +508,12 @@ export const stitchDirected = <T>(
   return chains
 }
 
+/** Two bodies whose areas agree this closely are the same water twice named. */
+const COINCIDENT_AREA_SHARE = 0.9
+
+/** How much two same-area bodies must overlap before one is a second name. */
+const COINCIDENT_OVERLAP = 0.3
+
 /** One waterbody's rings, kept together so overlap policy can act per body. */
 export interface WaterBody {
   outers: TilePoint[][]
@@ -527,28 +533,56 @@ export interface WaterBody {
  * Enclosure is judged on the clipped rings by sampled containment, largest
  * body first, so a chain of nested names (sea → bay → inlet) collapses onto
  * the one that actually paints.
+ *
+ * The threshold is deliberately below half, because the commonest case is not
+ * nesting at all: OSM often maps ONE body of water twice under two names —
+ * Sydney Harbour and Port Jackson are the same harbour, clipping to areas
+ * within 0.1% of each other — and two coincident outers cancel just as surely
+ * as a nested pair. Anything sharing most of its ground with a body already
+ * kept is a second name for it.
  */
+/** Share of a body that must sit inside a larger one to count as nested. */
+const ENCLOSED_NESTED_SHARE = 0.9
+
 export const dropEnclosedBodies = (bodies: readonly WaterBody[]): WaterBody[] => {
   const area = (body: WaterBody) =>
     body.outers.reduce((total, ring) => total + Math.abs(signedArea(ring)), 0)
   const ordered = [...bodies].sort((a, b) => area(b) - area(a))
   const kept: WaterBody[] = []
 
+  /** How much of `body` lies inside `larger`, sampled along its own rings. */
+  const sharedWith = (body: WaterBody, larger: WaterBody): number => {
+    let inside = 0
+    let sampled = 0
+    for (const ring of body.outers) {
+      for (let i = 0; i < ring.length; i += 5) {
+        sampled++
+        if (pointInRings(larger.outers, ring[i])) inside++
+      }
+    }
+    return sampled ? inside / sampled : 0
+  }
+
   for (const body of ordered) {
-    const enclosed =
-      body.outers.length > 0 &&
-      kept.some(larger =>
-        body.outers.every(ring => {
-          let inside = 0
-          let sampled = 0
-          for (let i = 0; i < ring.length; i += 5) {
-            sampled++
-            if (pointInRings(larger.outers, ring[i])) inside++
-          }
-          return sampled > 0 && inside / sampled >= 0.9
-        })
-      )
-    if (!enclosed) kept.push(body)
+    const mine = area(body)
+    const duplicate = kept.some(larger => {
+      // Same water under two names: OSM maps Sydney Harbour and Port Jackson as
+      // separate relations covering the same harbour, and two coincident outers
+      // cancel under even-odd exactly as a nested pair would. Judged on AREA
+      // rather than containment, because neither encloses the other cleanly —
+      // sampled overlap sat at 55%/43%, either side of any threshold — while
+      // their areas agree to a tenth of a percent.
+      const theirs = area(larger)
+      const ratio = theirs > 0 ? Math.min(mine, theirs) / Math.max(mine, theirs) : 0
+      // Coincident bodies need only overlap materially; their equal areas are
+      // the real evidence, and sampled overlap between two tracings of the same
+      // shoreline sits well below full containment (Sydney measured 43%).
+      if (ratio > COINCIDENT_AREA_SHARE && sharedWith(body, larger) > COINCIDENT_OVERLAP)
+        return true
+      // Genuinely nested: a bay inside its parent lake, wholly contained.
+      return sharedWith(body, larger) >= ENCLOSED_NESTED_SHARE
+    })
+    if (!duplicate) kept.push(body)
   }
 
   return kept

@@ -7,12 +7,17 @@
  */
 import type {
   GroundPlanChallenge,
+  GroundPlanHint,
   GroundPlanCity,
   GroundPlanCut,
   GroundPlanLayer,
 } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty } from '~~/types/game.types'
 import { CAPITALS } from '~~/data/capitals.gen'
+import { COUNTRIES } from '~~/data/countries.gen'
+import { capitalStar } from '~~/lib/capitals'
+import { formatCompact } from '~~/lib/number'
+import { REGION_LABELS } from '~~/lib/variant'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
 import { isHardMode } from '~~/lib/game-rules'
 import { sample } from '~~/lib/arrays'
@@ -107,6 +112,56 @@ export const groundPlanRemainingFraction = (
 export const groundPlanImage = (entry: GroundPlanCity): string | undefined =>
   entry.image ??
   (CAPITALS[entry.country]?.name === entry.city ? CAPITALS[entry.country]?.image : undefined)
+
+/**
+ * The hint ladder for one city, easiest first.
+ *
+ * The plan alone is a hard question: most players cannot read a street grid
+ * cold, and a round nobody wins teaches nothing. Every rung is a fact worth
+ * knowing about the country on its own terms — where it sits, what is spoken
+ * there, what it pays with — so the wait is still time spent learning rather
+ * than time spent stuck.
+ *
+ * Ordered so each narrows further than the last. The city's initial comes
+ * last because it is the one that gives the answer away rather than teaching
+ * anything, and a rung whose fact is missing is skipped instead of shipping
+ * a hint that says nothing.
+ */
+export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
+  const country = COUNTRIES[entry.country]
+  if (!country) return []
+
+  const hints: GroundPlanHint[] = []
+
+  const region = REGION_LABELS[country.region]
+  if (region) hints.push({ kind: 'region', text: `Somewhere in ${region}` })
+
+  const spoken = country.officialLanguages?.length ? country.officialLanguages : country.languages
+  const language = spoken?.[0]
+  if (language) {
+    hints.push({
+      kind: 'language',
+      text:
+        spoken.length > 1
+          ? `They speak ${language} here, among others`
+          : `They speak ${language} here`,
+    })
+  }
+
+  if (country.currency) hints.push({ kind: 'currency', text: `Paid for in ${country.currency}` })
+
+  const population = capitalStar(entry.country)?.population
+  if (population) {
+    hints.push({
+      kind: 'size',
+      text: `About ${formatCompact(population)} people live in the city itself`,
+    })
+  }
+
+  hints.push({ kind: 'initial', text: `The name begins with “${entry.city.charAt(0)}”` })
+
+  return hints
+}
 
 /** Every spelling a typed answer may arrive as, for one roster city. */
 export const citySpellings = (entry: GroundPlanCity): string[] => [

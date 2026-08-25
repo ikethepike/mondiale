@@ -51,6 +51,18 @@
          of cities would be the answer sheet), so reserving room below it just
          floats the console 200px off the floor. -->
     <footer v-if="!resolved">
+      <!-- The rungs stack against the console, newest last, so the freshest
+           fact sits closest to where the player is typing. -->
+      <TransitionGroup v-if="ladder.length" tag="ul" name="hint" class="hint-ladder">
+        <li
+          v-for="(rung, index) in ladder"
+          :key="rung.kind"
+          class="hint-chip"
+          :style="{ '--rung-age': ladder.length - 1 - index }"
+        >
+          {{ rung.text }}
+        </li>
+      </TransitionGroup>
       <template v-if="challenge.options">
         <ChallengeTimerRadial
           class="footer-clock"
@@ -112,7 +124,7 @@ import { cityCountryByName } from '~~/lib/cities'
 import { loadCityPlan } from '~~/lib/city-plan-tiles'
 import { groundPlanRemainingFraction, revealedLayers } from '~~/lib/ground-plan'
 import { buzzScore } from '~~/lib/scoring'
-import { classicPlaySeconds } from '~~/lib/round-beats'
+import { classicPlaySeconds, GROUND_PLAN_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
 import { formatNumber } from '~~/lib/number'
 import { useIsPortrait } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -165,6 +177,22 @@ const shownLayers = computed(() => {
   if (!active) return []
   return resolved.value ? active.layers : revealedLayers(active, revealedCount.value)
 })
+
+/**
+ * The ladder opens once every layer has landed, plus a breath — the plan gets
+ * first refusal before the words step in — then releases one rung per interval.
+ */
+const shownHints = computed(() => {
+  const active = challenge.value
+  if (!active?.hints?.length || !started.value) return 0
+  const drawn = active.layers.length * active.secondsPerLayer
+  const elapsed = totalSeconds.value - secondsLeft.value
+  const sinceLadder = elapsed - drawn - GROUND_PLAN_HINT_LEAD_SECONDS
+  if (sinceLadder < 0) return 0
+  return Math.min(active.hints.length, 1 + Math.floor(sinceLadder / active.secondsPerHint))
+})
+
+const ladder = computed(() => (challenge.value?.hints ?? []).slice(0, shownHints.value))
 
 const ladderCaption = computed(() => {
   const active = challenge.value
@@ -269,6 +297,7 @@ const commit = () => {
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
+@use '~/assets/scss/rules/ink' as *;
 
 // The plan is the ground the round is played on, so it sits under everything
 // and takes the whole viewport. The shell is `passthrough`; the chrome opts
@@ -352,6 +381,39 @@ footer {
 .footer-clock {
   flex: none;
   pointer-events: auto;
+}
+
+// Rungs climb and dim as newer ones land beneath them, so the freshest fact is
+// always the brightest thing above the console.
+.hint-ladder {
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  align-items: center;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.hint-chip {
+  @include caption-surface(1rem);
+  padding: 0.5rem 1.1rem;
+  font-size: 1.4rem;
+  text-align: center;
+  color: var(--dark-blue);
+  opacity: calc(1 - var(--rung-age, 0) * 0.22);
+}
+
+.hint-enter-active {
+  transition:
+    opacity var(--motion-quick),
+    transform var(--motion-quick);
+}
+
+.hint-enter-from {
+  opacity: 0;
+  transform: translateY(0.6rem);
 }
 
 // Over a busy plan the cards need their cream back — the shared option card is

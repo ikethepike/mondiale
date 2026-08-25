@@ -98,7 +98,7 @@
  */
 import { computed, defineComponent, h, nextTick, ref, watch } from 'vue'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
-import { groundPlanImage } from '~~/lib/ground-plan'
+import { groundPlanHints, groundPlanImage } from '~~/lib/ground-plan'
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import ViewGroupChallenge from '~/components/view/ViewGroupChallenge.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
@@ -156,8 +156,10 @@ import { listScrollTop } from '~~/lib/use-viewport'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import {
   BEAT_VERDICT_HOLD_MS,
-  isClassicGroupRound,
+  GROUND_PLAN_SECONDS_PER_HINT,
   TIMELINE_BROWSE_CAP_MS,
+  groundPlanSeconds,
+  isClassicGroupRound,
 } from '~~/lib/round-beats'
 import { settleGroupRound } from '~~/lib/harness/settle-group-round'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
@@ -813,6 +815,7 @@ const groundPlanGame = (city: string | undefined, signature: boolean): Game => {
   const decoys = GROUND_PLAN_CITIES.filter(other => other.city !== entry.city)
     .slice(0, 3)
     .map(other => other.city)
+  const hints = signature ? groundPlanHints(entry) : []
 
   return mockGame('group-challenge', [
     groupRound({
@@ -825,10 +828,13 @@ const groundPlanGame = (city: string | undefined, signature: boolean): Game => {
       ...(groundPlanImage(entry) ? { image: groundPlanImage(entry) } : {}),
       layers: ['fabric', 'arterials', 'rail', 'bridges'],
       secondsPerLayer: 8,
+      // Hints ride the non-hard variant, matching how the dealer splits them.
+      ...(signature ? { hints } : {}),
+      secondsPerHint: GROUND_PLAN_SECONDS_PER_HINT,
       // The signature cut offers the option table; the generic one free-types,
       // which is how the dealer splits them by difficulty.
       ...(signature ? { options: [entry.city, ...decoys].sort(), maximumGuesses: 2 } : {}),
-      durationSeconds: 38,
+      durationSeconds: groundPlanSeconds(4, hints.length),
       maximumPoints: MAXIMUM_POINTS,
     }),
   ])

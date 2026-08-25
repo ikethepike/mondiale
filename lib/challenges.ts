@@ -96,10 +96,15 @@ import {
   crossingsForCut,
   cutForDifficulty,
   groundPlanCities,
+  groundPlanHints,
   groundPlanImage,
   GROUND_PLAN_LAYERS,
 } from '~~/lib/ground-plan'
-import { GROUND_PLAN_SECONDS_PER_LAYER, groundPlanSeconds } from '~~/lib/round-beats'
+import {
+  GROUND_PLAN_SECONDS_PER_HINT,
+  GROUND_PLAN_SECONDS_PER_LAYER,
+  groundPlanSeconds,
+} from '~~/lib/round-beats'
 import { isBrainSeat } from './bots'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
@@ -121,6 +126,7 @@ import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
+  isHardMode,
   playableCountries,
   playableWorldCountries,
 } from './game-rules'
@@ -1143,6 +1149,15 @@ const getGroundPlanChallenge = (game: gameTypes.Game): GroundPlanChallenge | und
   }
 
   const layers = [...GROUND_PLAN_LAYERS]
+  // Easy mode gets the whole ladder; normal drops the initial, which gives the
+  // answer away rather than teaching anything. Hard reads the plan cold.
+  const ladder = groundPlanHints(entry)
+  const hints = isHardMode(game)
+    ? []
+    : game.difficulty === 'easy'
+      ? ladder
+      : ladder.filter(hint => hint.kind !== 'initial')
+
   return {
     _type: 'ground-plan-challenge',
     country: entry.country,
@@ -1155,9 +1170,11 @@ const getGroundPlanChallenge = (game: gameTypes.Game): GroundPlanChallenge | und
     ...(groundPlanImage(entry) ? { image: groundPlanImage(entry) } : {}),
     layers,
     secondsPerLayer: GROUND_PLAN_SECONDS_PER_LAYER,
+    ...(hints.length ? { hints } : {}),
+    secondsPerHint: GROUND_PLAN_SECONDS_PER_HINT,
     options,
     ...(options ? { maximumGuesses: GROUND_PLAN_ATTEMPTS } : {}),
-    durationSeconds: groundPlanSeconds(layers.length),
+    durationSeconds: groundPlanSeconds(layers.length, hints.length),
     maximumPoints: maximumRoundPoints(game),
   }
 }

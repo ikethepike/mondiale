@@ -288,6 +288,18 @@ export interface GroundPlanCity {
   image?: string
 }
 
+/**
+ * What a Ground Plan hint tells you. Ordered as the ladder deals them, each
+ * narrowing the field further than the last.
+ */
+export type GroundPlanHintKind = 'region' | 'language' | 'currency' | 'size' | 'initial'
+
+export interface GroundPlanHint {
+  kind: GroundPlanHintKind
+  /** Rendered copy — the dealer resolves it so both ends read one string. */
+  text: string
+}
+
 /** One layer class of a city's plan, in the order the ladder lands them. */
 export type GroundPlanLayer = 'fabric' | 'arterials' | 'rail' | 'bridges' | 'green'
 
@@ -339,6 +351,16 @@ export interface GroundPlanChallenge {
   /** Layer classes that draw during play, in order. */
   layers: GroundPlanLayer[]
   secondsPerLayer: number
+  /**
+   * Facts that land one by one once the plan has finished drawing.
+   *
+   * The plan alone is a hard question — most players will not read a street
+   * grid cold — and a round everyone fails teaches nothing. Each rung is a fact
+   * about the country worth knowing on its own, so the time spent waiting is
+   * still time spent learning.
+   */
+  hints?: GroundPlanHint[]
+  secondsPerHint: number
   /** Multiple-choice cities (includes `city`) — offered outside hard mode,
    *  where players free-type against the whole register. */
   options?: string[]
