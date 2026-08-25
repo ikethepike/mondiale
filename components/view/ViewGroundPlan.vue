@@ -245,14 +245,17 @@ const commit = () => {
 
 .stage {
   flex: 1;
+  z-index: 2;
   min-height: 0;
   display: flex;
   position: relative;
   align-items: center;
   justify-content: center;
+  padding: 0.8rem 0;
 
-  // The tile is square; the stage rarely is. Cap it to the shorter axis so the
-  // whole cut stays in frame on any viewport.
+  // The tile is square and the stage rarely is, so it is capped to the shorter
+  // axis — the whole cut has to stay in frame or the round asks a different
+  // question than the one it dealt.
   :deep(.city-plan) {
     width: auto;
     aspect-ratio: 1;
@@ -260,9 +263,9 @@ const commit = () => {
   }
 }
 
-// The tile is the whole question, so it fills the stage behind the chrome.
 .verdict {
-  z-index: 1;
+  z-index: 3;
+  position: absolute;
   max-width: min(92vw, 34rem);
 }
 
@@ -270,7 +273,25 @@ const commit = () => {
   opacity: 0.8;
 }
 
-.options {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+footer {
+  display: flex;
+  gap: 1.4rem;
+  align-items: center;
+  flex-direction: column;
+}
+
+.footer-clock {
+  flex: none;
+}
+
+.card-options {
+  grid-template-columns: repeat(2, minmax(14rem, 20rem));
+}
+
+@media (max-width: $tablet) {
+  .card-options {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

@@ -86,6 +86,18 @@
   }
 }
 
+// A layer of a city plan sweeps in from the west. Wanted where a draw-on would
+// be invisible: `stroke-draw` normalizes the whole path, so a layer of several
+// thousand subpaths draws each one a sliver at a time and reads as nothing.
+@keyframes plan-wipe {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 // A dashed stroke draws itself on (pair with stroke-dasharray/-offset)
 @keyframes stroke-draw {
   to {

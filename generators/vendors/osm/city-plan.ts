@@ -66,19 +66,31 @@ const sameNode = (a: GeoPoint, b: GeoPoint): boolean =>
 const samePoint = (a: TilePoint, b: TilePoint): boolean => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1
 
 /**
- * A relation's outer rings, assembled. Inner rings are dropped rather than
- * subtracted: they are handled by the even-odd fill on the emitted path, and
- * an unclosed inner would fill a river island solid.
+ * A relation's rings, assembled — outers AND inners.
+ *
+ * The inners are what carve river islands out of the water. Dropping them and
+ * leaning on the even-odd fill does not work, because with no inner ring in the
+ * path there is nothing for the rule to subtract: the Île de la Cité floods and
+ * Paris sits half under the Seine.
+ *
+ * Both roles are stitched in one pass and the even-odd fill on the emitted path
+ * does the rest — an inner ring nested inside an outer is a hole by definition.
  */
 const geometriesOf = (element: OverpassElement): GeoPoint[][] => {
   if (element.type === 'way' && element.geometry) return [element.geometry]
   if (element.type !== 'relation' || !element.members) return []
-  return stitchChains(
-    element.members
-      .filter(member => member.geometry && member.role !== 'inner')
-      .map(member => member.geometry!),
-    sameNode
-  )
+  const rings = (role: 'outer' | 'inner') =>
+    stitchChains(
+      element
+        .members!.filter(
+          member =>
+            member.geometry &&
+            (role === 'inner' ? member.role === 'inner' : member.role !== 'inner')
+        )
+        .map(member => member.geometry!),
+      sameNode
+    )
+  return [...rings('outer'), ...rings('inner')]
 }
 
 /**
