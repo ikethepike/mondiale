@@ -221,7 +221,9 @@ export const buildTile = (
       if (ring.length > 3) (signedArea(ring) > 0 ? islandRings : seaRings).push(ring)
       continue
     }
-    for (const piece of clipChainToFrame(chain.map(project), width, height)) {
+    for (const piece of clipChainToFrame(chain.map(project), width, height, {
+      reachEdges: true,
+    })) {
       const slim = simplifyLine(piece, tolerance)
       if (slim.length > 1) openPieces.push(slim)
     }

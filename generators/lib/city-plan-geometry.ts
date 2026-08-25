@@ -312,11 +312,18 @@ const reachFrameEdge = (piece: TilePoint[], width: number, height: number): Tile
  * Clip an open, DIRECTED polyline to the frame, splitting it into the pieces
  * that lie inside. Liang–Barsky per segment; order is preserved because for a
  * coastline the direction is the meaning.
+ *
+ * `reachEdges` extends a piece that stops mid-frame out to the boundary along
+ * its own heading. Coastlines need it — a sea ring cannot close on an endpoint
+ * floating in open space — but nothing else does, and applying it everywhere
+ * turned every canal ending inside the frame into a line ruled clean across
+ * the whole tile. London and Paris grew a fan of blue bars that way.
  */
 export const clipChainToFrame = (
   chain: readonly TilePoint[],
   width: number,
-  height: number
+  height: number,
+  { reachEdges = false }: { reachEdges?: boolean } = {}
 ): TilePoint[][] => {
   const clipSegment = (a: TilePoint, b: TilePoint): [TilePoint, TilePoint] | undefined => {
     let t0 = 0
@@ -366,7 +373,9 @@ export const clipChainToFrame = (
   }
   flush()
 
-  return pieces.map(piece => reachFrameEdge(piece, width, height)).filter(piece => piece.length > 1)
+  return (reachEdges ? pieces.map(piece => reachFrameEdge(piece, width, height)) : pieces).filter(
+    piece => piece.length > 1
+  )
 }
 
 /**

@@ -613,7 +613,25 @@ describe('clipChainToFrame', () => {
     expect(pieces).toHaveLength(2)
   })
 
-  it('pushes an endpoint stranded mid-frame out to the boundary', () => {
+  it('leaves an interior endpoint alone unless asked to reach the edge', () => {
+    // Only a coastline needs its ends on the boundary. Extending everything
+    // ruled canals clean across the tile — London and Paris grew blue bars.
+    const canal = clipChainToFrame(
+      [
+        [800, 400],
+        [840, 460],
+      ],
+      W,
+      H
+    )
+    expect(canal).toHaveLength(1)
+    expect(canal[0]).toEqual([
+      [800, 400],
+      [840, 460],
+    ])
+  })
+
+  it('pushes an endpoint stranded mid-frame out to the boundary when asked', () => {
     // Overpass never returned the next way along the coast, so the chain just
     // stops. The sea closure needs both ends on the boundary.
     const pieces = clipChainToFrame(
@@ -622,7 +640,8 @@ describe('clipChainToFrame', () => {
         [600, 500],
       ],
       W,
-      H
+      H,
+      { reachEdges: true }
     )
     expect(pieces).toHaveLength(1)
     const end = pieces[0].at(-1)!
