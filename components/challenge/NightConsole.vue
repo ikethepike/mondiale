@@ -46,6 +46,7 @@ const low = computed(
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
 // Stands in a .shell-footer — the footer owns the berth and the keyboard
 // lift; the console only centers itself and dresses the glass.
@@ -161,6 +162,15 @@ const low = computed(
 .night-console.night-console :deep(.ghost-placeholder) {
   font-size: 2rem;
   color: hsla(216, 30%, 65%, 0.6);
+}
+
+// A phone's console is narrower than the prompt at display size — the
+// centred ghost overflowed both ends and read as "ype a country before it"
+@media (max-width: $phone) {
+  .night-console.night-console :deep(input),
+  .night-console.night-console :deep(.ghost-placeholder) {
+    font-size: 1.6rem;
+  }
 }
 
 // CountryGuessInput's form wears the parchment .map-caption pill by default —

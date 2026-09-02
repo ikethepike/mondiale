@@ -9,9 +9,11 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 export const SUNSET_TILT = 0.17
 
 /**
- * The night window per difficulty: how many countries stand inside the frame,
- * the share of them that passes, and how long the sweep buys each one.
- * Easy never deals the finale; its row keeps the record total.
+ * The night window per difficulty: how many countries the dealt frame holds,
+ * the share of the field that passes, and how long the sweep buys each one.
+ * The ratios are set against the field a SCREEN puts in play — two to three
+ * times the dealt count on a desktop — not the dealt window alone. Easy never
+ * deals the finale; its row keeps the record total.
  */
 export const SUNSET_TUNING: {
   [difficulty in GameDifficulty]: {
@@ -20,9 +22,9 @@ export const SUNSET_TUNING: {
     secondsPerCountry: number
   }
 } = {
-  easy: { countries: [8, 11], quotaRatio: 0.4, secondsPerCountry: 6 },
-  normal: { countries: [10, 14], quotaRatio: 0.5, secondsPerCountry: 5 },
-  hard: { countries: [12, 16], quotaRatio: 0.6, secondsPerCountry: 4 },
+  easy: { countries: [8, 11], quotaRatio: 0.3, secondsPerCountry: 6 },
+  normal: { countries: [10, 14], quotaRatio: 0.35, secondsPerCountry: 5 },
+  hard: { countries: [12, 16], quotaRatio: 0.45, secondsPerCountry: 4 },
 }
 
 export const SUNSET_SECONDS: [minimum: number, maximum: number] = [40, 120]
