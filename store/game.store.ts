@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { LatLng } from '~~/lib/geo'
+import type { LatLng, MapBox } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
 import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
@@ -107,6 +107,9 @@ interface GameStoreState {
     focus: ISOCountryCode[]
     /** Context countries whose centers stay in frame (soft inclusion). */
     focusContext: ISOCountryCode[]
+    /** An explicit map-space box the camera frames — a mode whose subject is
+     *  a region rather than a country (the sunset window). */
+    frame?: MapBox
     /** Frame tightness for modes whose subject is the feature itself — the
      *  default pad floor outgrows a small river or lake. */
     framePad?: { scale?: number; floor?: number }
@@ -265,6 +268,7 @@ export const useGameStore = defineStore('game', {
       countryLogoNames: undefined,
       focus: [],
       focusContext: [],
+      frame: undefined,
       framePad: undefined,
       tints: {},
       pin: undefined,

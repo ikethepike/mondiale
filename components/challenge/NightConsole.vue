@@ -1,7 +1,13 @@
 <template>
   <div class="night-console" :class="{ low }">
     <div class="tally">
-      <span class="lit">{{ lit }} lit</span> · {{ quota }} to pass
+      <span class="lit"
+        >{{ lit }}<template v-if="beads"> of {{ beads.length }}</template> lit</span
+      >
+      · {{ quota }} to pass
+    </div>
+    <div v-if="beads" class="lanterns" aria-hidden="true">
+      <span v-for="(bead, index) in beads" :key="index" class="lantern" :class="bead" />
     </div>
     <div class="console-row">
       <div class="console-input"><slot /></div>
@@ -15,11 +21,14 @@
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 
+export type LanternState = 'pending' | 'lit' | 'dark'
+
 /**
- * The night modes' shared bottom card: dark glass, the lit/quota tally, a
- * slotted input (bare or CountryGuessInput) with the round clock docked at
- * the row's end — the radial dial dressed for the dark, its arc in the same
- * amber as the lit tally.
+ * The night modes' shared bottom card: dark glass, the lit/quota tally, an
+ * optional lantern row (one bead per subject in play, in the order the night
+ * takes them), a slotted input (bare or CountryGuessInput) with the round
+ * clock docked at the row's end — the radial dial dressed for the dark, its
+ * arc in the same amber as the lit tally.
  */
 const props = defineProps<{
   lit: number
@@ -27,6 +36,7 @@ const props = defineProps<{
   secondsLeft: number
   durationSeconds: number
   feedback?: string
+  beads?: LanternState[]
 }>()
 
 // The console's border warms over the round's final fifth — the same slow
@@ -92,6 +102,36 @@ const low = computed(
   .lit {
     color: var(--night-amber);
     font-weight: bold;
+  }
+}
+
+.lanterns {
+  gap: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.lantern {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 0.1rem solid hsla(216, 30%, 65%, 0.5);
+  background: hsla(216, 45%, 22%, 0.8);
+  transition:
+    background var(--motion-base) var(--ease-smooth),
+    border-color var(--motion-base) var(--ease-smooth),
+    box-shadow var(--motion-base) var(--ease-smooth);
+
+  &.lit {
+    border-color: var(--night-amber);
+    background: var(--night-amber);
+    box-shadow: 0 0 0.6rem hsla(45, 96%, 65%, 0.75);
+  }
+
+  &.dark {
+    border-color: hsla(216, 30%, 40%, 0.4);
+    background: var(--night-page);
   }
 }
 

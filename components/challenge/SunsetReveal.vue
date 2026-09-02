@@ -4,7 +4,8 @@
        work and churning them buys nothing. -->
   <span class="sunset-reveal">
     <span class="headline">
-      You lit {{ named.length }} before the dark — {{ quota }} were needed
+      You lit {{ named.length }} of {{ challenge.countries.length }} before the dark —
+      {{ quota }} were needed
     </span>
     <span class="chips">
       <CountryChip
@@ -13,13 +14,9 @@
         tag="span"
         compact
         class="light-chip"
-        :class="[chip.held ? 'held' : 'taken', { extra: chip.extra }]"
-        :title="chip.extra ? 'Beyond the window' : undefined"
+        :class="chip.held ? 'held' : 'taken'"
         :country="COUNTRIES[chip.isoCode]"
       />
-      <span v-if="unlitBeyondCount" class="light-chip taken summary">
-        +{{ unlitBeyondCount }} more slipped into the night
-      </span>
     </span>
     <span v-if="sunGap" class="sun-line">{{ sunGap }}</span>
     <span class="credit-row">
@@ -34,20 +31,18 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { countryName } from '~~/lib/country'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The sunset scorecard: every window country as a flag chip — warm if the
- * player held it, night-dark if the dark took it — plus the mode's premise
- * made literal (the real sunset gap across the window).
+ * The sunset scorecard: every window country as a flag chip, east→west as the
+ * night took them — warm if the player held it, night-dark if the dark took
+ * it — plus the mode's premise made literal (the real sunset gap across the
+ * window).
  */
 const props = defineProps<{
   challenge: SunsetBlitzChallenge
   named: ISOCountryCode[]
-  /** Everything that could have scored: window ∪ what the screen showed. */
-  inPlay: ISOCountryCode[]
   quota: number
 }>()
 
@@ -55,34 +50,9 @@ const props = defineProps<{
 const sources = datasetAttribution('cities')
 
 const namedSet = computed(() => new Set(props.named))
-// The window in full, plus every beyond-window country the player actually
-// lit. The beyond-window countries they DIDN'T light fold into one summary
-// chip — on a wide screen that list runs to dozens and drowns the card.
-const chips = computed(() => {
-  const window = new Set(props.challenge.countries)
-  const litBeyond = props.named.filter(isoCode => !window.has(isoCode))
-  return [
-    ...props.challenge.countries.map(isoCode => ({
-      isoCode,
-      name: countryName(COUNTRIES[isoCode]),
-      held: namedSet.value.has(isoCode),
-      extra: false,
-    })),
-    ...litBeyond
-      .map(isoCode => ({
-        isoCode,
-        name: countryName(COUNTRIES[isoCode]),
-        held: true,
-        extra: true,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  ]
-})
-
-const unlitBeyondCount = computed(() => {
-  const shown = new Set([...props.challenge.countries, ...props.named])
-  return props.inPlay.filter(isoCode => !shown.has(isoCode)).length
-})
+const chips = computed(() =>
+  props.challenge.countries.map(isoCode => ({ isoCode, held: namedSet.value.has(isoCode) }))
+)
 
 // 4 minutes of real sunset per degree of longitude, east to west across the
 // window's biggest cities
@@ -137,20 +107,6 @@ const sunGap = computed(() => {
     :deep(.chip-flag) {
       opacity: 0.55;
     }
-  }
-
-  // Lit outside the dealt window — same warmth, a marked edge
-  &.extra {
-    border: 0.15rem dashed hsla(38, 85%, 45%, 0.6);
-  }
-
-  &.summary {
-    gap: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    padding-left: 0.9rem;
-    font-style: italic;
-    opacity: 0.85;
   }
 }
 

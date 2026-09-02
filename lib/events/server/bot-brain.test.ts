@@ -12,7 +12,8 @@ import type {
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import { oddOneOut } from '~~/types/challenges/final-challenge.type'
-import { sunsetQuota, yearbookYear } from '~~/lib/challenges/final-challenge'
+import { yearbookYear } from '~~/lib/challenges/final-challenge'
+import { sunsetQuota } from '~~/lib/sunset-window'
 import { EVENTS } from '~~/data/events.gen'
 import { gradeGroupAnswer } from './grade-group-answer'
 import {

@@ -17,7 +17,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { mapRegionCentre } from '~~/lib/challenges/final-challenge'
+import { mapRegionCentre } from '~~/lib/sunset-window'
 import { useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
 

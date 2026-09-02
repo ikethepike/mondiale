@@ -11,7 +11,8 @@ import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
-import { MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
+import { MAP_PATHS } from '~~/data/map.gen'
+import { pickSunsetWindow, SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-window'
 import type {
   BornChallenge,
   BoundaryChallenge,
@@ -62,7 +63,6 @@ import {
 } from '../migration'
 import { isNeighbour } from '../traversal'
 import { editDistance } from '../strings'
-import { mainlandBox } from '../geo'
 import {
   boundaryDeviation,
   largestRing,
@@ -130,7 +130,7 @@ const FINAL_DEALERS: Record<FinalChallengeType, FinalDealer> = {
   'membership-challenge': pool => getMembershipChallenge(pool),
   'treaty-challenge': pool => getTreatyChallenge(pool),
   'scales-challenge': pool => getScalesChallenge(pool),
-  'sunset-blitz-challenge': pool => getSunsetBlitzChallenge(pool),
+  'sunset-blitz-challenge': (pool, difficulty) => getSunsetBlitzChallenge(pool, difficulty),
   'born-challenge': (pool, difficulty) => getBornChallenge(pool, difficulty),
   'made-challenge': pool => getMadeChallenge(pool),
   'city-nocturne-challenge': (pool, difficulty) => getCityNocturneChallenge(pool, difficulty),
@@ -981,143 +981,19 @@ const getDiasporaChallenge = (
   }
 }
 
-const NIGHT_WINDOW_MAX = 12
-const NIGHT_WINDOW_MIN = 8
-const SUNSET_SECONDS_PER_COUNTRY = 4
-const SUNSET_QUOTA_RATIO = 0.35
-/** Terminator tilt off vertical, radians — the veil's top edge leads west. */
-export const SUNSET_TILT = 0.17
-
-/**
- * The pass mark: a share of the dealt window only. Wide screens show far more
- * countries — those are bonus routes to the quota, never quota inflation, or
- * a Europe board demands a dozen names in a minute.
- */
-export const sunsetQuota = (challenge: SunsetBlitzChallenge): number =>
-  Math.ceil(challenge.countries.length * challenge.quotaRatio)
-
-/** A country's centre in map space — screen coordinates, east = larger x. */
-export const mapRegionCentre = (isoCode: ISOCountryCode): { x: number; y: number } => {
-  const rings = MAP_REGIONS[isoCode]
-  if (!rings?.length) return { x: 0, y: 0 }
-  const [x, y, width, height] = rings[0]
-  return { x: x + width / 2, y: y + height / 2 }
-}
-
-/**
- * Position along the tilted dusk axis — the veil crosses countries in
- * DESCENDING order of this. Shared with the client so the tint timing and the
- * drawn terminator agree.
- */
-export const sunsetDuskCoordinate = (isoCode: ISOCountryCode): number => {
-  const { x, y } = mapRegionCentre(isoCode)
-  return x - y * Math.tan(SUNSET_TILT)
-}
-
-// The window must stay a REGION: a cluster hopping through giant countries
-// (Russia, China) can put centres half a world apart, and unbounded widening
-// then swallows the whole board — an 80-country window with a quota of 28.
-const NIGHT_WINDOW_SPAN_X = 420
-const NIGHT_WINDOW_SPAN_Y = 260
-const NIGHT_WINDOW_HARD_CAP = 16
-
-/**
- * Camera split for the window: a member whose mainland outgrows the window
- * itself (Russia) frames by centre via focusContext — its full box would blow
- * the shot out to half the planet.
- */
-export const sunsetCameraPlan = (
-  countries: ISOCountryCode[]
-): { focus: ISOCountryCode[]; context: ISOCountryCode[] } => {
-  const giant = (isoCode: ISOCountryCode) => {
-    const box = mainlandBox(MAP_REGIONS[isoCode], undefined)
-    return !!box && (box[2] > NIGHT_WINDOW_SPAN_X || box[3] > NIGHT_WINDOW_SPAN_Y)
+const getSunsetBlitzChallenge = (
+  pool: ISOCountryCode[],
+  difficulty: GameDifficulty
+): SunsetBlitzChallenge | undefined => {
+  const window = pickSunsetWindow(pool, difficulty)
+  if (!window) return undefined
+  return {
+    _type: 'sunset-blitz-challenge',
+    frame: window.frame,
+    countries: window.countries,
+    quotaRatio: SUNSET_TUNING[difficulty].quotaRatio,
+    durationSeconds: sunsetSeconds(window.countries.length, difficulty),
   }
-  const focus = countries.filter(isoCode => !giant(isoCode))
-  return focus.length
-    ? { focus, context: countries.filter(giant) }
-    : { focus: countries, context: [] }
-}
-
-const getSunsetBlitzChallenge = (pool: ISOCountryCode[]): SunsetBlitzChallenge | undefined => {
-  const poolSet = new Set(pool)
-
-  // Grow a contiguous cluster from a random seed via land borders — a dense
-  // core the camera can frame, on any board that has one — bounded in
-  // geographic span so it stays a window, not a hemisphere
-  for (const seed of shuffleArray([...pool])) {
-    const seedCentre = mapRegionCentre(seed)
-    const box = { left: seedCentre.x, right: seedCentre.x, top: seedCentre.y, bottom: seedCentre.y }
-    const fits = ({ x, y }: { x: number; y: number }) =>
-      Math.max(box.right, x) - Math.min(box.left, x) <= NIGHT_WINDOW_SPAN_X &&
-      Math.max(box.bottom, y) - Math.min(box.top, y) <= NIGHT_WINDOW_SPAN_Y
-    const extend = ({ x, y }: { x: number; y: number }) => {
-      box.left = Math.min(box.left, x)
-      box.right = Math.max(box.right, x)
-      box.top = Math.min(box.top, y)
-      box.bottom = Math.max(box.bottom, y)
-    }
-
-    const cluster = new Set<ISOCountryCode>([seed])
-    let frontier: ISOCountryCode[] = [seed]
-    while (frontier.length && cluster.size < NIGHT_WINDOW_MAX) {
-      const next: ISOCountryCode[] = []
-      for (const isoCode of frontier) {
-        for (const neighbour of BORDERS[isoCode] ?? []) {
-          if (cluster.size >= NIGHT_WINDOW_MAX) break
-          if (!poolSet.has(neighbour) || cluster.has(neighbour)) continue
-          const centre = mapRegionCentre(neighbour)
-          if (!fits(centre)) continue
-          extend(centre)
-          cluster.add(neighbour)
-          next.push(neighbour)
-        }
-      }
-      frontier = next
-    }
-    if (cluster.size < NIGHT_WINDOW_MIN) continue
-
-    // Modest widening pulls in enclaves and close non-neighbours within the
-    // window's own area (runtime visibility already lets the player name
-    // anything else on screen — the window only drives quota, camera, sweep)
-    const padX = (box.right - box.left) * 0.12 + 8
-    const padY = (box.bottom - box.top) * 0.12 + 8
-    const centreX = (box.left + box.right) / 2
-    const centreY = (box.top + box.bottom) / 2
-    const windowed = pool
-      .filter(isoCode => {
-        const { x, y } = mapRegionCentre(isoCode)
-        return (
-          x >= box.left - padX &&
-          x <= box.right + padX &&
-          y >= box.top - padY &&
-          y <= box.bottom + padY
-        )
-      })
-      .sort((a, b) => {
-        // The cluster is the window's identity; widened extras fill remaining
-        // seats nearest-first under the hard cap
-        const inCluster = Number(cluster.has(b)) - Number(cluster.has(a))
-        if (inCluster) return inCluster
-        const aCentre = mapRegionCentre(a)
-        const bCentre = mapRegionCentre(b)
-        return (
-          Math.hypot(aCentre.x - centreX, aCentre.y - centreY) -
-          Math.hypot(bCentre.x - centreX, bCentre.y - centreY)
-        )
-      })
-      .slice(0, NIGHT_WINDOW_HARD_CAP)
-
-    // Night falls east→west along the tilted terminator
-    const countries = windowed.sort((a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a))
-    return {
-      _type: 'sunset-blitz-challenge',
-      countries,
-      quotaRatio: SUNSET_QUOTA_RATIO,
-      durationSeconds: Math.min(90, Math.max(40, countries.length * SUNSET_SECONDS_PER_COUNTRY)),
-    }
-  }
-  return undefined
 }
 
 // --- The Boundary Commission -----------------------------------------------------
@@ -1378,12 +1254,9 @@ export const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<strin
 export const isCorrectFinalAnswer = ({
   challenge,
   submittedAnswer,
-  pool,
 }: {
   challenge: FinalChallengeItem
   submittedAnswer: FinalChallengeAnswer
-  /** The board's playable countries — scopes sunset-blitz validation. */
-  pool: ISOCountryCode[]
 }): boolean => {
   const throwTypeMismatch = (): never => {
     throw new TypeError(`Challenge type mismatch: ${submittedAnswer._type || challenge._type}`)
@@ -1498,12 +1371,10 @@ export const isCorrectFinalAnswer = ({
     }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
-      // Client-trust like higher-lower gates. The whole board is nameable
-      // (the camera shows more than the dealt window), so validate against
-      // the board pool; the quota is a share of the dealt window.
-      const board = new Set(pool)
+      // Client-trust like higher-lower gates; only the window's field counts
+      const field = new Set(challenge.countries)
       const named = [...new Set(submittedAnswer.namedCountries)].filter(
-        isoCode => isValidISOCode(isoCode) && board.has(isoCode)
+        isoCode => isValidISOCode(isoCode) && field.has(isoCode)
       )
       return named.length >= sunsetQuota(challenge)
     }

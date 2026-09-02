@@ -1149,10 +1149,10 @@ export const finalAnswerFor = async (
     changeDecade,
     madeAcceptedCountries,
     nocturneDealtCities,
-    sunsetQuota,
     weighScalesPicks,
     yearbookYear,
   } = await import('~~/lib/challenges/final-challenge')
+  const { sunsetQuota } = await import('~~/lib/sunset-window')
   const wantCorrect = Math.random() < share
   const iso = (correctIso: ISOCountryCode | undefined, pool?: readonly ISOCountryCode[]) => {
     if (wantCorrect && correctIso) return correctIso

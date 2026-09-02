@@ -274,6 +274,7 @@ import {
   relaxLogoPlacements,
   zoomOutStartView,
   type LatLng,
+  type MapBox,
 } from '~~/lib/geo'
 import { DEPARTMENT_GLYPHS } from '~~/lib/stat-glyphs'
 import { prefersReducedMotion } from '~~/lib/motion'
@@ -395,6 +396,11 @@ const props = defineProps({
   /** Physical-geography overlay (rivers, seas, ranges) for the water modes. */
   feature: {
     type: Object as PropType<MapFeatureOverlay>,
+    default: undefined,
+  },
+  /** An explicit map-space box to frame — a region as the subject. */
+  frame: {
+    type: Array as unknown as PropType<MapBox>,
     default: undefined,
   },
   /** Frame tightness for a mode whose subject IS the feature (water modes):
@@ -1110,6 +1116,7 @@ const autoCameraView = () => {
   const boxes = [
     ...props.focusCountries.map(frameBoxFor).filter(Boolean),
     ...(props.feature?.bounds ? [props.feature.bounds] : []),
+    ...(props.frame ? [props.frame] : []),
   ]
   if (boxes.length) {
     return frameForBoxes(boxes, props.focusContext.map(frameBoxFor).filter(Boolean))
@@ -1129,7 +1136,7 @@ const frameFocus = () => {
 
 // A new subject reclaims the camera even from a player who had taken it.
 watch(
-  () => [props.focusCountries, props.focusContext, props.feature],
+  () => [props.focusCountries, props.focusContext, props.feature, props.frame],
   () => {
     cameraTaken = false
     nextTick(frameFocus)

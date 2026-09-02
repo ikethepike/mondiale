@@ -1,4 +1,3 @@
-import { playableCountries } from '~~/lib/game-rules'
 // Type-only, all of it: `FinalChallengeItem`/`FinalChallengeAnswer` are erased
 // at compile, so the beat adds no runtime edge into lib/challenges —
 // the deferred-import discipline that keeps the Nitro build under CI's heap.
@@ -189,7 +188,6 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     const correct = isCorrectFinalAnswer({
       challenge: currentChallenge,
       submittedAnswer: eventData.submittedAnswer,
-      pool: playableCountries(game),
     })
 
     const gauntlet = currentMove.challenge

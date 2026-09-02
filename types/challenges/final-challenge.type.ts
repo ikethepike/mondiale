@@ -1,3 +1,4 @@
+import type { MapBox } from '~~/lib/geo'
 import type { GameDifficulty } from '../game.types'
 import type { ISOCountryCode, Region } from '../geography.types'
 import type { OrganizationVector } from '../organization.type'
@@ -171,17 +172,17 @@ export interface LanguageChallenge {
 /**
  * The finale: night sweeps the framed window east→west; type each country's
  * name before the dark takes it. Client-trust graded like higher-lower gates —
- * the client runs the sweep and submits the named set once.
+ * the client runs the sweep and submits the named set once. Dealt, framed
+ * and graded through `lib/sunset-window.ts`.
  */
 export interface SunsetBlitzChallenge {
   _type: 'sunset-blitz-challenge'
-  /** The night window's countries, ordered east→west (darkening order). */
+  /** The night window in map space — the camera frames exactly this. */
+  frame: MapBox
+  /** The field: every playable country whose centre the frame holds, ordered
+   *  east→west (darkening order). Nothing outside it scores. */
   countries: ISOCountryCode[]
-  /**
-   * Share of the countries in play that must be named. The absolute quota is
-   * computed against what the player's screen actually shows (window ∪
-   * visible), with the window itself as the floor.
-   */
+  /** Share of `countries` that must be named. */
   quotaRatio: number
   durationSeconds: number
 }

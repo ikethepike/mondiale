@@ -18,6 +18,7 @@
         :seconds-left="secondsLeft"
         :duration-seconds="challenge.durationSeconds"
         :feedback="feedback"
+        :beads="beads"
       >
         <CountryGuessInput
           ref="guessInput"
@@ -31,28 +32,23 @@
   </div>
 </template>
 <script lang="ts" setup>
-import NightConsole from '~/components/challenge/NightConsole.vue'
+import NightConsole, { type LanternState } from '~/components/challenge/NightConsole.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { MAP_REGIONS } from '~~/data/map.gen'
-import {
-  mapRegionCentre,
-  SUNSET_TILT,
-  sunsetCameraPlan,
-  sunsetDuskCoordinate,
-  sunsetQuota,
-} from '~~/lib/challenges/final-challenge'
 import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
+import { SUNSET_TILT, sunsetDuskCoordinate, sunsetQuota } from '~~/lib/sunset-window'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The gauntlet finale. Night sweeps the framed window east→west along a
- * tilted terminator; a correctly typed country "holds the light" while
+ * The gauntlet finale. The camera frames the dealt window and its field
+ * stands lit against a receded world; night sweeps it east→west along a
+ * tilted terminator, and a correctly typed country "holds the light" while
  * unnamed ones tint dark as the line passes them — once dark, they're gone.
  *
  * The sweep runs in map-space dusk coordinates and is projected onto the
@@ -63,22 +59,24 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: SunsetBlitzChallenge; paused: boolean }>()
 
 const emit = defineEmits<{
-  finished: [named: ISOCountryCode[], inPlay: ISOCountryCode[]]
+  finished: [named: ISOCountryCode[]]
 }>()
 
 const { gameStore, game } = useClientEvents()
 
-// The whole board plays, not just the dealt window: on wide screens the
-// camera shows far more than the window, and a visible country you can't
-// name reads as a bug. The window only sizes the sweep, quota and camera.
-// Same pool the server validates against — variant minus benched micros.
+// The night takes every country it crosses — the whole board darkens on
+// screen — but only the window's field can be named or scored
 const pool = computed(() =>
   game.value
     ? playableCountries(game.value)
     : playableCountries({ variant: 'world', difficulty: 'normal' })
 )
+const field = new Set(props.challenge.countries)
 
 const TICK_MS = 100
+// The frame is the subject: the default pad floor would push the field into
+// the middle third of the screen
+const WINDOW_FRAME_PAD = { scale: 0.06, floor: 12 }
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const named = ref(new Set<ISOCountryCode>())
@@ -86,8 +84,8 @@ const elapsedMs = ref(0)
 const finished = ref(false)
 const feedback = ref('')
 // Subscribing keeps the camera poller live; the ticker reads currentViewBox()
-// imperatively so the veil and the visibility gate track the true camera
-// between the bus's reactive commits.
+// imperatively so the veil tracks the true camera between the bus's
+// reactive commits.
 useMapViewBox()
 
 // The dealt window stays visible above the console (and the keyboard); the
@@ -152,12 +150,21 @@ const duskWestCoordinate = (isoCode: ISOCountryCode): number => {
 }
 const isFullyPast = (isoCode: ISOCountryCode) => duskWestCoordinate(isoCode) >= currentDusk.value
 
+// Countries outside the field stay suggestible: a list that only ever offers
+// the window's names would hand the field over
 const excluded = computed(() => [
   ...named.value,
-  ...pool.value.filter(isoCode => !named.value.has(isoCode) && isDark(isoCode)),
+  ...props.challenge.countries.filter(isoCode => !named.value.has(isoCode) && isDark(isoCode)),
 ])
 
 const quota = computed(() => sunsetQuota(props.challenge))
+
+// One lantern per country in the order the night takes them
+const beads = computed<LanternState[]>(() =>
+  props.challenge.countries.map(isoCode =>
+    named.value.has(isoCode) ? 'lit' : isDark(isoCode) ? 'dark' : 'pending'
+  )
+)
 
 /**
  * The night edge projected through the live camera. In map space the line is
@@ -198,12 +205,7 @@ const finish = () => {
   // Only now: mid-sweep the body abutting the browser chrome is still day —
   // the rolling night is the clipped .layout::before plane, never the bar
   setChromeTint(NIGHT_CHROME)
-  // Everything that could have scored: the window plus whatever the screen
-  // showed — the reveal owes the player the full field, not just the window
-  const inPlay = pool.value.filter(
-    isoCode => props.challenge.countries.includes(isoCode) || isVisible(isoCode)
-  )
-  emit('finished', [...named.value], inPlay)
+  emit('finished', [...named.value])
 }
 
 // Night takes every country it crosses, windowed or not — on the REAL map
@@ -222,19 +224,11 @@ const paintNightfall = () => {
   }
 }
 
-/** On screen right now — centre inside the live camera viewBox. */
-const isVisible = (isoCode: ISOCountryCode) => {
-  const vb = currentViewBox()
-  if (!vb) return false
-  const { x, y } = mapRegionCentre(isoCode)
-  return x >= vb.x && x <= vb.x + vb.w && y >= vb.y && y <= vb.y + vb.h
-}
-
 const start = () => {
   if (ticker || finished.value) return
-  const { focus, context } = sunsetCameraPlan(props.challenge.countries)
-  gameStore.map.focus = focus
-  gameStore.map.focusContext = context
+  gameStore.map.frame = props.challenge.frame
+  gameStore.map.framePad = WINDOW_FRAME_PAD
+  gameStore.map.spotlight = [...props.challenge.countries]
   document.body.classList.add('sunset-blitz')
   startedAt = performance.now()
   guessInput.value?.focus({ auto: true })
@@ -272,10 +266,7 @@ const ignite = (isoCode: ISOCountryCode) => {
 
 const onGuess = (country: Country) => {
   const { isoCode } = country
-  const inPlay =
-    pool.value.includes(isoCode) &&
-    (props.challenge.countries.includes(isoCode) || isVisible(isoCode))
-  if (!inPlay) {
+  if (!field.has(isoCode)) {
     return flash(`${countryName(country)} isn't under tonight's sky.`)
   }
   if (named.value.has(isoCode)) return
@@ -287,7 +278,6 @@ const onGuess = (country: Country) => {
   gameStore.map.highlighted.add(isoCode)
   ignite(isoCode)
 
-  // Sweeping the whole window ends the round — extras are bonus, not homework
   if (props.challenge.countries.every(code => named.value.has(code))) finish()
 }
 
@@ -317,6 +307,14 @@ body.sunset-blitz {
   // agreement
   .game-map {
     pointer-events: none;
+  }
+
+  // The world beyond the field is already in twilight: its land recedes and
+  // its borders soften, so the window reads as the stage before the night
+  // even enters
+  .game-map path[data-id].dimmed-country:not(.sunset-dark):not(.sunset-lit) {
+    fill-opacity: 0.35;
+    transition: fill-opacity 1.2s var(--ease-smooth);
   }
 
   // The sea's night: a gradient plane UNDER the map svg (the ocean is the

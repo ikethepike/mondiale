@@ -15,10 +15,12 @@ import type {
   EndonymChallenge,
   MembershipChallenge,
   MinChallenge,
+  SunsetBlitzChallenge,
   TreatyChallenge,
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import { oddOneOut } from '~~/types/challenges/final-challenge.type'
+import { SUNSET_TUNING, sunsetQuota, sunsetSeconds, windowCountries } from '~~/lib/sunset-window'
 import {
   familyPeersBinding,
   isMemberOf,
@@ -208,13 +210,11 @@ describe('odd-one-out lineup rides the challenge', () => {
 
   // The odd one out is the only lineup entry that scores.
   it('scores exactly one lineup entry as correct', () => {
-    const pool = playableCountries(gameFor('world', 'hard'))
     for (const challenge of oddOneOutItems('world').slice(0, 20)) {
       const correct = challenge.lineup.filter(isoCode =>
         isCorrectFinalAnswer({
           challenge,
           submittedAnswer: { _type: challenge._type, isoCode },
-          pool,
         })
       )
       expect(correct).toEqual([oddOneOut(challenge)])
@@ -309,30 +309,75 @@ describe('scales challenge', () => {
 })
 
 describe('sunset blitz challenge', () => {
-  it('deals a dense window with a reachable quota', () => {
-    for (let round = 0; round < DEAL_ROUNDS; round++) {
-      const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
-      for (const challenge of challenges) {
-        if (challenge._type !== 'sunset-blitz-challenge') continue
-        expect(challenge.countries.length).toBeGreaterThanOrEqual(8)
-        expect(challenge.quotaRatio).toBeGreaterThan(0)
-        expect(challenge.quotaRatio).toBeLessThanOrEqual(1)
-        expect(challenge.durationSeconds).toBeGreaterThan(0)
-        expect(new Set(challenge.countries).size).toBe(challenge.countries.length)
+  it('deals a framed field in the difficulty range with a reachable quota', () => {
+    for (const difficulty of ['normal', 'hard'] as const) {
+      const game = gameFor('world', difficulty)
+      const pool = playableCountries(game)
+      const [minimum, maximum] = SUNSET_TUNING[difficulty].countries
+      for (let round = 0; round < DEAL_ROUNDS; round++) {
+        const { challenges } = getFinalChallenges({ game })
+        for (const challenge of challenges) {
+          if (challenge._type !== 'sunset-blitz-challenge') continue
+          expect(challenge.countries.length).toBeGreaterThanOrEqual(minimum)
+          expect(challenge.countries.length).toBeLessThanOrEqual(maximum)
+          expect(challenge.quotaRatio).toBe(SUNSET_TUNING[difficulty].quotaRatio)
+          expect(challenge.durationSeconds).toBe(
+            sunsetSeconds(challenge.countries.length, difficulty)
+          )
+          expect(new Set(challenge.countries).size).toBe(challenge.countries.length)
+          // The frame IS the field: what the camera shows is exactly what scores
+          expect(new Set(windowCountries(pool, challenge.frame))).toEqual(
+            new Set(challenge.countries)
+          )
+        }
       }
     }
   })
 
-  // Regression: a cluster hopping through giant countries once widened into
-  // an 80-country whole-world "window" with a quota of 28
-  it('never deals a window bigger than a region', () => {
-    for (let round = 0; round < DEAL_ROUNDS; round++) {
+  // Regression: the border-grown cluster collapsed onto the same few windows
+  // and, framed by whole-country boxes, put 55–137 nameable countries on
+  // screen against a quota of 6
+  it('lands on different parts of the world', () => {
+    const windows = new Set<string>()
+    const regions = new Set<string>()
+    for (let round = 0; round < DEAL_ROUNDS * 4; round++) {
       const { challenges } = getFinalChallenges({ game: gameFor('world', 'hard') })
       for (const challenge of challenges) {
         if (challenge._type !== 'sunset-blitz-challenge') continue
-        expect(challenge.countries.length).toBeLessThanOrEqual(16)
+        windows.add([...challenge.countries].sort().join(','))
+        regions.add(COUNTRIES[challenge.countries[0]!]!.region)
       }
     }
+    expect(windows.size).toBeGreaterThanOrEqual(12)
+    expect(regions.size).toBeGreaterThanOrEqual(4)
+  })
+
+  it('grades only the window field', () => {
+    const challenge = getFinalChallenges({ game: gameFor('world', 'hard') }).challenges.find(
+      (item): item is SunsetBlitzChallenge => item._type === 'sunset-blitz-challenge'
+    )
+    if (!challenge) return
+    const pool = playableCountries(gameFor('world', 'hard'))
+    const outside = pool.filter(isoCode => !challenge.countries.includes(isoCode))
+    const quota = sunsetQuota(challenge)
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: {
+          _type: 'sunset-blitz-challenge',
+          namedCountries: challenge.countries.slice(0, quota),
+        },
+      })
+    ).toBe(true)
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: {
+          _type: 'sunset-blitz-challenge',
+          namedCountries: [...challenge.countries.slice(0, quota - 1), ...outside.slice(0, 5)],
+        },
+      })
+    ).toBe(false)
   })
 })
 
@@ -555,14 +600,12 @@ describe('boundary challenge', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'boundary-challenge', drawn: [] },
-        pool: Object.keys(COUNTRIES) as ISOCountryCode[],
       })
     ).toBe(false)
     expect(() =>
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'region-challenge', region: 'europe' },
-        pool: Object.keys(COUNTRIES) as ISOCountryCode[],
       })
     ).toThrow(TypeError)
   })
@@ -696,28 +739,24 @@ describe('change challenge', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'change-challenge', isoCode: accepted[0] },
-        pool,
       })
     ).toBe(true)
     expect(
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'change-challenge', isoCode: wrong },
-        pool,
       })
     ).toBe(false)
   })
 
   it('needs both halves where the decade is asked, and never throws on a missing dial', () => {
     const [challenge] = dealtChanges('hard', 40)
-    const pool = playableCountries(gameFor('world', 'hard'))
     const isoCode = changeAccepted(challenge)[0]
     const decade = changeDecade(challenge)!
     const grade = (answer: { isoCode: ISOCountryCode; decade?: number }) =>
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'change-challenge', ...answer },
-        pool,
       })
 
     expect(grade({ isoCode, decade })).toBe(true)
@@ -733,13 +772,11 @@ describe('change challenge', () => {
   it('reads a zero decade tolerance as exact, not as absent', () => {
     const [dealt] = dealtChanges('hard', 40)
     const challenge: ChangeChallenge = { ...dealt, decadeTolerance: 0 }
-    const pool = playableCountries(gameFor('world', 'hard'))
     const isoCode = changeAccepted(challenge)[0]
     const grade = (decade?: number) =>
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'change-challenge', isoCode, decade },
-        pool,
       })
 
     expect(grade(changeDecade(challenge)!)).toBe(true)
@@ -753,7 +790,6 @@ describe('change challenge', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'region-challenge', region: 'europe' },
-        pool: playableCountries(gameFor('world', 'normal')),
       })
     ).toThrow(TypeError)
   })
@@ -877,13 +913,11 @@ describe('yearbook challenge', () => {
       secondsPerHeadline: 16,
     }
     const year = EVENTS[slug].year
-    const pool = Object.keys(COUNTRIES) as (keyof typeof COUNTRIES)[]
     for (const offset of [-2, -1, 0, 1, 2]) {
       expect(
         isCorrectFinalAnswer({
           challenge,
           submittedAnswer: { _type: 'yearbook-challenge', year: year + offset },
-          pool,
         })
       ).toBe(true)
     }
@@ -892,7 +926,6 @@ describe('yearbook challenge', () => {
         isCorrectFinalAnswer({
           challenge,
           submittedAnswer: { _type: 'yearbook-challenge', year: dialed },
-          pool,
         })
       ).toBe(false)
     }
@@ -900,7 +933,6 @@ describe('yearbook challenge', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'region-challenge', region: 'europe' },
-        pool,
       })
     ).toThrow(TypeError)
   })
@@ -943,7 +975,6 @@ describe('isCorrectFinalAnswer', () => {
         isCorrectFinalAnswer({
           challenge,
           submittedAnswer: { _type: 'min-challenge', isoCode: entry.isoCode },
-          pool,
         })
       ).toBe(true)
     }
@@ -951,7 +982,6 @@ describe('isCorrectFinalAnswer', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'min-challenge', isoCode: values[values.length - 1].isoCode },
-        pool,
       })
     ).toBe(false)
   })
@@ -965,7 +995,6 @@ describe('isCorrectFinalAnswer', () => {
         isCorrectFinalAnswer({
           challenge,
           submittedAnswer: { _type: 'language-challenge', isoCode },
-          pool,
         })
       ).toBe(true)
     }
@@ -974,7 +1003,6 @@ describe('isCorrectFinalAnswer', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'language-challenge', isoCode: nonSpeaker },
-        pool,
       })
     ).toBe(false)
   })
@@ -989,7 +1017,6 @@ describe('isCorrectFinalAnswer', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'endonym-challenge', isoCodes },
-        pool,
       })
 
     expect(grade(['FI', 'DE', 'CN', 'EG', 'HR'])).toBe(true)
@@ -1006,7 +1033,6 @@ describe('isCorrectFinalAnswer', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'born-challenge', isoCodes: ['FI'] },
-        pool,
       })
     ).toThrow(TypeError)
   })
@@ -1017,21 +1043,18 @@ describe('isCorrectFinalAnswer', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'leadership-challenge', isoCode: 'SE' },
-        pool,
       })
     ).toBe(true)
     expect(
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'leadership-challenge', isoCode: 'NO' },
-        pool,
       })
     ).toBe(false)
     expect(() =>
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'region-challenge', region: 'europe' },
-        pool,
       })
     ).toThrow(TypeError)
   })
@@ -1052,7 +1075,6 @@ describe('endonym data floors', () => {
 describe('diaspora challenge', () => {
   const MAGNET_REGIONS = ['europe', 'north-america']
   const acceptedWidth: { [difficulty in GameDifficulty]: number } = { easy: 3, normal: 2, hard: 1 }
-  const pool = Object.keys(COUNTRIES) as ISOCountryCode[]
 
   const dealtDiasporas = (difficulty: GameDifficulty, variant: Game['variant'] = 'world') => {
     const dealt: DiasporaChallenge[] = []
@@ -1143,7 +1165,6 @@ describe('diaspora challenge', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'diaspora-challenge', isoCodes },
-        pool,
       })
 
     expect(grade(['US', 'FR', 'IN'])).toBe(true)
@@ -1166,7 +1187,6 @@ describe('diaspora challenge', () => {
           quota: 1,
         },
         submittedAnswer: { _type: 'region-challenge', region: 'europe' },
-        pool,
       })
     ).toThrow(TypeError)
   })
@@ -1234,7 +1254,6 @@ describe('MADE_COMMODITIES', () => {
       const correct = isCorrectFinalAnswer({
         challenge: { _type: 'made-challenge', commodity },
         submittedAnswer: { _type: 'made-challenge', isoCode },
-        pool: Object.keys(COUNTRIES) as ISOCountryCode[],
       })
       expect(correct, `${commodity}: ${isoCode}`).toBe(true)
     }
