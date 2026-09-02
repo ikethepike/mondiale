@@ -3,7 +3,7 @@
     <!-- The night itself is two real layers, no big overlay: the SEA darkens
          via a gradient plane UNDER the map (body.sunset-blitz .layout::before,
          slid by the --sunset-veil transform), and the LAND rolls through an
-         amber dusk on its own paths (.sunset-dark). Lit countries paint above
+         amber dusk on its own paths (data-sunset). Lit countries paint above
          both, so nothing ever dims them. Only the terminator itself floats
          above everything: a narrow glowing band that makes the front legible
          across land and sea alike. -->
@@ -214,8 +214,8 @@ const finish = () => {
 const darkPaths = new Set<Element>()
 const darken = (isoCode: ISOCountryCode) => {
   const path = document.querySelector(`.game-map path[data-id][id="${isoCode}"]`)
-  if (!path || path.classList.contains('sunset-dark')) return
-  path.classList.add('sunset-dark')
+  if (!path || path.getAttribute('data-sunset') === 'dark') return
+  path.setAttribute('data-sunset', 'dark')
   darkPaths.add(path)
 }
 const paintNightfall = () => {
@@ -254,13 +254,15 @@ const flash = (message: string) => {
 }
 
 // A named country ignites on the real map path — a one-shot flare that
-// settles into a warm lit fill. Classes are cleaned up on unmount; the
-// standard highlight stays underneath as the post-round "stayed lit" state.
+// settles into a warm lit fill. A data attribute, not a class: Vue rewrites
+// the path's class attribute whenever the highlight set changes, and the
+// ignition rode that very change. Cleaned up on unmount; the standard
+// highlight stays underneath as the post-round "stayed lit" state.
 const litPaths = new Set<Element>()
 const ignite = (isoCode: ISOCountryCode) => {
   const path = document.querySelector(`.game-map path[data-id][id="${isoCode}"]`)
   if (!path) return
-  path.classList.add('sunset-lit')
+  path.setAttribute('data-sunset', 'lit')
   litPaths.add(path)
 }
 
@@ -292,8 +294,8 @@ watch(
 onBeforeUnmount(() => {
   if (ticker) clearInterval(ticker)
   if (feedbackTimeout) clearTimeout(feedbackTimeout)
-  litPaths.forEach(path => path.classList.remove('sunset-lit'))
-  darkPaths.forEach(path => path.classList.remove('sunset-dark'))
+  litPaths.forEach(path => path.removeAttribute('data-sunset'))
+  darkPaths.forEach(path => path.removeAttribute('data-sunset'))
   document.body.classList.remove('sunset-blitz')
   document.body.classList.remove('sunset-settled')
   document.body.style.removeProperty('--sunset-veil')
@@ -312,7 +314,7 @@ body.sunset-blitz {
   // The world beyond the field is already in twilight: its land recedes and
   // its borders soften, so the window reads as the stage before the night
   // even enters
-  .game-map path[data-id].dimmed-country:not(.sunset-dark):not(.sunset-lit) {
+  .game-map path[data-id].dimmed-country:not([data-sunset]) {
     fill-opacity: 0.35;
     transition: fill-opacity 1.2s var(--ease-smooth);
   }
@@ -351,7 +353,7 @@ body.sunset-blitz {
 // Nocturne's exact night. Keyframes (not a transition) because an animation
 // outranks the engine's inline fill writes without needing !important —
 // which would kill the dusk roll entirely.
-.game-map path[data-id].sunset-dark {
+.game-map path[data-id][data-sunset='dark'] {
   stroke: var(--night-stroke) !important;
   stroke-width: 1.1px !important;
   vector-effect: non-scaling-stroke;
@@ -378,7 +380,7 @@ body.sunset-settled {
   background: var(--night-page);
   transition: background 1.4s var(--ease-smooth);
 
-  .game-map path[data-id]:not(.sunset-lit):not(.sunset-dark) {
+  .game-map path[data-id]:not([data-sunset]) {
     fill: var(--night-land) !important;
     stroke: var(--night-stroke) !important;
     stroke-width: 1.1px !important;
@@ -391,7 +393,7 @@ body.sunset-settled {
 
 // Unscoped: the ignition styles the REAL map paths, so it moves with the
 // camera natively. !important wins over the engine's inline stroke writes.
-.game-map path[data-id].sunset-lit {
+.game-map path[data-id][data-sunset='lit'] {
   fill: hsla(45, 90%, 74%, 0.95) !important;
   stroke: hsla(38, 90%, 42%, 0.9) !important;
   filter: drop-shadow(0 0 0.5rem hsla(45, 96%, 65%, 0.75));
@@ -405,12 +407,12 @@ body.sunset-settled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-map path[data-id].sunset-lit {
+  .game-map path[data-id][data-sunset='lit'] {
     animation: none;
   }
 
   // Without the dusk animation the night fill must land directly
-  .game-map path[data-id].sunset-dark {
+  .game-map path[data-id][data-sunset='dark'] {
     animation: none;
     fill: var(--night-land) !important;
   }
