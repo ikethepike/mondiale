@@ -3957,8 +3957,8 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'final-sunset',
-    label: 'Final: sunset blitz (typed, window around Austria)',
-    build: () => finalGame([sunsetFixture('hard', 'AT')]),
+    label: 'Final: sunset blitz (typed, window around Croatia)',
+    build: () => finalGame([sunsetFixture('hard', 'HR')]),
   },
   {
     id: 'final-sunset-dealt',

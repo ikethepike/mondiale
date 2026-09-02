@@ -106,15 +106,15 @@ const low = computed(
 }
 
 .lanterns {
-  gap: 0.5rem;
+  gap: 0.7rem;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .lantern {
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 1.3rem;
+  height: 1.3rem;
   border-radius: 50%;
   border: 0.1rem solid hsla(216, 30%, 65%, 0.5);
   background: hsla(216, 45%, 22%, 0.8);
