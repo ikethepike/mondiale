@@ -22,7 +22,7 @@ export interface FinalRevealContext {
   /** The ranking pool the stat questions are scored against. */
   pool: ISOCountryCode[]
   /** Per-round tallies the multi-pick rounds accumulate in the view. */
-  sunset?: { named: ISOCountryCode[]; quota: number }
+  sunset?: { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number }
   nocturneCities?: string[]
   endonymPicks: ISOCountryCode[]
   diasporaPicks: ISOCountryCode[]
@@ -51,7 +51,9 @@ export const FINAL_REVEALS: Record<FinalChallengeItem['_type'], FinalReveal | un
   'sunset-blitz-challenge': {
     component: SunsetReveal,
     props: ({ challenge, sunset }) =>
-      sunset ? { challenge, named: sunset.named, quota: sunset.quota } : undefined,
+      sunset
+        ? { challenge, named: sunset.named, inPlay: sunset.inPlay, quota: sunset.quota }
+        : undefined,
   },
   'city-nocturne-challenge': {
     component: NocturneReveal,

@@ -4,8 +4,7 @@
        work and churning them buys nothing. -->
   <span class="sunset-reveal">
     <span class="headline">
-      You lit {{ named.length }} of {{ challenge.countries.length }} before the dark —
-      {{ quota }} were needed
+      You lit {{ named.length }} of {{ inPlay.length }} before the dark — {{ quota }} were needed
     </span>
     <span class="chips">
       <CountryChip
@@ -31,18 +30,22 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { sunsetDuskCoordinate } from '~~/lib/sunset-window'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The sunset scorecard: every window country as a flag chip, east→west as the
- * night took them — warm if the player held it, night-dark if the dark took
- * it — plus the mode's premise made literal (the real sunset gap across the
- * window).
+ * The sunset scorecard: every country the screen put in play as a flag chip,
+ * east→west as the night took them — warm if the player held it, night-dark
+ * if the dark took it — plus the mode's premise made literal (the real
+ * sunset gap across the field).
  */
 const props = defineProps<{
   challenge: SunsetBlitzChallenge
   named: ISOCountryCode[]
+  /** The field the round was played on: the dealt window plus what the
+   *  settled screen showed. */
+  inPlay: ISOCountryCode[]
   quota: number
 }>()
 
@@ -50,15 +53,18 @@ const props = defineProps<{
 const sources = datasetAttribution('cities')
 
 const namedSet = computed(() => new Set(props.named))
+const field = computed(() =>
+  [...props.inPlay].sort((a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a))
+)
 const chips = computed(() =>
-  props.challenge.countries.map(isoCode => ({ isoCode, held: namedSet.value.has(isoCode) }))
+  field.value.map(isoCode => ({ isoCode, held: namedSet.value.has(isoCode) }))
 )
 
 // 4 minutes of real sunset per degree of longitude, east to west across the
-// window's biggest cities
+// field's biggest cities
 const sunGap = computed(() => {
-  const east = CITY_LIGHTS[props.challenge.countries[0]!]?.[0]
-  const west = CITY_LIGHTS[props.challenge.countries[props.challenge.countries.length - 1]!]?.[0]
+  const east = CITY_LIGHTS[field.value[0]!]?.[0]
+  const west = CITY_LIGHTS[field.value[field.value.length - 1]!]?.[0]
   if (!east || !west || east.lng <= west.lng) return undefined
   const minutes = Math.round((east.lng - west.lng) * 4)
   const gap = minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`

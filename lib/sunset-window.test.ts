@@ -67,7 +67,7 @@ describe('sunset window', () => {
   })
 
   it('sizes the quota and the clock from the field', () => {
-    expect(sunsetQuota({ countries: Array(13).fill('SE'), quotaRatio: 0.6 })).toBe(8)
+    expect(sunsetQuota(Array(13).fill('SE'), 0.6)).toBe(8)
     expect(sunsetSeconds(12, 'hard')).toBe(48)
     expect(sunsetSeconds(2, 'hard')).toBe(SUNSET_SECONDS[0])
     expect(sunsetSeconds(40, 'normal')).toBe(SUNSET_SECONDS[1])

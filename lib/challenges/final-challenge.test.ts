@@ -352,32 +352,31 @@ describe('sunset blitz challenge', () => {
     expect(regions.size).toBeGreaterThanOrEqual(4)
   })
 
-  it('grades only the window field', () => {
+  it('grades the field the screen put in play, never less than the window', () => {
     const challenge = getFinalChallenges({ game: gameFor('world', 'hard') }).challenges.find(
       (item): item is SunsetBlitzChallenge => item._type === 'sunset-blitz-challenge'
     )
     if (!challenge) return
     const pool = playableCountries(gameFor('world', 'hard'))
     const outside = pool.filter(isoCode => !challenge.countries.includes(isoCode))
-    const quota = sunsetQuota(challenge)
-    expect(
+    const grade = (namedCountries: ISOCountryCode[], inPlay: ISOCountryCode[]) =>
       isCorrectFinalAnswer({
         challenge,
-        submittedAnswer: {
-          _type: 'sunset-blitz-challenge',
-          namedCountries: challenge.countries.slice(0, quota),
-        },
+        submittedAnswer: { _type: 'sunset-blitz-challenge', namedCountries, inPlay },
       })
-    ).toBe(true)
-    expect(
-      isCorrectFinalAnswer({
-        challenge,
-        submittedAnswer: {
-          _type: 'sunset-blitz-challenge',
-          namedCountries: [...challenge.countries.slice(0, quota - 1), ...outside.slice(0, 5)],
-        },
-      })
-    ).toBe(false)
+    const window = challenge.countries
+    const quota = sunsetQuota(window, challenge.quotaRatio)
+    expect(grade(window.slice(0, quota), window)).toBe(true)
+    // Names outside the field never count
+    expect(grade([...window.slice(0, quota - 1), ...outside.slice(0, 5)], window)).toBe(false)
+    // A wider screen widens the field, and the quota scales with it
+    const wide = [...window, ...outside.slice(0, 10)]
+    const wideQuota = sunsetQuota(wide, challenge.quotaRatio)
+    expect(wideQuota).toBeGreaterThan(quota)
+    expect(grade(wide.slice(0, wideQuota), wide)).toBe(true)
+    expect(grade(wide.slice(0, wideQuota - 1), wide)).toBe(false)
+    // The window is the floor: a field that drops a dealt country is refused
+    expect(grade(window.slice(0, quota), window.slice(1))).toBe(false)
   })
 })
 

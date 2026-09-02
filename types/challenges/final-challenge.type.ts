@@ -62,8 +62,11 @@ export type FinalChallengeAnswer =
   | { _type: 'language-challenge'; isoCode: ISOCountryCode }
   | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
   | { _type: 'treaty-challenge'; isoCode: ISOCountryCode }
-  /** Client-trust (like higher-lower): the countries named in time. */
-  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
+  /** Client-trust (like higher-lower): the countries named in time, and the
+   *  field they were named from — the dealt window plus whatever else the
+   *  player's screen showed. The window is the floor, so the field can only
+   *  ever be wider than what was dealt. */
+  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[]; inPlay: ISOCountryCode[] }
   | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'made-challenge'; isoCode: ISOCountryCode }
@@ -177,13 +180,16 @@ export interface LanguageChallenge {
  */
 export interface SunsetBlitzChallenge {
   _type: 'sunset-blitz-challenge'
-  /** The night window in map space — the camera frames exactly this. */
+  /** The night window in map space — the camera frames this. */
   frame: MapBox
-  /** The field: every playable country whose centre the frame holds, ordered
-   *  east→west (darkening order). Nothing outside it scores. */
+  /** The dealt field: every playable country whose centre the frame holds,
+   *  ordered east→west (darkening order). The screen's aspect shows more
+   *  around it, and everything on screen is in play — this is the floor. */
   countries: ISOCountryCode[]
-  /** Share of `countries` that must be named. */
+  /** Share of the field in play that must be named. */
   quotaRatio: number
+  /** The clock for the dealt field — the client scales it to what its screen
+   *  actually put in play, through `sunsetSeconds`. */
   durationSeconds: number
 }
 

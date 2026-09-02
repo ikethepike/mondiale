@@ -25,7 +25,7 @@ export const SUNSET_TUNING: {
   hard: { countries: [12, 16], quotaRatio: 0.6, secondsPerCountry: 4 },
 }
 
-export const SUNSET_SECONDS: [minimum: number, maximum: number] = [40, 90]
+export const SUNSET_SECONDS: [minimum: number, maximum: number] = [40, 120]
 
 // The frame's shape must survive the camera's aspect correction: a strip
 // (Chile with Argentina, the Levant alone) would frame with most of the
@@ -70,10 +70,10 @@ const inBox = ({ x, y }: { x: number; y: number }, [left, top, width, height]: M
 export const windowCountries = (pool: ISOCountryCode[], frame: MapBox): ISOCountryCode[] =>
   pool.filter(isoCode => inBox(mapRegionCentre(isoCode), frame))
 
-export const sunsetQuota = (challenge: {
-  countries: ISOCountryCode[]
-  quotaRatio: number
-}): number => Math.ceil(challenge.countries.length * challenge.quotaRatio)
+/** The pass mark for a field — the dealt window, or the wider set a screen
+ *  put in play — as the difficulty's share of it. */
+export const sunsetQuota = (field: readonly ISOCountryCode[], quotaRatio: number): number =>
+  Math.ceil(field.length * quotaRatio)
 
 export const sunsetSeconds = (countryCount: number, difficulty: GameDifficulty): number =>
   clamp(countryCount * SUNSET_TUNING[difficulty].secondsPerCountry, ...SUNSET_SECONDS)

@@ -409,7 +409,9 @@ const displayedLives = computed(() =>
 const lastGuess = ref<ISOCountryCode | undefined>(undefined)
 const scalesPicks = ref<ISOCountryCode[]>([])
 const scalesResult = ref<ScalesResult | undefined>(undefined)
-const sunsetResult = ref<{ named: ISOCountryCode[]; quota: number } | undefined>(undefined)
+const sunsetResult = ref<
+  { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number } | undefined
+>(undefined)
 const nocturneResult = ref<string[] | undefined>(undefined)
 const yearbookDialed = ref<number | undefined>(undefined)
 // The made-in reveal waits a beat so the lit map registers before the card
@@ -898,12 +900,16 @@ const onYearbookFinished = (year: number) => {
   submitFinalAnswer(submittedAnswer)
 }
 
-const onSunsetFinished = (named: ISOCountryCode[]) => {
+const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => {
   const challenge = currentFinalChallenge.value
   if (challenge?._type !== 'sunset-blitz-challenge') return
 
-  sunsetResult.value = { named, quota: sunsetQuota(challenge) }
-  const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
+  sunsetResult.value = { named, inPlay, quota: sunsetQuota(inPlay, challenge.quotaRatio) }
+  const submittedAnswer = {
+    _type: 'sunset-blitz-challenge',
+    namedCountries: named,
+    inPlay,
+  } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   submitFinalAnswer(submittedAnswer)

@@ -127,7 +127,7 @@ describe('finalAnswerFor', () => {
       countries: ['SE', 'NO', 'DK', 'FI', 'IS', 'EE'],
       quotaRatio: 0.5,
     } as unknown as SunsetBlitzChallenge
-    const quota = sunsetQuota(sunset)
+    const quota = sunsetQuota(sunset.countries, sunset.quotaRatio)
     const hit = await finalAnswerFor(sunset, 1, game)
     const miss = await finalAnswerFor(sunset, 0, game)
     if (hit?._type !== 'sunset-blitz-challenge' || miss?._type !== 'sunset-blitz-challenge')

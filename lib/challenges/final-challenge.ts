@@ -1371,12 +1371,15 @@ export const isCorrectFinalAnswer = ({
     }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
-      // Client-trust like higher-lower gates; only the window's field counts
-      const field = new Set(challenge.countries)
-      const named = [...new Set(submittedAnswer.namedCountries)].filter(
-        isoCode => isValidISOCode(isoCode) && field.has(isoCode)
+      // Client-trust like higher-lower gates. The field is what the screen
+      // showed, never less than the dealt window — a client reporting a
+      // narrower field would be shrinking its own quota.
+      const inPlay = new Set(submittedAnswer.inPlay.filter(isValidISOCode))
+      if (!challenge.countries.every(isoCode => inPlay.has(isoCode))) return false
+      const named = [...new Set(submittedAnswer.namedCountries)].filter(isoCode =>
+        inPlay.has(isoCode)
       )
-      return named.length >= sunsetQuota(challenge)
+      return named.length >= sunsetQuota([...inPlay], challenge.quotaRatio)
     }
   }
   return throwTypeMismatch()

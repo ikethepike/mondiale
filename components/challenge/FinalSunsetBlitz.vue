@@ -16,7 +16,7 @@
         :lit="named.size"
         :quota="quota"
         :seconds-left="secondsLeft"
-        :duration-seconds="challenge.durationSeconds"
+        :duration-seconds="durationSeconds"
         :feedback="feedback"
         :beads="beads"
       >
@@ -39,17 +39,25 @@ import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
-import { SUNSET_TILT, sunsetDuskCoordinate, sunsetQuota } from '~~/lib/sunset-window'
+import {
+  mapRegionCentre,
+  SUNSET_TILT,
+  sunsetDuskCoordinate,
+  sunsetQuota,
+  sunsetSeconds,
+} from '~~/lib/sunset-window'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The gauntlet finale. The camera frames the dealt window and its field
- * stands lit against a receded world; night sweeps it east→west along a
- * tilted terminator, and a correctly typed country "holds the light" while
- * unnamed ones tint dark as the line passes them — once dark, they're gone.
+ * The gauntlet finale. The camera frames the dealt window; once it settles,
+ * everything whose centre is on screen is the field (the window is the
+ * floor) and stands lit against a receded world. Night sweeps it east→west
+ * along a tilted terminator, and a correctly typed country "holds the light"
+ * while unnamed ones tint dark as the line passes them — once dark, they're
+ * gone. Quota and clock are the difficulty's share of that field.
  *
  * The sweep runs in map-space dusk coordinates and is projected onto the
  * screen through the live map viewBox, so the drawn line and the tint timing
@@ -59,19 +67,22 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: SunsetBlitzChallenge; paused: boolean }>()
 
 const emit = defineEmits<{
-  finished: [named: ISOCountryCode[]]
+  finished: [named: ISOCountryCode[], inPlay: ISOCountryCode[]]
 }>()
 
 const { gameStore, game } = useClientEvents()
 
-// The night takes every country it crosses — the whole board darkens on
-// screen — but only the window's field can be named or scored
-const pool = computed(() =>
-  game.value
-    ? playableCountries(game.value)
-    : playableCountries({ variant: 'world', difficulty: 'normal' })
+const rules = computed(
+  () => game.value ?? { variant: 'world' as const, difficulty: 'normal' as const }
 )
-const field = new Set(props.challenge.countries)
+// The night takes every country it crosses — the whole board darkens on
+// screen — but only the field can be named or scored
+const pool = computed(() => playableCountries(rules.value))
+// The field, east→west: the dealt window until the camera settles, then
+// everything the locked camera shows — a country you can see and can't name
+// reads as a bug, and the quota scales with it so a wide screen is no gift
+const field = ref<ISOCountryCode[]>([...props.challenge.countries])
+const fieldSet = computed(() => new Set(field.value))
 
 const TICK_MS = 100
 // The frame is the subject: the default pad floor would push the field into
@@ -93,14 +104,24 @@ useMapViewBox()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-const durationMs = props.challenge.durationSeconds * 1000
+// The dealt clock is the floor; the locked field re-sizes it through the
+// same curve the dealer used
+const durationSeconds = computed(() =>
+  Math.max(
+    props.challenge.durationSeconds,
+    sunsetSeconds(field.value.length, rules.value.difficulty)
+  )
+)
+const durationMs = computed(() => durationSeconds.value * 1000)
 // The sweep clock starts once the camera has settled and the bounds are
 // locked — the full duration buys one constant-speed crossing of the region
 const sweepElapsed = ref(0)
 const fraction = computed(() =>
-  boundsLocked.value ? Math.min(1, sweepElapsed.value / durationMs) : 0
+  boundsLocked.value ? Math.min(1, sweepElapsed.value / durationMs.value) : 0
 )
-const secondsLeft = computed(() => Math.max(0, Math.ceil((durationMs - sweepElapsed.value) / 1000)))
+const secondsLeft = computed(() =>
+  Math.max(0, Math.ceil((durationMs.value - sweepElapsed.value) / 1000))
+)
 // The sweep in dusk-coordinate space: seeded from the window, then widened
 // to the locked camera's true edges so the night ENTERS from off-screen east
 // and has fully crossed the screen when time runs out
@@ -125,9 +146,21 @@ const lockSweepBounds = () => {
     const tan = Math.tan(SUNSET_TILT)
     sweepStart.value = Math.max(sweepStart.value, vb.x + vb.w - vb.y * tan + 8)
     sweepEnd.value = Math.min(sweepEnd.value, vb.x - (vb.y + vb.h) * tan - 8)
+    field.value = [
+      ...new Set([...props.challenge.countries, ...pool.value.filter(isVisible)]),
+    ].sort((a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a))
+    gameStore.map.spotlight = [...field.value]
   }
   boundsLocked.value = true
   sweepClockStart = performance.now()
+}
+
+/** On screen right now — centre inside the live camera viewBox. */
+const isVisible = (isoCode: ISOCountryCode) => {
+  const vb = currentViewBox()
+  if (!vb) return false
+  const { x, y } = mapRegionCentre(isoCode)
+  return x >= vb.x && x <= vb.x + vb.w && y >= vb.y && y <= vb.y + vb.h
 }
 
 const currentDusk = computed(
@@ -154,14 +187,14 @@ const isFullyPast = (isoCode: ISOCountryCode) => duskWestCoordinate(isoCode) >= 
 // the window's names would hand the field over
 const excluded = computed(() => [
   ...named.value,
-  ...props.challenge.countries.filter(isoCode => !named.value.has(isoCode) && isDark(isoCode)),
+  ...field.value.filter(isoCode => !named.value.has(isoCode) && isDark(isoCode)),
 ])
 
-const quota = computed(() => sunsetQuota(props.challenge))
+const quota = computed(() => sunsetQuota(field.value, props.challenge.quotaRatio))
 
 // One lantern per country in the order the night takes them
 const beads = computed<LanternState[]>(() =>
-  props.challenge.countries.map(isoCode =>
+  field.value.map(isoCode =>
     named.value.has(isoCode) ? 'lit' : isDark(isoCode) ? 'dark' : 'pending'
   )
 )
@@ -205,7 +238,7 @@ const finish = () => {
   // Only now: mid-sweep the body abutting the browser chrome is still day —
   // the rolling night is the clipped .layout::before plane, never the bar
   setChromeTint(NIGHT_CHROME)
-  emit('finished', [...named.value])
+  emit('finished', [...named.value], [...field.value])
 }
 
 // Night takes every country it crosses, windowed or not — on the REAL map
@@ -242,7 +275,7 @@ const start = () => {
     sweepElapsed.value = performance.now() - sweepClockStart
     positionSeaNight()
     paintNightfall()
-    if (sweepElapsed.value >= durationMs) finish()
+    if (sweepElapsed.value >= durationMs.value) finish()
   }, TICK_MS)
 }
 
@@ -268,7 +301,7 @@ const ignite = (isoCode: ISOCountryCode) => {
 
 const onGuess = (country: Country) => {
   const { isoCode } = country
-  if (!field.has(isoCode)) {
+  if (!fieldSet.value.has(isoCode)) {
     return flash(`${countryName(country)} isn't under tonight's sky.`)
   }
   if (named.value.has(isoCode)) return
@@ -280,7 +313,7 @@ const onGuess = (country: Country) => {
   gameStore.map.highlighted.add(isoCode)
   ignite(isoCode)
 
-  if (props.challenge.countries.every(code => named.value.has(code))) finish()
+  if (field.value.every(code => named.value.has(code))) finish()
 }
 
 watch(
