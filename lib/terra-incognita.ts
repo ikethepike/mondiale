@@ -9,6 +9,7 @@ import {
   isLabelableBox,
   labelBoxFor,
   mainlandBox,
+  unionBox,
   WORLD_BOX,
   type MapBox,
 } from '~~/lib/geo'
@@ -527,10 +528,9 @@ export const terraFrame = (
     .filter((box): box is MapBox => !!box)
   if (!boxes.length) return [WORLD_BOX.x, WORLD_BOX.y, WORLD_BOX.width, WORLD_BOX.height]
 
-  const left = Math.min(...boxes.map(([x]) => x))
-  const top = Math.min(...boxes.map(([, y]) => y))
-  const right = Math.max(...boxes.map(([x, , width]) => x + width))
-  const bottom = Math.max(...boxes.map(([, y, , height]) => y + height))
+  const [left, top, spanX, spanY] = unionBox(boxes)
+  const right = left + spanX
+  const bottom = top + spanY
 
   const { scale, floor } = TERRA_FRAME_REACH[difficulty]
   const pad = Math.max((right - left) * scale, (bottom - top) * scale, floor)

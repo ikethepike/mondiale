@@ -29,6 +29,7 @@
 import NightConsole, { type LanternState } from '~/components/challenge/NightConsole.vue'
 import SunsetVeil from '~/components/challenge/SunsetVeil.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import { MICRO_COUNTRIES } from '~~/data/map.gen'
 import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -133,28 +134,30 @@ const isDark = (isoCode: ISOCountryCode) => {
 // past the west edge. The bounds lock ONCE after the camera settles —
 // adjusting them mid-flight remaps the clock and the line lurches. The delay
 // alone is not the settle signal: a flight stalled by the HD tier's import
-// once locked a world-wide field, so the camera must also hold still.
+// once locked a world-wide field, so the camera must also hold still — and a
+// camera that is merely unpolled is not still.
 const SETTLE_DELAY_MS = 1500
 let boundsLocked = false
 let sweepClockStart = 0
-let lastSeenBox = ''
+let lastSeenBox: string | undefined
 
 const lockSweepBounds = (elapsedMs: number) => {
-  if (boundsLocked || elapsedMs < SETTLE_DELAY_MS) return
+  if (boundsLocked) return
   const vb = currentViewBox()
-  const seen = vb ? `${vb.x} ${vb.y} ${vb.w}` : ''
-  const still = seen === lastSeenBox
+  // A camera that is merely UNPOLLED must not read as settled: an undefined
+  // box (or a background tab's frozen rAF, while this interval keeps firing)
+  // would otherwise lock the world as the field.
+  const seen = vb?.w ? `${vb.x} ${vb.y} ${vb.w} ${vb.h}` : undefined
+  const still = seen !== undefined && seen === lastSeenBox
   lastSeenBox = seen
-  if (!still) return
-  if (vb?.w) {
-    const bounds = sweepBounds(vb)
-    sweepStart = Math.max(sweepStart, bounds.start)
-    sweepEnd = Math.min(sweepEnd, bounds.end)
-    field.value = [
-      ...new Set([...props.challenge.countries, ...pool.value.filter(isVisible)]),
-    ].sort((a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a))
-    gameStore.map.spotlight = [...field.value]
-  }
+  if (elapsedMs < SETTLE_DELAY_MS || !still || !vb) return
+  const bounds = sweepBounds(vb)
+  sweepStart = Math.max(sweepStart, bounds.start)
+  sweepEnd = Math.min(sweepEnd, bounds.end)
+  field.value = [...new Set([...props.challenge.countries, ...pool.value.filter(isVisible)])].sort(
+    (a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a)
+  )
+  gameStore.map.spotlight = [...field.value]
   boundsLocked = true
   sweepClockStart = performance.now()
 }
@@ -242,6 +245,9 @@ const onGuess = (country: Country) => {
     return flash(`${countryName(country)} is already gone.`)
   }
   named.value.add(isoCode)
+  // A micro-nation's outline is sub-pixel at window framing, so the map's own
+  // halo disc is the only "this one is lit" it can show
+  if (isoCode in MICRO_COUNTRIES) gameStore.map.highlighted.add(isoCode)
   if (field.value.every(code => named.value.has(code))) finish()
 }
 
@@ -286,7 +292,12 @@ body.sunset-settled {
   background: var(--night-page);
   transition: background 1.4s var(--ease-smooth);
 
+  // The night outranks the reveal's correct/incorrect wash: the veil covers
+  // the land, but its feather and the sea gradient are still translucent at
+  // the west edge while the settle push runs.
   .game-map path[data-id] {
+    fill: var(--night-land) !important;
+    stroke: var(--night-stroke) !important;
     transition: none;
   }
 }

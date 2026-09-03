@@ -1,7 +1,7 @@
 import { MAP_BOUNDS, MAP_REGIONS, type MapCode } from '~~/data/map.gen'
 import { regionsIntersect, type MapBox } from '~~/lib/geo'
 import { SUNSET_TILT, sunsetDuskCoordinate } from '~~/lib/sunset-window'
-import { bleedBox, type MapViewBox, type ScreenRect } from '~~/lib/use-map-viewbox'
+import { bleedBox, projectToRect, type MapViewBox, type ScreenRect } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -30,8 +30,14 @@ export const SUNSET_VEIL_TILT_DEG = -(SUNSET_TILT * 180) / Math.PI
 const TAN = Math.tan(SUNSET_TILT)
 const SIN = Math.sin(SUNSET_TILT)
 const COS = Math.cos(SUNSET_TILT)
-// The plane's left edge is bowed (border-radius); the settled push clears it.
-const BOW_SHARE = 0.05
+/** The plane's bowed left edge, as a share of the viewport width — the
+ *  settled push must clear it. Fed to the CSS `border-radius` as `--bow`. */
+export const SUNSET_VEIL_BOW = 0.05
+/** Where the plane's sea gradient reaches full night, as a share of the
+ *  viewport width (its last stop in SunsetVeil's `.plane`) — the settle must
+ *  push past THIS, not merely past the land mask's feather, or the west edge
+ *  keeps a translucent strip through the reveal. */
+export const SEA_OPAQUE_VW = 0.38
 
 /** The sweep's map-space bounds for a camera: the night enters from off the
  *  east edge and has fully crossed the west edge when the clock runs out. */
@@ -52,14 +58,18 @@ export const darkPrefixCount = (field: readonly ISOCountryCode[], dusk: number):
 }
 
 /** Where the terminator crosses the map's vertical centre, in viewport px. */
-export const veilMidPx = (vb: MapViewBox, dusk: number, rect: ScreenRect): number =>
-  rect.x + ((dusk + (vb.y + vb.h / 2) * TAN - vb.x) / vb.w) * rect.width
+export const veilMidPx = (vb: MapViewBox, dusk: number, rect: ScreenRect): number => {
+  const midY = vb.y + vb.h / 2
+  return projectToRect(vb, { x: dusk + midY * TAN, y: midY }, rect).x
+}
 
 /** The plane pushed far enough west that its opaque night covers every
  *  viewport corner (relative to the plane's origin, the map's centre). */
 export const settledMidPx = (viewport: Viewport): number =>
-  -(viewport.width * (SUNSET_VEIL_FEATHER + BOW_SHARE) + (viewport.height / 2) * SIN) / COS -
-  SUNSET_SWEEP_MARGIN
+  -(
+    viewport.width * (Math.max(SUNSET_VEIL_FEATHER, SEA_OPAQUE_VW) + SUNSET_VEIL_BOW) +
+    (viewport.height / 2) * SIN
+  ) / COS
 
 /**
  * A plane box that covers the viewport east of the line for every position

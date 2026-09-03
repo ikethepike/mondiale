@@ -68,6 +68,20 @@ export interface ScreenRect {
  * the svg's `preserveAspectRatio="none"` is an exact identity rather than a
  * stretch.
  */
+/**
+ * A map-space point in the painted rect's pixels — the one map→screen
+ * projection, shared by `toScreenPercent` and by overlays (the sunset veil)
+ * that must land in px from an isomorphic module.
+ */
+export const projectToRect = (
+  vb: MapViewBox,
+  point: { x: number; y: number },
+  rect: ScreenRect
+): { x: number; y: number } => ({
+  x: rect.x + ((point.x - vb.x) / vb.w) * rect.width,
+  y: rect.y + ((point.y - vb.y) / vb.h) * rect.height,
+})
+
 export const overlayBox = (rect: ScreenRect) => ({
   left: rect.x - rect.width * OVERLAY_BLEED,
   top: rect.y - rect.height * OVERLAY_BLEED,
@@ -269,7 +283,8 @@ export const useMapViewBox = () => {
   const toScreenPercent = (x: number, y: number): { left: number; top: number } | undefined => {
     const vb = committedBox.value
     if (!vb?.w || !vb.h) return undefined
-    return { left: ((x - vb.x) / vb.w) * 100, top: ((y - vb.y) / vb.h) * 100 }
+    const unit = projectToRect(vb, { x, y }, { x: 0, y: 0, width: 100, height: 100 })
+    return { left: unit.x, top: unit.y }
   }
 
   /** 1 at the full world frame, shrinking as the camera dives. */

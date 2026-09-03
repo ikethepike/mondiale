@@ -5,6 +5,7 @@ import { sunsetDuskCoordinate, sunsetWindowAround } from './sunset-window'
 import {
   darkPrefixCount,
   settledMidPx,
+  SEA_OPAQUE_VW,
   SUNSET_VEIL_FEATHER,
   SUNSET_VEIL_TILT_DEG,
   sweepBounds,
@@ -90,7 +91,7 @@ describe('sunset veil', () => {
       expect(bottomAtEnd).toBeLessThan(0)
     })
 
-    it(`covers every viewport corner from the start to the settled push (${name})`, () => {
+    it(`covers every viewport corner in full night once settled (${name})`, () => {
       const { width, height } = veilPlaneSize(viewport)
       const origin: [number, number] = [0, viewport.height / 2]
       const corners: [number, number][] = [
@@ -99,21 +100,36 @@ describe('sunset veil', () => {
         [0, viewport.height],
         [viewport.width, viewport.height],
       ]
-      for (const midPx of [veilMidPx(vb, start, rect), 0, settledMidPx(viewport)]) {
-        for (const corner of corners) {
-          // Into the plane's own frame: undo the translate, then the rotation
+      const settled = settledMidPx(viewport)
+      for (const corner of corners) {
+        const [lx, ly] = apply({ a: -settled, b: 0 }, origin, corner)
+        const [localX, py] = apply({ a: 0, b: -tilt }, origin, [lx, ly])
+        // Inside the plane's box…
+        expect(localX).toBeGreaterThan(0)
+        expect(localX).toBeLessThanOrEqual(width)
+        expect(Math.abs(py - viewport.height / 2)).toBeLessThanOrEqual(height / 2)
+        // …and past BOTH the land mask's feather and the sea gradient's
+        // opaque stop, or the west edge keeps a lit strip through the reveal
+        expect(localX).toBeGreaterThanOrEqual(SUNSET_VEIL_FEATHER * viewport.width)
+        expect(localX).toBeGreaterThanOrEqual(SEA_OPAQUE_VW * viewport.width)
+      }
+    })
+
+    it(`holds the whole viewport inside the plane mid-sweep (${name})`, () => {
+      const { width, height } = veilPlaneSize(viewport)
+      const origin: [number, number] = [0, viewport.height / 2]
+      for (const midPx of [veilMidPx(vb, start, rect), veilMidPx(vb, (start + end) / 2, rect), 0]) {
+        for (const corner of [
+          [0, 0],
+          [viewport.width, 0],
+          [0, viewport.height],
+          [viewport.width, viewport.height],
+        ] as [number, number][]) {
           const [lx, ly] = apply({ a: -midPx, b: 0 }, origin, corner)
-          const [px, py] = apply({ a: 0, b: -tilt }, origin, [lx, ly])
-          const localX = px
-          const localY = py - viewport.height / 2
-          const eastOfLine = localX > 0
-          if (midPx >= viewport.width) expect(eastOfLine).toBe(false)
-          if (!eastOfLine) continue
+          const [localX, py] = apply({ a: 0, b: -tilt }, origin, [lx, ly])
+          if (localX <= 0) continue
           expect(localX).toBeLessThanOrEqual(width)
-          expect(Math.abs(localY)).toBeLessThanOrEqual(height / 2)
-          if (midPx === settledMidPx(viewport)) {
-            expect(localX).toBeGreaterThanOrEqual(SUNSET_VEIL_FEATHER * viewport.width)
-          }
+          expect(Math.abs(py - viewport.height / 2)).toBeLessThanOrEqual(height / 2)
         }
       }
     })

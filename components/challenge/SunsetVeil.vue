@@ -4,7 +4,7 @@
       <div class="night-land" :style="{ '--feather': `${featherPx}px` }">
         <div class="inverse" :style="inverseStyle">
           <svg
-            v-if="landStyle"
+            v-if="landStyle && dusk !== undefined"
             class="land"
             :viewBox="viewBoxAttr"
             preserveAspectRatio="none"
@@ -32,7 +32,9 @@
 <script lang="ts" setup>
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import {
+  SEA_OPAQUE_VW,
   settledMidPx,
+  SUNSET_VEIL_BOW,
   SUNSET_SETTLE_MS,
   SUNSET_VEIL_FEATHER,
   veilCodes,
@@ -132,6 +134,8 @@ const planeStyle = computed(() => ({
   height: `${plane.value.height}px`,
   transform: transforms.value.plane,
   '--settle': `${SUNSET_SETTLE_MS}ms`,
+  '--bow': `${SUNSET_VEIL_BOW * 100}vw`,
+  '--sea-night': `${SEA_OPAQUE_VW * 100}vw`,
 }))
 const inverseStyle = computed(() => ({ transform: transforms.value.inverse }))
 
@@ -155,10 +159,12 @@ const litStyle = computed(() => {
   return rect && viewBox.value?.w ? placed(rect, 0) : undefined
 })
 
-const litSet = computed(() => new Set<string>(props.lit))
-const onScreen = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : []))
-
-const landCodes = computed(() => onScreen.value.filter(code => !litSet.value.has(code)))
+// Every shape the camera can see, lit ones included: the lit layer paints
+// over them opaquely, and dropping one would re-raster this whole layer on
+// every guess — the cost this overlay exists to avoid. The svg itself waits
+// for the sweep (`dusk`), so the camera's opening flight, which commits every
+// frame, never re-lays-out a plane parked off-screen.
+const landCodes = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : []))
 </script>
 <style lang="scss" scoped>
 .sunset-veil {
@@ -176,7 +182,7 @@ const landCodes = computed(() => onScreen.value.filter(code => !litSet.value.has
   overflow: hidden;
   position: absolute;
   transform-origin: left center;
-  border-radius: 5vw 0 0 5vw / 50% 0 0 50%;
+  border-radius: var(--bow) 0 0 var(--bow) / 50% 0 0 50%;
   // A burning horizon on the water: gold into rose into night
   background: linear-gradient(
     90deg,
@@ -184,7 +190,7 @@ const landCodes = computed(() => onScreen.value.filter(code => !litSet.value.has
     hsla(35, 95%, 58%, 0.55) 2vw,
     hsla(2, 65%, 45%, 0.55) 8vw,
     hsla(216, 50%, 7%, 0.85) 20vw,
-    var(--night-page) 38vw
+    var(--night-page) var(--sea-night)
   );
   transition: transform 0.12s linear;
   will-change: transform;
@@ -256,7 +262,7 @@ svg {
   animation: sunset-ignite 0.7s var(--ease-smooth);
 
   path {
-    fill: hsla(45, 90%, 74%, 0.95);
+    fill: hsl(45, 90%, 74%);
     stroke: hsla(38, 90%, 42%, 0.9);
     stroke-width: 1px;
     vector-effect: non-scaling-stroke;
