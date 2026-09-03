@@ -32,7 +32,8 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 
 /**
- * The theatre: how far from the round's centre a loss may sit.
+ * The theatre: how far from the round's centre a loss may sit, per difficulty
+ * — the START of a ladder, not a fixed radius.
  *
  * The mode is played CROPPED. At world framing a country is a few dozen pixels
  * of cream and noticing its absence is not a question of geography but of
@@ -41,17 +42,23 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * neighbourhood of the atlas and fails it, and the camera holds that region for
  * the whole round (`terraFrame` → `map.frame`).
  *
- * ~1800km is a region a player can hold in their head at once — the Balkans
- * into central Europe, Central Asia, the Horn.
- *
- * The number is bounded from BOTH sides, which is why it is not simply as tight
- * as possible. Tighter starves the deal: inside a small circle nearly every
- * candidate borders another, and the no-adjacent-blanks guard leaves almost no
- * neighbourhood able to seat a deck (at 1200km only two anchors on the whole
- * easy board can). Wider seats decks easily but spreads the losses past what
- * one crop can show at a size where an absence still reads.
+ * The radius is the zoom. The frame is the deck's own spread, and a deck may
+ * span two radii, so every kilometre here is a kilometre of atlas the camera
+ * has to show and the losses have to be found in. Tight starves the deal,
+ * though — inside a small circle nearly every candidate borders another, and
+ * the no-adjacent-blanks guard leaves few neighbourhoods able to seat a deck
+ * (Africa and Asia seat none under ~1400km, Oceania none at all). So the deal
+ * starts at the difficulty's radius and widens by `TERRA_THEATRE_STEP_KM` up
+ * to `TERRA_THEATRE_MAX_KM` before it gives up a loss: compact where the
+ * geography allows, wider only where it must.
  */
-export const TERRA_THEATRE_KM = 1800
+export const TERRA_THEATRE_KM: { [difficulty in GameDifficulty]: number } = {
+  easy: 1400,
+  normal: 1200,
+  hard: 1000,
+}
+export const TERRA_THEATRE_STEP_KM = 200
+export const TERRA_THEATRE_MAX_KM = 1800
 
 /**
  * Countries the atlas loses over a round, where the neighbourhood can seat them.
@@ -368,8 +375,12 @@ const kmApart = (a: ISOCountryCode, b: ISOCountryCode): number => {
  * The countries of `pool` sharing `anchor`'s neighbourhood, most prominent
  * first — the anchor included, since it is one of the losses.
  */
-const neighbourhoodOf = (anchor: ISOCountryCode, pool: ISOCountryCode[]): ISOCountryCode[] =>
-  pool.filter(isoCode => isoCode === anchor || kmApart(anchor, isoCode) <= TERRA_THEATRE_KM)
+const neighbourhoodOf = (
+  anchor: ISOCountryCode,
+  pool: ISOCountryCode[],
+  theatreKm: number
+): ISOCountryCode[] =>
+  pool.filter(isoCode => isoCode === anchor || kmApart(anchor, isoCode) <= theatreKm)
 
 /**
  * Greedily take non-adjacent countries out of a neighbourhood, in weighted
@@ -422,29 +433,51 @@ const seatDeck = (
  */
 export const pickVanishDeck = (
   rules: GameRules,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  theatreKm: number = TERRA_THEATRE_KM[rules.difficulty]
 ): ISOCountryCode[] | undefined => {
   const candidates = reachCandidates(terraField(rules), TERRA_REACH[rules.difficulty])
 
-  for (let target = TERRA_VANISH_COUNT[rules.difficulty]; target >= TERRA_MINIMUM_DECK; target--) {
-    const viable = candidates.filter(
-      anchor => seatDeck(neighbourhoodOf(anchor, candidates), target).length >= target
-    )
-    if (!viable.length) continue
+  // The radius ladder runs INSIDE the count ladder: a full deck in a wider
+  // theatre beats a short one in a tight theatre — the count is the mode's
+  // rhythm, the radius only its zoom.
+  const radii: number[] = []
+  for (let km = theatreKm; km <= TERRA_THEATRE_MAX_KM; km += TERRA_THEATRE_STEP_KM) radii.push(km)
+  if (!radii.length) radii.push(theatreKm)
 
-    // A viable anchor proves its neighbourhood CAN seat the deck; it does not
-    // promise that a weighted walk through it will. An unlucky early pick can
-    // knock out most of its own region, so the seating gets its own re-rolls —
-    // without them the easy deck, whose count already sits on the floor, had
-    // no lower target to fall back to and simply failed to deal.
-    for (let attempt = 0; attempt < DEAL_ATTEMPTS; attempt++) {
-      const anchor = weightedPick(leanedWeights(viable), random)
-      if (!anchor) break
-      const deck = seatDeck(neighbourhoodOf(anchor, candidates), target, random)
-      if (deck.length >= target) return deck
+  for (let target = TERRA_VANISH_COUNT[rules.difficulty]; target >= TERRA_MINIMUM_DECK; target--) {
+    for (const radius of radii) {
+      const deck = seatWithin(candidates, target, radius, random)
+      if (deck) return deck
     }
   }
 
+  return undefined
+}
+
+/** One rung of the ladder: a deck of `target` inside `radius`, or nothing. */
+const seatWithin = (
+  candidates: ISOCountryCode[],
+  target: number,
+  radius: number,
+  random: () => number
+): ISOCountryCode[] | undefined => {
+  const viable = candidates.filter(
+    anchor => seatDeck(neighbourhoodOf(anchor, candidates, radius), target).length >= target
+  )
+  if (!viable.length) return undefined
+
+  // A viable anchor proves its neighbourhood CAN seat the deck; it does not
+  // promise that a weighted walk through it will. An unlucky early pick can
+  // knock out most of its own region, so the seating gets its own re-rolls —
+  // without them the easy deck, whose count already sits on the floor, had
+  // no lower target to fall back to and simply failed to deal.
+  for (let attempt = 0; attempt < DEAL_ATTEMPTS; attempt++) {
+    const anchor = weightedPick(leanedWeights(viable), random)
+    if (!anchor) break
+    const deck = seatDeck(neighbourhoodOf(anchor, candidates, radius), target, random)
+    if (deck.length >= target) return deck
+  }
   return undefined
 }
 
@@ -459,16 +492,18 @@ export const pickVanishDeck = (
  * around the deck's own bounding box (`scale` is a share of its larger side,
  * `floor` the least margin in any case), never a list of countries: framing
  * by whole-country boxes let one big neighbour — Russia, Kazakhstan, Brazil —
- * blow a Balkan crop out to a whole-planet view. Modest on purpose: the
- * typed console's berth already scales the shot up by well over half, so
- * the frame is the CLEAR band's worth of atlas, not the viewport's.
+ * blow a Balkan crop out to a whole-planet view. Small on purpose: the
+ * camera's aspect fit and the chrome berths already add most of the air
+ * around the deck, and every unit of margin here is a unit of zoom the
+ * losses lose on the axis that binds (height on a desktop band, width on a
+ * phone).
  */
 export const TERRA_FRAME_REACH: {
   [difficulty in GameDifficulty]: { scale: number; floor: number }
 } = {
-  easy: { scale: 0.15, floor: 18 },
-  normal: { scale: 0.25, floor: 30 },
-  hard: { scale: 0.4, floor: 45 },
+  easy: { scale: 0.06, floor: 8 },
+  normal: { scale: 0.08, floor: 10 },
+  hard: { scale: 0.12, floor: 14 },
 }
 
 /**

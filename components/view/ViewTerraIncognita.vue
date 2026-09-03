@@ -25,7 +25,7 @@
       <div v-if="collapsing" class="collapse-veil" />
     </Transition>
 
-    <ChallengePrompt v-if="!briefing" :hint="hint" :hint-tone="hintTone">
+    <ChallengePrompt v-if="!briefing" ref="promptHost" :hint="hint" :hint-tone="hintTone">
       <h1 class="map-caption">{{ revealed ? 'What you never noticed' : "What's missing?" }}</h1>
       <span class="map-caption sub">
         <template v-if="revealed">
@@ -62,7 +62,10 @@
       </ul>
     </ChallengePrompt>
 
-    <footer v-if="!revealed && !briefing" ref="consoleFooter" class="suggest-berth">
+    <!-- No suggest-berth: the list opens UPWARD over the map, so the console
+         hugs the bottom edge and the region keeps the band above it. The
+         downward reserve cost this mode half its zoom on a laptop. -->
+    <footer v-if="!revealed && !briefing" ref="consoleFooter">
       <TransitionGroup ref="trail" tag="ol" name="chain" class="country-chip-list rail">
         <CountryChip
           v-for="(isoCode, index) in guesses"
@@ -97,6 +100,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { MOTION } from '~~/lib/motion'
 import { terraFrame, terraRestoredHoles, terraVanishedBy } from '~~/lib/terra-incognita'
 import { useAckOnce } from '~~/lib/use-ack-once'
@@ -147,6 +151,32 @@ const {
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
+
+/**
+ * The prompt's band, reserved from the camera like the console's: the deck
+ * is framed edge to edge on its binding axis, and on a desktop that axis is
+ * vertical — without this the topmost loss stood under the title pills, the
+ * one place a vanishing could not be seen.
+ */
+const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
+const PROMPT_BERTH_KEY = 'terra-prompt'
+let promptBerthClosed = false
+const placePromptBerth = () => {
+  nextTick(() => {
+    if (promptBerthClosed) return
+    const prompt = promptHost.value?.$el as HTMLElement | undefined
+    const bottom = prompt?.getBoundingClientRect().bottom
+    claimMapBerth(
+      gameStore,
+      PROMPT_BERTH_KEY,
+      bottom && !revealed.value ? { top: Math.round(bottom) + BERTH_GAP_PX } : undefined
+    )
+  })
+}
+onBeforeUnmount(() => {
+  promptBerthClosed = true
+  claimMapBerth(gameStore, PROMPT_BERTH_KEY, undefined)
+})
 
 // Total fallback: watchers keep evaluating for a beat after the round
 // advances past this mode, so the state must never dereference undefined.
@@ -305,7 +335,12 @@ const frame = computed(() =>
 
 // The frame already carries the difficulty's margin, so the camera's own pad
 // stays near zero — the default 35% would undo the easy crop.
-gameStore.map.framePad = { scale: 0.04, floor: 10 }
+gameStore.map.framePad = { scale: 0.02, floor: 4 }
+
+// The prompt is measured once it stands (after the card) and again when the
+// reveal swaps its copy; the reveal releases the claim so the pull-in can use
+// the whole viewport.
+watch([briefing, revealed, showInterstitial], placePromptBerth, { immediate: true })
 
 // Deliberately NOT watching `missed`: it changes on every restore, and each
 // change would re-aim the rig mid-round. Read inside the callback instead,
@@ -394,5 +429,13 @@ footer {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+// The console hugs the bottom, so its suggestions open upward over the map —
+// the same flip as the night console and the empire timebar.
+.guess-box :deep(.suggestions) {
+  top: auto;
+  bottom: 100%;
+  margin: 0 0 0.6rem;
 }
 </style>

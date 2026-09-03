@@ -34,7 +34,7 @@ import {
   TERRA_OPENING_MS,
   TERRA_REACH,
   TERRA_TAIL_MS,
-  TERRA_THEATRE_KM,
+  TERRA_THEATRE_MAX_KM,
   TERRA_VANISH_COUNT,
 } from '~~/lib/terra-incognita'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
@@ -155,7 +155,7 @@ describe('pickVanishDeck', () => {
             if (!from || !to) continue
             // Both sit within the radius of one shared anchor, so no pair can
             // be further apart than the theatre's own diameter.
-            expect(haversineKm(from, to), `${a}/${b}`).toBeLessThanOrEqual(2 * TERRA_THEATRE_KM)
+            expect(haversineKm(from, to), `${a}/${b}`).toBeLessThanOrEqual(2 * TERRA_THEATRE_MAX_KM)
           }
         }
       }
