@@ -1,4 +1,5 @@
 import {
+  briefingHolds,
   CLASSIC_SETTLE_SLACK_MS,
   classicPlaySeconds,
   FIRST_TURN_GRACE_MS,
@@ -53,6 +54,9 @@ const classicBudgetMs = (round: Round): number | undefined => {
  *  runs `durationSeconds`, while this covers that wait plus the play. */
 export const startClassicClock = (round: Round) => {
   if (!isClassicGroupRound(round.groupChallenge)) return
+  // A classic kind behind a briefing (Terra Incognita) stamps on the last
+  // ready or the cap — its own beats file owns that moment.
+  if (briefingHolds(round.groupChallenge)) return
   const budget = classicBudgetMs(round)
   if (budget) round.deadline = Date.now() + budget
 }
@@ -193,6 +197,9 @@ export const rearmClassicRound = (ctx: EngineContext, game: Game) => {
     }
   }
   if (!round.deadline) {
+    // Behind its briefing there is nothing to revive here: the cap is the
+    // mode's own rearm, and a stamp now would start the world under the card.
+    if (briefingHolds(round.groupChallenge)) return
     const budget = classicBudgetMs(round)
     if (!budget) return
     round.deadline = Date.now() + budget

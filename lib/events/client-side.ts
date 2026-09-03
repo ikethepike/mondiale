@@ -163,7 +163,9 @@ export const useClientEvents = () => {
     gameStore.map.dimmed = []
     gameStore.map.pulsing = []
     gameStore.map.vanished = []
+    gameStore.map.absorbedBy = undefined
     gameStore.map.restoring = []
+    gameStore.map.traced = []
     gameStore.map.atlasMode = false
     gameStore.map.zoomOut = undefined
     gameStore.map.feature = undefined

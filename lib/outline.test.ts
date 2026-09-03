@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  reachEnds,
-  sharedBorderPair,
   boundaryDeviation,
+  parsePolygons,
+  partitionRing,
   DRAW_COMPLETE_AT,
   drawnFraction,
   largestRing,
@@ -380,108 +380,58 @@ describe('poleOfInaccessibility', () => {
   })
 })
 
-describe('sharedBorderPair', () => {
-  // A densely-sampled square: real rings carry many vertices per border, and
-  // sharedVertexMask deliberately bridges 1-2 vertex gaps, so a four-corner
-  // toy would have its whole outline read as shared.
-  const edge = (from: [number, number], to: [number, number], steps = 6): [number, number][] =>
-    Array.from({ length: steps }, (_, index) => [
-      from[0] + ((to[0] - from[0]) * index) / steps,
-      from[1] + ((to[1] - from[1]) * index) / steps,
-    ])
+describe('partitionRing', () => {
+  const ring = (code: keyof typeof MAP_PATHS) => largestRing(MAP_PATHS[code])!
+  const key = ([x, y]: OutlinePoint) => `${x.toFixed(2)},${y.toFixed(2)}`
 
-  const square: [number, number][] = [
-    ...edge([0, 0], [10, 0]),
-    ...edge([10, 0], [10, 10]),
-    ...edge([10, 10], [0, 10]),
-    ...edge([0, 10], [0, 0]),
-  ]
-
-  /** A neighbour sharing one whole edge of the square. */
-  const along = (from: [number, number], to: [number, number], drop: [number, number]) => [
-    ...edge(from, to),
-    to,
-    [to[0] + drop[0], to[1] + drop[1]] as [number, number],
-    [from[0] + drop[0], from[1] + drop[1]] as [number, number],
-  ]
-
-  it('takes the longest shared border — the stretch the shapes merge along', () => {
-    const bottom = along([0, 0], [10, 0], [0, -5])
-    // A neighbour touching only the lower half of the left edge.
-    const sliver = along([0, 4], [0, 0], [-5, 0])
-
-    const pair = sharedBorderPair(square, [bottom, sliver])
-    expect(pair).toBeDefined()
-    // Every vertex of the chosen run lies on the bottom edge, not the sliver's.
-    for (const [, y] of pair!.own) expect(y).toBe(0)
+  it('keeps the whole ring when nothing is shared', () => {
+    const { kept, shared } = partitionRing(ring('FR'), [ring('JP')])
+    expect(shared).toEqual([])
+    expect(kept).toHaveLength(1)
+    expect(kept[0]).toHaveLength(ring('FR').length + 1)
   })
 
-  it('returns the border as BOTH countries draw it', () => {
-    // Each copy has to be covered along its own line; the two diverge under
-    // per-country simplification.
-    const bottom = along([0, 0], [10, 0], [0, -5])
-    const pair = sharedBorderPair(square, [bottom])!
-    expect(pair.own.length).toBeGreaterThan(1)
-    expect(pair.theirs.length).toBeGreaterThan(1)
-    // Both runs trace the same edge. `sharedVertexMask` deliberately bridges
-    // 1-2 vertex gaps, so a run may reach a vertex past the junction — most of
-    // it lying on the shared edge is the honest assertion.
-    for (const run of [pair.own, pair.theirs]) {
-      const onEdge = run.filter(([, y]) => y === 0).length
-      expect(onEdge / run.length).toBeGreaterThan(0.5)
+  it('agrees with the pairwise helpers against one neighbour', () => {
+    const france = ring('FR')
+    const spain = ring('ES')
+    const { kept, shared } = partitionRing(france, [spain])
+    expect(kept).toEqual(unsharedRuns(france, spain))
+    // The shared side carries the border sharedBoundary finds, junctions included.
+    const border = new Set(sharedBoundary(france, spain)!.map(key))
+    const sharedKeys = new Set(shared.flat().map(key))
+    for (const vertex of border) expect(sharedKeys.has(vertex)).toBe(true)
+  })
+
+  it('erases every neighbour at once — Germany over Austria and Poland', () => {
+    // A pairwise fusion would draw the Polish border back through the Austrian
+    // pair and vice versa; the plural partition drops both from the kept side.
+    const germany = ring('DE')
+    const austria = ring('AT')
+    const poland = ring('PL')
+    const { kept, shared } = partitionRing(germany, [austria, poland])
+    const keptKeys = new Set(kept.flat().map(key))
+    for (const border of [sharedBoundary(germany, austria)!, sharedBoundary(germany, poland)!]) {
+      // Interior vertices of an erased border never appear on the kept side —
+      // only the junction vertex each kept run is extended to.
+      const interior = border.slice(1, -1)
+      expect(interior.length).toBeGreaterThan(2)
+      expect(interior.filter(point => keptKeys.has(key(point))).length).toBeLessThanOrEqual(1)
     }
-    expect(pair.theirs.length).toBeLessThan(bottom.length + 1)
+    expect(shared.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('leaves the rest of the outline alone, so no border is amputated', () => {
-    const bottom = along([0, 0], [10, 0], [0, -5])
-    const pair = sharedBorderPair(square, [bottom])!
-    expect(pair.own.length).toBeLessThan(square.length)
+  it('partitions the ring exactly: every vertex lands on one side or the other', () => {
+    const germany = ring('DE')
+    const { kept, shared } = partitionRing(germany, [ring('AT'), ring('DK'), ring('PL')])
+    const seen = new Set([...kept.flat(), ...shared.flat()].map(key))
+    for (const point of germany) expect(seen.has(key(point))).toBe(true)
   })
 
-  it('yields nothing for a country with no land neighbours', () => {
-    // An island shares no border with anything, so there is no partial run to
-    // give up — which is exactly why the deck never takes one.
-    expect(sharedBorderPair(square, [])).toBeUndefined()
-  })
-
-  it('yields nothing for an enclave host that wraps the whole ring', () => {
-    // Lesotho inside South Africa: the shared run IS the whole outline, so
-    // erasing it would take the country's entire border with it and put us
-    // back on the amputation problem.
-    expect(sharedBorderPair(square, [square])).toBeUndefined()
-  })
-})
-
-describe('reachEnds', () => {
-  const square: [number, number][] = [
-    [0, 0],
-    [10, 0],
-    [10, 10],
-    [0, 10],
-  ]
-
-  it('stretches a run one vertex past each end', () => {
-    // The middle two vertices; reaching adds the one before and the one after.
-    const extended = reachEnds([square[1]!, square[2]!], square)
-    expect(extended).toEqual([square[0], square[1], square[2], square[3]])
-  })
-
-  it('wraps around the ring', () => {
-    const extended = reachEnds([square[3]!, square[0]!], square)
-    expect(extended[0]).toEqual(square[2])
-    expect(extended[extended.length - 1]).toEqual(square[1])
-  })
-
-  it('matches by value, so a neighbour copy of the border extends too', () => {
-    // The neighbour draws the same border from its own ring: equal coordinates,
-    // different objects. Identity matching would silently leave it unextended.
-    const copy: [number, number][] = square.map(([x, y]) => [x, y])
-    expect(reachEnds([copy[1]!, copy[2]!], square)).toHaveLength(4)
-  })
-
-  it('leaves a run it cannot place alone', () => {
-    expect(reachEnds([[99, 99] as [number, number], [98, 98]], square)).toHaveLength(2)
-    expect(reachEnds([square[0]!], square)).toHaveLength(1)
+  it('surrenders the whole ring to a host that wraps it', () => {
+    // The hole Lesotho sits in is one of South Africa's rings, not its largest.
+    const host = parsePolygons(MAP_PATHS.ZA).flat()
+    const { kept, shared } = partitionRing(ring('LS'), [host])
+    expect(kept).toEqual([])
+    expect(shared).toHaveLength(1)
   })
 })

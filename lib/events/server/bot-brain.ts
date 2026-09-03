@@ -100,6 +100,7 @@ import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answ
 import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
 import { submitIndividualChallengeAnswersHandler } from './submit-individual-challenge-answer.handler'
 import { applySweepClaim, applySweepReady, currentCleanSweep } from './sweep-beats'
+import { applyTerraReady, currentTerraIncognita } from './terra-beats'
 import {
   currentTimeline,
   handleTimelineRevealDone,
@@ -385,6 +386,19 @@ const planGroupChallenge = ({
   due: (key: string, delayMs: () => number) => boolean
 }) => {
   const challenge = round.groupChallenge
+
+  // Terra Incognita is a classic round behind a briefing: the ready ack comes
+  // first, and the composed answer only once the world is actually failing.
+  const terra = currentTerraIncognita(game)
+  if (terra?.state.briefing) {
+    if (!terra.state.order.includes(seat.id) || terra.state.ready.includes(seat.id)) return
+    if (
+      due(`terra-ready:${roundIndex}:${seat.id}`, () => rollMs(BOT_READY_MS, BOT_READY_JITTER_MS))
+    ) {
+      dispatchTerraReady(ctx, seat.id)
+    }
+    return
+  }
 
   // Classic rounds: one composed answer, banked through the shared scorer.
   if (isClassicGroupRound(challenge)) {
@@ -960,6 +974,14 @@ const dispatchUniqueAnswer = (ctx: EngineContext, playerId: string, category: Un
     const entry = Math.random() < share ? (sample(deepCut) ?? sample(pool)) : sample(pool)
     if (!entry) return
     await applyUniqueAnswer(ctx, fresh, challenge, playerId, category, entry.id)
+  })
+}
+
+const dispatchTerraReady = (ctx: EngineContext, playerId: string) => {
+  scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
+    const challenge = currentTerraIncognita(fresh)
+    if (challenge) await applyTerraReady(ctx, fresh, challenge, playerId)
   })
 }
 

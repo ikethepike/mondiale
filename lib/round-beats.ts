@@ -455,7 +455,10 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // the world whole again: every loss re-inks itself, the saved ones in the
   // player's own hand and the missed ones alongside. At 0 the scorecard
   // covered a map that was still visibly broken.
-  'terra-incognita': { owner: 'classic', revealHoldMs: 6000 },
+  // A classic clock behind a briefing: `startClassicClock` refuses the round
+  // while `state.briefing` holds, and terra-beats stamps it on the last ready
+  // (or this cap) — one stamp, one world failing for the whole table.
+  'terra-incognita': { owner: 'classic', revealHoldMs: 6000, briefingCapMs: BRIEFING_CAP_MS },
   composition: { owner: 'classic', revealHoldMs: 0 },
   // The reveal is the mode's whole teaching payload — the profile card's
   // sides, years, decade strip and UCDP note, plus the amber abroad-dots
@@ -507,6 +510,17 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
 
 export const roundBeats = (challenge: RoundChallenge | undefined): RoundBeatSpec =>
   ROUND_BEATS[roundChallengeKind(challenge)]
+
+/**
+ * A round still behind its rules card: no clock may stamp. Every briefed kind
+ * carries the gate as `state.briefing` — the turn chains, Unique or Bust,
+ * Clean Sweep, and Terra Incognita, whose clock is otherwise the generic
+ * classic one — so the classic engine reads this rather than knowing kinds.
+ */
+export const briefingHolds = (challenge: RoundChallenge | undefined): boolean =>
+  !!challenge &&
+  'state' in challenge &&
+  !!(challenge.state as { briefing?: boolean } | undefined)?.briefing
 
 /** A round whose server clock is the generic classic engine — everything but
  *  the five turn/beat engines. */

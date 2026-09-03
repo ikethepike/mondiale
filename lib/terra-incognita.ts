@@ -3,7 +3,15 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS } from '~~/data/map.gen'
 import { weightedPick } from '~~/lib/arrays'
 import { playableCountries } from '~~/lib/game-rules'
-import { countryLatLng, haversineKm, isLabelableBox, labelBoxFor } from '~~/lib/geo'
+import {
+  countryLatLng,
+  haversineKm,
+  isLabelableBox,
+  labelBoxFor,
+  mainlandBox,
+  WORLD_BOX,
+  type MapBox,
+} from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
 import { largestRing, parsePolygons, sharedBoundary } from '~~/lib/outline'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
@@ -24,29 +32,33 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 
 /**
- * The theatre: how far from the round's centre a loss may sit.
+ * The theatre: how far from the round's centre a loss may sit, per difficulty
+ * — the START of a ladder, not a fixed radius.
  *
  * The mode is played CROPPED. At world framing a country is a few dozen pixels
  * of cream and noticing its absence is not a question of geography but of
  * eyesight — Turkmenistan disappearing off a whole-planet view is invisible
  * even to someone who knows exactly where it is. So the round takes one
  * neighbourhood of the atlas and fails it, and the camera holds that region for
- * the whole round (`terraTheatre` → `map.focus`).
+ * the whole round (`terraFrame` → `map.frame`).
  *
- * ~1800km is a region a player can hold in their head at once — the Balkans
- * into central Europe, Central Asia, the Horn — and lands the camera at roughly
- * the crop Neighbour Blitz frames a single country at.
- *
- * The number is bounded from BOTH sides, which is why it is not simply as tight
- * as possible. Tighter crops the map harder but starves the deal: inside a small
- * circle nearly every candidate borders another, and the no-adjacent-blanks
- * guard leaves almost no neighbourhood able to seat a deck (at 1200km only two
- * anchors on the whole easy board can). Wider seats decks easily but stops being
- * a crop — the camera pads and berths the region up by about 1.9x, so a theatre
- * much past this one asks for a view bigger than the world and gets clamped
- * straight back to the whole-planet shot the crop exists to escape.
+ * The radius is the zoom. The frame is the deck's own spread, and a deck may
+ * span two radii, so every kilometre here is a kilometre of atlas the camera
+ * has to show and the losses have to be found in. Tight starves the deal,
+ * though — inside a small circle nearly every candidate borders another, and
+ * the no-adjacent-blanks guard leaves few neighbourhoods able to seat a deck
+ * (Africa and Asia seat none under ~1400km, Oceania none at all). So the deal
+ * starts at the difficulty's radius and widens by `TERRA_THEATRE_STEP_KM` up
+ * to `TERRA_THEATRE_MAX_KM` before it gives up a loss: compact where the
+ * geography allows, wider only where it must.
  */
-export const TERRA_THEATRE_KM = 1800
+export const TERRA_THEATRE_KM: { [difficulty in GameDifficulty]: number } = {
+  easy: 1400,
+  normal: 1200,
+  hard: 1000,
+}
+export const TERRA_THEATRE_STEP_KM = 200
+export const TERRA_THEATRE_MAX_KM = 1800
 
 /**
  * Countries the atlas loses over a round, where the neighbourhood can seat them.
@@ -271,15 +283,14 @@ const MINIMUM_WINDOW = 12
  * longest border with, which is the border the map paints out.
  *
  * The mode's fiction is one country expanding over another, so this names the
- * expander. `GameMap`'s `vanishPath` picks the same neighbour to erase, but
- * throws the identity away (it hands `sharedBorderPair` bare point arrays and
- * gets back runs, no code), so the answer has to be resolved here instead.
+ * expander. The deal stamps it on the challenge (`absorbedBy`) and the map
+ * fuses the two outlines from that stamp, so the country the grader accepts
+ * and the country the map merges into can never be two different neighbours.
  *
  * Pinned to SD `MAP_PATHS` on purpose. The map swaps to HD geometry as the
  * camera zooms, and two neighbours with near-equal borders could change places
  * between tiers — an accepted answer that depends on how far a player has
- * zoomed would be indefensible. The deal stamps this once and both ends read
- * the stamp.
+ * zoomed would be indefensible.
  *
  * Undefined where the geometry offers no partial border to give up: an enclave
  * whose host wraps the whole ring (Lesotho), or a country whose only neighbour
@@ -308,8 +319,8 @@ const resolveAbsorber = (isoCode: ISOCountryCode): ISOCountryCode | undefined =>
     const path = MAP_PATHS[neighbour as keyof typeof MAP_PATHS]
     if (!path) continue
     const run = sharedBoundary(ring, parsePolygons(path).flat())
-    // The same two guards `sharedBorderPair` applies, so the country named here
-    // is always the one the map actually erases toward.
+    // A border to give up has to be PART of the ring: an enclave's host shares
+    // the whole outline, and erasing that would take the country's every line.
     if (!run || run.length < 2 || run.length >= ring.length) continue
     if (!best || run.length > best.length) best = { isoCode: neighbour, length: run.length }
   }
@@ -364,8 +375,12 @@ const kmApart = (a: ISOCountryCode, b: ISOCountryCode): number => {
  * The countries of `pool` sharing `anchor`'s neighbourhood, most prominent
  * first — the anchor included, since it is one of the losses.
  */
-const neighbourhoodOf = (anchor: ISOCountryCode, pool: ISOCountryCode[]): ISOCountryCode[] =>
-  pool.filter(isoCode => isoCode === anchor || kmApart(anchor, isoCode) <= TERRA_THEATRE_KM)
+const neighbourhoodOf = (
+  anchor: ISOCountryCode,
+  pool: ISOCountryCode[],
+  theatreKm: number
+): ISOCountryCode[] =>
+  pool.filter(isoCode => isoCode === anchor || kmApart(anchor, isoCode) <= theatreKm)
 
 /**
  * Greedily take non-adjacent countries out of a neighbourhood, in weighted
@@ -418,63 +433,114 @@ const seatDeck = (
  */
 export const pickVanishDeck = (
   rules: GameRules,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  theatreKm: number = TERRA_THEATRE_KM[rules.difficulty]
 ): ISOCountryCode[] | undefined => {
   const candidates = reachCandidates(terraField(rules), TERRA_REACH[rules.difficulty])
 
-  for (let target = TERRA_VANISH_COUNT[rules.difficulty]; target >= TERRA_MINIMUM_DECK; target--) {
-    const viable = candidates.filter(
-      anchor => seatDeck(neighbourhoodOf(anchor, candidates), target).length >= target
-    )
-    if (!viable.length) continue
+  // The radius ladder runs INSIDE the count ladder: a full deck in a wider
+  // theatre beats a short one in a tight theatre — the count is the mode's
+  // rhythm, the radius only its zoom.
+  const radii: number[] = []
+  for (let km = theatreKm; km <= TERRA_THEATRE_MAX_KM; km += TERRA_THEATRE_STEP_KM) radii.push(km)
+  if (!radii.length) radii.push(theatreKm)
 
-    // A viable anchor proves its neighbourhood CAN seat the deck; it does not
-    // promise that a weighted walk through it will. An unlucky early pick can
-    // knock out most of its own region, so the seating gets its own re-rolls —
-    // without them the easy deck, whose count already sits on the floor, had
-    // no lower target to fall back to and simply failed to deal.
-    for (let attempt = 0; attempt < DEAL_ATTEMPTS; attempt++) {
-      const anchor = weightedPick(leanedWeights(viable), random)
-      if (!anchor) break
-      const deck = seatDeck(neighbourhoodOf(anchor, candidates), target, random)
-      if (deck.length >= target) return deck
+  for (let target = TERRA_VANISH_COUNT[rules.difficulty]; target >= TERRA_MINIMUM_DECK; target--) {
+    for (const radius of radii) {
+      const deck = seatWithin(candidates, target, radius, random)
+      if (deck) return deck
     }
   }
 
   return undefined
 }
 
-/**
- * The region the camera holds for the whole round — every country sharing the
- * losses' neighbourhood, the losses included.
- *
- * Derived from the deck alone, so both ends and the booth frame the identical
- * shot with nothing extra on the wire. It is deliberately WIDER than the deck's
- * own bounding box: framing just the losses would draw a box whose every edge
- * is a country that is about to disappear, which is a free answer. Centred on
- * the deck's mean position rather than on any one loss for the same reason.
- *
- * `rules` scopes it to the board so a continental variant never frames past its
- * own map.
- */
-export const terraTheatre = (
-  challenge: Pick<TerraIncognitaChallenge, 'vanishings'>,
-  rules: GameRules
-): ISOCountryCode[] => {
-  const points = challenge.vanishings.map(countryLatLng).filter(point => !!point)
-  if (!points.length) return [...challenge.vanishings]
+/** One rung of the ladder: a deck of `target` inside `radius`, or nothing. */
+const seatWithin = (
+  candidates: ISOCountryCode[],
+  target: number,
+  radius: number,
+  random: () => number
+): ISOCountryCode[] | undefined => {
+  const viable = candidates.filter(
+    anchor => seatDeck(neighbourhoodOf(anchor, candidates, radius), target).length >= target
+  )
+  if (!viable.length) return undefined
 
-  // A plain mean is wrong across the antimeridian, but a deck is regional by
-  // construction (TERRA_THEATRE_KM), so no deck can straddle it.
-  const centre = {
-    lat: points.reduce((sum, point) => sum + point.lat, 0) / points.length,
-    lng: points.reduce((sum, point) => sum + point.lng, 0) / points.length,
+  // A viable anchor proves its neighbourhood CAN seat the deck; it does not
+  // promise that a weighted walk through it will. An unlucky early pick can
+  // knock out most of its own region, so the seating gets its own re-rolls —
+  // without them the easy deck, whose count already sits on the floor, had
+  // no lower target to fall back to and simply failed to deal.
+  for (let attempt = 0; attempt < DEAL_ATTEMPTS; attempt++) {
+    const anchor = weightedPick(leanedWeights(viable), random)
+    if (!anchor) break
+    const deck = seatDeck(neighbourhoodOf(anchor, candidates, radius), target, random)
+    if (deck.length >= target) return deck
   }
+  return undefined
+}
 
-  const near = playableCountries(rules).filter(isoCode => {
-    const point = countryLatLng(isoCode)
-    return !!point && haversineKm(centre, point) <= TERRA_THEATRE_KM
-  })
+/**
+ * How much atlas the camera shows around the losses, per difficulty — the
+ * mode's framing lever, and the one that makes the same deck a different
+ * round at each setting.
+ *
+ * Tight on easy: each loss is a large piece of the screen and its absence is
+ * hard to miss. Wide on hard: the same country is a sliver in a crowded region
+ * and the player has to be scanning the right place. Both are in MAP UNITS
+ * around the deck's own bounding box (`scale` is a share of its larger side,
+ * `floor` the least margin in any case), never a list of countries: framing
+ * by whole-country boxes let one big neighbour — Russia, Kazakhstan, Brazil —
+ * blow a Balkan crop out to a whole-planet view. Small on purpose: the
+ * camera's aspect fit and the chrome berths already add most of the air
+ * around the deck, and every unit of margin here is a unit of zoom the
+ * losses lose on the axis that binds (height on a desktop band, width on a
+ * phone).
+ */
+export const TERRA_FRAME_REACH: {
+  [difficulty in GameDifficulty]: { scale: number; floor: number }
+} = {
+  easy: { scale: 0.06, floor: 8 },
+  normal: { scale: 0.08, floor: 10 },
+  hard: { scale: 0.12, floor: 14 },
+}
 
-  return [...new Set([...challenge.vanishings, ...near])]
+/**
+ * The map-space box the camera holds for the whole round: the deck's mainland
+ * boxes, padded by the difficulty's reach and clipped to the world.
+ *
+ * Derived from the deck alone, so every seat and the booth frame the identical
+ * shot with nothing extra on the wire. The padding is what keeps the frame
+ * fair: it is symmetric about the deck, so the losses sit in the middle of the
+ * shot rather than along its edges — a box whose every edge is a country about
+ * to disappear is a free answer — and it never falls under `floor`, so no loss
+ * is ever the first thing the frame cuts off. The camera adds its own aspect
+ * correction and console berth on top (`frameForBoxes`).
+ */
+export const terraFrame = (
+  challenge: Pick<TerraIncognitaChallenge, 'vanishings'>,
+  difficulty: GameDifficulty
+): MapBox => {
+  const boxes = challenge.vanishings
+    .map(isoCode => mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode]))
+    .filter((box): box is MapBox => !!box)
+  if (!boxes.length) return [WORLD_BOX.x, WORLD_BOX.y, WORLD_BOX.width, WORLD_BOX.height]
+
+  const left = Math.min(...boxes.map(([x]) => x))
+  const top = Math.min(...boxes.map(([, y]) => y))
+  const right = Math.max(...boxes.map(([x, , width]) => x + width))
+  const bottom = Math.max(...boxes.map(([, y, , height]) => y + height))
+
+  const { scale, floor } = TERRA_FRAME_REACH[difficulty]
+  const pad = Math.max((right - left) * scale, (bottom - top) * scale, floor)
+
+  const x = Math.max(WORLD_BOX.x, left - pad)
+  const y = Math.max(WORLD_BOX.y, top - pad)
+  return [
+    x,
+    y,
+    Math.min(WORLD_BOX.x + WORLD_BOX.width, right + pad) - x,
+    Math.min(WORLD_BOX.y + WORLD_BOX.height, bottom + pad) - y,
+  ]
 }

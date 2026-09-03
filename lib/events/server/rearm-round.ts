@@ -10,6 +10,7 @@ import { rearmGovernment } from './government-beats'
 import { rearmSeatExits } from './seat-exits'
 import { rearmTimeline } from './timeline-turns'
 import { rearmCleanSweep } from './sweep-beats'
+import { rearmTerraIncognita } from './terra-beats'
 import { rearmUniqueOrBust } from './unique-beats'
 
 /** How long one rearm sweep covers a game. A flapping (or replaying) client
@@ -57,6 +58,7 @@ export const rearmLiveRound = (
   rearmGovernment(ctx, game, options)
   rearmUniqueOrBust(ctx, game, options)
   rearmCleanSweep(ctx, game, options)
+  rearmTerraIncognita(ctx, game, options)
   rearmClassicRound(ctx, game)
   // Not a round engine: the parked-seat exits (scorecards, tutorials, gates,
   // the gauntlet) and the resolving-latch recovery.

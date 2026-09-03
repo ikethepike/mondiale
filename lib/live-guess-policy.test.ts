@@ -140,9 +140,15 @@ describe('critical client events', () => {
   it('acks and retries every briefing ready-gate', () => {
     // A lost ready click strands the briefing — sweep-ready once slipped this
     // list while its three siblings were in.
-    for (const ready of ['manhunt-ready', 'unique-ready', 'chain-ready', 'sweep-ready'] as const) {
+    for (const ready of [
+      'manhunt-ready',
+      'unique-ready',
+      'chain-ready',
+      'sweep-ready',
+      'terra-ready',
+    ] as const) {
       expect(isCriticalClientEvent(ready)).toBe(true)
     }
-    expect(CRITICAL_CLIENT_EVENTS.filter(event => event.endsWith('-ready'))).toHaveLength(4)
+    expect(CRITICAL_CLIENT_EVENTS.filter(event => event.endsWith('-ready'))).toHaveLength(5)
   })
 })

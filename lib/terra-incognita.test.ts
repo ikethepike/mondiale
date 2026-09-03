@@ -6,7 +6,14 @@ import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import { blitzScore } from '~~/lib/scoring'
-import { countryLatLng, haversineKm, isLabelableBox, labelBoxFor } from '~~/lib/geo'
+import {
+  countryLatLng,
+  haversineKm,
+  isLabelableBox,
+  labelBoxFor,
+  mainlandBox,
+  WORLD_BOX,
+} from '~~/lib/geo'
 import {
   pickVanishDeck,
   terraAbsorber,
@@ -15,18 +22,19 @@ import {
   terraRestoredHoles,
   terraField,
   terraSeconds,
-  terraTheatre,
+  terraFrame,
   terraVanishAt,
   terraVanishedBy,
   terraCollapseThreshold,
   terraVanishedCount,
   TERRA_CADENCE_MS,
   TERRA_COLLAPSE_THRESHOLD,
+  TERRA_FRAME_REACH,
   TERRA_MINIMUM_DECK,
   TERRA_OPENING_MS,
   TERRA_REACH,
   TERRA_TAIL_MS,
-  TERRA_THEATRE_KM,
+  TERRA_THEATRE_MAX_KM,
   TERRA_VANISH_COUNT,
 } from '~~/lib/terra-incognita'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
@@ -66,6 +74,7 @@ const challengeOf = (
   collapseThreshold: terraCollapseThreshold(vanishings.length, difficulty),
   durationSeconds: terraSeconds(vanishings.length, TERRA_CADENCE_MS[difficulty]),
   maximumPoints: 100,
+  state: { ready: [], order: [] },
 })
 
 describe('terraField', () => {
@@ -146,7 +155,7 @@ describe('pickVanishDeck', () => {
             if (!from || !to) continue
             // Both sit within the radius of one shared anchor, so no pair can
             // be further apart than the theatre's own diameter.
-            expect(haversineKm(from, to), `${a}/${b}`).toBeLessThanOrEqual(2 * TERRA_THEATRE_KM)
+            expect(haversineKm(from, to), `${a}/${b}`).toBeLessThanOrEqual(2 * TERRA_THEATRE_MAX_KM)
           }
         }
       }
@@ -248,29 +257,88 @@ describe('pickVanishDeck', () => {
   })
 })
 
-describe('terraTheatre', () => {
-  it('contains every loss, so nothing vanishes off-frame', () => {
+describe('terraFrame', () => {
+  const contains = (
+    [x, y, width, height]: readonly number[],
+    [bx, by, bw, bh]: readonly number[]
+  ) => bx >= x! && by >= y! && bx + bw <= x! + width! && by + bh <= y! + height!
+
+  it('holds every loss with room to spare, so nothing vanishes at the frame`s edge', () => {
     for (let seed = 0; seed < 30; seed++) {
-      const deck = pickVanishDeck(rules(), seeded(`theatre-${seed}`))!
-      const theatre = new Set(terraTheatre({ vanishings: deck }, rules()))
-      for (const isoCode of deck) expect(theatre.has(isoCode), isoCode).toBe(true)
+      for (const difficulty of DIFFICULTIES) {
+        const deck = pickVanishDeck(rules(difficulty), seeded(`frame-${difficulty}-${seed}`))!
+        const [x, y, width, height] = terraFrame({ vanishings: deck }, difficulty)
+        const { floor } = TERRA_FRAME_REACH[difficulty]
+        for (const isoCode of deck) {
+          const box = mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode])!
+          expect(contains([x, y, width, height], box), `${isoCode} in frame`).toBe(true)
+          // Margin on every side, unless the world itself ends first.
+          const margins = [
+            box[0] - x,
+            box[1] - y,
+            x + width - (box[0] + box[2]),
+            y + height - (box[1] + box[3]),
+          ]
+          const clipped = [
+            x <= WORLD_BOX.x,
+            y <= WORLD_BOX.y,
+            x + width >= WORLD_BOX.width,
+            y + height >= WORLD_BOX.height,
+          ]
+          margins.forEach((margin, side) => {
+            if (!clipped[side])
+              expect(margin, `${isoCode} side ${side}`).toBeGreaterThanOrEqual(floor - 1e-9)
+          })
+        }
+      }
     }
   })
 
-  it('is wider than the deck, so the frame`s edges are not the answers', () => {
-    // Framing the losses alone would draw a box whose every edge is a country
-    // about to disappear — a free answer handed over by the camera.
-    for (let seed = 0; seed < 30; seed++) {
-      const deck = pickVanishDeck(rules(), seeded(`wide-${seed}`))!
-      const theatre = terraTheatre({ vanishings: deck }, rules())
-      expect(theatre.length, `seed ${seed}`).toBeGreaterThan(deck.length)
+  it('widens with difficulty — the same deck is a bigger haystack on hard', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const deck = pickVanishDeck(rules(), seeded(`widen-${seed}`))!
+      const area = (difficulty: GameDifficulty) => {
+        const [, , width, height] = terraFrame({ vanishings: deck }, difficulty)
+        return width * height
+      }
+      expect(area('easy')).toBeLessThan(area('normal'))
+      expect(area('normal')).toBeLessThan(area('hard'))
     }
   })
 
-  it('never frames past a continental board', () => {
-    const deck = pickVanishDeck(rules('normal', 'europe'), seeded('eu'))!
-    const theatre = terraTheatre({ vanishings: deck }, rules('normal', 'europe'))
-    expect(theatre).not.toContain('KE')
+  it('is centred on the deck, never on one loss', () => {
+    // A symmetric pad: the losses sit in the middle of the shot, so the edges
+    // of the frame are never a hint about what is about to go.
+    const deck = pickVanishDeck(rules(), seeded('centre'))!
+    const [x, y, width, height] = terraFrame({ vanishings: deck }, 'normal')
+    const boxes = deck.map(isoCode => mainlandBox(MAP_REGIONS[isoCode], MAP_BOUNDS[isoCode])!)
+    const left = Math.min(...boxes.map(box => box[0]))
+    const right = Math.max(...boxes.map(box => box[0] + box[2]))
+    const top = Math.min(...boxes.map(box => box[1]))
+    const bottom = Math.max(...boxes.map(box => box[1] + box[3]))
+    expect(x + width / 2).toBeCloseTo((left + right) / 2, 5)
+    expect(y + height / 2).toBeCloseTo((top + bottom) / 2, 5)
+  })
+
+  it('never frames past the world', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      for (const difficulty of DIFFICULTIES) {
+        const deck = pickVanishDeck(rules(difficulty), seeded(`world-${difficulty}-${seed}`))!
+        const [x, y, width, height] = terraFrame({ vanishings: deck }, difficulty)
+        expect(x).toBeGreaterThanOrEqual(WORLD_BOX.x)
+        expect(y).toBeGreaterThanOrEqual(WORLD_BOX.y)
+        expect(x + width).toBeLessThanOrEqual(WORLD_BOX.x + WORLD_BOX.width)
+        expect(y + height).toBeLessThanOrEqual(WORLD_BOX.y + WORLD_BOX.height)
+      }
+    }
+  })
+
+  it('is a crop, not the planet — even on hard', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const deck = pickVanishDeck(rules('hard'), seeded(`crop-${seed}`))!
+      const [, , width] = terraFrame({ vanishings: deck }, 'hard')
+      expect(width, `seed ${seed}`).toBeLessThan(WORLD_BOX.width / 3)
+    }
   })
 })
 
@@ -376,6 +444,9 @@ describe('the dealt round', () => {
       terraSeconds(TERRA_VANISH_COUNT.normal, TERRA_CADENCE_MS.normal)
     )
     expect(terraAnswers(challenge)).toEqual(challenge.vanishings)
+    // Dealt behind its card: the clock waits for this table.
+    expect(challenge.state.briefing).toBe(true)
+    expect(challenge.state.ready).toEqual([])
   })
 })
 

@@ -17,6 +17,7 @@ import {
 } from './government-beats'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
+import { scheduleTerraTimeout } from './terra-beats'
 import { scheduleClassicSettle, startClassicClock } from './classic-rounds'
 import { armFinalQuestionCap, armIndividualGateCap } from './seat-exits'
 
@@ -24,7 +25,7 @@ import type { GameServer, GameSocket } from '../server-side'
 import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
 import type { Player } from '~~/types/player.type'
-import { latestRound } from '~~/lib/rounds'
+import { isChallengeOfType, latestRound } from '~~/lib/rounds'
 import { moveStopTile } from '~~/lib/player-status'
 import {
   GATE_RESULT_WIRE_GRACE_MS,
@@ -380,6 +381,11 @@ export const enterMovementPhaseHandler = defineGameHandler(
       // same reading cap; the board's clock stamps when the table is briefed.
       if (isCleanSweepChallenge(revealed)) {
         scheduleSweepTimeout({ io, redis, socket, eventTarget }, game, revealed)
+      }
+      // Terra Incognita opens on its briefing as well: the classic clock
+      // refused to stamp above, and the last ready (or this cap) stamps it.
+      if (isChallengeOfType(revealed, 'terra-incognita-challenge')) {
+        scheduleTerraTimeout({ io, redis, socket, eventTarget }, game, revealed)
       }
       scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
     }

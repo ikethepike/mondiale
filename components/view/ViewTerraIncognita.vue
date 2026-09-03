@@ -1,24 +1,43 @@
 <template>
-  <div v-if="challenge" class="terra-incognita challenge-shell" :class="{ collapsing }">
+  <div v-if="challenge" class="terra-incognita challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="alert"
       kind="terra-incognita"
       title="The atlas is failing"
-      :stakes="`Countries are being erased from the map, one every ${cadenceSeconds} seconds. Name the missing country — or the one that swallowed it — to put it back. Let ${challenge.collapseThreshold} go at once and the world starts coming apart.`"
-      @done="begin"
+      stakes="Borders are about to dissolve. Notice which country melted away — or which one grew — and name it to put the line back."
+      @done="brief"
     />
 
-    <ChallengePrompt :hint="hint" :hint-tone="hintTone">
+    <!-- The card stands alone while it is up — the prompt and the console
+         would share its column and squeeze it into a scroller. -->
+    <TerraBriefing
+      v-if="briefing"
+      :challenge="challenge"
+      :ready="state.ready"
+      :participants="state.order"
+      :sent="iAmReady"
+      :spectating="gameStore.watching"
+      @ready="sendReady"
+    />
+
+    <Transition name="veil">
+      <div v-if="collapsing" class="collapse-veil" />
+    </Transition>
+
+    <ChallengePrompt v-if="!briefing" ref="promptHost" :hint="hint" :hint-tone="hintTone">
       <h1 class="map-caption">{{ revealed ? 'What you never noticed' : "What's missing?" }}</h1>
       <span class="map-caption sub">
         <template v-if="revealed">
-          {{ found.length }} of {{ deck.length }} restored{{
+          {{ restored.length }} of {{ deck.length }} restored{{
             missed.length ? ` · ${missed.length} still gone, named on the map` : ' · a clean world'
           }}
         </template>
+        <template v-else-if="!started"
+          >Name the country that vanished, or the one it melted into</template
+        >
         <template v-else>
-          {{ found.length }} restored · {{ outstanding.length }} still gone
+          {{ found.length }} restored · {{ outstanding.length }} still gone · either name counts
         </template>
       </span>
 
@@ -31,6 +50,7 @@
       <ul
         v-if="!revealed"
         class="collapse-gauge"
+        :class="{ alarm: collapsing }"
         :aria-label="`${outstanding.length} countries missing`"
       >
         <li
@@ -42,13 +62,16 @@
       </ul>
     </ChallengePrompt>
 
-    <footer v-if="!revealed" ref="consoleFooter" class="suggest-berth">
+    <!-- No suggest-berth: the list opens UPWARD over the map, so the console
+         hugs the bottom edge and the region keeps the band above it. The
+         downward reserve cost this mode half its zoom on a laptop. -->
+    <footer v-if="!revealed && !briefing" ref="consoleFooter">
       <TransitionGroup ref="trail" tag="ol" name="chain" class="country-chip-list rail">
         <CountryChip
-          v-for="isoCode in guesses"
+          v-for="(isoCode, index) in guesses"
           :key="isoCode"
           class="map-caption"
-          :class="{ stray: !answerSet.has(isoCode) }"
+          :class="{ stray: !answerSet.has(claims[index] ?? isoCode) }"
           :country="getCountry(isoCode)"
         />
       </TransitionGroup>
@@ -59,7 +82,7 @@
             ref="guessInput"
             :disabled="submitted || !started"
             :excluded="guesses"
-            placeholder="Name a missing country…"
+            placeholder="Name the missing country…"
             @guess="onGuess"
             @miss="announce({ hint: 'No country by that name' })"
           />
@@ -71,22 +94,21 @@
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import TerraBriefing from '~/components/challenge/TerraBriefing.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { MOTION } from '~~/lib/motion'
-import {
-  terraRestoredBy,
-  terraRestoredHoles,
-  terraTheatre,
-  terraVanishedBy,
-} from '~~/lib/terra-incognita'
+import { terraFrame, terraRestoredHoles, terraVanishedBy } from '~~/lib/terra-incognita'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import type { TerraBriefingState } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -95,14 +117,18 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * The whole round is a function of the clock. The challenge carries the deck
  * and the cadence, so the view never learns which country went from the wire —
  * it derives the failing atlas from elapsed time through `terraVanishedBy`,
- * the same way the reveal and the scorecard later replay it. That is what lets
- * every seat and the booth watch one identical world come apart with nothing
- * broadcast between them.
+ * the same way the reveal and the scorecard later replay it.
+ *
+ * That clock is the server's. The round opens on a briefing card, and the
+ * classic deadline stamps only when the whole table is ready (or the cap
+ * forces it), so nothing fails under anyone's card and every seat — and the
+ * booth — derives the SAME world from the one stamp.
  *
  * The answer set GROWS with the clock: only countries that have actually gone
- * can be named. A country still sitting on the map is a plain wrong guess with
- * a plain wrong guess's cost — never a bounce, because a bounce that said "not
- * yet" would tell the player it was coming.
+ * can be named — by their own name or by the neighbour they melted into. A
+ * country still sitting on the map is a plain wrong guess with a plain wrong
+ * guess's cost — never a bounce, because a bounce that said "not yet" would
+ * tell the player it was coming.
  */
 const {
   challenge,
@@ -119,13 +145,44 @@ const {
   submitOnce,
   registerCleanup,
   gameStore,
+  currentRound,
 } = useGroupChallenge('terra-incognita-challenge', { solo: false })
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-const cadenceSeconds = computed(() => Math.round((challenge.value?.cadenceMs ?? 0) / 1000))
+/**
+ * The prompt's band, reserved from the camera like the console's: the deck
+ * is framed edge to edge on its binding axis, and on a desktop that axis is
+ * vertical — without this the topmost loss stood under the title pills, the
+ * one place a vanishing could not be seen.
+ */
+const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
+const PROMPT_BERTH_KEY = 'terra-prompt'
+let promptBerthClosed = false
+const placePromptBerth = () => {
+  nextTick(() => {
+    if (promptBerthClosed) return
+    const prompt = promptHost.value?.$el as HTMLElement | undefined
+    const bottom = prompt?.getBoundingClientRect().bottom
+    claimMapBerth(
+      gameStore,
+      PROMPT_BERTH_KEY,
+      bottom && !revealed.value ? { top: Math.round(bottom) + BERTH_GAP_PX } : undefined
+    )
+  })
+}
+onBeforeUnmount(() => {
+  promptBerthClosed = true
+  claimMapBerth(gameStore, PROMPT_BERTH_KEY, undefined)
+})
+
+// Total fallback: watchers keep evaluating for a beat after the round
+// advances past this mode, so the state must never dereference undefined.
+const EMPTY_STATE: TerraBriefingState = { ready: [], order: [] }
+const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
+const briefingOpen = computed(() => !!state.value.briefing)
 
 /** Milliseconds into the round. The clock ticks per second and the cadence is
  *  measured in whole seconds, so second-granularity is exact here. */
@@ -133,28 +190,16 @@ const elapsedMs = computed(() =>
   challenge.value ? elapsedFraction.value * challenge.value.durationSeconds * 1000 : 0
 )
 
-/** What the atlas has lost so far — the live answer set. */
+/** What the atlas has lost so far — the live answer set. Nothing while the
+ *  table is still briefed: the booth's ambience clock runs from mount, and
+ *  the world must not fail for a spectator before it fails for the table. */
 const gone = computed(() =>
-  challenge.value ? terraVanishedBy(challenge.value, elapsedMs.value) : []
+  challenge.value && !briefingOpen.value ? terraVanishedBy(challenge.value, elapsedMs.value) : []
 )
-
-/**
- * Holes that have opened and nobody has closed yet.
- *
- * Read lazily by `resolve` below (the callback runs long after setup, so the
- * forward reference to `guesses` is safe). It resolves the guess list from
- * scratch each time rather than reading `found`, which would be circular —
- * `found` is what the composable derives THROUGH `resolve`.
- */
-const openHoles = computed(() => {
-  const active = challenge.value
-  if (!active) return new Set<ISOCountryCode>()
-  const claimed = new Set(terraRestoredHoles(active, guesses.value, gone.value))
-  return new Set(gone.value.filter(isoCode => !claimed.has(isoCode)))
-})
 
 const {
   guesses,
+  claims,
   answerSet,
   found,
   start: begin,
@@ -167,20 +212,41 @@ const {
     // so the miss copy costs the player a point without telling them one is
     // on its way.
     wrongHint: country => `${countryName(country)} is still on the map`,
-    // The land that swallowed a hole answers for it: the round shows one
-    // country expanding over another, so either name puts it back.
-    //
-    // Scoped to what has ALREADY gone, never the whole deck — accepting the
-    // absorber of a country still on the map would tell the player it is about
-    // to vanish, which is the leak `wrongHint` above is worded to avoid.
-    // Open holes only. Germany swallows both Austria and Denmark in about a
-    // fifth of decks; once it has answered for Austria, naming it again has to
-    // reach Denmark rather than re-claim Austria and bounce as a repeat.
-    resolve: isoCode =>
-      challenge.value ? terraRestoredBy(challenge.value, isoCode, openHoles.value) : undefined,
+    // The ONE mapping the server grades with, scoped to what has ALREADY
+    // gone: accepting the absorber of a country still on the map would tell
+    // the player it is about to vanish.
+    claims: list =>
+      challenge.value ? terraRestoredHoles(challenge.value, list, gone.value) : [...list],
+    // The answer set grows with the clock, so "everything found" means the
+    // whole deck — not everything that has gone by now.
+    complete: list => list.length === deck.value.length,
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }
 )
+
+/**
+ * The briefing. The interstitial hands over to the card; the card's click is
+ * a `terra-ready` ack, and the server's close (the last ack, or the cap) is
+ * what starts the round — never the click itself.
+ */
+const revealed = computed(() => submitted.value)
+const briefing = computed(() => briefingOpen.value && !showInterstitial.value && !revealed.value)
+const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
+const { send: sendReady } = useAckOnce(() => ({ event: 'terra-ready' }))
+
+const startRound = () => {
+  // The booth began on mount, before the stamp existed: re-enter so the
+  // clock reads the deadline now (begin replaces its own interval).
+  if (gameStore.watching) return beginRound()
+  if (!started.value) begin()
+}
+const brief = () => {
+  showInterstitial.value = false
+  if (!briefingOpen.value) startRound()
+}
+watch(briefingOpen, (open, was) => {
+  if (was && !open && !showInterstitial.value) startRound()
+})
 
 // The restored names ride the phone's one-row rail — it follows the newest.
 const { trail } = useChipTrail(() => guesses.value.length)
@@ -190,18 +256,31 @@ const outstanding = computed(() => gone.value.filter(isoCode => !found.value.inc
 
 /** The server's reveal hold (ROUND_BEATS) runs from the seat's own submit;
  *  everything below is display-only, and the server's flip ends the beat. */
-const revealed = computed(() => submitted.value)
 const deck = computed(() => challenge.value?.vanishings ?? [])
-const missed = computed(() => deck.value.filter(isoCode => !found.value.includes(isoCode)))
+/** What this seat put back, by the server's ledger once it holds one — a
+ *  remount mid-reveal has no local guesses, and the banked list is what was
+ *  actually graded. */
+const restored = computed(() => {
+  const banked = currentRound.value?.round.groupAnswers[gameStore.playerId]
+  return banked ? banked.submitted.filter(isoCode => deck.value.includes(isoCode)) : found.value
+})
+const missed = computed(() => deck.value.filter(isoCode => !restored.value.includes(isoCode)))
 
+/** The alarm is a verdict on the LIVE round: once the answer is banked the
+ *  world is whatever it is, and a reveal read through a pulsing veil is a
+ *  lesson nobody can concentrate on. */
 const collapsing = computed(
-  () => !!challenge.value && outstanding.value.length >= challenge.value.collapseThreshold
+  () =>
+    !!challenge.value &&
+    started.value &&
+    !revealed.value &&
+    outstanding.value.length >= challenge.value.collapseThreshold
 )
 
 /**
- * Paint the failing atlas. The erased set is everything gone that the player
- * has not restored; `restoring` holds a country for one beat so its outline
- * draws itself back on rather than snapping back with the layer swap.
+ * Paint the failing atlas. The vanished set is everything gone that the
+ * player has not restored; `restoring` holds a country for one beat so its
+ * outline draws itself back on rather than snapping back with the layer swap.
  */
 const restoring = ref<ISOCountryCode[]>([])
 watch(found, (now, before = []) => {
@@ -219,56 +298,66 @@ watch(found, (now, before = []) => {
 
 /**
  * The map IS the reveal. When the round resolves, the countries the player
- * saved stay whole and the ones they never noticed stay erased — each one
- * wearing its own name, written across the hole where it should have been.
- * A labelled blank is the single most useful frame this mode can end on: it
- * puts the name and the place together at the exact moment the player has
- * just proved they had not connected them.
+ * saved stay whole and the ones they never noticed stay fused into their
+ * neighbours — each one wearing its own name and a dashed ghost of its
+ * outline, written across the hole where it should have been. A labelled
+ * blank is the single most useful frame this mode can end on: it puts the
+ * name and the place together at the exact moment the player has just proved
+ * they had not connected them.
  */
 watchEffect(() => {
   gameStore.map.vanished = revealed.value ? missed.value : outstanding.value
+  gameStore.map.absorbedBy = challenge.value?.absorbedBy
   gameStore.map.restoring = restoring.value
+  gameStore.map.traced = revealed.value ? missed.value : []
   gameStore.map.countryLabels = revealed.value
     ? Object.fromEntries(missed.value.map(isoCode => [isoCode, countryName(isoCode)]))
     : undefined
 })
 
 /**
- * The camera crops to the round's region and STAYS there.
+ * The camera crops to the round's frame and STAYS there.
  *
- * Two reasons this is a watch on the theatre rather than part of the repaint
- * above. A country vanishing must not move the camera — the pan would be a
- * free answer, pointing at the very thing the player is meant to notice for
- * themselves. And `map.focus` re-frames on identity, so assigning it every
- * repaint (even the same countries, even an empty list) re-aimed the rig once
- * a second all round.
+ * A country vanishing must not move the camera — the pan would be a free
+ * answer, pointing at the very thing the player is meant to notice for
+ * themselves. The frame is a map-space box (`terraFrame`), not a list of
+ * countries: framing by country boxes let one big neighbour blow a Balkan crop
+ * out to the whole planet, and a box scales cleanly with the difficulty.
  *
  * The reveal is the one deliberate move: it pulls in to the losses that were
  * never named, which is the beat where pointing at them is the entire idea.
  */
-const theatre = computed(() =>
-  challenge.value && gameStore.game ? terraTheatre(challenge.value, gameStore.game) : []
+const frame = computed(() =>
+  challenge.value && gameStore.game
+    ? terraFrame(challenge.value, gameStore.game.difficulty)
+    : undefined
 )
 
-// Deliberately NOT watching `missed`: it changes on every restore, and each
-// change would hand `map.focus` a fresh array identity and re-aim the rig
-// mid-round. Read inside the callback instead, where it is settled anyway —
-// the reveal only runs once the seat's answer is banked.
-// A region is already a wide subject, so it takes the default 35% pad badly:
-// padded out and then berthed up by the console's band, the shot grew past the
-// world and clamped straight back to a whole-planet view — the one framing this
-// mode cannot be played at. The subject IS the frame here, the same reason the
-// water modes retune it.
-gameStore.map.framePad = { scale: 0.08, floor: 20 }
+// The frame already carries the difficulty's margin, so the camera's own pad
+// stays near zero — the default 35% would undo the easy crop.
+gameStore.map.framePad = { scale: 0.02, floor: 4 }
 
+// The prompt is measured once it stands (after the card) and again when the
+// reveal swaps its copy; the reveal releases the claim so the pull-in can use
+// the whole viewport.
+watch([briefing, revealed, showInterstitial], placePromptBerth, { immediate: true })
+
+// Deliberately NOT watching `missed`: it changes on every restore, and each
+// change would re-aim the rig mid-round. Read inside the callback instead,
+// where it is settled anyway — the reveal only runs once the answer is banked.
 watch(
-  [theatre, revealed],
-  ([region, isRevealed]) => {
-    if (isRevealed) {
-      gameStore.map.focus = missed.value.length ? [...missed.value] : [...region]
+  [frame, revealed],
+  ([box, isRevealed]) => {
+    if (isRevealed && missed.value.length) {
+      // The names sit at the countries' anchors, so the pull-in keeps air
+      // around them — a tight fit hid the topmost name under the header.
+      gameStore.map.framePad = { scale: 0.25, floor: 30 }
+      gameStore.map.frame = undefined
+      gameStore.map.focus = [...missed.value]
       return
     }
-    if (region.length) gameStore.map.focus = [...region]
+    gameStore.map.focus = []
+    gameStore.map.frame = box
   },
   { immediate: true }
 )
@@ -277,11 +366,9 @@ watch(
 @use '~/assets/scss/rules/ink' as *;
 
 // The gauge sits under the prompt, centred: a row of slots that fill as the
-// world empties out. It is the only chrome the round adds — everything else
-// the player needs to read is the map itself.
-// It stands over open map, so it takes the same cream scrim every caption
-// wears — without it the slots read as a dashed annotation drawn ON the
-// world rather than chrome floating above it.
+// world empties out. It stands over open map, so it takes the same cream
+// scrim every caption wears — without it the slots read as a dashed
+// annotation drawn ON the world rather than chrome floating above it.
 .collapse-gauge {
   @include caption-surface(999px);
   gap: 0.6rem;
@@ -291,6 +378,11 @@ watch(
   pointer-events: none;
   margin: 0.8rem auto 0;
   padding: 0.6rem 1rem;
+  transition: border-color var(--motion-base) var(--ease-smooth);
+
+  &.alarm {
+    border-color: ember(0.6);
+  }
 }
 
 .slot {
@@ -301,24 +393,34 @@ watch(
   transition: background var(--motion-base) var(--ease-smooth);
 
   &.lost {
-    background: flame(0.85);
+    background: ember(0.9);
   }
 }
 
-// Past the line the page itself takes on the alarm — a wash at the edges, not
-// a banner, so nothing covers the map the player is scanning.
-.terra-incognita.collapsing::before {
-  content: '';
+// Past the line the page takes on the clock's ember at its edges — a wash,
+// not a banner, so nothing covers the map the player is scanning. It lives
+// only while the round is live and leaves with a fade, never a cut.
+.collapse-veil {
   inset: 0;
-  position: fixed;
+  position: absolute;
   pointer-events: none;
-  box-shadow: inset 0 0 12rem flame(0.28);
-  animation: collapse-breath 2.4s var(--ease-smooth) infinite;
+  box-shadow: inset 0 0 10rem ember(0.22);
+  animation: collapse-breath 2.8s var(--ease-smooth) infinite;
+}
+
+.veil-enter-active,
+.veil-leave-active {
+  transition: opacity var(--motion-slow) var(--ease-smooth);
+}
+
+.veil-enter-from,
+.veil-leave-to {
+  opacity: 0;
 }
 
 @keyframes collapse-breath {
   50% {
-    box-shadow: inset 0 0 16rem flame(0.42);
+    box-shadow: inset 0 0 14rem ember(0.34);
   }
 }
 
@@ -327,5 +429,13 @@ footer {
   display: flex;
   align-items: center;
   flex-flow: column nowrap;
+}
+
+// The console hugs the bottom, so its suggestions open upward over the map —
+// the same flip as the night console and the empire timebar.
+.guess-box :deep(.suggestions) {
+  top: auto;
+  bottom: 100%;
+  margin: 0 0 0.6rem;
 }
 </style>

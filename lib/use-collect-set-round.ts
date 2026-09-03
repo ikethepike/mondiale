@@ -32,13 +32,26 @@ export const useCollectSetRound = (
     /** Pre-guess veto: return a hint to bounce the pick (e.g. the centre country). */
     reject?: (country: Country) => string | undefined
     /**
-     * What a guess ACTUALLY answers, when more than one name resolves to the
-     * same answer. Terra Incognita accepts either the country that vanished or
-     * the one that swallowed it, so both must count as the same claim — and a
-     * repeat of either has to bounce as a duplicate rather than land as a
-     * stray. Defaults to the guess itself, which is every other mode.
+     * What each guess ACTUALLY answers, in order, when more than one name
+     * resolves to the same answer. Terra Incognita accepts either the country
+     * that vanished or the one that swallowed it, so both must count as the
+     * same claim — and a repeat of either has to bounce as a duplicate rather
+     * than land as a stray. Resolved over the WHOLE list rather than per
+     * guess: a claim depends on what earlier guesses already took (Germany
+     * answers for Austria once, then for Denmark), and re-resolving one guess
+     * on its own against what is left would un-claim it. This is the same
+     * mapping the server grades with. Defaults to the guesses themselves,
+     * which is every other mode.
      */
-    resolve?: (isoCode: ISOCountryCode) => ISOCountryCode | undefined
+    claims?: (guesses: readonly ISOCountryCode[]) => ISOCountryCode[]
+    /**
+     * When the board counts as cleared and the round may end early. Defaults
+     * to every answer found — right for a fixed set, wrong for one that GROWS
+     * with the clock: Terra Incognita's answers are only the countries gone
+     * so far, and restoring all of them must not end a round with losses
+     * still to come.
+     */
+    complete?: (found: readonly ISOCountryCode[]) => boolean
     /** Extra painting per repaint (highlights, endpoints, camera focus). */
     decorate?: (
       tints: { [isoCode in ISOCountryCode]?: MapTint },
@@ -50,26 +63,31 @@ export const useCollectSetRound = (
 ) => {
   const guesses = ref<ISOCountryCode[]>([])
   const answerSet = computed(() => new Set(toValue(options.answers)))
-  /** What a guess claims — itself, unless the mode aliases several names onto
-   *  one answer. */
-  const claimOf = (isoCode: ISOCountryCode) => options.resolve?.(isoCode) ?? isoCode
+  /** What a list of guesses claims, one entry per guess — the guesses
+   *  themselves unless the mode aliases several names onto one answer. */
+  const claimsOf = (list: readonly ISOCountryCode[]) => options.claims?.(list) ?? [...list]
+  /** What the guess list has claimed so far, parallel to `guesses`. */
+  const claims = computed(() => claimsOf(guesses.value))
+  /** What one more guess would claim, given everything already on the board. */
+  const claimFor = (isoCode: ISOCountryCode) =>
+    claimsOf([...guesses.value, isoCode]).at(-1) ?? isoCode
   /** The answers already claimed, so a second name for one reads as a repeat. */
   const claimed = computed(
-    () => new Set(guesses.value.map(claimOf).filter(isoCode => answerSet.value.has(isoCode)))
+    () => new Set(claims.value.filter(isoCode => answerSet.value.has(isoCode)))
   )
   const found = computed(() => [...claimed.value])
 
   // Tint guesses on the map as they land — right ones mint, wrong ones red.
   watchEffect(() => {
     const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
-    for (const isoCode of guesses.value) {
-      const claim = claimOf(isoCode)
+    guesses.value.forEach((isoCode, index) => {
+      const claim = claims.value[index] ?? isoCode
       // Paint the answer, not the name: a country named by its absorber tints
       // the hole that closed, which is what the player is looking at.
       tints[answerSet.value.has(claim) ? claim : isoCode] = answerSet.value.has(claim)
         ? 'optimal'
         : 'stray'
-    }
+    })
     options.decorate?.(tints, guesses.value)
     gameStore.map.tints = tints
   })
@@ -81,7 +99,7 @@ export const useCollectSetRound = (
     // Submit what each guess CLAIMED. The server grades the same aliasing from
     // the challenge, so sending the resolved answer keeps the two ends reading
     // one list — and a stray still travels as itself and still costs.
-    submitOnce(guesses.value.map(isoCode => claimOf(isoCode)))
+    submitOnce(claims.value)
   }
 
   const start = () => {
@@ -97,7 +115,7 @@ export const useCollectSetRound = (
     // A repeat is the same CLAIM, not the same name: where a mode accepts two
     // names for one answer, the second must bounce free rather than land as a
     // stray that costs a point.
-    const claim = claimOf(country.isoCode)
+    const claim = claimFor(country.isoCode)
     if (guesses.value.includes(country.isoCode) || claimed.value.has(claim)) {
       return announce({ hint: `${countryName(country)} is already on the board` })
     }
@@ -119,11 +137,12 @@ export const useCollectSetRound = (
     })
 
     // Everything found — no reason to run out the clock
-    if (found.value.length === toValue(options.answers).length) {
+    const complete = options.complete ?? (list => list.length === toValue(options.answers).length)
+    if (complete(found.value)) {
       gameStore.map.status = 'correct'
       submitRound()
     }
   }
 
-  return { guesses, answerSet, found, submitRound, start, onGuess }
+  return { guesses, claims, answerSet, found, submitRound, start, onGuess }
 }
