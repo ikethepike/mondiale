@@ -76,6 +76,9 @@ const seconds = computed(() => Math.max(0, props.value))
 // wall clock between ticks — a per-second CSS transition stalls and restarts
 // as the interval drifts. Until the first tick, `value` is taken as exact.
 const smoothSeconds = ref(props.value)
+// The drain is quantized: a ring this size can't show finer steps, and every
+// write is a style recalc and a paint over whatever moves under the console
+const DRAIN_STEPS_PER_SECOND = 20
 let tickAt = 0
 let frameHandle: number | undefined
 watch(
@@ -87,8 +90,8 @@ watch(
 )
 const frame = () => {
   if (tickAt) {
-    const elapsed = Math.min(1, (performance.now() - tickAt) / 1000)
-    smoothSeconds.value = props.value - elapsed
+    const steps = Math.floor(((performance.now() - tickAt) / 1000) * DRAIN_STEPS_PER_SECOND)
+    smoothSeconds.value = props.value - Math.min(1, steps / DRAIN_STEPS_PER_SECOND)
   }
   frameHandle = requestAnimationFrame(frame)
 }
