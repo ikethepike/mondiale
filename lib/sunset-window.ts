@@ -1,6 +1,6 @@
 import { MAP_REGIONS } from '~~/data/map.gen'
 import { sample } from '~~/lib/arrays'
-import { mainlandBox, type MapBox } from '~~/lib/geo'
+import { mainlandBox, unionBox, type MapBox } from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -83,14 +83,6 @@ export const sunsetSeconds = (countryCount: number, difficulty: GameDifficulty):
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y)
 
-const union = (boxes: MapBox[]): MapBox => {
-  const left = Math.min(...boxes.map(([x]) => x))
-  const top = Math.min(...boxes.map(([, y]) => y))
-  const right = Math.max(...boxes.map(([x, , width]) => x + width))
-  const bottom = Math.max(...boxes.map(([, y, , height]) => y + height))
-  return [left, top, right - left, bottom - top]
-}
-
 const clip = ([x, y, width, height]: MapBox, [left, top, w, h]: MapBox): MapBox => {
   const cx = Math.max(x, left)
   const cy = Math.max(y, top)
@@ -103,7 +95,7 @@ const clip = ([x, y, width, height]: MapBox, [left, top, w, h]: MapBox): MapBox 
  * Russia on the edge is cut at the window rather than framed to Vladivostok.
  */
 const frameAround = (countries: ISOCountryCode[]): MapBox => {
-  const centres = union(
+  const centres = unionBox(
     countries.map(isoCode => [...Object.values(mapRegionCentre(isoCode)), 0, 0] as MapBox)
   )
   const reachX = Math.max(centres[2] * FRAME_REACH, FRAME_REACH_FLOOR)
@@ -114,7 +106,7 @@ const frameAround = (countries: ISOCountryCode[]): MapBox => {
     centres[2] + reachX * 2,
     centres[3] + reachY * 2,
   ]
-  return union(countries.map(isoCode => clip(mainlandBox(MAP_REGIONS[isoCode], reach), reach)))
+  return unionBox(countries.map(isoCode => clip(mainlandBox(MAP_REGIONS[isoCode], reach), reach)))
 }
 
 const frameFits = ([, , width, height]: MapBox) => {

@@ -268,6 +268,7 @@ import {
   logoFit,
   mainlandBox,
   projectRobinson,
+  regionsIntersect,
   relaxLogoPlacements,
   zoomOutStartView,
   type LatLng,
@@ -1939,12 +1940,8 @@ const cachePathEls = () => {
   })
 }
 
-const intersectsAnyRegion = (code: string, x: number, y: number, width: number, height: number) => {
-  for (const [rx, ry, rw, rh] of MAP_REGIONS[code as MapCode] ?? []) {
-    if (rx < x + width && rx + rw > x && ry < y + height && ry + rh > y) return true
-  }
-  return false
-}
+const intersectsAnyRegion = (code: string, x: number, y: number, width: number, height: number) =>
+  regionsIntersect(MAP_REGIONS[code as MapCode], [x, y, width, height])
 
 /** Show every country again — reveals/fly-ins must never target a culled path. */
 const uncullAll = () => {

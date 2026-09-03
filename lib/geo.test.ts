@@ -5,9 +5,12 @@ import {
   LOGO_MIN_RATIO,
   LOGO_MIN_SIDE,
   WORLD_BOX,
+  boxesIntersect,
   logoBox,
   logoPaintedArea,
+  regionsIntersect,
   relaxLogoPlacements,
+  unionBox,
   zoomOutStartView,
   type MapBox,
 } from './geo'
@@ -369,5 +372,25 @@ describe('logoBox', () => {
     ]
     const areas = frame.map(([isoCode, ratio]) => logoPaintedArea(radiusFor(isoCode)!, ratio))
     expect(Math.max(...areas) / Math.min(...areas)).toBeLessThan(2.1)
+  })
+})
+
+describe('map boxes', () => {
+  it('intersects on overlap only, never on a shared edge', () => {
+    expect(boxesIntersect([0, 0, 10, 10], [5, 5, 10, 10])).toBe(true)
+    expect(boxesIntersect([0, 0, 10, 10], [10, 0, 10, 10])).toBe(false)
+    expect(boxesIntersect([0, 0, 10, 10], [20, 20, 1, 1])).toBe(false)
+  })
+
+  it('reaches a country through any of its rings, and none without rings', () => {
+    const kaliningrad = MAP_REGIONS.RU!.find(([x]) => x < 1100)!
+    expect(regionsIntersect(MAP_REGIONS.RU, kaliningrad)).toBe(true)
+    expect(regionsIntersect(MAP_REGIONS.RU, [0, 0, 1, 1])).toBe(false)
+    expect(regionsIntersect(undefined, [0, 0, 2000, 1001])).toBe(false)
+  })
+
+  it('unions boxes to their hull', () => {
+    expect(unionBox([[0, 0, 10, 10], [5, 5, 10, 10]])).toEqual([0, 0, 15, 15])
+    expect(unionBox([[3, 4, 1, 1]])).toEqual([3, 4, 1, 1])
   })
 })

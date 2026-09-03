@@ -105,6 +105,26 @@ export const WORLD_BOX: { x: number; y: number; width: number; height: number } 
   height: 1001,
 }
 
+/** Do two map-space boxes overlap (touching edges do not count)? */
+export const boxesIntersect = (
+  [ax, ay, aw, ah]: MapBox,
+  [bx, by, bw, bh]: MapBox
+): boolean => ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
+
+/** Does any of a country's rings (MAP_REGIONS' per-ring boxes) reach `box`?
+ *  Per ring, never the whole-country bbox: RU/US/FJ/NZ span the map. */
+export const regionsIntersect = (rings: MapBox[] | undefined, box: MapBox): boolean =>
+  rings?.some(ring => boxesIntersect(ring, box)) ?? false
+
+/** The box around a set of boxes. */
+export const unionBox = (boxes: MapBox[]): MapBox => {
+  const left = Math.min(...boxes.map(([x]) => x))
+  const top = Math.min(...boxes.map(([, y]) => y))
+  const right = Math.max(...boxes.map(([x, , width]) => x + width))
+  const bottom = Math.max(...boxes.map(([, y, , height]) => y + height))
+  return [left, top, right - left, bottom - top]
+}
+
 /**
  * A country's map-space bbox must clear this on at least one axis to carry a
  * written name — below it the label outgrows the country it points at. The
