@@ -136,9 +136,16 @@ interface GameStoreState {
      *  neighbour is painted out, so the two read as one plain piece of land and
      *  the country is simply not there. Terra Incognita's whole question. */
     vanished: ISOCountryCode[]
+    /** Which neighbour each vanished country fused INTO — the border the map
+     *  stops drawing. Stamped by the deal (`absorbedBy`), so the outline the
+     *  map merges and the name the grader accepts are one decision. */
+    absorbedBy?: Partial<Record<ISOCountryCode, ISOCountryCode>>
     /** Countries re-inking themselves — the restore beat, a stroke drawing
      *  itself back on. Cleared once the draw has played. */
     restoring: ISOCountryCode[]
+    /** Countries whose outline is traced as a dashed alert ghost over the land
+     *  that swallowed them — the reveal's "here is where it was". */
+    traced: ISOCountryCode[]
     /** Stagger grouped fills by position — Border Chain's replay gradient. */
     staggered: boolean
     /** Post-game atlas: clicks inspect a country; suppress the terse reveal card. */
@@ -280,7 +287,9 @@ export const useGameStore = defineStore('game', {
       spotlight: [],
       pulsing: [],
       vanished: [],
+      absorbedBy: undefined,
       restoring: [],
+      traced: [],
       atlasMode: false,
       zoomOut: undefined,
       feature: undefined,

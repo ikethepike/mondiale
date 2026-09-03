@@ -105,6 +105,13 @@
   }
 }
 
+// The reverse: a drawn stroke wipes itself out (pathLength 1, dasharray 1)
+@keyframes stroke-erase {
+  to {
+    stroke-dashoffset: 1;
+  }
+}
+
 // Plain fade for elements whose transform is layout, not motion
 @keyframes fade-in {
   from {

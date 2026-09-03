@@ -36,6 +36,12 @@ export const BRIEFING_CAP_MS = 60000
  *  distinct from BRIEFING_CAP_MS on purpose — a briefing is a beat the SERVER
  *  knows about (`state.briefing` rides the snapshot), a play gate is local. */
 export const PLAY_GATE_CAP_MS = 15000
+/** How long a round may wait on a rules card the player must dismiss before a
+ *  LOCAL clock starts (Terra Incognita's ready card). The same shape as the
+ *  audio play gate — a local wait the server budgets for — but sized for
+ *  reading a card with a worked example rather than tapping a button, and the
+ *  view force-starts the round at this cap so no seat can outrun the budget. */
+export const READY_GATE_CAP_MS = 45000
 /** Border Chain's dead-end hold: long enough for the table to read the closed
  *  doors and see that the trapped player truly had no move. The client's
  *  overlay reads this too — one beat, one constant. */
@@ -385,9 +391,12 @@ export interface RoundBeatSpec {
    *   • the server's settle budget widens by this allowance, so a seat still
    *     legitimately mid-clip is never force-banked a zero.
    *  Bounded on purpose: a seat that never taps settles at deadline + this.
-   *  A gated kind must stay OUT of `KIND_MOUNTABLE` (lib/spectate.ts) —
-   *  watch-mode ambience calls `begin()` off the round number, and no
-   *  spectator ever taps the play button a gated clock waits for. */
+   *  A gated kind whose start needs a real gesture (audio) must stay OUT of
+   *  `KIND_MOUNTABLE` (lib/spectate.ts) — watch-mode ambience calls `begin()`
+   *  off the round number, and no spectator ever taps the play button a gated
+   *  clock waits for. A gate that only holds a rules card (Terra Incognita)
+   *  stays mountable: the booth skips the card and the ambience clock IS the
+   *  round. */
   playGateMs?: number
   // Future beats (a twist, a bonus, a second guess window) are added HERE as
   // named optional fields — never as a view-local timer or a per-engine
@@ -455,7 +464,10 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // the world whole again: every loss re-inks itself, the saved ones in the
   // player's own hand and the missed ones alongside. At 0 the scorecard
   // covered a map that was still visibly broken.
-  'terra-incognita': { owner: 'classic', revealHoldMs: 6000 },
+  // Gated behind the ready card: the schedule starts on the player's own
+  // click, so the clock is a local decrement from it and the server's budget
+  // covers the reading time.
+  'terra-incognita': { owner: 'classic', revealHoldMs: 6000, playGateMs: READY_GATE_CAP_MS },
   composition: { owner: 'classic', revealHoldMs: 0 },
   // The reveal is the mode's whole teaching payload — the profile card's
   // sides, years, decade strip and UCDP note, plus the amber abroad-dots

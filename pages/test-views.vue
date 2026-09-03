@@ -189,7 +189,12 @@ import {
   sunsetWindowAround,
 } from '~~/lib/sunset-window'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
-import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
+import {
+  terraAbsorber,
+  terraCollapseThreshold,
+  terraSeconds,
+  TERRA_CADENCE_MS,
+} from '~~/lib/terra-incognita'
 import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -1765,22 +1770,49 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    // Central & eastern Europe failing, which is what the mode actually deals:
-    // one neighbourhood, cropped to (terraTheatre drives the camera), none of
-    // the five touching so no two blanks can merge into one.
     id: 'terra-incognita',
     label: 'Terra Incognita (the atlas fails)',
-    build: () =>
-      mockGame('group-challenge', [
-        groupRound({
-          _type: 'terra-incognita-challenge',
-          vanishings: ['AL', 'MD', 'SK', 'LT', 'BA'],
-          cadenceMs: TERRA_CADENCE_MS.normal,
-          collapseThreshold: terraCollapseThreshold(5, 'normal'),
-          durationSeconds: terraSeconds(5, TERRA_CADENCE_MS.normal),
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
+    variants: [
+      // Central & eastern Europe failing, which is what the mode actually
+      // deals: one neighbourhood, none of the losses touching, framed by
+      // `terraFrame` at the difficulty's reach.
+      { id: 'normal', label: 'Normal — five losses, medium crop' },
+      { id: 'easy', label: 'Easy — four losses, tight crop' },
+      { id: 'hard', label: 'Hard — six losses, wide crop' },
+      // The reveal as a real round leaves it: the seat's answer banked, two
+      // losses restored, the rest named on the map.
+      { id: 'revealed', label: 'Revealed — two restored, three named on the map' },
+    ],
+    build: variant => {
+      const difficulty: GameDifficulty =
+        variant?.id === 'easy' ? 'easy' : variant?.id === 'hard' ? 'hard' : 'normal'
+      const vanishings: ISOCountryCode[] =
+        difficulty === 'easy'
+          ? ['AT', 'HU', 'RO', 'BA']
+          : difficulty === 'hard'
+            ? ['AL', 'MD', 'SK', 'LT', 'BA', 'EE']
+            : ['AL', 'MD', 'SK', 'LT', 'BA']
+      const round = groupRound({
+        _type: 'terra-incognita-challenge',
+        vanishings,
+        absorbedBy: Object.fromEntries(
+          vanishings.flatMap(isoCode => {
+            const absorber = terraAbsorber(isoCode)
+            return absorber ? [[isoCode, absorber]] : []
+          })
+        ),
+        cadenceMs: TERRA_CADENCE_MS[difficulty],
+        collapseThreshold: terraCollapseThreshold(vanishings.length, difficulty),
+        durationSeconds: terraSeconds(vanishings.length, TERRA_CADENCE_MS[difficulty]),
+        maximumPoints: MAXIMUM_POINTS,
+      })
+      if (variant?.id === 'revealed') {
+        round.groupAnswers[ME] = { submitted: ['AL', 'MD', 'FR'], correct: vanishings }
+      }
+      const game = mockGame('group-challenge', [round])
+      game.difficulty = difficulty
+      return game
+    },
   },
   {
     id: 'flashpoint',

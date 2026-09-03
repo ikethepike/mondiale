@@ -160,8 +160,9 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'ground-plan': true,
   'star-chart': true,
   government: true,
-  // Nothing local gates it: the world falls apart on a schedule the booth
-  // derives exactly as the players do, so a spectator watches the same map.
+  // The ready card is local and the booth never sees it: the world falls
+  // apart on a schedule the booth runs itself, so a spectator watches a map
+  // failing the same way the players' do.
   'terra-incognita': true,
   flashpoint: true,
   composition: true,

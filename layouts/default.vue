@@ -44,7 +44,9 @@
       :dimmed="gameStore.map.dimmed"
       :pulsing="gameStore.map.pulsing"
       :vanished="gameStore.map.vanished"
+      :absorbed-by="gameStore.map.absorbedBy"
       :restoring="gameStore.map.restoring"
+      :traced="gameStore.map.traced"
       :unselectable="unselectableCountries"
       :country-groupings="
         currentFinalChallenge?._type === 'region-challenge' && !reveal

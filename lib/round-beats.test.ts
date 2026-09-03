@@ -38,6 +38,7 @@ import {
   clockRidesRoundDeadline,
   isClassicGroupRound,
   PLAY_GATE_CAP_MS,
+  READY_GATE_CAP_MS,
   playGateMsFor,
   remainingFractionOn,
   revealHoldMsFor,
@@ -183,6 +184,15 @@ describe('round beats', () => {
     // Bounded, so a seat that never taps can't hold the table open.
     expect(PLAY_GATE_CAP_MS).toBeGreaterThan(0)
     expect(Number.isFinite(PLAY_GATE_CAP_MS)).toBe(true)
+  })
+
+  /** Terra Incognita's schedule starts on the player's own ready click, so
+   *  its clock is local too — and the gate is sized for reading a card, not
+   *  tapping a play button. */
+  it('gates Terra Incognita behind its ready card', () => {
+    expect(ROUND_BEATS['terra-incognita'].playGateMs).toBe(READY_GATE_CAP_MS)
+    expect(ROUND_BEATS['terra-incognita'].playSeconds).toBeUndefined()
+    expect(READY_GATE_CAP_MS).toBeGreaterThan(PLAY_GATE_CAP_MS)
   })
 
   /** `playSeconds === undefined` used to answer two unrelated questions at

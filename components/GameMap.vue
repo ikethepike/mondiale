@@ -50,6 +50,7 @@
               'dimmed-country': dimmedSet.has(code),
               'pulsing-country': pulsingSet.has(code),
               'vanished-country': vanishedSet.has(code),
+              'fused-country': fusedSet.has(code),
               'restoring-country': restoringSet.has(code),
               'unselectable-country': unselectableSet.has(code),
             }"
@@ -102,49 +103,45 @@
             @click="handleClick(code, $event)"
           />
           <!--
-        The failing atlas (Terra Incognita). A country vanishes into the land
-        around it: ONE of its borders is painted out in the land's own opaque
-        colour, wiping the line from BOTH sides (a shared border is drawn twice,
-        once by each country, so covering one side leaves it neatly outlined by
-        the other).
+        The failing atlas (Terra Incognita). A country vanishes by FUSING with
+        the neighbour it dissolves into: both stop drawing their own outlines,
+        one seam path draws every run the pair keeps (coasts and the borders
+        with everyone else), and the border between them is drawn once more
+        in ink only to wipe itself out. Nothing is painted OVER the line —
+        it simply stops being drawn — so no colour match, tier swap or
+        anti-aliasing can leave a ghost of it behind.
 
-        Erasing only that one run is what keeps the map believable. Blanking the
-        whole country amputates every border BETWEEN two of its neighbours —
-        those lines terminated on its outline and would be left stopping bluntly
-        in open land. Here the run's tripoints are untouched, so the two borders
-        that survive at each end simply continue into each other and the land
-        closes over the gap.
+        Erasing only the shared border is what keeps the map believable. The
+        run's tripoints are untouched, so the two borders that survive at each
+        end continue into each other and the land closes over the gap.
       -->
-          <defs>
-            <!-- The country and everything it borders. Clipping the over-paint
-                 to this keeps it on LAND, so a stroke wide enough to cover the
-                 line from both sides can never bleed into the sea. -->
-            <clipPath
-              v-for="shape in erasedShapes"
-              :id="`atlas-land-${shape.code}`"
-              :key="shape.code"
-            >
-              <path v-for="(land, index) in shape.land" :key="index" :d="land" />
-            </clipPath>
-          </defs>
-          <!-- One element per side of the border, each with its own
-               pathLength, so the two copies wipe in step instead of one after
-               the other. -->
-          <template v-for="shape in erasedShapes" :key="`erased-${shape.code}`">
-            <path
-              v-for="(side, index) in shape.sides"
-              :key="`erased-${shape.code}-${index}`"
-              class="atlas-erased"
-              pathLength="1"
-              :clip-path="`url(#atlas-land-${shape.code})`"
-              :d="side"
-            />
-          </template>
+          <path
+            v-for="cluster in fusedClusters"
+            :key="`seam-${cluster.absorber}`"
+            class="atlas-seam"
+            :d="cluster.kept"
+          />
+          <path
+            v-for="melt in meltingBorders"
+            :key="`melt-${melt.code}`"
+            class="atlas-melt"
+            pathLength="1"
+            :d="melt.d"
+          />
           <!-- The re-ink: the restored country draws its own outline back on. -->
           <path
             v-for="shape in restoringShapes"
             :key="`restored-${shape.code}`"
             class="atlas-restored"
+            pathLength="1"
+            :d="shape.d"
+          />
+          <!-- The ghost: a missed country's outline traced back over the land
+               that swallowed it, so the reveal can put a name on a place. -->
+          <path
+            v-for="shape in tracedShapes"
+            :key="`traced-${shape.code}`"
+            class="atlas-traced"
             pathLength="1"
             :d="shape.d"
           />
@@ -255,12 +252,12 @@ import {
 import {
   largestRing,
   parsePolygons,
+  partitionRing,
   poleOfInaccessibility,
-  reachEnds,
-  sharedBorderPair,
+  type OutlinePoint,
 } from '~~/lib/outline'
+import { terraAbsorber } from '~~/lib/terra-incognita'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
-import { BORDERS } from '~~/data/borders.gen'
 import {
   WORLD_BOX,
   countryLatLng,
@@ -469,8 +466,21 @@ const props = defineProps({
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
+  /** Which neighbour each vanished country fused into. Stamped by the deal
+   *  so the merged outline and the accepted answer are one decision; a round
+   *  without the stamp falls back to the same selector the deal uses. */
+  absorbedBy: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, ISOCountryCode>>>,
+    default: undefined,
+  },
   /** Countries drawing themselves back onto the map — the restore beat. */
   restoring: {
+    type: Array as PropType<ISOCountryCode[]>,
+    default: () => [],
+  },
+  /** Countries whose outline is traced as a dashed ghost over the land that
+   *  swallowed them — the reveal's placement lesson. */
+  traced: {
     type: Array as PropType<ISOCountryCode[]>,
     default: () => [],
   },
@@ -546,91 +556,119 @@ const restoringSet = computed(() => new Set<string>(props.restoring))
 const livePath = (code: string): string | undefined =>
   hdApplied.has(code) && hdPaths ? hdPaths[code] : MAP_PATHS[code as MapCode]
 
+/** The neighbour a vanished country fuses into — the stamp when the round
+ *  carries one, the deal's own selector otherwise. */
+const fusedInto = (code: ISOCountryCode): ISOCountryCode | undefined =>
+  props.absorbedBy?.[code] ?? terraAbsorber(code)
+
 /**
- * A vanished country's erasure: the ONE border it gives up, plus the outlines
- * that clip the over-paint to land.
- *
- * The country vanishes into the land around it rather than being blanked out —
- * see `sharedBorderPair`. Only that shared border is painted out, so every other
- * line on the map still ends where it always did and nothing is left amputated.
- *
- * Keyed off `hdRevision` so a tier swap re-renders with the geometry the map is
- * now drawing: an over-paint tracing a standard outline over HD neighbours
- * diverges by the simplification error and leaves a dashed ghost behind.
+ * Who is fused with whom right now: each absorber with every country that has
+ * dissolved into it. A country still re-inking itself (`restoring`) stays in
+ * its cluster for that beat, so the border comes back by being DRAWN rather
+ * than popping in from the absorber's outline a beat ahead of the re-ink.
  */
-const erasedShapes = computed(() => {
-  void hdRevision.value
-  return props.vanished.flatMap(code => {
-    const sides = vanishPath(code)
-    if (!sides.length) return []
-    const land = [livePath(code), ...(BORDERS[code] ?? []).map(neighbour => livePath(neighbour))]
-    return [{ code, sides, land: land.filter((path): path is string => !!path) }]
-  })
+const fusions = computed(() => {
+  const clusters = new Map<ISOCountryCode, ISOCountryCode[]>()
+  for (const code of [...props.vanished, ...props.restoring]) {
+    const absorber = fusedInto(code)
+    if (!absorber) continue
+    const members = clusters.get(absorber) ?? []
+    if (!members.includes(code)) members.push(code)
+    clusters.set(absorber, members)
+  }
+  return clusters
 })
 
+/** Every country whose own outline the fusion replaces. */
+const fusedSet = computed(() => {
+  const codes = new Set<string>()
+  for (const [absorber, members] of fusions.value) {
+    codes.add(absorber)
+    for (const code of members) codes.add(code)
+  }
+  return codes
+})
+
+const toSubpath = (run: OutlinePoint[]) =>
+  run.length
+    ? `M${run[0]![0]} ${run[0]![1]}` +
+      run
+        .slice(1)
+        .map(([x, y]) => `L${x} ${y}`)
+        .join('')
+    : ''
+
 /**
- * The path data of the border a vanished country gives up, memoised per country
- * and tier — the vanished set repaints on every clock tick, and the geometry
- * cannot change without the tier changing.
+ * One cluster's geometry at the map's CURRENT tier: the runs every member
+ * keeps, and per vanished member the run it gives up. Memoised per cluster and
+ * tier — the vanished set repaints on every clock tick, and the geometry cannot
+ * change without the tier changing. An outline traced at a different tier from
+ * its neighbours diverges by exactly the simplification error, so every ring
+ * here is read through `livePath`.
  */
-const vanishCache = new Map<string, string[]>()
-const vanishPath = (code: ISOCountryCode): string[] => {
-  const tier = hdApplied.has(code) && hdPaths ? 'hd' : 'sd'
-  const key = `${code}:${tier}`
-  const cached = vanishCache.get(key)
-  if (cached !== undefined) return cached
+const fusionCache = new Map<string, { kept: string; melts: Map<ISOCountryCode, string> }>()
+const fusionGeometry = (absorber: ISOCountryCode, members: ISOCountryCode[]) => {
+  const codes = [absorber, ...members]
+  const tier = codes.some(code => hdApplied.has(code)) && hdPaths ? 'hd' : 'sd'
+  const key = `${codes.join('+')}:${tier}`
+  const cached = fusionCache.get(key)
+  if (cached) return cached
 
-  const own = livePath(code)
-  const ring = own ? largestRing(own) : undefined
-  const neighbourRings = (BORDERS[code] ?? []).flatMap(neighbour => {
-    const path = livePath(neighbour)
-    return path ? [parsePolygons(path).flat()] : []
-  })
-  const pair = ring ? sharedBorderPair(ring, neighbourRings) : undefined
-  // Each side is stretched along the ring it belongs to — the neighbour's copy
-  // runs on the neighbour's outline, so extending it needs that ring, not ours.
-  const theirRing = pair?.theirs.length
-    ? neighbourRings.find(candidate =>
-        candidate.some(point => point[0] === pair.theirs[0]![0] && point[1] === pair.theirs[0]![1])
-      )
-    : undefined
-
-  // The border is drawn twice, once by each country, and the two copies diverge
-  // by a fraction of a unit. Each is covered along its OWN line, so a modest
-  // brush suffices — a single brush wide enough to span the divergence would
-  // eat a sliver neighbour alive.
-  //
-  // TWO paths, not one concatenated `d`: `pathLength="1"` normalises a whole
-  // element, so with both sides in one path the wipe finished this country's
-  // copy before it started the neighbour's — leaving the border erased on one
-  // side and fully inked on the other for half the melt, which is the seam.
-  // Separate elements sweep together.
-  const subpath = (run: [number, number][]) =>
-    run.length
-      ? `M${run[0]![0]} ${run[0]![1]}` +
-        run
-          .slice(1)
-          .map(([x, y]) => `L${x} ${y}`)
-          .join('')
-      : ''
-  const d =
-    pair && ring
-      ? [
-          subpath(reachEnds(pair.own, ring)),
-          subpath(theirRing ? reachEnds(pair.theirs, theirRing) : pair.theirs),
-        ].filter(Boolean)
-      : []
-  vanishCache.set(key, d)
-  return d
+  const rings = new Map(
+    codes.map(code => {
+      const path = livePath(code)
+      return [code, path ? parsePolygons(path) : []] as const
+    })
+  )
+  const kept: string[] = []
+  const melts = new Map<ISOCountryCode, string>()
+  for (const code of codes) {
+    const others = codes.filter(other => other !== code).flatMap(other => rings.get(other) ?? [])
+    const shared: string[] = []
+    for (const ring of rings.get(code) ?? []) {
+      const parts = partitionRing(ring, others)
+      kept.push(...parts.kept.map(toSubpath))
+      shared.push(...parts.shared.map(toSubpath))
+    }
+    // The melt is drawn from the vanished side only: one copy of the border
+    // is enough to wipe, and the absorber's copy is no longer drawn at all.
+    if (code !== absorber) melts.set(code, shared.join(''))
+  }
+  const resolved = { kept: kept.join(''), melts }
+  fusionCache.set(key, resolved)
+  return resolved
 }
 
-const restoringShapes = computed(() => {
+const fusedClusters = computed(() => {
   void hdRevision.value
-  return props.restoring.flatMap(code => {
-    const d = livePath(code)
+  return [...fusions.value].map(([absorber, members]) => ({
+    absorber,
+    kept: fusionGeometry(absorber, members).kept,
+  }))
+})
+
+/** The border each vanished country is giving up, keyed by that country so
+ *  the wipe plays exactly once — when it first vanishes — and never again on
+ *  a repaint or a tier swap. */
+const meltingBorders = computed(() => {
+  void hdRevision.value
+  return props.vanished.flatMap(code => {
+    const absorber = fusedInto(code)
+    if (!absorber) return []
+    const d = fusionGeometry(absorber, fusions.value.get(absorber) ?? [code]).melts.get(code)
     return d ? [{ code, d }] : []
   })
 })
+
+const outlineShapes = (codes: ISOCountryCode[]) => {
+  void hdRevision.value
+  return codes.flatMap(code => {
+    const d = livePath(code)
+    return d ? [{ code, d }] : []
+  })
+}
+const restoringShapes = computed(() => outlineShapes(props.restoring))
+const tracedShapes = computed(() => outlineShapes(props.traced))
 const unselectableSet = computed(() => new Set<string>(props.unselectable))
 
 /** Micro-state dots and tap halos, minus any the game has benched. */
@@ -2800,64 +2838,53 @@ path[id] {
 
 // --- The failing atlas ---------------------------------------------------------
 //
-// A country is UNWRITTEN rather than faded out: the land-coloured stroke draws
-// itself along the country's outline, over-painting the border ink as it goes.
-//
-// It has to be a wipe, not a cross-fade. Fading the erasure in uniformly left
-// every border at half strength for the middle second of the dissolve, and a
-// half-strength border does not read as a country going — it reads as a country
-// greyed out, still sitting there. A wipe has no half state: each point of the
-// outline is either erased or untouched, so the only thing the eye can report
-// is "that line is going".
-//
-// It over-paints from BOTH sides. A shared border is drawn twice, once by each
-// country, so covering only one side leaves the hole neatly outlined by its
-// neighbours — which is why the stroke runs wider than the 1px hairline it
-// covers, and why the clip is the country UNION its land neighbours.
-//
-// That clip is also what confines the dissolve to the INTERNAL lines: a
-// coastline is the union's own outer edge, so the water side is never painted.
-// The shore keeps its line, nothing bleeds into the sea, and the land
-// silhouette survives — only the country inside it goes.
-//
-// `fill` is deliberately none. The interior is already the land colour (a
-// vanished country carries no tint), so a fill would change nothing visually
-// EXCEPT to cover the inner half of the country's own border the instant it
-// mounted — reintroducing the very half-strength frame the wipe exists to
-// avoid.
-.atlas-erased {
+// A vanished country and the neighbour it dissolves into stop drawing their own
+// outlines; `.atlas-seam` draws the runs the pair keeps in their place, and the
+// border between them is drawn once more only to wipe itself out. Nothing is
+// painted over anything, so there is no colour to mismatch and no tier to
+// diverge from — the line is simply no longer drawn.
+path[id].fused-country,
+.micro-marker.fused-country {
+  stroke: transparent;
+}
+
+.atlas-seam {
   fill: none;
   pointer-events: none;
-  stroke: var(--map-land-solid);
-  // Butt, never round: the run ENDS at a tripoint where two borders carry on,
-  // and a round cap would reach past it and nick the ink of both. The run is
-  // stretched one vertex past each end instead (`reachEnds`), so the cap lands
-  // ON the junction rather than short of it.
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: calc(1px * var(--stroke-zoom, 1));
+}
+
+// The wipe. It has to be a wipe, not a cross-fade: fading a border out leaves
+// it at half strength for the middle second, and a half-strength border reads
+// as a country greyed out, still sitting there. A wipe has no half state —
+// each point of the line is either there or gone, so the only thing the eye
+// can report is "that line is going". Butt caps: the run ends ON a tripoint
+// where two borders carry on, and a round cap would reach past it.
+.atlas-melt {
+  fill: none;
+  pointer-events: none;
+  stroke: currentColor;
   stroke-linecap: butt;
   stroke-linejoin: round;
-  // 3px and no wider. Unlike a country path this element gets no inline
-  // --stroke-base, so the footprint cap never applies to it — the width here is
-  // the width everywhere. Five countries are already narrower than this brush
-  // in map units (Holy See 0.01, Monaco 0.29, Liechtenstein 0.52, San Marino
-  // 0.53, Andorra 1.14), so widening it to close a seam would rub them off the
-  // map whenever a neighbour vanishes.
-  stroke-width: calc(3px * min(var(--stroke-base, 1), var(--stroke-zoom, 1)));
+  stroke-width: calc(1px * var(--stroke-zoom, 1));
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: stroke-draw var(--atlas-melt) var(--ease-smooth) both;
+  stroke-dashoffset: 0;
+  animation: stroke-erase var(--atlas-melt) var(--ease-smooth) both;
 }
 
 // Reduced motion collapses --motion-slow globally but not this token, so it
-// gets its own answer: no wipe and no draw, the country simply gone and the
-// seams simply there. The information is identical either way.
+// gets its own answer: no wipe, the border simply gone. The information is
+// identical either way.
 @media (prefers-reduced-motion: reduce) {
   .game-map {
     --atlas-melt: 0.01s;
   }
 }
 
-// The re-ink. Drawn on top of the (still erased-looking) map for one beat, so
-// the outline visibly returns rather than popping back with the layer swap.
+// The re-ink. Drawn on top of the (still fused) map for one beat, so the
+// outline visibly returns rather than popping back with the layer swap.
 .atlas-restored {
   fill: none;
   pointer-events: none;
@@ -2869,6 +2896,20 @@ path[id] {
   // Reduced motion needs no branch here: _motion.scss collapses the tokens to
   // 0.01s, and `forwards` still lands the outline at full ink.
   animation: stroke-draw var(--motion-slow) var(--ease-out-expressive) forwards;
+}
+
+// The ghost: a missed country traced back in the alert hue, dashed so it reads
+// as "was here" rather than as a border restored.
+.atlas-traced {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--hior-ange);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-width: calc(1.4px * var(--stroke-zoom, 1));
+  stroke-dasharray: 0.012 0.008;
+  opacity: 0.9;
+  animation: fade-in var(--motion-slow) var(--ease-out-expressive) both;
 }
 
 // Mid-gesture, hover hit-testing against dense coastline paths and the fill
