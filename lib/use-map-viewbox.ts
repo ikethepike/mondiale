@@ -1,4 +1,13 @@
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, readonly, ref, type Ref } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  readonly,
+  ref,
+  type Ref,
+} from 'vue'
 
 /** The world map's nominal design frame (mirror of data/map.gen's MAP_VIEWBOX). */
 export const WORLD_MAP_WIDTH = 2000

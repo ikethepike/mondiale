@@ -106,10 +106,8 @@ export const WORLD_BOX: { x: number; y: number; width: number; height: number } 
 }
 
 /** Do two map-space boxes overlap (touching edges do not count)? */
-export const boxesIntersect = (
-  [ax, ay, aw, ah]: MapBox,
-  [bx, by, bw, bh]: MapBox
-): boolean => ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
+export const boxesIntersect = ([ax, ay, aw, ah]: MapBox, [bx, by, bw, bh]: MapBox): boolean =>
+  ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 
 /** Does any of a country's rings (MAP_REGIONS' per-ring boxes) reach `box`?
  *  Per ring, never the whole-country bbox: RU/US/FJ/NZ span the map. */

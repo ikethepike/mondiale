@@ -37,7 +37,11 @@ const rectFor = (viewport: { width: number; height: number }) => ({ x: 0, y: 0, 
 
 const tilt = (SUNSET_VEIL_TILT_DEG * Math.PI) / 180
 /** CSS `translateX(a) rotate(b)` about an origin, applied to a point. */
-const apply = (transform: { a: number; b: number }, origin: [number, number], p: [number, number]) => {
+const apply = (
+  transform: { a: number; b: number },
+  origin: [number, number],
+  p: [number, number]
+) => {
   const [ox, oy] = origin
   const x = p[0] - ox
   const y = p[1] - oy
@@ -49,7 +53,9 @@ const apply = (transform: { a: number; b: number }, origin: [number, number], p:
 describe('sunset veil', () => {
   it('sorts the window east→west so the dark set is a prefix', () => {
     for (let i = 1; i < field.length; i++) {
-      expect(sunsetDuskCoordinate(field[i - 1]!)).toBeGreaterThanOrEqual(sunsetDuskCoordinate(field[i]!))
+      expect(sunsetDuskCoordinate(field[i - 1]!)).toBeGreaterThanOrEqual(
+        sunsetDuskCoordinate(field[i]!)
+      )
     }
   })
 
@@ -143,7 +149,8 @@ describe('sunset veil', () => {
     for (const code of ['HR', 'SI', 'BA', 'IT', 'AT'] as MapCode[]) expect(codes).toContain(code)
     // Russia is on screen through Kaliningrad — per ring, not the whole-country bbox
     expect(codes).toContain('RU')
-    for (const code of ['US', 'FJ', 'NZ', 'BR', 'CN'] as MapCode[]) expect(codes).not.toContain(code)
+    for (const code of ['US', 'FJ', 'NZ', 'BR', 'CN'] as MapCode[])
+      expect(codes).not.toContain(code)
   })
 
   it('boxes every mapped shape and lands it on the painted rect', () => {

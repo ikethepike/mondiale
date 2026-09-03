@@ -12,26 +12,37 @@
           >
             <path v-for="code in landCodes" :key="code" :data-id="code" :d="pathFor(code)" />
           </svg>
-          <template v-for="beat in dusks" :key="beat.code">
-            <svg
-              class="dusk amber"
-              :viewBox="beat.viewBox"
-              preserveAspectRatio="none"
-              :style="beat.style"
-            >
-              <path :d="pathFor(beat.code)" />
-            </svg>
-            <svg
-              class="dusk night"
-              :viewBox="beat.viewBox"
-              preserveAspectRatio="none"
-              :style="beat.style"
-              @animationend="settle(beat.code)"
-            >
-              <path :d="pathFor(beat.code)" />
-            </svg>
-          </template>
         </div>
+      </div>
+      <div v-if="roll === 'timed'" class="inverse" :style="inverseStyle">
+        <svg
+          v-if="landStyle"
+          class="land"
+          :viewBox="viewBoxAttr"
+          preserveAspectRatio="none"
+          :style="landStyle"
+        >
+          <path v-for="code in settledCodes" :key="code" :data-id="code" :d="pathFor(code)" />
+        </svg>
+        <template v-for="beat in dusks" :key="beat.code">
+          <svg
+            class="dusk amber"
+            :viewBox="beat.viewBox"
+            preserveAspectRatio="none"
+            :style="beat.style"
+          >
+            <path :d="pathFor(beat.code)" />
+          </svg>
+          <svg
+            class="dusk night"
+            :viewBox="beat.viewBox"
+            preserveAspectRatio="none"
+            :style="beat.style"
+            @animationend="settle(beat.code)"
+          >
+            <path :d="pathFor(beat.code)" />
+          </svg>
+        </template>
       </div>
       <div class="band" />
     </div>
@@ -76,8 +87,9 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  *
  * `roll` picks how land darkens: `spatial` (the mask's feather is the whole
  * dusk) or `timed` (each country runs its own amber→night beat once the line
- * clears its western edge, as two composited fades). Lit countries paint on
- * their own layer above everything.
+ * clears its western edge, as two composited fades, with the masked land as
+ * a floor where the sea is already full night). Lit countries paint on their
+ * own layer above everything.
  */
 export type SunsetRoll = 'spatial' | 'timed'
 
@@ -235,11 +247,7 @@ watch(litSet, lit => {
   dusks.value = dusks.value.filter(dusk => !lit.has(dusk.code))
 })
 
-const landCodes = computed(() =>
-  props.roll === 'spatial'
-    ? onScreen.value.filter(code => !litSet.value.has(code))
-    : [...settledCodes.value]
-)
+const landCodes = computed(() => onScreen.value.filter(code => !litSet.value.has(code)))
 </script>
 <style lang="scss" scoped>
 .sunset-veil {
@@ -278,6 +286,14 @@ const landCodes = computed(() =>
   &.spatial {
     mask-image: linear-gradient(90deg, transparent 0, #000 var(--feather));
     -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--feather));
+  }
+
+  // The timed roll's floor: where the sea has gone full night, so has every
+  // shape under it — a giant whose western edge the line has yet to clear
+  // can't sit unseen under the plane
+  &.timed {
+    mask-image: linear-gradient(90deg, transparent 34vw, #000 38vw);
+    -webkit-mask-image: linear-gradient(90deg, transparent 34vw, #000 38vw);
   }
 }
 

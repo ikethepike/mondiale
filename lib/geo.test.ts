@@ -390,7 +390,12 @@ describe('map boxes', () => {
   })
 
   it('unions boxes to their hull', () => {
-    expect(unionBox([[0, 0, 10, 10], [5, 5, 10, 10]])).toEqual([0, 0, 15, 15])
+    expect(
+      unionBox([
+        [0, 0, 10, 10],
+        [5, 5, 10, 10],
+      ])
+    ).toEqual([0, 0, 15, 15])
     expect(unionBox([[3, 4, 1, 1]])).toEqual([3, 4, 1, 1])
   })
 })

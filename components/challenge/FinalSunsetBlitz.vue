@@ -66,7 +66,7 @@ const emit = defineEmits<{
 const { gameStore, game } = useClientEvents()
 
 // Prototype switch for the two dusk rolls — `?roll=timed` in the harness
-const roll = computed<SunsetRoll>(() => (useRoute().query.roll === 'timed' ? 'timed' : 'spatial'))
+const roll: SunsetRoll = useRoute().query.roll === 'timed' ? 'timed' : 'spatial'
 
 const rules = computed(
   () => game.value ?? { variant: 'world' as const, difficulty: 'normal' as const }
