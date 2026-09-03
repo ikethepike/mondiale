@@ -4,43 +4,38 @@
     <h2>The atlas is failing</h2>
 
     <figure class="demo">
-      <svg viewBox="0 0 320 150" aria-hidden="true">
+      <svg viewBox="0 0 320 120" aria-hidden="true">
         <defs>
-          <radialGradient id="terra-demo-fade" cx="50%" cy="50%" r="55%">
-            <stop offset="55%" stop-color="#fff" />
-            <stop offset="100%" stop-color="#000" />
+          <radialGradient id="terra-demo-fade" cx="50%" cy="50%" r="50%">
+            <stop offset="30%" stop-color="#fff" />
+            <stop offset="82%" stop-color="#000" />
           </radialGradient>
           <mask id="terra-demo-mask">
-            <rect width="320" height="150" fill="url(#terra-demo-fade)" />
+            <rect width="320" height="120" fill="url(#terra-demo-fade)" />
           </mask>
         </defs>
+        <!-- A spotlight on one border: land on both sides, the neighbours'
+             borders leaving through the tripoints, everything fading to
+             nothing well inside the card. Only the A|B line ever melts. -->
         <g mask="url(#terra-demo-mask)">
-          <path class="land" :d="COAST" />
-          <path class="line" :d="NORTH" />
-          <path class="line" :d="EAST" />
+          <rect class="land" width="320" height="120" />
+          <path v-for="(branch, index) in BRANCHES" :key="index" class="line" :d="branch" />
           <path class="line border" pathLength="1" :d="BORDER" />
-          <path class="line" :d="COAST" />
         </g>
-        <text class="name" x="92" y="92">A</text>
-        <text class="name" x="206" y="92">B</text>
+        <text class="name" x="112" y="66">A</text>
+        <text class="name" x="212" y="66">B</text>
       </svg>
       <p class="query"><span>A or B?</span></p>
       <figcaption>
-        One border dissolves and two countries read as one. Name the one that vanished
-        <em>or</em> the one that grew — either puts the line back.
+        A border dissolves and two countries read as one. Name the one that vanished
+        <em>or</em> the one that grew.
       </figcaption>
     </figure>
 
     <ul class="briefing-points">
-      <li>
-        The map holds still for a moment, then loses one country every
-        {{ cadenceSeconds }} seconds.
-      </li>
-      <li>Naming a country that is still on the map costs a point.</li>
-      <li>
-        Let {{ challenge.collapseThreshold }} stand missing at once and the world starts to come
-        apart.
-      </li>
+      <li>One country goes every {{ cadenceSeconds }} seconds after a short hold.</li>
+      <li>A name still on the map costs a point.</li>
+      <li>{{ challenge.collapseThreshold }} missing at once and the world starts to come apart.</li>
     </ul>
 
     <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
@@ -99,78 +94,55 @@ useKeyboardSkip(
   () => emit('ready')
 )
 
-/** Catmull-Rom through the points as cubic Béziers — an organic coast from a
- *  handful of vertices. */
-const smooth = (points: [number, number][], closed: boolean): string => {
-  const count = points.length
-  const at = (index: number) => points[((index % count) + count) % count]!
-  let d = `M${at(0)[0]} ${at(0)[1]}`
-  const last = closed ? count : count - 1
-  for (let index = 0; index < last; index++) {
-    const p0 = closed || index > 0 ? at(index - 1) : at(index)
-    const p1 = at(index)
-    const p2 = at(index + 1)
-    const p3 = closed || index + 2 < count ? at(index + 2) : at(index + 1)
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6]
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6]
-    d += `C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p2[0]} ${p2[1]}`
+/** A deterministic jitter, so the border is the same on every seat and every
+ *  render — random enough to read as a real simplified boundary, never a
+ *  smooth curve, which no border on the map is. */
+const jitter = (seed: number) => {
+  let state = seed
+  return () => {
+    state = (state * 9301 + 49297) % 233280
+    return state / 233280 - 0.5
   }
-  return closed ? `${d}Z` : d
 }
 
-// One stretch of coast, cut by three borders. Only the middle one — between
-// A and B — ever melts; the other two stay, so the fusion reads against
-// borders that survive, exactly as it does on the real map.
-const COAST = smooth(
-  [
-    [6, 66],
-    [34, 30],
-    [80, 16],
-    [136, 24],
-    [190, 10],
-    [250, 20],
-    [304, 46],
-    [314, 96],
-    [284, 136],
-    [222, 146],
-    [156, 134],
-    [96, 146],
-    [40, 132],
-    [10, 104],
-  ],
-  true
-)
-const NORTH = smooth(
-  [
-    [6, 66],
-    [60, 58],
-    [118, 50],
-    [150, 44],
-    [204, 52],
-    [258, 42],
-    [304, 46],
-  ],
-  false
-)
-const EAST = smooth(
-  [
-    [258, 42],
-    [248, 78],
-    [262, 108],
-    [284, 136],
-  ],
-  false
-)
-const BORDER = smooth(
-  [
-    [150, 44],
-    [140, 70],
-    [162, 96],
-    [148, 118],
-    [156, 134],
-  ],
-  false
-)
+/** A border as the map draws one: short straight runs between vertices that
+ *  wander sideways, from one end of the figure to the other. */
+const wander = (
+  from: [number, number],
+  to: [number, number],
+  steps: number,
+  sway: number,
+  seed: number
+): [number, number][] => {
+  const random = jitter(seed)
+  const points: [number, number][] = [from]
+  let drift = 0
+  for (let step = 1; step < steps; step++) {
+    const along = step / steps
+    drift = Math.max(-sway, Math.min(sway, drift + random() * sway))
+    const x = from[0] + (to[0] - from[0]) * along
+    const y = from[1] + (to[1] - from[1]) * along
+    // Sway across the line's own direction.
+    const dx = to[1] - from[1]
+    const dy = from[0] - to[0]
+    const length = Math.hypot(dx, dy) || 1
+    points.push([x + (dx / length) * drift, y + (dy / length) * drift])
+  }
+  points.push(to)
+  return points
+}
+
+const toPath = (points: [number, number][]) =>
+  points.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('')
+
+// The A|B border runs top to bottom through the spotlight; the neighbours'
+// borders leave it at two tripoints and fade out with the mask.
+const borderPoints = wander([158, -4], [164, 124], 22, 9, 11)
+const BORDER = toPath(borderPoints)
+const BRANCHES = [
+  toPath(wander(borderPoints[5]!, [330, 8], 14, 7, 23)),
+  toPath(wander(borderPoints[16]!, [-10, 118], 14, 7, 37)),
+]
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -186,7 +158,9 @@ const BORDER = smooth(
   }
 
   .briefing-points {
-    font-size: 1.45rem;
+    gap: 0.3rem;
+    font-size: 1.3rem;
+    line-height: 1.3;
   }
 }
 
@@ -199,13 +173,13 @@ const BORDER = smooth(
   flex-flow: column nowrap;
 
   svg {
-    width: min(26rem, 100%);
+    width: min(24rem, 100%);
     overflow: visible;
   }
 
   figcaption {
-    font-size: 1.35rem;
-    line-height: 1.35;
+    font-size: 1.3rem;
+    line-height: 1.3;
 
     em {
       font-style: normal;
@@ -214,9 +188,8 @@ const BORDER = smooth(
   }
 }
 
-// The map's own language: the land wash and hairline ink, fading out toward
-// the card's edges so the figure reads as a fragment of an atlas, not a pair
-// of blobs on paper.
+// The map's own language: the land wash and hairline ink, fading to nothing
+// well inside the figure so the eye lands on the one line that matters.
 .land {
   fill: var(--map-not-highlight);
   stroke: none;
@@ -224,9 +197,8 @@ const BORDER = smooth(
 
 .line {
   fill: none;
-  stroke: ink(0.85);
-  stroke-width: 1.1;
-  stroke-linecap: round;
+  stroke: ink(1);
+  stroke-width: 1.4;
   stroke-linejoin: round;
 }
 
@@ -245,8 +217,8 @@ const BORDER = smooth(
 // the round's alarm wears.
 .query {
   margin: 0;
-  height: 1.8rem;
-  font-size: 1.2rem;
+  height: 1.6rem;
+  font-size: 1.15rem;
   font-weight: bold;
   letter-spacing: 0.12em;
   text-transform: uppercase;
