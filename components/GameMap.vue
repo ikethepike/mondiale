@@ -264,12 +264,11 @@ import {
   invertRobinson,
   isLabelableBox,
   labelBoxFor,
-  logoBox,
+  layoutLogoStage,
   logoFit,
   mainlandBox,
   projectRobinson,
   regionsIntersect,
-  relaxLogoPlacements,
   zoomOutStartView,
   type LatLng,
   type MapBox,
@@ -1370,10 +1369,12 @@ let builtLogoKey: string | undefined
  * an irregular coastline would destroy the one thing a player is being asked
  * to read.
  *
- * Its BOX comes from `logoBox`, which equalises painted area across both the
- * country's size and the artwork's shape — see the rule there. Overflow onto a
- * neighbour is expected and fine; UNEQUAL overflow was the bug, because in a
- * mode where the logos are the options, size reads as an answer.
+ * Its box, its caption chip and where each sits come from `layoutLogoStage`,
+ * which equalises painted area across both the country's size and the
+ * artwork's shape and keeps every mark-plus-name clear of its neighbours — see
+ * the rules there. Overflow onto a neighbour is expected and fine; UNEQUAL
+ * overflow was the bug, because in a mode where the logos are the options,
+ * size reads as an answer.
  *
  * Nothing is drawn behind it. A scrim card read as a box sitting ON the map
  * rather than a logo sitting IN a country — the separation the stage wants
@@ -1385,7 +1386,11 @@ const ensureLogos = () => {
   const logos = props.countryLogos
   const names = props.countryLogoNames
   const ratios = props.countryLogoRatios
-  const key = logos ? JSON.stringify([logos, names ?? null, ratios ?? null]) : ''
+  // The frame is part of the key: a mark's share of the SCREEN is what the
+  // layout caps, and a resize that re-cuts the camera has to re-cut the marks.
+  const view = autoCameraView()
+  const frame = { width: Math.round(view.width), height: Math.round(view.height) }
+  const key = logos ? JSON.stringify([logos, names ?? null, ratios ?? null, frame]) : ''
   if (key === builtLogoKey) return
 
   svg.value.querySelectorAll('.country-logo').forEach(node => node.remove())
@@ -1396,19 +1401,14 @@ const ensureLogos = () => {
   layer.classList.add('country-logo')
   svg.value.appendChild(layer)
 
-  // Resolve every logo's box BEFORE drawing any of it: a caption hangs below
-  // its own logo, which can put it on top of the country to the south (Austria
-  // captioned "OeVP" straight across Croatia's HDZ mark). Knowing all the
-  // boxes is what lets a chip step clear of its neighbours.
-  const anchored: {
+  const marks: {
     code: string
     href: string
     x: number
     y: number
-    side: number
-    width: number
-    height: number
-    clipped: boolean
+    radius: number
+    ratio?: number
+    caption?: string
   }[] = []
   for (const [code, href] of Object.entries(logos)) {
     if (!href) continue
@@ -1418,24 +1418,21 @@ const ensureLogos = () => {
       continue
     const anchor = labelAnchorFor(code as MapCode)
     if (!anchor) continue
-    // Resolved HERE, in the first pass, because the chip solve below reads
-    // every OTHER placement's box — a size computed in the draw loop would not
-    // exist yet for the neighbours being stepped around.
-    const box = logoBox(anchor.radius, ratios?.[code as ISOCountryCode])
-    anchored.push({ code, href, x: anchor.point[0], y: anchor.point[1], ...box })
+    marks.push({
+      code,
+      href,
+      x: anchor.point[0],
+      y: anchor.point[1],
+      radius: anchor.radius,
+      ratio: ratios?.[code as ISOCountryCode],
+      caption: names?.[code as ISOCountryCode],
+    })
   }
 
-  // Poles of inaccessibility sit closer together than the artwork is wide in a
-  // tight neighbourhood (the Alps, the Balkans), so equal-area marks land on
-  // top of one another. Push them apart before anything is drawn — the chip
-  // solve below reads these boxes, and a caption stepped around a box that then
-  // moved would be solving yesterday's layout.
-  const placements = relaxLogoPlacements(anchored)
-
-  /** Chips already laid, so the next one can step clear of them too. */
-  const chips: { x: number; y: number; width: number; height: number }[] = []
-
-  for (const { code, href, x, y, side, width, height, clipped } of placements) {
+  for (const { code, href, caption, x, y, width, height, clipped, chip } of layoutLogoStage(
+    marks,
+    frame
+  )) {
     const image = document.createElementNS(SVG_NS, 'image')
     image.setAttribute('href', href)
     image.setAttribute('x', String(x - width / 2))
@@ -1447,87 +1444,16 @@ const ensureLogos = () => {
     image.classList.add('country-logo-image')
     layer.appendChild(image)
 
-    const caption = names?.[code as ISOCountryCode]
-    if (!caption) continue
+    if (!chip || !caption) continue
     // A CHIP, not floating text. Painting a stroke behind glyphs this small
-    // (1.6px halo on 3.4px type) fattened them into unreadable blobs, and any
-    // offset that clears the logo lands on a neighbouring country instead. A
-    // sized plate under the baseline is legible against artwork and coastline
-    // alike, and it belongs to its logo at every zoom.
-    const chipHeight = side * 0.2
-    const chipWidth = chipHeight * (0.62 * caption.length + 0.7)
-    // Clear of the logo box, not inside it. Sitting the chip half its own
-    // height ABOVE the bottom edge put it over the artwork for anything that
-    // fills its box — Austria's "Die Volkspartei" wordmark was struck through
-    // by its own name.
-    //
-    // Measured off the box HEIGHT, never `side`: the box is no longer square,
-    // so on `side` alone a wide wordmark's chip would float in dead space
-    // below it and a tall crest's chip would land back on the artwork.
-    let chipY = y + height / 2 + chipHeight * 0.12
-
-    // …and clear of everyone ELSE'S logo. A chip hangs south of its anchor, so
-    // on a tight frame it lands on the next country down.
-    //
-    // It only ever steps DOWN, and only so far. Flipping a blocked chip above
-    // its logo was tried and is worse: the map cannot see the view's own
-    // caption chrome, so an escape upward hides the name behind the prompt.
-    // Past the cap the chip stays put and simply overlaps — a caption near the
-    // wrong country reads as that country's answer, which is a worse lie than
-    // a crowded one.
-    const chipCeiling = chipY + side * 0.9
-    for (const other of placements) {
-      if (other.code === code) continue
-      const overlapsX =
-        x + chipWidth / 2 > other.x - other.width / 2 &&
-        x - chipWidth / 2 < other.x + other.width / 2
-      const overlapsY =
-        chipY + chipHeight > other.y - other.height / 2 && chipY < other.y + other.height / 2
-      if (!overlapsX || !overlapsY) continue
-      const stepped = other.y + other.height / 2 + chipHeight * 0.12
-      if (stepped <= chipCeiling) chipY = stepped
-    }
-
-    // …and clear of the chips ALREADY placed. Dodging only the logos left two
-    // names sharing one strip of latitude ("Progressive Slovakia" overrun by
-    // "Respect and"), because a chip is far wider than the mark it labels and
-    // two marks a comfortable distance apart can still have colliding plates.
-    for (const chip of chips) {
-      const overlapsX =
-        x + chipWidth / 2 > chip.x - chip.width / 2 && x - chipWidth / 2 < chip.x + chip.width / 2
-      const overlapsY = chipY + chipHeight > chip.y && chipY < chip.y + chip.height
-      if (!overlapsX || !overlapsY) continue
-      const stepped = chip.y + chip.height + chipHeight * 0.25
-      if (stepped <= chipCeiling) chipY = stepped
-    }
-    // A caption belongs to ITS logo. Romania's "PNL" stepped so far south it
-    // came to rest under Bulgaria's mark, reading as Bulgaria's answer — the
-    // lie the ceiling exists to prevent, arrived at one step at a time.
-    //
-    // So the steps are bounded rather than undone: the chip may sit anywhere
-    // from its home down to just above the next mark south, whichever the
-    // stepping found. Snapping a trespassing chip all the way back home was
-    // tried and simply restores the collision it stepped away from.
-    const blocked = placements
-      .filter(
-        other =>
-          other.code !== code &&
-          x + chipWidth / 2 > other.x - other.width / 2 &&
-          x - chipWidth / 2 < other.x + other.width / 2 &&
-          other.y - other.height / 2 > y
-      )
-      .map(other => other.y - other.height / 2 - chipHeight)
-    const floor = Math.min(...blocked, chipCeiling)
-    const home = y + height / 2 + chipHeight * 0.12
-    chipY = clamp(chipY, home, Math.max(home, floor))
-    chips.push({ x, y: chipY, width: chipWidth, height: chipHeight })
-
+    // fattened them into unreadable blobs; a sized plate under the baseline is
+    // legible against artwork and coastline alike.
     const plate = document.createElementNS(SVG_NS, 'rect')
-    plate.setAttribute('x', String(x - chipWidth / 2))
-    plate.setAttribute('y', String(chipY))
-    plate.setAttribute('width', String(chipWidth))
-    plate.setAttribute('height', String(chipHeight))
-    plate.setAttribute('rx', String(chipHeight / 2))
+    plate.setAttribute('x', String(chip.x))
+    plate.setAttribute('y', String(chip.y))
+    plate.setAttribute('width', String(chip.width))
+    plate.setAttribute('height', String(chip.height))
+    plate.setAttribute('rx', String(chip.height / 2))
     plate.style.fill = 'var(--dark-blue)'
     plate.style.stroke = 'none'
     plate.classList.add('country-logo-plate')
@@ -1536,8 +1462,8 @@ const ensureLogos = () => {
     const label = document.createElementNS(SVG_NS, 'text')
     label.textContent = caption
     label.setAttribute('x', String(x))
-    label.setAttribute('y', String(chipY + chipHeight * 0.72))
-    label.setAttribute('font-size', String(chipHeight * 0.68))
+    label.setAttribute('y', String(chip.baseline))
+    label.setAttribute('font-size', String(chip.fontSize))
     // Inline, because the map's SVG root carries `fill: none` inline for its
     // coastlines — a scoped class rule loses to that and the glyphs vanish.
     label.style.fill = 'var(--sour-milk)'
@@ -1890,6 +1816,7 @@ const updateEffectiveZoom = () => {
   // Overlap is a property of the camera, not the label set: a label's size in
   // user units moves with the zoom, so the solve belongs at every settle.
   placeLabels()
+  if (props.countryLogos) ensureLogos()
   svg.value.classList.add('labels-settled')
 }
 

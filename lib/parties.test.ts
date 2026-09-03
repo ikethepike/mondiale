@@ -17,6 +17,7 @@ import {
   playableChambers,
   seatedParties,
   seatingOrder,
+  shortPartyName,
   spectrumAt,
   spectrumCentre,
   spectrumRank,
@@ -470,5 +471,28 @@ describe('partiesWithLogo', () => {
 describe('countriesInGrouping', () => {
   it('is empty for an unknown grouping rather than throwing', () => {
     expect(countriesInGrouping('not-a-real-grouping')).toEqual([])
+  })
+})
+
+describe('shortPartyName', () => {
+  const named = (name: string, abbreviation?: string) => ({ name, abbreviation }) as Party
+
+  it('prefers the abbreviation, then a trailing "or" acronym', () => {
+    expect(shortPartyName(named('Christian Democratic People\'s Party', 'KDNP'))).toBe('KDNP')
+    expect(shortPartyName(named('Union of Democratic Forces or SDS'))).toBe('SDS')
+  })
+
+  it('keeps the head of a subtitled name, never a cut inside it', () => {
+    // "Direction –" captioned Slovakia's Smer on the stage.
+    expect(shortPartyName(named('Direction – Social Democracy'))).toBe('Direction')
+    expect(shortPartyName(named('Girchi - More Freedom'))).toBe('Girchi')
+    expect(shortPartyName(named('Fidesz–KDNP'))).toBe('Fidesz–KDNP')
+  })
+
+  it('never ends a caption on a joining word', () => {
+    expect(shortPartyName(named('Respect and Freedom Party'))).toBe('Respect and Freedom')
+    expect(shortPartyName(named('For Our Macedonia'))).toBe('For Our Macedonia')
+    expect(shortPartyName(named('Democratic Party of Albanians'))).toBe('Democratic Party')
+    expect(shortPartyName(named('The Left'))).toBe('The Left')
   })
 })

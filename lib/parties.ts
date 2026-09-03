@@ -323,9 +323,48 @@ export const shortPartyName = (party: Party): string => {
   if (party.abbreviation) return party.abbreviation
   const trailing = /\bor\s+([A-Za-zÀ-ÿ0-9-]{2,})\s*$/.exec(party.name)?.[1]
   if (trailing) return trailing
-  const words = party.name.split(/\s+/)
-  return words.length <= 2 ? party.name : words.slice(0, 2).join(' ')
+  // "Direction – Social Democracy" is the party called Direction; the tail is
+  // its subtitle, and a caption cut inside it ("Direction –") names nothing.
+  const head = /^(.+?)\s+[–—-]\s+/.exec(party.name)?.[1]
+  const words = (head ?? party.name).split(/\s+/)
+  let take = Math.min(2, words.length)
+  // Never end on a joining word: "Respect and" is half a name, "Respect and
+  // Freedom" is one.
+  if (take < words.length && NAME_JOINERS.has(words[take - 1]!.toLowerCase())) take += 1
+  return words.slice(0, take).join(' ')
 }
+
+const NAME_JOINERS = new Set([
+  'and',
+  'or',
+  'of',
+  'for',
+  'the',
+  'in',
+  'on',
+  'our',
+  'de',
+  'del',
+  'della',
+  'di',
+  'du',
+  'da',
+  'do',
+  'dos',
+  'das',
+  'des',
+  'la',
+  'le',
+  'les',
+  'el',
+  'los',
+  'las',
+  'und',
+  'für',
+  'y',
+  'e',
+  'et',
+])
 
 /** Countries whose governing party carries a logo — Rulers' stage pool. */
 export const countriesWithGoverningLogo = (): ISOCountryCode[] =>

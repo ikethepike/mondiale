@@ -312,8 +312,41 @@ const LOGO_MAX_DRIFT = 0.35
  * applied together, so the same lineup always settles the same way.
  */
 /** A lineup never shrinks past this share of the sizes `logoBox` chose — a
- *  frame of unreadable specks is a worse answer than a slightly tight one. */
-const LOGO_MIN_SCALE = 0.5
+ *  frame of unreadable specks is a worse answer than a slightly tight one.
+ *  0.5 left 28 of the 328 dealable lineups piled at the floor once captions
+ *  joined the footprint; 0.35 clears every one of them. */
+const LOGO_MIN_SCALE = 0.35
+/**
+ * No mark's equal-area side may exceed this share of the camera frame's
+ * shorter side.
+ *
+ * `logoBox` sizes in MAP units, but the frame Rulers cuts runs from ~100 units
+ * (five Balkan states) to ~400 (a straggling cluster), so the same 22-unit mark
+ * is a fifth of the screen in one frame and a twentieth in the next. The
+ * lineup is shrunk TOGETHER to honour this, so the equal-weight promise holds;
+ * it only stops the tight frames from being wallpapered in logos.
+ *
+ * Measured on the SIDE, not the span: capping the span made a single 4:1
+ * wordmark shrink its whole lineup to specks.
+ */
+const LOGO_MAX_FRAME_SHARE = 0.15
+
+/**
+ * What the relaxation keeps apart. `y` is the ARTWORK's anchor; `band` is the
+ * caption hanging below it, already counted in `height`, so at every probed
+ * scale the footprint's centre sits `band * scale / 2` under the anchor and
+ * the artwork itself stays put. `reach` is the span drift is capped against
+ * when it is not the box itself — a mark whose footprint includes its caption
+ * still belongs to the country under the artwork.
+ */
+export interface LogoFootprint {
+  x: number
+  y: number
+  width: number
+  height: number
+  band?: number
+  reach?: { x: number; y: number }
+}
 
 /**
  * How much a whole lineup must shrink before its marks can sit apart.
@@ -335,22 +368,24 @@ const LOGO_MIN_SCALE = 0.5
  * each other, which the other pairs forbid) and left the frame overlapping.
  * Bisection asks the real question instead: run the settle, look at the result.
  */
-export const fitLogoScale = (
-  placements: { x: number; y: number; width: number; height: number }[]
-): number => {
-  if (placements.length < 2) return 1
-  if (settlesCleanly(placements, 1)) return 1
+export const fitLogoScale = (placements: LogoFootprint[], ceiling = 1): number => {
+  // A frame so tight the cap sits under the floor: the cap wins, because the
+  // floor guards legibility RELATIVE to the natural size, and nothing is
+  // legible about a mark that outgrows its share of a screen it shares with five.
+  const floor = Math.min(LOGO_MIN_SCALE, ceiling)
+  if (placements.length < 2) return ceiling
+  if (settlesCleanly(placements, ceiling)) return ceiling
   // Nothing inside the band works: take the floor rather than the ceiling. The
   // bisection below only ever narrows toward a scale KNOWN to settle, so
   // without this the most crowded frame in the roster — the one that needs the
   // shrink most — would fall through and be drawn at full size.
-  if (!settlesCleanly(placements, LOGO_MIN_SCALE)) return LOGO_MIN_SCALE
+  if (!settlesCleanly(placements, floor)) return floor
 
   // INVARIANT: `fits` always settles, `tooBig` never does. Both are now known
   // (the two guards above proved them), so the midpoint search can only ever
   // return a scale that has been verified to settle.
-  let fits = LOGO_MIN_SCALE
-  let tooBig = 1
+  let fits = floor
+  let tooBig = ceiling
   // ~1% precision is finer than the eye reads at these sizes.
   for (let step = 0; step < 7; step += 1) {
     const middle = (fits + tooBig) / 2
@@ -362,12 +397,10 @@ export const fitLogoScale = (
 
 /** Run the settle at one scale. The single implementation the bisection probes
  *  and the public pass returns, so the scale chosen is always the scale drawn. */
-const settleAt = <T extends { x: number; y: number; width: number; height: number }>(
-  placements: T[],
-  scale: number
-): T[] => {
+const settleAt = <T extends LogoFootprint>(placements: T[], scale: number): T[] => {
   const settled = placements.map(placement => ({
     ...placement,
+    y: placement.y + ((placement.band ?? 0) * scale) / 2,
     width: placement.width * scale,
     height: placement.height * scale,
   }))
@@ -414,8 +447,11 @@ const settleAt = <T extends { x: number; y: number; width: number; height: numbe
       const origin = origins[index]!
       // Per-axis: a wide wordmark may travel further sideways than it may
       // vertically, because that is the direction its own box already spans.
-      const limitX = placement.width * LOGO_MAX_DRIFT
-      const limitY = placement.height * LOGO_MAX_DRIFT
+      // Measured off the ARTWORK, never the footprint: a caption is far wider
+      // than the crest it names, and drift bought on the chip's width walks
+      // the crest onto the neighbour.
+      const limitX = (placement.reach ? placement.reach.x * scale : placement.width) * LOGO_MAX_DRIFT
+      const limitY = (placement.reach ? placement.reach.y * scale : placement.height) * LOGO_MAX_DRIFT
       placement.x = clamp(placement.x + pushes[index]!.x, origin.x - limitX, origin.x + limitX)
       placement.y = clamp(placement.y + pushes[index]!.y, origin.y - limitY, origin.y + limitY)
     }
@@ -424,10 +460,7 @@ const settleAt = <T extends { x: number; y: number; width: number; height: numbe
 }
 
 /** Did this scale leave every pair with its breathing room? */
-const settlesCleanly = (
-  placements: { x: number; y: number; width: number; height: number }[],
-  scale: number
-): boolean => {
+const settlesCleanly = (placements: LogoFootprint[], scale: number): boolean => {
   const settled = settleAt(placements, scale)
   for (let a = 0; a < settled.length; a += 1) {
     for (let b = a + 1; b < settled.length; b += 1) {
@@ -452,11 +485,127 @@ const settlesCleanly = (
  * Shrink first, then push: pushing a lineup that cannot fit only moves the
  * problem onto the neighbours' countries.
  */
-export const relaxLogoPlacements = <
-  T extends { x: number; y: number; width: number; height: number },
->(
-  placements: T[]
-): T[] => settleAt(placements, fitLogoScale(placements))
+export const relaxLogoPlacements = <T extends LogoFootprint>(placements: T[]): T[] =>
+  settleAt(placements, fitLogoScale(placements))
+
+/** The caption chip's height as a share of its mark's equal-area side. */
+const LOGO_CHIP_HEIGHT = 0.2
+/** Air between the artwork's bottom edge and its chip, in chip heights. */
+const LOGO_CHIP_GAP = 0.12
+/** A chip's width per glyph and its end padding, in chip heights. */
+const LOGO_CHIP_GLYPH = 0.62
+const LOGO_CHIP_PAD = 0.7
+/** Type size and baseline inside the chip, in chip heights. */
+const LOGO_CHIP_FONT = 0.68
+const LOGO_CHIP_BASELINE = 0.72
+
+export interface LogoMark {
+  code: string
+  x: number
+  y: number
+  radius: number
+  ratio?: number
+  caption?: string
+}
+
+export interface LogoChip {
+  x: number
+  y: number
+  width: number
+  height: number
+  fontSize: number
+  baseline: number
+}
+
+export interface LogoPlacement {
+  x: number
+  y: number
+  width: number
+  height: number
+  side: number
+  clipped: boolean
+  chip?: LogoChip
+}
+
+/**
+ * Size and place a lineup's marks AND their captions so nothing collides.
+ *
+ * The chip is part of the footprint the relaxation solves, not something laid
+ * after it: a caption hangs south of its mark, so a lineup whose boxes were
+ * kept apart by a hairline still put every name across the country below
+ * (Romania's "PNL" under Bulgaria's mark, Slovakia's under Hungary's). Stepping
+ * a blocked chip downward was tried and is bounded by the same neighbour it is
+ * stepping around — past a chip's height of room it has nowhere to go.
+ *
+ * Every dimension rides the lineup's one scale, chips included, so a shrunk
+ * frame shrinks its captions with its marks instead of leaving plates the size
+ * of the artwork they label. `frame` is the camera's view in map units: given,
+ * the lineup starts no larger than `LOGO_MAX_FRAME_SHARE` of it allows.
+ */
+export const layoutLogoStage = <T extends LogoMark>(
+  marks: T[],
+  frame?: { width: number; height: number }
+): (T & LogoPlacement)[] => {
+  // The chip shrinks WITH its mark. A legible floor for the caption was tried
+  // and is worse: a twenty-glyph name that cannot shrink is a fixed quarter of
+  // the frame, and 59 of the 328 dealable lineups could no longer settle.
+  const footprints = marks.map(mark => {
+    const box = logoBox(mark.radius, mark.ratio)
+    const chipHeight = box.side * LOGO_CHIP_HEIGHT
+    const chipWidth = mark.caption
+      ? chipHeight * (LOGO_CHIP_GLYPH * mark.caption.length + LOGO_CHIP_PAD)
+      : 0
+    const band = mark.caption ? chipHeight * (1 + LOGO_CHIP_GAP) : 0
+    return {
+      x: mark.x,
+      y: mark.y,
+      width: Math.max(box.width, chipWidth),
+      height: box.height + band,
+      band,
+      reach: { x: box.width, y: box.height },
+      box,
+      chipHeight,
+      chipWidth,
+    }
+  })
+  const largest = Math.max(...footprints.map(({ box }) => box.side))
+  const ceiling = frame
+    ? clamp((Math.min(frame.width, frame.height) * LOGO_MAX_FRAME_SHARE) / largest, 0, 1)
+    : 1
+  const scale = fitLogoScale(footprints, ceiling)
+  const settled = settleAt(footprints, scale)
+
+  return marks.map((mark, index) => {
+    const { x, y, box, band, chipHeight, chipWidth } = settled[index]!
+    const width = box.width * scale
+    const height = box.height * scale
+    const centreY = y - (band * scale) / 2
+    const placement = {
+      ...mark,
+      x,
+      y: centreY,
+      width,
+      height,
+      side: box.side * scale,
+      clipped: box.clipped,
+    }
+    if (!mark.caption) return placement
+    const chipH = chipHeight * scale
+    const chipW = chipWidth * scale
+    const chipY = centreY + height / 2 + chipH * LOGO_CHIP_GAP
+    return {
+      ...placement,
+      chip: {
+        x: x - chipW / 2,
+        y: chipY,
+        width: chipW,
+        height: chipH,
+        fontSize: chipH * LOGO_CHIP_FONT,
+        baseline: chipY + chipH * LOGO_CHIP_BASELINE,
+      },
+    }
+  })
+}
 
 export const logoPaintedArea = (radius: number, ratio?: number): number => {
   const { width, height, clipped } = logoBox(radius, ratio)

@@ -6,6 +6,7 @@ import {
   LOGO_MIN_SIDE,
   WORLD_BOX,
   boxesIntersect,
+  layoutLogoStage,
   logoBox,
   logoPaintedArea,
   regionsIntersect,
@@ -342,6 +343,72 @@ describe('logoBox', () => {
       expect(Math.abs(placement.x - origin.x)).toBeLessThanOrEqual(origin.width * 0.9 + 0.001)
       expect(Math.abs(placement.y - origin.y)).toBeLessThanOrEqual(origin.height * 0.9 + 0.001)
     }
+  })
+
+  it('keeps captions clear of the neighbouring marks', () => {
+    // The Balkans frame as reported: Slovakia's caption sat across Hungary's
+    // wordmark and Romania's "PNL" chip was buried under Bulgaria's crest,
+    // because chips were laid AFTER the marks had been solved and could only
+    // step around them by a chip's height.
+    const frame: [string, number, string][] = [
+      ['SK', 1.395, 'Direction'],
+      ['HU', 3.4, 'Respect and Freedom'],
+      ['RO', 1, 'PNL'],
+      ['BG', 1, 'ПБ'],
+      ['MK', 1.026, 'Democratic Party'],
+    ]
+    const marks = frame.map(([code, ratio, caption]) => {
+      const anchor = poleOfInaccessibility(largestRing(MAP_PATHS[code as never])!)!
+      return { code, x: anchor.point[0], y: anchor.point[1], radius: anchor.radius, ratio, caption }
+    })
+    const placed = layoutLogoStage(marks)
+    const boxes = placed.flatMap(({ code, x, y, width, height, chip }) => [
+      { code, x: x - width / 2, y: y - height / 2, width, height },
+      { code: `${code} chip`, ...chip! },
+    ])
+    for (let a = 0; a < boxes.length; a += 1)
+      for (let b = a + 1; b < boxes.length; b += 1) {
+        const one = boxes[a]!
+        const two = boxes[b]!
+        const overlaps =
+          one.x < two.x + two.width &&
+          two.x < one.x + one.width &&
+          one.y < two.y + two.height &&
+          two.y < one.y + one.height
+        expect(overlaps, `${one.code} lies across ${two.code}`).toBe(false)
+      }
+
+    // A chip belongs to ITS mark — directly beneath it, at the lineup's scale.
+    for (const { x, y, height, side, chip } of placed) {
+      expect(chip!.height).toBeCloseTo(side * 0.2, 5)
+      expect(chip!.x + chip!.width / 2).toBeCloseTo(x, 5)
+      expect(chip!.y).toBeGreaterThan(y + height / 2)
+      expect(chip!.y - (y + height / 2)).toBeLessThan(chip!.height)
+    }
+  })
+
+  it('caps drift against the artwork, never against its caption', () => {
+    // A tiny crest under a long name has a footprint many times its own width.
+    // Drift bought on the footprint would walk the crest a country away.
+    const marks = [
+      { code: 'a', x: 100, y: 100, radius: 4, ratio: 1, caption: 'Democratic Party of Everyone' },
+      { code: 'b', x: 112, y: 100, radius: 4, ratio: 1, caption: 'Democratic Party of Everyone' },
+      { code: 'c', x: 106, y: 108, radius: 4, ratio: 1, caption: 'Democratic Party of Everyone' },
+    ]
+    for (const [index, placement] of layoutLogoStage(marks).entries()) {
+      const origin = marks[index]!
+      expect(Math.abs(placement.x - origin.x)).toBeLessThanOrEqual(placement.width * 0.35 + 0.001)
+      expect(Math.abs(placement.y - origin.y)).toBeLessThanOrEqual(placement.height * 0.35 + 0.001)
+    }
+  })
+
+  it('draws an uncaptioned mark at its bare box', () => {
+    const [placed] = layoutLogoStage([{ code: 'a', x: 50, y: 50, radius: 8, ratio: 2.1 }])
+    const bare = logoBox(8, 2.1)
+    expect(placed!.chip).toBeUndefined()
+    expect(placed!.width).toBeCloseTo(bare.width, 5)
+    expect(placed!.height).toBeCloseTo(bare.height, 5)
+    expect(placed!.y).toBe(50)
   })
 
   it('settles the same way every time', () => {

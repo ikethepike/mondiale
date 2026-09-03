@@ -3155,7 +3155,9 @@ const scenarios: Scenario[] = [
       { id: 'AT', label: 'Austria — the ordinary deal', country: 'AT' },
       { id: 'RO', label: 'Romania — big country, square crest', country: 'RO' },
       { id: 'DE', label: 'Germany — widest neighbourhood', country: 'DE' },
+      { id: 'SK', label: 'Slovakia — captions across the Balkans', country: 'SK' },
     ],
+    anyCountry: true,
     build: variant => {
       // The dealer is async (it imports map geometry), and `build` is not — so
       // the harness assembles one deal from the same lib helpers the dealer
