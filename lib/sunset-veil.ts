@@ -1,5 +1,5 @@
 import { MAP_BOUNDS, MAP_REGIONS, type MapCode } from '~~/data/map.gen'
-import { boxesIntersect, regionsIntersect, unionBox, type MapBox } from '~~/lib/geo'
+import { regionsIntersect, type MapBox } from '~~/lib/geo'
 import { SUNSET_TILT, sunsetDuskCoordinate } from '~~/lib/sunset-window'
 import { bleedBox, type MapViewBox, type ScreenRect } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -23,8 +23,6 @@ export const SUNSET_VEIL_FEATHER = 0.2
 export const SUNSET_SWEEP_MARGIN = 8
 /** The plane's ease to full night once the clock runs out. */
 export const SUNSET_SETTLE_MS = 1400
-/** A country's own dusk — amber, then night — for the timed roll. */
-export const SUNSET_DUSK_MS = 3600
 /** Screen tilt of the terminator: the camera keeps the viewBox at the
  *  screen's aspect, so map-space tilt IS screen tilt. */
 export const SUNSET_VEIL_TILT_DEG = -(SUNSET_TILT * 180) / Math.PI
@@ -92,41 +90,3 @@ export const veilCodes = (vb: MapViewBox): MapCode[] => {
     regionsIntersect(MAP_REGIONS[code] ?? [MAP_BOUNDS[code]!], box)
   )
 }
-
-const ringsOf = (code: MapCode): MapBox[] =>
-  MAP_REGIONS[code]?.length ? MAP_REGIONS[code] : [MAP_BOUNDS[code]!]
-
-/** A country's whole footprint (every ring) in map space. */
-export const regionBox = (code: MapCode): MapBox => unionBox(ringsOf(code))
-
-const clipBox = ([x, y, w, h]: MapBox, [cx, cy, cw, ch]: MapBox): MapBox => {
-  const left = Math.max(x, cx)
-  const top = Math.max(y, cy)
-  return [left, top, Math.min(x + w, cx + cw) - left, Math.min(y + h, cy + ch) - top]
-}
-
-/** The part of a country's footprint the camera can see: only the rings on
- *  screen, clipped to the bled camera — Russia seen through Kaliningrad is a
- *  Kaliningrad-sized box, never a map-spanning one. */
-export const visibleRegionBox = (code: MapCode, vb: MapViewBox): MapBox => {
-  const box = asBox(bleedBox(vb))
-  const rings = ringsOf(code).filter(ring => boxesIntersect(ring, box))
-  return clipBox(unionBox(rings.length ? rings : ringsOf(code)), box)
-}
-
-/** Where the line has cleared a country's WESTERN edge — the timed roll's
- *  cue, so a giant like Russia isn't blacked out far ahead of the front. */
-export const duskWestCoordinate = (code: MapCode): number => {
-  const rings = MAP_REGIONS[code]
-  if (!rings?.length) return sunsetDuskCoordinate(code as ISOCountryCode)
-  const [x, y, , height] = rings[0]!
-  return x - (y + height / 2) * TAN
-}
-
-/** A map-space box as a screen box, in the map's painted rect's px. */
-export const boxToScreen = (box: MapBox, vb: MapViewBox, rect: ScreenRect): ScreenRect => ({
-  x: rect.x + ((box[0] - vb.x) / vb.w) * rect.width,
-  y: rect.y + ((box[1] - vb.y) / vb.h) * rect.height,
-  width: (box[2] / vb.w) * rect.width,
-  height: (box[3] / vb.h) * rect.height,
-})

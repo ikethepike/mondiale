@@ -3,7 +3,7 @@
     <!-- The night is one compositor plane (SunsetVeil): sea, darkened land and
          the terminator's glow move together, and the base map is never
          written to mid-round. Lit countries paint on the veil's top layer. -->
-    <SunsetVeil :dusk="dusk" :lit="litList" :settled="finished" :roll="roll" />
+    <SunsetVeil :dusk="dusk" :lit="litList" :settled="finished" />
     <footer ref="consoleFooter" class="shell-footer">
       <NightConsole
         v-show="!finished"
@@ -27,7 +27,7 @@
 </template>
 <script lang="ts" setup>
 import NightConsole, { type LanternState } from '~/components/challenge/NightConsole.vue'
-import SunsetVeil, { type SunsetRoll } from '~/components/challenge/SunsetVeil.vue'
+import SunsetVeil from '~/components/challenge/SunsetVeil.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
@@ -64,9 +64,6 @@ const emit = defineEmits<{
 }>()
 
 const { gameStore, game } = useClientEvents()
-
-// Prototype switch for the two dusk rolls — `?roll=timed` in the harness
-const roll: SunsetRoll = useRoute().query.roll === 'timed' ? 'timed' : 'spatial'
 
 const rules = computed(
   () => game.value ?? { variant: 'world' as const, difficulty: 'normal' as const }
@@ -134,14 +131,21 @@ const isDark = (isoCode: ISOCountryCode) => {
 
 // Pure linear motion: one constant speed from just off the east edge to just
 // past the west edge. The bounds lock ONCE after the camera settles —
-// adjusting them mid-flight remaps the clock and the line lurches.
+// adjusting them mid-flight remaps the clock and the line lurches. The delay
+// alone is not the settle signal: a flight stalled by the HD tier's import
+// once locked a world-wide field, so the camera must also hold still.
 const SETTLE_DELAY_MS = 1500
 let boundsLocked = false
 let sweepClockStart = 0
+let lastSeenBox = ''
 
 const lockSweepBounds = (elapsedMs: number) => {
   if (boundsLocked || elapsedMs < SETTLE_DELAY_MS) return
   const vb = currentViewBox()
+  const seen = vb ? `${vb.x} ${vb.y} ${vb.w}` : ''
+  const still = seen === lastSeenBox
+  lastSeenBox = seen
+  if (!still) return
   if (vb?.w) {
     const bounds = sweepBounds(vb)
     sweepStart = Math.max(sweepStart, bounds.start)

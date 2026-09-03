@@ -1,7 +1,7 @@
 <template>
   <div ref="root" class="sunset-veil" :class="{ settled }" aria-hidden="true">
     <div class="plane" :style="planeStyle">
-      <div class="night-land" :class="roll" :style="{ '--feather': `${featherPx}px` }">
+      <div class="night-land" :style="{ '--feather': `${featherPx}px` }">
         <div class="inverse" :style="inverseStyle">
           <svg
             v-if="landStyle"
@@ -14,36 +14,6 @@
           </svg>
         </div>
       </div>
-      <div v-if="roll === 'timed'" class="inverse" :style="inverseStyle">
-        <svg
-          v-if="landStyle"
-          class="land"
-          :viewBox="viewBoxAttr"
-          preserveAspectRatio="none"
-          :style="landStyle"
-        >
-          <path v-for="code in settledCodes" :key="code" :data-id="code" :d="pathFor(code)" />
-        </svg>
-        <template v-for="beat in dusks" :key="beat.code">
-          <svg
-            class="dusk amber"
-            :viewBox="beat.viewBox"
-            preserveAspectRatio="none"
-            :style="beat.style"
-          >
-            <path :d="pathFor(beat.code)" />
-          </svg>
-          <svg
-            class="dusk night"
-            :viewBox="beat.viewBox"
-            preserveAspectRatio="none"
-            :style="beat.style"
-            @animationend="settle(beat.code)"
-          >
-            <path :d="pathFor(beat.code)" />
-          </svg>
-        </template>
-      </div>
       <div class="band" />
     </div>
     <svg
@@ -54,8 +24,7 @@
       :style="litStyle"
     >
       <g v-for="code in lit" :key="code" :data-id="code">
-        <path class="halo" :d="pathFor(code)" />
-        <path class="body" :d="pathFor(code)" />
+        <path :d="pathFor(code)" />
       </g>
     </svg>
   </div>
@@ -63,17 +32,13 @@
 <script lang="ts" setup>
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import {
-  boxToScreen,
-  duskWestCoordinate,
   settledMidPx,
-  SUNSET_DUSK_MS,
   SUNSET_SETTLE_MS,
   SUNSET_VEIL_FEATHER,
   veilCodes,
   veilMidPx,
   veilPlaneSize,
   veilTransforms,
-  visibleRegionBox,
 } from '~~/lib/sunset-veil'
 import { mapPaintedRect, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -85,20 +50,14 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * the plane so it stays pinned to the map while the plane's mask reveals it
  * behind the line — the base map is never touched, so it rasters once.
  *
- * `roll` picks how land darkens: `spatial` (the mask's feather is the whole
- * dusk) or `timed` (each country runs its own amber→night beat once the line
- * clears its western edge, as two composited fades, with the masked land as
- * a floor where the sea is already full night). Lit countries paint on their
- * own layer above everything.
+ * Lit countries paint on their own layer above everything; their glow is a
+ * filter on that layer, which only re-rasters when a guess lands.
  */
-export type SunsetRoll = 'spatial' | 'timed'
-
 const props = defineProps<{
   /** The terminator in map-space dusk coordinates; undefined parks the night off-screen east. */
   dusk?: number
   lit: readonly ISOCountryCode[]
   settled: boolean
-  roll: SunsetRoll
 }>()
 
 const root = ref<HTMLElement>()
@@ -173,7 +132,6 @@ const planeStyle = computed(() => ({
   height: `${plane.value.height}px`,
   transform: transforms.value.plane,
   '--settle': `${SUNSET_SETTLE_MS}ms`,
-  '--dusk': `${SUNSET_DUSK_MS}ms`,
 }))
 const inverseStyle = computed(() => ({ transform: transforms.value.inverse }))
 
@@ -199,53 +157,6 @@ const litStyle = computed(() => {
 
 const litSet = computed(() => new Set<string>(props.lit))
 const onScreen = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : []))
-
-// --- The timed roll: each country's own dusk ---------------------------------
-const started = new Set<MapCode>()
-const dusks = ref<{ code: MapCode; viewBox: string; style: Record<string, string> }[]>([])
-const settledCodes = ref(new Set<MapCode>())
-
-const settle = (code: MapCode) => {
-  dusks.value = dusks.value.filter(dusk => dusk.code !== code)
-  if (!litSet.value.has(code)) settledCodes.value.add(code)
-}
-
-watch(
-  () => [props.dusk, props.settled, onScreen.value] as const,
-  ([dusk, settled]) => {
-    if (props.roll !== 'timed') return
-    const vb = viewBox.value
-    const rect = mapPaintedRect.value
-    if (!vb?.w || !rect) return
-    for (const code of onScreen.value) {
-      if (started.has(code) || litSet.value.has(code)) continue
-      if (settled) {
-        started.add(code)
-        settledCodes.value.add(code)
-        continue
-      }
-      if (dusk === undefined || duskWestCoordinate(code) < dusk) continue
-      started.add(code)
-      const box = visibleRegionBox(code, vb)
-      dusks.value.push({
-        code,
-        viewBox: box.join(' '),
-        style: placed(boxToScreen(box, vb, rect), planeTop.value),
-      })
-    }
-  },
-  { immediate: true }
-)
-
-// A country lit mid-dusk (typed while its tail was still in the day) leaves
-// the night's layers at once
-watch(litSet, lit => {
-  for (const code of lit) {
-    settledCodes.value.delete(code as MapCode)
-    started.add(code as MapCode)
-  }
-  dusks.value = dusks.value.filter(dusk => !lit.has(dusk.code))
-})
 
 const landCodes = computed(() => onScreen.value.filter(code => !litSet.value.has(code)))
 </script>
@@ -282,19 +193,8 @@ const landCodes = computed(() => onScreen.value.filter(code => !litSet.value.has
 .night-land {
   inset: 0;
   position: absolute;
-
-  &.spatial {
-    mask-image: linear-gradient(90deg, transparent 0, #000 var(--feather));
-    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--feather));
-  }
-
-  // The timed roll's floor: where the sea has gone full night, so has every
-  // shape under it — a giant whose western edge the line has yet to clear
-  // can't sit unseen under the plane
-  &.timed {
-    mask-image: linear-gradient(90deg, transparent 34vw, #000 38vw);
-    -webkit-mask-image: linear-gradient(90deg, transparent 34vw, #000 38vw);
-  }
+  mask-image: linear-gradient(90deg, transparent 0, #000 var(--feather));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--feather));
 }
 
 // The plane's exact inverse: everything inside stays pinned to the map
@@ -341,71 +241,21 @@ svg {
   overflow: visible;
 }
 
-.land path,
-.dusk.night path {
+.land path {
   fill: var(--night-land);
   stroke: var(--night-stroke);
   stroke-width: 1.1px;
   vector-effect: non-scaling-stroke;
 }
 
-.dusk.amber path {
-  fill: hsl(30, 62%, 60%);
-  stroke: hsla(30, 62%, 40%, 0.6);
-  stroke-width: 1.1px;
-  vector-effect: non-scaling-stroke;
-}
+// A named country holds the light above the night, flaring once as it
+// ignites. The glow is a filter on the lit group: this layer only re-rasters
+// when a guess lands, so the blur is paid per guess, never per frame.
+.lit g {
+  filter: drop-shadow(0 0 0.5rem hsla(45, 96%, 65%, 0.75));
+  animation: sunset-ignite 0.7s var(--ease-smooth);
 
-// A country's own dusk, as two composited fades: amber blooms and passes,
-// the night rises under it
-.dusk {
-  opacity: 0;
-  will-change: opacity;
-
-  &.amber {
-    animation: dusk-amber var(--dusk) var(--ease-smooth) forwards;
-  }
-
-  &.night {
-    animation: dusk-night var(--dusk) var(--ease-smooth) forwards;
-  }
-}
-
-@keyframes dusk-amber {
-  0% {
-    opacity: 0;
-  }
-  18% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes dusk-night {
-  0%,
-  18% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-// A named country holds the light above the night: a warm fill in a soft
-// halo, flaring once as it ignites
-.lit {
-  .halo {
-    fill: none;
-    stroke: hsla(45, 96%, 65%, 0.45);
-    stroke-width: 10px;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-    animation: sunset-ignite 0.7s var(--ease-smooth);
-  }
-
-  .body {
+  path {
     fill: hsla(45, 90%, 74%, 0.95);
     stroke: hsla(38, 90%, 42%, 0.9);
     stroke-width: 1px;
@@ -415,22 +265,13 @@ svg {
 
 @keyframes sunset-ignite {
   from {
-    stroke: hsla(45, 96%, 62%, 1);
-    stroke-width: 28px;
+    filter: drop-shadow(0 0 1.6rem hsla(45, 96%, 62%, 1));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lit .halo {
+  .lit g {
     animation: none;
-  }
-
-  .dusk.amber {
-    animation: none;
-  }
-
-  .dusk.night {
-    animation-duration: 0.01s;
   }
 }
 </style>

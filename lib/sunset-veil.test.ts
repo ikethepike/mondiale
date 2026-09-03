@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { MAP_BOUNDS, MAP_REGIONS, type MapCode } from '~~/data/map.gen'
+import type { MapCode } from '~~/data/map.gen'
 import { playableCountries } from '~~/lib/game-rules'
 import { sunsetDuskCoordinate, sunsetWindowAround } from './sunset-window'
 import {
-  boxToScreen,
   darkPrefixCount,
-  regionBox,
   settledMidPx,
   SUNSET_VEIL_FEATHER,
   SUNSET_VEIL_TILT_DEG,
@@ -16,7 +14,6 @@ import {
   veilTransforms,
 } from './sunset-veil'
 import type { MapViewBox } from './use-map-viewbox'
-import type { ISOCountryCode } from '~~/types/geography.types'
 
 const pool = playableCountries({ variant: 'world', difficulty: 'hard', includeMicroNations: false })
 const window = sunsetWindowAround(pool, 'hard', 'HR')!
@@ -151,22 +148,5 @@ describe('sunset veil', () => {
     expect(codes).toContain('RU')
     for (const code of ['US', 'FJ', 'NZ', 'BR', 'CN'] as MapCode[])
       expect(codes).not.toContain(code)
-  })
-
-  it('boxes every mapped shape and lands it on the painted rect', () => {
-    const vb: MapViewBox = { x: 0, y: 0, w: 2000, h: 1001 }
-    const rect = { x: 10, y: 20, width: 2000, height: 1001 }
-    for (const code of Object.keys(MAP_BOUNDS) as MapCode[]) {
-      const box = regionBox(code)
-      expect(box[2]).toBeGreaterThan(0)
-      expect(box[3]).toBeGreaterThan(0)
-      for (const ring of MAP_REGIONS[code] ?? []) {
-        expect(ring[0]).toBeGreaterThanOrEqual(box[0])
-        expect(ring[1]).toBeGreaterThanOrEqual(box[1])
-      }
-    }
-    const screen = boxToScreen(regionBox('HR' as ISOCountryCode), vb, rect)
-    expect(screen.x).toBeCloseTo(10 + regionBox('HR' as ISOCountryCode)[0])
-    expect(screen.width).toBeCloseTo(regionBox('HR' as ISOCountryCode)[2])
   })
 })
