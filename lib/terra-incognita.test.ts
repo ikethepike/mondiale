@@ -74,6 +74,7 @@ const challengeOf = (
   collapseThreshold: terraCollapseThreshold(vanishings.length, difficulty),
   durationSeconds: terraSeconds(vanishings.length, TERRA_CADENCE_MS[difficulty]),
   maximumPoints: 100,
+  state: { ready: [], order: [] },
 })
 
 describe('terraField', () => {
@@ -443,6 +444,9 @@ describe('the dealt round', () => {
       terraSeconds(TERRA_VANISH_COUNT.normal, TERRA_CADENCE_MS.normal)
     )
     expect(terraAnswers(challenge)).toEqual(challenge.vanishings)
+    // Dealt behind its card: the clock waits for this table.
+    expect(challenge.state.briefing).toBe(true)
+    expect(challenge.state.ready).toEqual([])
   })
 })
 

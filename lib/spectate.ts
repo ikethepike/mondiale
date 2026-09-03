@@ -160,9 +160,8 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'ground-plan': true,
   'star-chart': true,
   government: true,
-  // The ready card is local and the booth never sees it: the world falls
-  // apart on a schedule the booth runs itself, so a spectator watches a map
-  // failing the same way the players' do.
+  // Nothing local gates it: the world fails on the one clock the server
+  // stamps when the table is briefed, and the booth reads that same stamp.
   'terra-incognita': true,
   flashpoint: true,
   composition: true,

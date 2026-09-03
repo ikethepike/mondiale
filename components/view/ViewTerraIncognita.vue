@@ -9,14 +9,22 @@
       @done="brief"
     />
 
-    <TerraBriefing v-if="briefing" :challenge="challenge" @ready="onReady" />
+    <!-- The card stands alone while it is up — the prompt and the console
+         would share its column and squeeze it into a scroller. -->
+    <TerraBriefing
+      v-if="briefing"
+      :challenge="challenge"
+      :ready="state.ready"
+      :participants="state.order"
+      :sent="iAmReady"
+      :spectating="gameStore.watching"
+      @ready="sendReady"
+    />
 
     <Transition name="veil">
       <div v-if="collapsing" class="collapse-veil" />
     </Transition>
 
-    <!-- The card stands alone while it is up — the prompt and the console
-         would share its column and squeeze it into a scroller. -->
     <ChallengePrompt v-if="!briefing" :hint="hint" :hint-tone="hintTone">
       <h1 class="map-caption">{{ revealed ? 'What you never noticed' : "What's missing?" }}</h1>
       <span class="map-caption sub">
@@ -90,12 +98,13 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { MOTION } from '~~/lib/motion'
-import { READY_GATE_CAP_MS } from '~~/lib/round-beats'
 import { terraFrame, terraRestoredHoles, terraVanishedBy } from '~~/lib/terra-incognita'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import type { TerraBriefingState } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -106,10 +115,10 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * it derives the failing atlas from elapsed time through `terraVanishedBy`,
  * the same way the reveal and the scorecard later replay it.
  *
- * The clock starts on the player's own ready click (the briefing card), so
- * the schedule is a LOCAL one per seat: the kind is play-gated in ROUND_BEATS
- * and the server's budget covers the reading time. The card force-starts at
- * that cap so no seat can outrun it.
+ * That clock is the server's. The round opens on a briefing card, and the
+ * classic deadline stamps only when the whole table is ready (or the cap
+ * forces it), so nothing fails under anyone's card and every seat — and the
+ * booth — derives the SAME world from the one stamp.
  *
  * The answer set GROWS with the clock: only countries that have actually gone
  * can be named — by their own name or by the neighbour they melted into. A
@@ -139,15 +148,23 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
+// Total fallback: watchers keep evaluating for a beat after the round
+// advances past this mode, so the state must never dereference undefined.
+const EMPTY_STATE: TerraBriefingState = { ready: [], order: [] }
+const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
+const briefingOpen = computed(() => !!state.value.briefing)
+
 /** Milliseconds into the round. The clock ticks per second and the cadence is
  *  measured in whole seconds, so second-granularity is exact here. */
 const elapsedMs = computed(() =>
   challenge.value ? elapsedFraction.value * challenge.value.durationSeconds * 1000 : 0
 )
 
-/** What the atlas has lost so far — the live answer set. */
+/** What the atlas has lost so far — the live answer set. Nothing while the
+ *  table is still briefed: the booth's ambience clock runs from mount, and
+ *  the world must not fail for a spectator before it fails for the table. */
 const gone = computed(() =>
-  challenge.value ? terraVanishedBy(challenge.value, elapsedMs.value) : []
+  challenge.value && !briefingOpen.value ? terraVanishedBy(challenge.value, elapsedMs.value) : []
 )
 
 const {
@@ -178,25 +195,28 @@ const {
 )
 
 /**
- * The ready gate. The interstitial hands over to the briefing card, and the
- * card's click is what starts the clock — bounded by the same cap the server
- * budgets for, so a seat that never clicks still plays the round it was dealt.
+ * The briefing. The interstitial hands over to the card; the card's click is
+ * a `terra-ready` ack, and the server's close (the last ack, or the cap) is
+ * what starts the round — never the click itself.
  */
-const briefing = ref(false)
-let readyCap: ReturnType<typeof setTimeout> | undefined
-const onReady = () => {
-  if (!briefing.value) return
-  briefing.value = false
-  if (readyCap) clearTimeout(readyCap)
-  begin()
+const revealed = computed(() => submitted.value)
+const briefing = computed(() => briefingOpen.value && !showInterstitial.value && !revealed.value)
+const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
+const { send: sendReady } = useAckOnce(() => ({ event: 'terra-ready' }))
+
+const startRound = () => {
+  // The booth began on mount, before the stamp existed: re-enter so the
+  // clock reads the deadline now (begin replaces its own interval).
+  if (gameStore.watching) return beginRound()
+  if (!started.value) begin()
 }
 const brief = () => {
   showInterstitial.value = false
-  if (started.value) return
-  briefing.value = true
-  readyCap = setTimeout(onReady, READY_GATE_CAP_MS)
-  registerCleanup(() => readyCap && clearTimeout(readyCap))
+  if (!briefingOpen.value) startRound()
 }
+watch(briefingOpen, (open, was) => {
+  if (was && !open && !showInterstitial.value) startRound()
+})
 
 // The restored names ride the phone's one-row rail — it follows the newest.
 const { trail } = useChipTrail(() => guesses.value.length)
@@ -206,7 +226,6 @@ const outstanding = computed(() => gone.value.filter(isoCode => !found.value.inc
 
 /** The server's reveal hold (ROUND_BEATS) runs from the seat's own submit;
  *  everything below is display-only, and the server's flip ends the beat. */
-const revealed = computed(() => submitted.value)
 const deck = computed(() => challenge.value?.vanishings ?? [])
 /** What this seat put back, by the server's ledger once it holds one — a
  *  remount mid-reveal has no local guesses, and the banked list is what was

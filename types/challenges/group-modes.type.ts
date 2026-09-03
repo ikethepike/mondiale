@@ -1217,6 +1217,19 @@ export interface TerraIncognitaChallenge {
   collapseThreshold: number
   durationSeconds: number
   maximumPoints: number
+  /** The round opens on a rules card each player must explicitly dismiss.
+   *  The one classic clock (`Round.deadline`) stamps only when the table is
+   *  ready or the cap forces it, so the world never starts failing under a
+   *  card and every seat watches the SAME world come apart. */
+  state: TerraBriefingState
+}
+
+export interface TerraBriefingState {
+  briefing?: boolean
+  /** Players who dismissed their briefing card. */
+  ready: string[]
+  /** Participants at the deal — whose readiness the gate waits on. */
+  order: string[]
 }
 
 /**

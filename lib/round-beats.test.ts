@@ -37,8 +37,8 @@ import {
   INDIVIDUAL_GATE_CAP_MS,
   clockRidesRoundDeadline,
   isClassicGroupRound,
+  briefingHolds,
   PLAY_GATE_CAP_MS,
-  READY_GATE_CAP_MS,
   playGateMsFor,
   remainingFractionOn,
   revealHoldMsFor,
@@ -49,6 +49,7 @@ import {
 import { ROUND_WEIGHTS } from '~~/lib/round-mix'
 import type {
   AnthemBuzzChallenge,
+  TerraIncognitaChallenge,
   EmpireChallenge,
   FlashpointChallenge,
   StatDetectiveChallenge,
@@ -186,13 +187,25 @@ describe('round beats', () => {
     expect(Number.isFinite(PLAY_GATE_CAP_MS)).toBe(true)
   })
 
-  /** Terra Incognita's schedule starts on the player's own ready click, so
-   *  its clock is local too — and the gate is sized for reading a card, not
-   *  tapping a play button. */
-  it('gates Terra Incognita behind its ready card', () => {
-    expect(ROUND_BEATS['terra-incognita'].playGateMs).toBe(READY_GATE_CAP_MS)
-    expect(ROUND_BEATS['terra-incognita'].playSeconds).toBeUndefined()
-    expect(READY_GATE_CAP_MS).toBeGreaterThan(PLAY_GATE_CAP_MS)
+  /** Terra Incognita is a classic clock behind a SERVER briefing: the stamp
+   *  waits for the table, and once made it is the clock every seat reads. */
+  it('holds Terra Incognita behind its briefing, then rides the stamp', () => {
+    expect(ROUND_BEATS['terra-incognita'].briefingCapMs).toBe(BRIEFING_CAP_MS)
+    expect(ROUND_BEATS['terra-incognita'].playGateMs).toBeUndefined()
+    const terra = {
+      _type: 'terra-incognita-challenge',
+      vanishings: ['AL'],
+      cadenceMs: 7000,
+      collapseThreshold: 2,
+      durationSeconds: 40,
+      maximumPoints: 10,
+      state: { briefing: true, ready: [], order: [] },
+    } as TerraIncognitaChallenge
+    expect(clockRidesRoundDeadline(terra)).toBe(true)
+    expect(briefingHolds(terra)).toBe(true)
+    terra.state.briefing = false
+    expect(briefingHolds(terra)).toBe(false)
+    expect(briefingHolds(undefined)).toBe(false)
   })
 
   /** `playSeconds === undefined` used to answer two unrelated questions at

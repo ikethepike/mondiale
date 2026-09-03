@@ -610,6 +610,7 @@ const installStubSocket = () => {
     // preview beat, which is exactly the cap path the button exists to beat.
     if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
     if (event === 'chain-ready') chainSim().ready()
+    if (event === 'terra-ready') simulateTerraReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
   }
@@ -626,6 +627,16 @@ const installStubSocket = () => {
     io: { on: () => {}, off: () => {} },
   }
   gameStore.socket = stub as never
+}
+
+/** The stub's half of terra-beats: the harness seat is the last ready, so
+ *  its click closes the briefing and the view starts the (local) clock. */
+const simulateTerraReady = () => {
+  const challenge = gameStore.game?.rounds.at(-1)?.groupChallenge
+  if (!challenge || !('_type' in challenge) || challenge._type !== 'terra-incognita-challenge')
+    return
+  if (!challenge.state.ready.includes(ME)) challenge.state.ready.push(ME)
+  challenge.state.briefing = false
 }
 
 const mockPlayer = (id: string, name: string, color: PlayerColor, phase: PlayerPhase): Player =>
@@ -1805,6 +1816,13 @@ const scenarios: Scenario[] = [
         collapseThreshold: terraCollapseThreshold(vanishings.length, difficulty),
         durationSeconds: terraSeconds(vanishings.length, TERRA_CADENCE_MS[difficulty]),
         maximumPoints: MAXIMUM_POINTS,
+        // The rivals are already briefed, so the harness seat's own click is
+        // the last ready and starts the world — the revealed rung is past it.
+        state: {
+          briefing: variant?.id !== 'revealed',
+          ready: variant?.id === 'revealed' ? [ME, RIVAL, THIRD] : [RIVAL, THIRD],
+          order: [ME, RIVAL, THIRD],
+        },
       })
       if (variant?.id === 'revealed') {
         round.groupAnswers[ME] = { submitted: ['AL', 'MD', 'FR'], correct: vanishings }

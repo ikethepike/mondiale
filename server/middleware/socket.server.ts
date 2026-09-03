@@ -31,6 +31,7 @@ import { uniqueReadyHandler } from '~~/lib/events/server/unique-ready.handler'
 import { chainReadyHandler } from '~~/lib/events/server/chain-ready.handler'
 import { submitUniqueAnswerHandler } from '~~/lib/events/server/submit-unique-answer.handler'
 import { sweepReadyHandler } from '~~/lib/events/server/sweep-ready.handler'
+import { terraReadyHandler } from '~~/lib/events/server/terra-ready.handler'
 import { timelineRevealDoneHandler } from '~~/lib/events/server/timeline-reveal-done.handler'
 import { gateRevealDoneHandler } from '~~/lib/events/server/gate-reveal-done.handler'
 import { submitSweepClaimHandler } from '~~/lib/events/server/submit-sweep-claim.handler'
@@ -129,6 +130,9 @@ const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'sweep-ready': {
     handler: sweepReadyHandler,
+  },
+  'terra-ready': {
+    handler: terraReadyHandler,
   },
   'timeline-reveal-done': {
     handler: timelineRevealDoneHandler,

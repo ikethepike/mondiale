@@ -210,6 +210,12 @@ export type ClientEventData =
       event: 'sweep-ready'
     }
   | {
+      /** Terra Incognita: a player dismissed their briefing card. The one
+       *  classic clock stamps when everyone has (or the briefing cap forces
+       *  it), so the atlas never starts failing under a card. */
+      event: 'terra-ready'
+    }
+  | {
       /** Timeline: done reading the finished round's chronicle. Settle fires
        *  when every seat has acked, or the browse cap does. No turn echo —
        *  `finished` is terminal, and `revealDone` makes retries idempotent. */
@@ -339,6 +345,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'unique-ready',
   'chain-ready',
   'sweep-ready',
+  'terra-ready',
   'timeline-reveal-done',
   'gate-reveal-done',
   'submit-unique-answer',

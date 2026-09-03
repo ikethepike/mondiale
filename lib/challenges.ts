@@ -1284,6 +1284,9 @@ const getTerraIncognitaChallenge = (game: gameTypes.Game): TerraIncognitaChallen
     collapseThreshold: terraCollapseThreshold(vanishings.length, game.difficulty),
     durationSeconds: terraSeconds(vanishings.length, cadenceMs),
     maximumPoints: maximumRoundPoints(game),
+    // The clock stamps only when this table is briefed (terra-beats) — one
+    // stamp, so every seat derives the same failing world from it.
+    state: { briefing: true, ready: [], order: chainContenders(game) },
   }
 }
 
