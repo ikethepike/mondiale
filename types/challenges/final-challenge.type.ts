@@ -1,3 +1,4 @@
+import type { MapBox } from '~~/lib/geo'
 import type { GameDifficulty } from '../game.types'
 import type { ISOCountryCode, Region } from '../geography.types'
 import type { OrganizationVector } from '../organization.type'
@@ -61,8 +62,11 @@ export type FinalChallengeAnswer =
   | { _type: 'language-challenge'; isoCode: ISOCountryCode }
   | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
   | { _type: 'treaty-challenge'; isoCode: ISOCountryCode }
-  /** Client-trust (like higher-lower): the countries named in time. */
-  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
+  /** Client-trust (like higher-lower): the countries named in time, and the
+   *  field they were named from — the dealt window plus whatever else the
+   *  player's screen showed. The window is the floor, so the field can only
+   *  ever be wider than what was dealt. */
+  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[]; inPlay: ISOCountryCode[] }
   | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'made-challenge'; isoCode: ISOCountryCode }
@@ -171,18 +175,21 @@ export interface LanguageChallenge {
 /**
  * The finale: night sweeps the framed window east→west; type each country's
  * name before the dark takes it. Client-trust graded like higher-lower gates —
- * the client runs the sweep and submits the named set once.
+ * the client runs the sweep and submits the named set once. Dealt, framed
+ * and graded through `lib/sunset-window.ts`.
  */
 export interface SunsetBlitzChallenge {
   _type: 'sunset-blitz-challenge'
-  /** The night window's countries, ordered east→west (darkening order). */
+  /** The night window in map space — the camera frames this. */
+  frame: MapBox
+  /** The dealt field: every playable country whose centre the frame holds,
+   *  ordered east→west (darkening order). The screen's aspect shows more
+   *  around it, and everything on screen is in play — this is the floor. */
   countries: ISOCountryCode[]
-  /**
-   * Share of the countries in play that must be named. The absolute quota is
-   * computed against what the player's screen actually shows (window ∪
-   * visible), with the window itself as the floor.
-   */
+  /** Share of the field in play that must be named. */
   quotaRatio: number
+  /** The clock for the dealt field — the client scales it to what its screen
+   *  actually put in play, through `sunsetSeconds`. */
   durationSeconds: number
 }
 

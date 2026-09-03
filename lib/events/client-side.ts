@@ -149,6 +149,7 @@ export const useClientEvents = () => {
     gameStore.map.berth = undefined
     gameStore.map.focus = []
     gameStore.map.focusContext = []
+    gameStore.map.frame = undefined
     gameStore.map.framePad = undefined
     gameStore.map.tints = {}
     gameStore.map.pin = undefined

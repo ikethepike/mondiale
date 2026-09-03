@@ -153,7 +153,7 @@ import { chainHead, closedDoors, liveChain, openMoves, pickChainSeed } from '~~/
 import { createChainSimulator } from '~~/lib/harness/chain-simulator'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
-import { playableWorldCountries } from '~~/lib/game-rules'
+import { playableCountries, playableWorldCountries } from '~~/lib/game-rules'
 import {
   BEAT_VERDICT_HOLD_MS,
   GROUND_PLAN_SECONDS_PER_HINT,
@@ -182,6 +182,12 @@ import {
   GAUNTLET_LIVES,
   getFinalChallenges,
 } from '~~/lib/challenges/final-challenge'
+import {
+  pickSunsetWindow,
+  SUNSET_TUNING,
+  sunsetSeconds,
+  sunsetWindowAround,
+} from '~~/lib/sunset-window'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
 import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
 import { generateTiles } from '~~/lib/tiles'
@@ -3951,16 +3957,13 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'final-sunset',
-    label: 'Final: sunset blitz (typed)',
-    build: () =>
-      finalGame([
-        {
-          _type: 'sunset-blitz-challenge',
-          countries: ['UA', 'RO', 'PL', 'HU', 'SK', 'AT', 'CZ', 'DE', 'CH', 'NL', 'BE', 'FR'],
-          quotaRatio: 0.35,
-          durationSeconds: 60,
-        },
-      ]),
+    label: 'Final: sunset blitz (typed, window around Croatia)',
+    build: () => finalGame([sunsetFixture('hard', 'HR')]),
+  },
+  {
+    id: 'final-sunset-dealt',
+    label: 'Final: sunset blitz (typed, a fresh window each load)',
+    build: () => finalGame([sunsetFixture('normal')], 'normal'),
   },
   {
     id: 'final-city-nocturne',
@@ -4174,6 +4177,23 @@ const scenarios: Scenario[] = [
 ]
 
 /** The gauntlet reads its payload off the player's pending move. */
+/** The window a real deal would frame — anchored on `seed` for a pinned
+ *  scene, or wherever the dealer lands when no seed is given. */
+const sunsetFixture = (difficulty: GameDifficulty, seed?: ISOCountryCode): FinalChallengeItem => {
+  const pool = playableCountries({ variant: 'world', difficulty, includeMicroNations: false })
+  const window = seed
+    ? sunsetWindowAround(pool, difficulty, seed)
+    : pickSunsetWindow(pool, difficulty)
+  if (!window) throw new Error('No sunset window on this board')
+  return {
+    _type: 'sunset-blitz-challenge',
+    frame: window.frame,
+    countries: window.countries,
+    quotaRatio: SUNSET_TUNING[difficulty].quotaRatio,
+    durationSeconds: sunsetSeconds(window.countries.length, difficulty),
+  }
+}
+
 const finalGame = (challenges: FinalChallengeItem[], difficulty: GameDifficulty = 'hard'): Game => {
   const game = mockGame('final-challenge', [settledRound()])
   game.difficulty = difficulty

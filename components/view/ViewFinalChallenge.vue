@@ -235,10 +235,10 @@ import {
   getFinalChallengeDetails,
   isCorrectFinalAnswer,
   speaksLanguage,
-  sunsetQuota,
   weighScalesPicks,
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
+import { sunsetQuota } from '~~/lib/sunset-window'
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
@@ -365,11 +365,7 @@ const challengePool = computed(() => (game.value ? playableCountries(game.value)
 const checkAnswer = (submittedAnswer: FinalChallengeAnswer): boolean => {
   const challenge = currentFinalChallenge.value
   if (!challenge) return false
-  return isCorrectFinalAnswer({
-    challenge,
-    submittedAnswer,
-    pool: challengePool.value,
-  })
+  return isCorrectFinalAnswer({ challenge, submittedAnswer })
 }
 
 // Payload-driven progress: totals survive redeals, hearts mirror the server
@@ -740,6 +736,9 @@ watch(currentFinalChallenge, (challenge, previous) => {
   gameStore.map.landRoutes = []
   gameStore.map.focus = []
   gameStore.map.focusContext = []
+  gameStore.map.frame = undefined
+  gameStore.map.framePad = undefined
+  gameStore.map.spotlight = []
   lastGuess.value = undefined
   membershipCountries.value = []
   scalesPicks.value = []
@@ -905,8 +904,12 @@ const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => 
   const challenge = currentFinalChallenge.value
   if (challenge?._type !== 'sunset-blitz-challenge') return
 
-  sunsetResult.value = { named, inPlay, quota: sunsetQuota(challenge) }
-  const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
+  sunsetResult.value = { named, inPlay, quota: sunsetQuota(inPlay, challenge.quotaRatio) }
+  const submittedAnswer = {
+    _type: 'sunset-blitz-challenge',
+    namedCountries: named,
+    inPlay,
+  } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   submitFinalAnswer(submittedAnswer)

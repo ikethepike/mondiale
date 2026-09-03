@@ -1149,10 +1149,10 @@ export const finalAnswerFor = async (
     changeDecade,
     madeAcceptedCountries,
     nocturneDealtCities,
-    sunsetQuota,
     weighScalesPicks,
     yearbookYear,
   } = await import('~~/lib/challenges/final-challenge')
+  const { sunsetQuota } = await import('~~/lib/sunset-window')
   const wantCorrect = Math.random() < share
   const iso = (correctIso: ISOCountryCode | undefined, pool?: readonly ISOCountryCode[]) => {
     if (wantCorrect && correctIso) return correctIso
@@ -1194,7 +1194,12 @@ export const finalAnswerFor = async (
     case 'sunset-blitz-challenge': {
       return {
         _type: question._type,
-        namedCountries: quotaPicks(question.countries, sunsetQuota(question), wantCorrect),
+        namedCountries: quotaPicks(
+          question.countries,
+          sunsetQuota(question.countries, question.quotaRatio),
+          wantCorrect
+        ),
+        inPlay: question.countries,
       }
     }
     case 'city-nocturne-challenge': {

@@ -94,7 +94,11 @@ describe('beatPickedCountry', () => {
 
   it('has no single subject for multi-pick modes or a timeout', () => {
     const swept = beat({
-      submittedAnswer: { _type: 'sunset-blitz-challenge', namedCountries: ['BR', 'AR'] },
+      submittedAnswer: {
+        _type: 'sunset-blitz-challenge',
+        namedCountries: ['BR', 'AR'],
+        inPlay: ['BR', 'AR'],
+      },
     })
     expect(beatPickedCountry(swept)).toBeUndefined()
     expect(beatPickedCountry(beat({ submittedAnswer: undefined }))).toBeUndefined()
