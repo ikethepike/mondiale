@@ -40,8 +40,8 @@ test('round 1 advances past group-scores into the walk and gate', async ({ brows
 
   // The hand-off that froze prod: board mounts, emits enter-movement-phase
   // (now acked), server walks the pawn and lands on the gate tile. Zero
-  // points means no walk and movement-summary instead — accept either proof
-  // that the phase advanced past group-scores.
+  // points means no walk and a settled seat instead — accept either proof
+  // that the seat moved past the scorecard.
   await expect(
     host.locator('.individual-challenge, .board3d, .board-fallback').first()
   ).toBeVisible({ timeout: 30_000 })
