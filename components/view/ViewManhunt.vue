@@ -738,6 +738,8 @@ const revealSeaLinks = (walk: ISOCountryCode[]): string[] => {
   return keys
 }
 
+let replayTimer: ReturnType<typeof setTimeout> | undefined
+
 // The reveal replay: the whole escape trail re-arrives hop by hop for the
 // entire table — the trail is finally public inside state.outcome. Immediate,
 // so a reconnecting client still gets the replay.
@@ -751,7 +753,8 @@ watch(
     gameStore.map.pulsing = []
     gameStore.map.ringed = []
     gameStore.map.landRoutes = []
-    setTimeout(() => {
+    clearTimeout(replayTimer)
+    replayTimer = setTimeout(() => {
       const groupings: CountryColorGrouping[] = walk.map((isoCode, index) => ({
         color: trailColor(index, walk.length, index === walk.length - 1),
         countries: [isoCode],
@@ -765,6 +768,7 @@ watch(
   },
   { immediate: true }
 )
+registerCleanup(() => clearTimeout(replayTimer))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

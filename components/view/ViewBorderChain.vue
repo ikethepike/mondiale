@@ -172,6 +172,7 @@ const {
   announce,
   gameStore,
   update,
+  registerCleanup,
 } = useGroupChallenge('border-chain-challenge', { solo: false })
 
 const state = computed(() => challenge.value?.state)
@@ -375,6 +376,8 @@ const paintChain = (staggered: boolean) => {
 
 watch(challenge, () => !finished.value && paintChain(false), { immediate: true, deep: true })
 
+let replayTimer: ReturnType<typeof setTimeout> | undefined
+
 // The reveal replay: blank the path, then let it re-arrive hop by hop, with
 // the local player's missed outs glowing as the lesson. Immediate, so a
 // client that arrives with the round already finished (reconnect, harness)
@@ -386,7 +389,8 @@ watch(
     gameStore.map.countryGroupings = undefined
     gameStore.map.seaLinks = []
     gameStore.map.pulsing = []
-    setTimeout(() => {
+    clearTimeout(replayTimer)
+    replayTimer = setTimeout(() => {
       paintChain(true)
       const outs = state.value?.missedOuts[gameStore.seatId] ?? []
       gameStore.map.tints = Object.fromEntries(outs.map(isoCode => [isoCode, 'optimal']))
@@ -394,6 +398,7 @@ watch(
   },
   { immediate: true }
 )
+registerCleanup(() => clearTimeout(replayTimer))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
