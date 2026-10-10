@@ -1,6 +1,6 @@
 import { finalQuestionDeadline } from '~~/lib/final-timing'
 import { gateDeadline } from '~~/lib/gate-timing'
-import { moveStopTile } from '~~/lib/player-status'
+import { gateStopTile, moveStopTile } from '~~/lib/player-status'
 import {
   BOARD_TO_CHALLENGE_HOLD_MS,
   FINAL_REVEAL_HOLD_MS,
@@ -32,7 +32,7 @@ import {
   startHeritageClock,
 } from './heritage-beats'
 import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
-import { dealFinalReplacement, dealMoves, dealRound } from './moves'
+import { dealFinalReplacement, dealMoves, dealRound, isChallengeTile } from './moves'
 import type { EngineContext, ServerSide } from './round-engine'
 import { governmentKey } from '~~/lib/government'
 import { manhuntKey } from '~~/lib/manhunt'
@@ -233,10 +233,13 @@ export const resolveGateVerdict = (game: Game, seat: Player, cause: SeatCause) =
   if (verdict?.kind === 'gate' && verdict.correct && gate) {
     seat.currentPosition += verdict.steps
     seat.moves.shift()
-    // A deep-pot leap can overshoot the NEXT gate's stop tile: clamp to it, or
-    // the seat stands past a gate it never answered.
+    // A deep-pot leap can overshoot the next gate — or, off the walk's last gate, the
+    // final itself, past which no moveset is ever dealt again: clamp to its stop tile.
     const next = seat.moves[0]
-    if (next?.challenge) seat.currentPosition = Math.min(seat.currentPosition, moveStopTile(next))
+    const ahead = next?.challenge
+      ? next.endTile
+      : game.tiles.find(tile => tile.position > gate.endTile.position && isChallengeTile(tile))
+    if (ahead) seat.currentPosition = Math.min(seat.currentPosition, gateStopTile(ahead))
   } else if (gate) {
     forfeitGate(game, seat, gate)
   }

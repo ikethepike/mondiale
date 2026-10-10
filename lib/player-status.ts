@@ -1,5 +1,7 @@
 import type { Player } from '~~/types/player.type'
-import type { PlayerMove } from '~~/types/game.types'
+import type { PlayerMove, Tile } from '~~/types/game.types'
+
+export const gateStopTile = (gate: Tile): number => gate.position - 1
 
 /**
  * The tile a move actually parks the pawn on. A challenge move stops one tile
@@ -8,7 +10,7 @@ import type { PlayerMove } from '~~/types/game.types'
  * source for that split; never re-derive `endTile.position - 1` inline.
  */
 export const moveStopTile = (move: PlayerMove): number =>
-  move.challenge ? move.endTile.position - 1 : move.endTile.position
+  move.challenge ? gateStopTile(move.endTile) : move.endTile.position
 
 export interface PlayerStatus {
   /** Short human label, e.g. "Walking · 4 steps left". */

@@ -385,6 +385,33 @@ describe('the #170 class, closed by construction', () => {
     expect((await seatOf(table, 'a')).cursor).toEqual(after.cursor)
   })
 
+  it('a leap off the walk’s last gate stops short of the final, never past the finish', async () => {
+    const game = buildGame([
+      seatOn('a', 'gate', {
+        currentPosition: 17,
+        moves: [gate(18)],
+        cursor: testCursor('gate', {
+          subject: seatSubject.gate(1, 18),
+          deadline: Date.now() + INDIVIDUAL_GATE_CAP_MS,
+        }),
+      }),
+      seatOn('b', 'round'),
+    ])
+    game.tiles = TILES.map(entry => (entry.position === 18 ? tile(18, 'flag') : entry))
+    const table = await open(game)
+    rearmSeats(table.ctx('a'), game)
+
+    await table.send('a', {
+      event: 'submit-individual-challenge-answer',
+      isoCode: 'FI',
+      ...(await echo(table, 'a')),
+    })
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + 10)
+    const settled = await seatOf(table, 'a')
+    expect(settled.cursor.step).toBe('settled')
+    expect(settled.currentPosition).toBe(18)
+  })
+
   it('the gauntlet holds the answered question through its verdict, then deals the next', async () => {
     const gauntlet: FinalChallenge = {
       _type: 'final-challenge',
@@ -558,7 +585,7 @@ describe('guards the old model got wrong', () => {
     const table = await open(buildGame([seatOn('a', 'settled')]))
     const emitted = table.emits.length
     await expect(
-      table.send('a', { event: 'gate-reveal-done', subject: 'settled', seq: 1 })
+      table.send('a', { event: 'gate-reveal-done', subject: seatSubject.settled(0), seq: 1 })
     ).resolves.toBeUndefined()
     expect(table.emits.length).toBe(emitted)
   })

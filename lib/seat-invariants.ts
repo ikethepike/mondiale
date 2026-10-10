@@ -202,5 +202,8 @@ export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): Sea
 const engineDeadline = (challenge: unknown): number | undefined => {
   const state = (challenge as { state?: { deadline?: unknown; finished?: unknown } } | undefined)
     ?.state
-  return state && !state.finished && typeof state.deadline === 'number' ? state.deadline : undefined
+  // Engines park at deadline 0 through a briefing: unstamped, not overdue.
+  return state && !state.finished && typeof state.deadline === 'number' && state.deadline > 0
+    ? state.deadline
+    : undefined
 }

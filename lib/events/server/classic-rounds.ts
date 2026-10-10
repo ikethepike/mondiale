@@ -122,6 +122,9 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
   })
 }
 
+const stillReading = (game: Game): boolean =>
+  Object.values(game.players).some(seat => seat.cursor.step === 'tutorial')
+
 /**
  * Round-1 seam: the natural first round never passes the round reveal
  * (start-game deals it, tutorials gate it), so the
@@ -134,8 +137,7 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
 export const startClassicClockOnLastClose = (game: Game): boolean => {
   const round = latestRound(game)
   if (!round || round.deadline || !isClassicGroupRound(round.groupChallenge)) return false
-  const stillReading = Object.values(game.players).some(seat => seat.cursor.step === 'tutorial')
-  if (stillReading) return false
+  if (stillReading(game)) return false
   startClassicClock(round)
   return !!round.deadline
 }
@@ -158,6 +160,9 @@ export const rearmClassicRound = (ctx: EngineContext, game: Game) => {
     // Behind its briefing there is nothing to revive here: the cap is the
     // mode's own rearm, and a stamp now would start the world under the card.
     if (briefingHolds(round.groupChallenge)) return
+    // Round 1 stamps on the last tutorial close, which also arms the settle —
+    // a stamp here under a card would leave that close with nothing to arm.
+    if (stillReading(game)) return
     stampClassicClock(round, Date.now())
     if (!round.deadline) return
     scheduleEngineTask(ctx, 0, async (fresh, server) => {

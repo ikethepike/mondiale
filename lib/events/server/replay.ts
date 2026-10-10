@@ -173,7 +173,7 @@ export const replayRoom = async (
   }
 }
 
-/** The server's own acts that no client sent: the autopilot taking a seat, a bot retiring. */
+/** The server's own acts that no client sent: the autopilot taking a seat, a bot retiring (or a winner's retirement lifted). */
 const replayServerAct = async (
   table: Awaited<ReturnType<typeof createTestTable>>,
   record: Extract<SeatEventRecord, { kind: 'event' }>
@@ -189,6 +189,7 @@ const replayServerAct = async (
     if (!game || !seat) return
     if (record.event === 'autopilot-engage') seat.autopilot = autopilot
     if (record.event === 'retire') retireSeat(game, seat)
+    if (record.event === 'retire-clear') delete seat.retiring
     await server.updateGameState(game)
     server.emit({ event: 'table-updated', game }, { gameId: game.id, playerId })
   })

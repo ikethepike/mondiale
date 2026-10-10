@@ -292,6 +292,16 @@ describe('rearmClassicRound', () => {
     expect(store.get(game.id)!.players.b.cursor.step).toBe('scores')
   })
 
+  it('leaves round 1 unstamped while a rules card is still up, for the last close to stamp', async () => {
+    const game = buildGame({ a: 'tutorial', b: 'round' })
+    const ctx = context(game)
+
+    rearmClassicRound(ctx, game)
+    await vi.advanceTimersByTimeAsync(600_000)
+
+    expect(roundOf(game.id).deadline).toBeUndefined()
+  })
+
   it('never arms a round no seat is playing', async () => {
     const game = buildGame({ b: 'settled' })
     const ctx = context(game)

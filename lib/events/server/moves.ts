@@ -5,7 +5,7 @@ import {
 } from '~~/types/challenges/individual-challenge.type'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { Game, PlayerMove } from '~~/types/game.types'
+import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { drawLabel, recordedDrawAsync } from './draws'
 
@@ -36,6 +36,10 @@ export const dealFinalReplacement = (
 export const dealRound = (game: Game): Promise<RoundChallenge> =>
   recordedDrawAsync(game, drawLabel.round(), () => getRoundChallenge({ game }))
 
+/** A tile a walk must stop short of: a gate, or the final gauntlet. */
+export const isChallengeTile = (tile: Tile): boolean =>
+  [...individualChallengeAccessors, 'final'].includes(tile.type)
+
 /**
  * The scored points ARE the tiles to walk: the slice starts one past the tile
  * the player stands on and runs `scored` tiles forward, split into one move
@@ -54,13 +58,11 @@ export const movesForScoredPoints = async ({
   const potentialTiles = game.tiles.slice(player.currentPosition + 1, potentialProgress + 1)
 
   // Each move is executed sequentially; challenge moves stop one tile
-  // before their gate (see enterMovementPhaseHandler).
+  // before their gate (see `gateStopTile`).
   const moves: PlayerMove[] = []
   while (potentialTiles.length) {
     // Identify any special tiles in the moveset
-    const specialTileIndex = potentialTiles.findIndex(tile =>
-      [...individualChallengeAccessors, 'final'].includes(tile.type)
-    )
+    const specialTileIndex = potentialTiles.findIndex(isChallengeTile)
     const specialTile = potentialTiles[specialTileIndex]
 
     const spliceCount = specialTileIndex === -1 ? potentialTiles.length : specialTileIndex

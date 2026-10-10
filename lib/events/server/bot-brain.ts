@@ -308,6 +308,13 @@ const dispatchRetirementClear = (ctx: EngineContext, playerId: string) => {
     const seat = fresh.players[playerId]
     if (!seat?.bot || !seat.retiring || seat.cursor.step !== 'victory') return
     delete seat.retiring
+    await recordSeatEvent(ctx.redis, fresh.id, {
+      kind: 'event',
+      at: Date.now(),
+      actor: 'server',
+      event: 'retire-clear',
+      data: { playerId },
+    })
     await server.updateGameState(fresh)
     server.emit({ event: 'update', game: fresh }, ctx.eventTarget)
   })
@@ -1347,6 +1354,7 @@ export const composeClassicSubmission = async (
     case 'two-truths':
     case 'flashpoint':
     case 'capital-guess':
+    case 'ground-plan':
     case 'flag-palette':
     case 'composition': {
       const target = correct[0]

@@ -79,6 +79,7 @@
     "d3-geo-projection": "^4.0.0",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
+    "fast-check": "4.10.2",
     "fflate": "^0.8.3",
     "he": "^1.2.0",
     "nuxt": "4.4.8",
