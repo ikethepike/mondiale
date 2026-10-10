@@ -10,9 +10,8 @@ export const SEAT_EVENT_RING = 2000
 export const journalKey = (gameId: string) => `${gameId}:journal`
 export const eventsKey = (gameId: string) => `${gameId}:events`
 export const rendersKey = (gameId: string) => `${gameId}:renders`
-export const checkpointKey = (gameId: string) => `${gameId}:checkpoint`
 
-type ListRedis = Pick<Redis, 'rpush' | 'ltrim' | 'expire'>
+type ListRedis = Pick<Redis, 'rpush' | 'ltrim' | 'expire'> & Partial<Pick<Redis, 'pipeline'>>
 const supportsLists = (redis: unknown): redis is ListRedis =>
   typeof (redis as Partial<ListRedis>).rpush === 'function' &&
   typeof (redis as Partial<ListRedis>).ltrim === 'function'
@@ -36,7 +35,17 @@ export const logSeatLine = (tag: string, payload: object) => {
 
 const pushRing = async (redis: unknown, key: string, values: object[], keep: number) => {
   if (!values.length || !supportsLists(redis)) return
-  await redis.rpush(key, ...values.map(value => JSON.stringify(value)))
+  const encoded = values.map(value => JSON.stringify(value))
+  if (redis.pipeline) {
+    await redis
+      .pipeline()
+      .rpush(key, ...encoded)
+      .ltrim(key, -keep, -1)
+      .expire(key, GAME_STATE_TTL_SECONDS)
+      .exec()
+    return
+  }
+  await redis.rpush(key, ...encoded)
   await redis.ltrim(key, -keep, -1)
   await redis.expire(key, GAME_STATE_TTL_SECONDS)
 }
@@ -65,16 +74,15 @@ export const recordSeatJournal = async (redis: unknown, entries: SeatJournalEntr
   }
 }
 
-/** One recorded input for deterministic replay: a client event, a bot act, or a deal. */
+/**
+ * One recorded input for deterministic replay — a client event, a bot act, a
+ * server act or a deal — or a round-start checkpoint. Every record is written
+ * inside its queued task, so the ring's order IS the game's processing order.
+ */
 export type SeatEventRecord =
-  | { kind: 'event'; at: number; actor: string; event: string; data: unknown }
-  | {
-      kind: 'deal'
-      at: number
-      seat?: string
-      what: 'round' | 'moves' | 'final-replacement'
-      value: unknown
-    }
+  | { kind: 'event'; at: number; actor: string; bot?: true; event: string; data: unknown }
+  | { kind: 'deal'; at: number; label: string; value: unknown }
+  | { kind: 'checkpoint'; at: number; game: unknown; sides: Record<string, unknown> }
 
 type EventListener = (gameId: string, record: SeatEventRecord) => void
 const eventListeners = new Set<EventListener>()
@@ -104,10 +112,7 @@ const recordSeatEvents = async (redis: unknown, gameId: string, records: SeatEve
  * carries it actually lands.
  */
 const bufferedDeals = new WeakMap<object, SeatEventRecord[]>()
-export const bufferDeal = (
-  game: object,
-  deal: Omit<Extract<SeatEventRecord, { kind: 'deal' }>, 'kind' | 'at'>
-) => {
+export const bufferDeal = (game: object, deal: { label: string; value: unknown }) => {
   const records = bufferedDeals.get(game) ?? []
   records.push({ kind: 'deal', at: Date.now(), ...deal })
   bufferedDeals.set(game, records)
@@ -128,4 +133,23 @@ export const recordSeatRender = async (redis: unknown, gameId: string, render: S
   if (!supportsHashes(redis)) return
   await redis.hset(rendersKey(gameId), { [render.viewer]: JSON.stringify(render) })
   await redis.expire(rendersKey(gameId), GAME_STATE_TTL_SECONDS)
+}
+
+/**
+ * The game as a round opens — plus the round's secret side keys, by their
+ * suffix after the game id — so a replay has a real starting state: every
+ * record after it in the ring reproduces the round through the handlers.
+ */
+export const recordCheckpoint = async (
+  redis: unknown,
+  game: { id: string },
+  sideKeys: readonly string[]
+) => {
+  const read = redis as Partial<Pick<Redis, 'get'>>
+  const sides: Record<string, unknown> = {}
+  for (const key of sideKeys) {
+    const value = await read.get?.(key)
+    if (value !== null && value !== undefined) sides[key.slice(game.id.length)] = value
+  }
+  await recordSeatEvent(redis, game.id, { kind: 'checkpoint', at: Date.now(), game, sides })
 }

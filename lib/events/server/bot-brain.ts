@@ -68,47 +68,24 @@ import type { GovernmentAnswers, UniqueCategoryId } from '~~/types/challenges/gr
 import type { Game, Round } from '~~/types/game.types'
 import { worldRegions, type ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
+import type { ClientEventData } from '~~/types/events.types'
 import { enqueueGameTask, isDraining, useServerSideEvents } from '../server-side'
 import { machineOwnsGame } from './game-ownership'
-import {
-  atlasOpenMoves,
-  currentAtlasChain,
-  handleAtlasChainMove,
-  handleAtlasChainReady,
-} from './atlas-turns'
-import {
-  borderChainOpenMoves,
-  currentBorderChain,
-  handleBorderChainMove,
-  handleBorderChainReady,
-} from './chain-turns'
-import { closeTutorialHandler } from './close-tutorial.handler'
+import { atlasOpenMoves, currentAtlasChain } from './atlas-turns'
+import { borderChainOpenMoves, currentBorderChain } from './chain-turns'
 import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
-import { applyGovernmentPick, currentGovernment } from './government-beats'
-import { applyHeritagePin, currentHeritageHunt } from './heritage-beats'
-import {
-  applyManhuntMarker,
-  applyManhuntMove,
-  applyManhuntReady,
-  currentManhunt,
-  isManhuntParticipant,
-} from './manhunt-beats'
+import { currentGovernment } from './government-beats'
+import { currentHeritageHunt } from './heritage-beats'
+import { currentManhunt, isManhuntParticipant } from './manhunt-beats'
+import { SERVER_SIDE_EVENT_HANDLERS } from './registry'
 import { scheduleEngineTask, type EngineContext } from './round-engine'
-import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { retireSeat } from './seat-exits'
-import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answer.handler'
-import { submitGroupChallengeAnswersHandler } from './submit-group-challenge-answers.handler'
-import { submitIndividualChallengeAnswersHandler } from './submit-individual-challenge-answer.handler'
-import { applySweepClaim, applySweepReady, currentCleanSweep } from './sweep-beats'
-import { applyTerraReady, currentTerraIncognita } from './terra-beats'
-import {
-  currentTimeline,
-  handleTimelineRevealDone,
-  mayPlaceTimeline,
-  resolveTimelinePlacement,
-} from './timeline-turns'
-import { applyUniqueAnswer, applyUniqueReady, currentUniqueOrBust } from './unique-beats'
+import { recordSeatEvent } from './seat-journal'
+import { currentCleanSweep } from './sweep-beats'
+import { currentTerraIncognita } from './terra-beats'
+import { currentTimeline, mayPlaceTimeline } from './timeline-turns'
+import { currentUniqueOrBust } from './unique-beats'
 
 /**
  * The bot brain: one self-rescheduling pump per game plays every brain seat —
@@ -162,7 +139,14 @@ export const gameHasBrainSeats = (game: Game): boolean =>
  * Arm the pump for a game with brain seats. Safe to call from every seam
  * (start-game, the rejoin rearm): a live chain refuses the duplicate.
  */
+/** The replay harness plays recorded bot acts back itself; the brain must sit still. */
+let brainEnabled = true
+export const setBotBrainEnabled = (enabled: boolean) => {
+  brainEnabled = enabled
+}
+
 export const armBotPump = (ctx: EngineContext, game: Game) => {
+  if (!brainEnabled) return
   if (!game.started || !gameHasBrainSeats(game)) return
   const { gameId } = ctx.eventTarget
   const now = Date.now()
@@ -336,6 +320,13 @@ const dispatchRetirement = (ctx: EngineContext, seq: number) => {
     if (!seat?.bot || !seat.retiring || seat.cursor.seq !== seq) return
     console.warn(`Retiring bot ${playerId} in ${ctx.eventTarget.gameId}`)
     retireSeat(fresh, seat)
+    await recordSeatEvent(ctx.redis, fresh.id, {
+      kind: 'event',
+      at: Date.now(),
+      actor: 'server',
+      event: 'retire',
+      data: { playerId },
+    })
     await server.updateGameState(fresh)
     // Whole-snapshot: the seat leaves every panel and standings list at once.
     server.emit({ event: 'table-updated', game: fresh }, ctx.eventTarget)
@@ -602,6 +593,7 @@ export const noteSeatPresence = (gameId: string, playerId: string) => {
 }
 
 export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string) => {
+  if (!brainEnabled) return
   const { gameId, playerId } = ctx.eventTarget
   const armedAt = Date.now()
   scheduleGameTask({ redis: ctx.redis, gameId }, AUTOPILOT_GRACE_MS, async () => {
@@ -631,6 +623,13 @@ export const armAfkTakeover = (ctx: EngineContext, disconnectedSocketId: string)
     const live = latestRound(game)
     const creditable = isClassicGroupRound(live?.groupChallenge) && !live?.groupAnswers[playerId]
     seat.autopilot = { sinceRound: creditable ? Math.max(0, roundIndex) : game.rounds.length }
+    await recordSeatEvent(ctx.redis, gameId, {
+      kind: 'event',
+      at: Date.now(),
+      actor: 'server',
+      event: 'autopilot-engage',
+      data: { playerId, autopilot: seat.autopilot },
+    })
     await server.updateGameState(game)
     server.emit({ event: 'update', game }, ctx.eventTarget)
     server.emit(
@@ -721,6 +720,28 @@ export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) =
 // --- that the seat is STILL brain-played: a human reclaiming their seat  ---
 // --- between plan and act kills the pending action here.                 ---
 
+/**
+ * Every bot act goes through the real client handler — the same validation a
+ * human's event meets — and is recorded like one, so a replay can play the
+ * seat back without running the brain.
+ */
+const botAct = async (ctx: EngineContext, eventData: ClientEventData) => {
+  const { gameId, playerId } = ctx.eventTarget
+  await recordSeatEvent(ctx.redis, gameId, {
+    kind: 'event',
+    at: Date.now(),
+    actor: playerId,
+    bot: true,
+    event: eventData.event,
+    data: eventData,
+  })
+  await SERVER_SIDE_EVENT_HANDLERS[eventData.event].handler({
+    ...ctx,
+    eventKey: eventData.event,
+    eventData,
+  })
+}
+
 const brainSeat = (game: Game, playerId: string): Player | undefined => {
   const seat = game.players[playerId]
   return seat && isBrainSeat(seat) ? seat : undefined
@@ -730,14 +751,7 @@ const dispatchCloseTutorial = (ctx: EngineContext, seq: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     const seat = brainSeat(fresh, ctx.eventTarget.playerId)
     if (seat?.cursor.seq !== seq) return
-    await closeTutorialHandler({
-      io: ctx.io,
-      redis: ctx.redis,
-      socket: ctx.socket,
-      eventTarget: ctx.eventTarget,
-      eventKey: 'close-tutorial',
-      eventData: { event: 'close-tutorial', subject: seat.cursor.subject, seq },
-    })
+    await botAct(ctx, { event: 'close-tutorial', subject: seat.cursor.subject, seq })
   })
 }
 
@@ -758,18 +772,11 @@ const dispatchClassicAnswer = (ctx: EngineContext, seq: number) => {
     // protocol (subject guard, verdict hold, advance, every guard it grows
     // later). A private grade-and-advance copy here had already drifted once,
     // leaving a banked bot with no server-owned exit if the pump died.
-    await submitGroupChallengeAnswersHandler({
-      io: ctx.io,
-      redis: ctx.redis,
-      socket: ctx.socket,
-      eventTarget: ctx.eventTarget,
-      eventKey: 'submit-group-challenge-answers',
-      eventData: {
-        event: 'submit-group-challenge-answers',
-        ...submission,
-        subject: seat.cursor.subject,
-        seq,
-      },
+    await botAct(ctx, {
+      event: 'submit-group-challenge-answers',
+      ...submission,
+      subject: seat.cursor.subject,
+      seq,
     })
     // The room's guess ticker: the seat audibly answered, nothing more —
     // and only if the handler actually BANKED it (a late submit its guards
@@ -794,24 +801,16 @@ const dispatchScoresExit = (ctx: EngineContext, seq: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     const seat = brainSeat(fresh, ctx.eventTarget.playerId)
     if (seat?.cursor.seq !== seq) return
-    await enterMovementPhaseHandler({
-      io: ctx.io,
-      redis: ctx.redis,
-      socket: ctx.socket,
-      eventTarget: ctx.eventTarget,
-      eventKey: 'enter-movement-phase',
-      eventData: { event: 'enter-movement-phase', subject: seat.cursor.subject, seq },
-    })
+    await botAct(ctx, { event: 'enter-movement-phase', subject: seat.cursor.subject, seq })
   })
 }
 
 const dispatchChainReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const border = currentBorderChain(fresh)
-    if (border) return handleBorderChainReady(ctx, fresh, playerId)
-    const atlas = currentAtlasChain(fresh)
-    if (atlas) return handleAtlasChainReady(ctx, fresh, playerId)
+    if (currentBorderChain(fresh) || currentAtlasChain(fresh)) {
+      await botAct(ctx, { event: 'chain-ready' })
+    }
   })
 }
 
@@ -823,13 +822,13 @@ const dispatchChainMove = (ctx: EngineContext, playerId: string, turn: number) =
     if (border) {
       const isoCode = pickChainIso(borderChainOpenMoves(border, fresh), fresh, share)
       if (!isoCode) return
-      return handleBorderChainMove(ctx, fresh, { isoCode, turn }, playerId)
+      return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })
     }
     const atlas = currentAtlasChain(fresh)
     if (atlas) {
       const isoCode = pickChainIso(atlasOpenMoves(atlas, fresh), fresh, share)
       if (!isoCode) return
-      return handleAtlasChainMove(ctx, fresh, { isoCode, turn }, playerId)
+      return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })
     }
   })
 }
@@ -883,19 +882,12 @@ const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
     ).filter(option => !isCorrectIndividualAnswer(challenge, option))
     const isoCode = hit ? challenge.country : (sample(missPool) ?? challenge.country)
     try {
-      await submitIndividualChallengeAnswersHandler({
-        io: ctx.io,
-        redis: ctx.redis,
-        socket: ctx.socket,
-        eventTarget: ctx.eventTarget,
-        eventKey: 'submit-individual-challenge-answer',
-        eventData: {
-          event: 'submit-individual-challenge-answer',
-          isoCode,
-          hintsUsed: 0,
-          subject: seat.cursor.subject,
-          seq,
-        },
+      await botAct(ctx, {
+        event: 'submit-individual-challenge-answer',
+        isoCode,
+        hintsUsed: 0,
+        subject: seat.cursor.subject,
+        seq,
       })
     } catch (error) {
       console.warn(`Bot gate answer rejected for ${playerId}`, error)
@@ -903,8 +895,8 @@ const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
   })
 }
 
-// --- Engine arms: each replicates the wire handler's guards (the engines' ---
-// --- apply* functions deliberately trust their callers) before acting.    ---
+// --- Engine arms: each composes its move off the fresh fetch and plays it ---
+// --- through the wire handler, which owns every guard a human meets.     ---
 
 const dispatchTimelinePlacement = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
@@ -912,8 +904,6 @@ const dispatchTimelinePlacement = (ctx: EngineContext, playerId: string, turn: n
     const challenge = currentTimeline(fresh)
     if (!challenge) return
     const { state } = challenge
-    // The wire handler's guard, shared — resolveTimelinePlacement reads the
-    // actor from state and checks nothing itself.
     if (!mayPlaceTimeline(challenge, playerId, turn)) return
     const slug = drawnCard(state)
     const year = slug ? timelineEvent(slug)?.year : undefined
@@ -922,14 +912,18 @@ const dispatchTimelinePlacement = (ctx: EngineContext, playerId: string, turn: n
     const share = jitteredShare(botShare(fresh, playerId))
     const rightSlots = Array.from({ length: high - low + 1 }, (_, index) => low + index)
     const slot = Math.random() < share ? sample(rightSlots)! : low > 0 ? low - 1 : high + 1
-    await resolveTimelinePlacement(ctx, fresh, challenge, Math.min(slot, state.placed.length))
+    await botAct(ctx, {
+      event: 'submit-timeline-placement',
+      slot: Math.min(slot, state.placed.length),
+      turn,
+    })
   })
 }
 
 const dispatchTimelineAck = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    await handleTimelineRevealDone(ctx, fresh, playerId)
+    await botAct(ctx, { event: 'timeline-reveal-done' })
   })
 }
 
@@ -943,16 +937,18 @@ const dispatchHeritagePin = (ctx: EngineContext, playerId: string) => {
     const target = PLACES[challenge.slugs[state.beat]]?.coordinates
     if (!target) return
     const share = jitteredShare(botShare(fresh, playerId))
-    // applyHeritagePin's own guards cover membership and the one-pin rule.
-    await applyHeritagePin(ctx, fresh, challenge, playerId, pinScatter(target, challenge, share))
+    await botAct(ctx, {
+      event: 'submit-heritage-pin',
+      beat: state.beat,
+      pin: pinScatter(target, challenge, share),
+    })
   })
 }
 
 const dispatchUniqueReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const challenge = currentUniqueOrBust(fresh)
-    if (challenge) await applyUniqueReady(ctx, fresh, challenge, playerId)
+    if (currentUniqueOrBust(fresh)) await botAct(ctx, { event: 'unique-ready' })
   })
 }
 
@@ -975,23 +971,21 @@ const dispatchUniqueAnswer = (ctx: EngineContext, playerId: string, category: Un
     const deepCut = pool.slice(Math.min(pool.length - 1, Math.floor(pool.length / 3)))
     const entry = Math.random() < share ? (sample(deepCut) ?? sample(pool)) : sample(pool)
     if (!entry) return
-    await applyUniqueAnswer(ctx, fresh, challenge, playerId, category, entry.id)
+    await botAct(ctx, { event: 'submit-unique-answer', category, id: entry.id })
   })
 }
 
 const dispatchTerraReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const challenge = currentTerraIncognita(fresh)
-    if (challenge) await applyTerraReady(ctx, fresh, challenge, playerId)
+    if (currentTerraIncognita(fresh)) await botAct(ctx, { event: 'terra-ready' })
   })
 }
 
 const dispatchSweepReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const challenge = currentCleanSweep(fresh)
-    if (challenge) await applySweepReady(ctx, fresh, challenge, playerId)
+    if (currentCleanSweep(fresh)) await botAct(ctx, { event: 'sweep-ready' })
   })
 }
 
@@ -1010,7 +1004,7 @@ const dispatchSweepClaim = (ctx: EngineContext, playerId: string) => {
         ? sample(free)
         : (wrongPick(fresh, [...challenge.members, ...(challenge.offBoard ?? [])]) ?? sample(free))
     if (!isoCode) return
-    await applySweepClaim(ctx, fresh, challenge, playerId, isoCode)
+    await botAct(ctx, { event: 'submit-sweep-claim', isoCode })
   })
 }
 
@@ -1063,19 +1057,14 @@ const dispatchGovernmentPick = (ctx: EngineContext, playerId: string, turn: numb
         break
       }
     }
-    if (pick) await applyGovernmentPick(ctx, fresh, challenge, playerId, turn, pick)
+    if (pick) await botAct(ctx, { event: 'submit-government-pick', turn, pick })
   })
 }
 
 const dispatchManhuntReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const challenge = currentManhunt(fresh)
-    if (!challenge) return
-    // applyManhuntReady trusts its caller on participation — the shared
-    // check (also the wire handler's) or a stray ready stalls the briefing.
-    if (!isManhuntParticipant(challenge, playerId)) return
-    await applyManhuntReady(ctx, fresh, challenge, playerId)
+    if (currentManhunt(fresh)) await botAct(ctx, { event: 'manhunt-ready' })
   })
 }
 
@@ -1094,7 +1083,7 @@ const dispatchManhuntMove = (ctx: EngineContext, playerId: string, turn: number)
     // hands back `from`, which applyManhuntMove refuses as illegal — only
     // the beat's own timeout commits the idle hop. Stand down and let it.
     if (move.isoCode === from) return
-    await applyManhuntMove(ctx, fresh, challenge, move.isoCode)
+    await botAct(ctx, { event: 'submit-manhunt-move', isoCode: move.isoCode, turn })
   })
 }
 
@@ -1118,7 +1107,7 @@ const dispatchManhuntMarker = (ctx: EngineContext, playerId: string, turn: numbe
     }
     const marker = sample(candidates)
     if (!marker) return
-    await applyManhuntMarker(ctx, fresh, challenge, playerId, marker)
+    await botAct(ctx, { event: 'submit-manhunt-marker', isoCode: marker, turn })
   })
 }
 
@@ -1135,18 +1124,11 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
     const submittedAnswer = await finalAnswerFor(question, share, fresh)
     if (!submittedAnswer) return
     try {
-      await submitFinalChallengeAnswerHandler({
-        io: ctx.io,
-        redis: ctx.redis,
-        socket: ctx.socket,
-        eventTarget: ctx.eventTarget,
-        eventKey: 'submit-final-challenge-answer',
-        eventData: {
-          event: 'submit-final-challenge-answer',
-          submittedAnswer,
-          subject: seat.cursor.subject,
-          seq,
-        },
+      await botAct(ctx, {
+        event: 'submit-final-challenge-answer',
+        submittedAnswer,
+        subject: seat.cursor.subject,
+        seq,
       })
     } catch (error) {
       console.warn(`Bot final answer rejected for ${playerId}`, error)

@@ -1,3 +1,4 @@
+import { drawLabel, recordedDraw } from './draws'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
   atlasContinuations,
@@ -58,10 +59,12 @@ const engine = (): ChainEngine<AtlasChallenge> =>
       return { playerId: trappedId, head, byPlayerId, letter: atlasTailLetter(head), spent }
     },
     reseed: (challenge, game) =>
+      recordedDraw(game, drawLabel.chainSeed(), () =>
       pickAtlasSeed(game, {
         minOptions: ATLAS_TABLE_SEED_OPTIONS,
         exclude: new Set(usedOf(challenge)),
-      }) ?? pickAtlasSeed(game, { minOptions: ATLAS_TABLE_SEED_OPTIONS }),
+      }) ?? pickAtlasSeed(game, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
+      ),
     // Sheer elimination on hard: placement is everything, no link consolation —
     // the same difficulty flag that widens the rule narrows the payout.
     scores: challenge => scoreChainRound(challenge, challenge.overlaps ? 1 : undefined),

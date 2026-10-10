@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   FINAL_QUESTION_CAP_MS,
   FINAL_REVEAL_HOLD_MS,
@@ -10,10 +10,10 @@ import type { FinalChallenge, FinalChallengeItem } from '~~/types/challenges/fin
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { SEAT_STEPS } from '~~/types/seat.types'
-import { setDealReplay } from './moves'
+import { setDrawSource } from './draws'
 import { armedTimersFor, dropArmedTimersForTests, rearmSeats } from './seat-cursor'
-import { createTestTable, uniqueGameId, type TestTable } from './test-table'
-import { testCursor, testSeat } from './test-seat'
+import { createTestTable, type TestTable, uniqueGameId, warmDeferredModules } from './test-table'
+import { scriptDraws, testCursor, testSeat } from './test-seat'
 
 /**
  * Every timer a seat can be waiting on comes from its cursor alone — armed
@@ -74,17 +74,18 @@ const open = async (players: Player[]) => {
 }
 const seatA = async (table: TestTable) => (await table.read()).players.a!
 
-beforeEach(async () => {
-  await import('~~/lib/challenges/final-challenge')
+beforeAll(warmDeferredModules, 60_000)
+
+beforeEach(() => {
   vi.useFakeTimers()
-  setDealReplay({
+  scriptDraws({
     moves: () => undefined,
     round: () => undefined,
     finalReplacement: () => question('PL'),
   })
 })
 afterEach(() => {
-  setDealReplay(undefined)
+  setDrawSource(undefined)
   dropArmedTimersForTests()
   for (const table of tables) table.dispose()
   tables = []

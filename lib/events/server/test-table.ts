@@ -5,8 +5,8 @@ import type { ClientEventData, ClientEventTarget, ServerEnvelope } from '~~/type
 import { hasGame } from '~~/types/events.types'
 import type { Game } from '~~/types/game.types'
 import type { SeatJournalEntry } from '~~/types/seat.types'
-import { enqueueGameTask, type GameServer, type GameSocket } from '../server-side'
-import { SERVER_SIDE_EVENT_HANDLERS } from './registry'
+import type { GameServer, GameSocket } from '../server-side'
+import { runClientEvent } from './registry'
 import type { EngineContext } from './round-engine'
 import { armedTimersFor } from './seat-cursor'
 import { onSeatJournal } from './seat-journal'
@@ -89,7 +89,10 @@ let tableSeq = 0
  *  armed-timer registry are module state. */
 export const uniqueGameId = (prefix = 'table') => `${prefix}-${++tableSeq}-${Date.now()}`
 
-export const createTestTable = async (game: Game) => {
+export const createTestTable = async (
+  game: Game,
+  options: { connected?: readonly string[] } = {}
+) => {
   const redis = fakeTableRedis()
   await redis.set(game.id, game)
   const emits: CapturedEmit[] = []
@@ -102,7 +105,8 @@ export const createTestTable = async (game: Game) => {
       emit: (event: string, payload: ServerEnvelope, target: ClientEventTarget) => {
         emits.push({ event, payload: clone(payload), target })
       },
-      fetchSockets: async () => [],
+      fetchSockets: async () =>
+        (options.connected ?? []).map(playerId => ({ id: `socket-${playerId}`, data: { playerId } })),
     }),
     of: () => ({ sockets: new Map() }),
   } as unknown as GameServer
@@ -114,12 +118,9 @@ export const createTestTable = async (game: Game) => {
     eventTarget: { gameId: game.id, playerId },
   })
 
-  /** One client event through the real registry and the real per-game queue. */
+  /** One client event the way the socket dispatch runs it: recorded, then queued. */
   const send = async (playerId: string, eventData: ClientEventData) => {
-    const { handler } = SERVER_SIDE_EVENT_HANDLERS[eventData.event]
-    await enqueueGameTask(game.id, () =>
-      handler({ ...ctx(playerId), eventKey: eventData.event, eventData })
-    )
+    await runClientEvent({ ...ctx(playerId), eventData })
   }
 
   const read = async (): Promise<Game> => clone((await redis.get(game.id)) as Game)
@@ -167,3 +168,30 @@ export const createClientMirror = (playerId: string, joined: Game) => {
   }
   return { gameStore, apply, game: () => gameStore.game! }
 }
+
+/**
+ * The dealers' deferred modules, loaded up front. A cold dynamic import
+ * resolves on real I/O, so under fake timers a game burst through minutes of
+ * virtual time leaves the deal — and the whole game queue behind it — waiting.
+ */
+export const warmDeferredModules = () =>
+  Promise.all([
+    import('~~/lib/challenges/final-challenge'),
+    import('~~/lib/sunset-window'),
+    import('~~/lib/charts'),
+    import('~~/lib/empires'),
+    import('~~/lib/migration'),
+    import('~~/lib/pyramids'),
+    import('~~/lib/timeline'),
+    import('~~/lib/trends-data'),
+    import('~~/data/conflict-events.gen'),
+    import('~~/data/conflict-profiles.gen'),
+    import('~~/data/conflicts.gen'),
+    import('~~/data/empires.gen'),
+    import('~~/data/flag-meanings.gen'),
+    import('~~/data/map-hd.gen'),
+    import('~~/data/map.gen'),
+    import('~~/data/recognition.gen'),
+    import('~~/data/water-facts.gen'),
+    import('~~/data/water.gen'),
+  ])

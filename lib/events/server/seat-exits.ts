@@ -34,7 +34,11 @@ import {
 import { isManhuntChallenge, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { dealFinalReplacement, dealMoves, dealRound } from './moves'
 import type { EngineContext, ServerSide } from './round-engine'
+import { governmentKey } from '~~/lib/government'
+import { manhuntKey } from '~~/lib/manhunt'
+import { uniqueKey } from '~~/lib/unique-or-bust'
 import { advanceSeat, capDeadline } from './seat-cursor'
+import { recordCheckpoint } from './seat-journal'
 import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
 import { scheduleTerraTimeout } from './terra-beats'
 import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
@@ -431,6 +435,16 @@ export const SEAT_TIMER_EXITS: Record<SeatTimerKind, (exit: SeatExit) => Promise
   },
 }
 
+/** The live round's secret side keys — what a replay checkpoint must carry. */
+export const roundSideKeys = (game: Game): string[] => {
+  const roundIndex = roundIndexOf(game)
+  return [
+    manhuntKey(game.id, roundIndex),
+    governmentKey(game.id, roundIndex),
+    uniqueKey(game.id, roundIndex),
+  ]
+}
+
 /**
  * `nextRoundAt` came due: deal the round, seat every settled racer in it and
  * reveal it — one task, one save, one emit. Nothing is dealt before this, so
@@ -475,6 +489,7 @@ export const revealNextRound = async (ctx: EngineContext, game: Game, server: Se
 
   await server.updateGameState(game)
   server.emit({ event: 'new-round', game }, ctx.eventTarget)
+  await recordCheckpoint(ctx.redis, game, roundSideKeys(game))
 
   if (isBorderChainChallenge(revealed)) scheduleChainTimeout(ctx, revealed)
   if (isAtlasChallenge(revealed)) scheduleAtlasTimeout(ctx, revealed)

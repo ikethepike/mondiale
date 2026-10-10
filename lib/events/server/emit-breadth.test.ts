@@ -17,7 +17,7 @@ import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { unsentRevFor } from '../server-side'
 import { scheduleClassicSettle } from './classic-rounds'
-import { setDealReplay } from './moves'
+import { setDrawSource } from './draws'
 import { dropArmedTimersForTests, rearmSeats } from './seat-cursor'
 import {
   createClientMirror,
@@ -26,7 +26,7 @@ import {
   type CapturedEmit,
   type TestTable,
 } from './test-table'
-import { testCursor, testSeat } from './test-seat'
+import { scriptDraws, testCursor, testSeat } from './test-seat'
 
 /**
  * The protocol-convergence harness. A client rebuilds its game from the emit
@@ -151,14 +151,14 @@ const open = async (game: Game) => {
 
 beforeEach(() => {
   vi.useFakeTimers()
-  setDealReplay({
+  scriptDraws({
     moves: seatId => (seatId === 'a' ? [gate] : [{ endTile: TILES[2]! }]),
     round: () => TWO_TRUTHS,
     finalReplacement: () => null,
   })
 })
 afterEach(() => {
-  setDealReplay(undefined)
+  setDrawSource(undefined)
   dropArmedTimersForTests()
   for (const table of tables) table.dispose()
   tables = []

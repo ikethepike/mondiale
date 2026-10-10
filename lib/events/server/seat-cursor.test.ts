@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BOARD_TO_CHALLENGE_HOLD_MS,
   FINAL_REVEAL_HOLD_MS,
@@ -22,10 +22,10 @@ import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import type { SeatStep } from '~~/types/seat.types'
 import { unsentRevFor } from '../server-side'
-import { setDealReplay } from './moves'
+import { setDrawSource } from './draws'
 import { rearmSeats, dropArmedTimersForTests } from './seat-cursor'
-import { createClientMirror, createTestTable, uniqueGameId, type TestTable } from './test-table'
-import { testCursor } from './test-seat'
+import { createClientMirror, createTestTable, type TestTable, uniqueGameId, warmDeferredModules } from './test-table'
+import { scriptDraws, testCursor } from './test-seat'
 
 const TWO_TRUTHS = {
   _type: 'two-truths-challenge',
@@ -129,12 +129,12 @@ const open = async (game: Game) => {
   return table
 }
 
-beforeEach(async () => {
-  // A cold dynamic import never resolves under fake timers: warm it first.
-  await import('~~/lib/challenges/final-challenge')
+beforeAll(warmDeferredModules, 60_000)
+
+beforeEach(() => {
   vi.useFakeTimers()
   moveset.clear()
-  setDealReplay({
+  scriptDraws({
     moves: seatId => moveset.get(seatId),
     round: () => TWO_TRUTHS,
     finalReplacement: () => regionQuestion('PL'),
@@ -142,7 +142,7 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
-  setDealReplay(undefined)
+  setDrawSource(undefined)
   dropArmedTimersForTests()
   for (const table of tables) table.dispose()
   tables = []

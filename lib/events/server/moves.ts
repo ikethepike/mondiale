@@ -7,61 +7,34 @@ import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.typ
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, PlayerMove } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
-import { bufferDeal } from './seat-journal'
-
-/**
- * The replay harness feeds recorded deals back through here, so a replayed
- * game draws the same gates and rounds the recorded one did. Production never
- * sets it.
- */
-export interface DealReplay {
-  moves: (seatId: string) => PlayerMove[] | undefined
-  round: () => RoundChallenge | undefined
-  finalReplacement: () => FinalChallengeItem | null | undefined
-}
-let dealReplay: DealReplay | undefined
-export const setDealReplay = (replay: DealReplay | undefined) => {
-  dealReplay = replay
-}
+import { drawLabel, recordedDrawAsync } from './draws'
 
 /** THE moveset deal: every scored seat's walk is dealt (and recorded) here. */
-export const dealMoves = async (args: {
+export const dealMoves = (args: {
   game: Game
   player: Player
   scored: number
   /** A fixed moveset (the FORCE_FINAL_CHALLENGE hook) — still recorded. */
   moves?: PlayerMove[]
-}): Promise<PlayerMove[]> => {
-  const moves =
-    dealReplay?.moves(args.player.id) ?? args.moves ?? (await movesForScoredPoints(args))
-  bufferDeal(args.game, { what: 'moves', seat: args.player.id, value: moves })
-  return moves
-}
+}): Promise<PlayerMove[]> =>
+  recordedDrawAsync(args.game, drawLabel.moves(args.player.id), async () =>
+    args.moves ? args.moves : movesForScoredPoints(args)
+  )
 
 /** A missed LAST gauntlet question is replaced, never skipped. Null: nothing left to deal. */
-export const dealFinalReplacement = async (
+export const dealFinalReplacement = (
   game: Game,
   exclude: FinalChallengeItem['_type'][]
-): Promise<FinalChallengeItem | null> => {
-  const replayed = dealReplay?.finalReplacement()
-  let replacement: FinalChallengeItem | null
-  if (replayed !== undefined) {
-    replacement = replayed
-  } else {
+): Promise<FinalChallengeItem | null> =>
+  recordedDrawAsync(game, drawLabel.finalReplacement(), async () => {
     // Deferred module: final-challenge carries ~1.2MB of endgame data (#110).
     const { dealReplacementChallenge } = await import('~~/lib/challenges/final-challenge')
-    replacement = dealReplacementChallenge({ game, exclude }) ?? null
-  }
-  bufferDeal(game, { what: 'final-replacement', value: replacement })
-  return replacement
-}
+    return dealReplacementChallenge({ game, exclude }) ?? null
+  })
 
 /** THE round deal, at the reveal. */
-export const dealRound = async (game: Game): Promise<RoundChallenge> => {
-  const round = dealReplay?.round() ?? (await getRoundChallenge({ game }))
-  bufferDeal(game, { what: 'round', value: round })
-  return round
-}
+export const dealRound = (game: Game): Promise<RoundChallenge> =>
+  recordedDrawAsync(game, drawLabel.round(), () => getRoundChallenge({ game }))
 
 /**
  * The scored points ARE the tiles to walk: the slice starts one past the tile

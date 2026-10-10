@@ -17,11 +17,11 @@ import { forgetCheerBucket } from '~~/lib/events/server/player-cheering.handler'
 import { forgetGuessBucket } from '~~/lib/events/server/player-guessing.handler'
 import { forgetTauntBucket } from '~~/lib/events/server/manhunt-taunt.handler'
 import {
+  runClientEvent,
   SERVER_SIDE_EVENT_HANDLERS,
   UNQUEUED_CLIENT_EVENTS,
-  UNRECORDED_CLIENT_EVENTS,
 } from '~~/lib/events/server/registry'
-import { recordSeatEvent, recordSeatRender } from '~~/lib/events/server/seat-journal'
+import { recordSeatRender } from '~~/lib/events/server/seat-journal'
 import { startSeatAuditor } from '~~/lib/events/server/seat-auditor'
 import '~~/lib/events/server/seat-cursor'
 
@@ -174,7 +174,7 @@ export default defineEventHandler(({ node }) => {
 
       // Register event handlers synchronously FIRST, so nothing is missed
       // while the async handshake verification below runs.
-      for (const [eventKey, configuration] of Object.entries(SERVER_SIDE_EVENT_HANDLERS)) {
+      for (const eventKey of Object.keys(SERVER_SIDE_EVENT_HANDLERS)) {
         socket.on(
           eventKey,
           (
@@ -226,28 +226,10 @@ export default defineEventHandler(({ node }) => {
               return
             }
             if (UNQUEUED_CLIENT_EVENTS.includes(event)) return
-            if (!UNRECORDED_CLIENT_EVENTS.includes(event)) {
-              void recordSeatEvent(redis, eventTarget.gameId, {
-                kind: 'event',
-                at: Date.now(),
-                actor: eventTarget.playerId,
-                event,
-                data: eventData,
-              })
-            }
 
             // Both branches consume the task promise — an unacked handler
             // throw must not surface as an unhandled rejection.
-            enqueueGameTask(eventTarget.gameId, () =>
-              configuration.handler({
-                io,
-                socket,
-                redis,
-                eventData,
-                eventTarget,
-                eventKey: event,
-              })
-            ).then(
+            runClientEvent({ io, redis, socket, eventTarget, eventData }).then(
               () => ack?.({ ok: true, serverNow: Date.now() }),
               error => {
                 console.error(`Handler failed for ${eventKey} in ${eventTarget.gameId}`, error)

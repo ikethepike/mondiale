@@ -4,6 +4,8 @@ import { defineGameHandler } from '../server-side'
 import { armBotPump } from './bot-brain'
 import { dealRound } from './moves'
 import { advanceSeat, capDeadline } from './seat-cursor'
+import { roundSideKeys } from './seat-exits'
+import { recordCheckpoint } from './seat-journal'
 
 export const startGameHandler = defineGameHandler(
   'start-game',
@@ -44,6 +46,7 @@ export const startGameHandler = defineGameHandler(
 
     await server.updateGameState(game)
     server.emit({ event: 'game-started', game }, eventTarget)
+    await recordCheckpoint(redis, game, roundSideKeys(game))
     // Bot seats play from here on — the brain's pump runs for the game.
     armBotPump({ io, redis, socket, eventTarget }, game)
   },

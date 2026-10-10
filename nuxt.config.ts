@@ -90,6 +90,8 @@ export default defineNuxtConfig({
     '/atlas': { prerender: true },
   },
   runtimeConfig: {
+    // NUXT_DEBUG_TOKEN — unset, /debug/rooms answers 404.
+    debugToken: '',
     public: {
       commitHash,
       buildTime: new Date().toISOString(),

@@ -1,4 +1,8 @@
 import { seatSubject } from '~~/lib/seat-transitions'
+import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
+import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
+import type { PlayerMove } from '~~/types/game.types'
+import { drawLabel, setDrawSource } from './draws'
 import type { Player } from '~~/types/player.type'
 import type { SeatCursor, SeatStep } from '~~/types/seat.types'
 
@@ -55,3 +59,23 @@ export const testSeat = (
   currentPosition: 0,
   ...overrides,
 })
+
+/**
+ * Scripted draws for a suite: a seat's moveset, the next round, a gauntlet
+ * replacement. A script that returns undefined lets the real dealer draw.
+ */
+export const scriptDraws = (script: {
+  moves?: (seatId: string) => PlayerMove[] | undefined
+  round?: () => RoundChallenge | undefined
+  finalReplacement?: () => FinalChallengeItem | null | undefined
+}) =>
+  setDrawSource(label => {
+    const value = label.startsWith('moves:')
+      ? script.moves?.(label.slice('moves:'.length))
+      : label === drawLabel.round()
+        ? script.round?.()
+        : label === drawLabel.finalReplacement()
+          ? script.finalReplacement?.()
+          : undefined
+    return value === undefined ? undefined : { value }
+  })

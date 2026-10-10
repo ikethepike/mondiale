@@ -1,5 +1,8 @@
-import type { ClientEvent } from '~~/types/events.types'
+import type { Redis } from '@upstash/redis'
+import type { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
+import { enqueueGameTask, type GameServer, type GameSocket } from '../server-side'
+import { recordSeatEvent } from './seat-journal'
 import { closeTutorialHandler } from './close-tutorial.handler'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { roundPlayHandler } from './round-play.handler'
@@ -184,3 +187,43 @@ export const UNRECORDED_CLIENT_EVENTS: readonly ClientEvent[] = [
   'manhunt-taunt',
   'fetch-manhunt-position',
 ]
+
+/**
+ * THE way a client event runs: on the game's queue, recorded for replay
+ * (unless it changes nothing) at the moment it is handled. The socket dispatch and the test table
+ * both go through here, so what a test exercises is what production records.
+ */
+export const runClientEvent = ({
+  io,
+  redis,
+  socket,
+  eventTarget,
+  eventData,
+}: {
+  io: GameServer
+  redis: Redis
+  socket: GameSocket
+  eventTarget: ClientEventTarget
+  eventData: ClientEventData
+}) => {
+  const event = eventData.event
+  return enqueueGameTask(eventTarget.gameId, async () => {
+    if (!UNRECORDED_CLIENT_EVENTS.includes(event)) {
+      await recordSeatEvent(redis, eventTarget.gameId, {
+        kind: 'event',
+        at: Date.now(),
+        actor: eventTarget.playerId,
+        event,
+        data: eventData,
+      })
+    }
+    await SERVER_SIDE_EVENT_HANDLERS[event].handler({
+      io,
+      redis,
+      socket,
+      eventTarget,
+      eventKey: event,
+      eventData,
+    })
+  })
+}

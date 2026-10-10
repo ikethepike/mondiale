@@ -2,11 +2,11 @@ import type { Redis } from '@upstash/redis'
 import { SERVER_CONTROLLED_CAPS } from '~~/lib/round-beats'
 import { seatInvariantViolations, type SeatViolation } from '~~/lib/seat-invariants'
 import type { Game } from '~~/types/game.types'
-import type { SeatRender } from '~~/types/seat.types'
 import { enqueueGameTask, isDraining, useServerSideEvents, type GameServer } from '../server-side'
 import { machineOwnsGame } from './game-ownership'
 import { armedTimersFor } from './seat-cursor'
-import { logSeatLine, rendersKey } from './seat-journal'
+import { LIVE_ROOMS_KEY, readRenders } from '~~/lib/debug-rooms'
+import { logSeatLine } from './seat-journal'
 
 /**
  * The production auditor: a periodic, READ-ONLY sweep of every live room this
@@ -16,19 +16,6 @@ import { logSeatLine, rendersKey } from './seat-journal'
  * log search instead of a player report.
  */
 export const SEAT_AUDIT_MS = 10_000
-export const LIVE_ROOMS_KEY = 'debug:live-rooms'
-
-type AuditRedis = Pick<Redis, 'hgetall' | 'zadd'>
-
-export const readRenders = async (redis: unknown, gameId: string): Promise<SeatRender[]> => {
-  const hashes = redis as Partial<AuditRedis>
-  if (typeof hashes.hgetall !== 'function') return []
-  const raw = (await hashes.hgetall(rendersKey(gameId))) ?? {}
-  return Object.values(raw).map(value =>
-    typeof value === 'string' ? (JSON.parse(value) as SeatRender) : (value as SeatRender)
-  )
-}
-
 /** Run the invariants for one game with every piece of evidence this machine holds. */
 export const auditGame = async (
   redis: unknown,

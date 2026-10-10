@@ -1,3 +1,4 @@
+import { drawLabel, recordedDraw } from './draws'
 import type { Redis } from '@upstash/redis'
 import {
   answerManhuntSubpoena,
@@ -113,7 +114,7 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   // first from later closes) — a second run must never re-seed the trail.
   const existing = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
   if (existing) return
-  const seed = pickManhuntSeed(game)
+  const seed = recordedDraw(game, drawLabel.manhuntSeed(), () => pickManhuntSeed(game))
   if (!seed) {
     // The dealer verified the pool, so only drifted data lands here — run the
     // finish ritual (everyone scores zero, phases advance) rather than strand
@@ -122,7 +123,9 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   }
   const secret: ManhuntSecret = {
     trail: [seed],
-    candidates: initialManhuntCandidates(game),
+    candidates: recordedDraw(game, drawLabel.manhuntCandidates(), () =>
+      initialManhuntCandidates(game)
+    ),
     markers: {},
   }
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
@@ -201,7 +204,9 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
       const from = secret.trail[secret.trail.length - 1]
       // The free hop: random, ground where possible — a charge burns only
       // when the despot idles somewhere ground can't leave.
-      const move = randomManhuntMove(from, current.state.seaPassagesLeft, game)
+      const move = recordedDraw(game, drawLabel.manhuntMove(), () =>
+        randomManhuntMove(from, current.state.seaPassagesLeft, game)
+      )
       await commitManhuntMove(ctx, game, current, secret, move.isoCode, move.kind)
     } else {
       await resolveHuntBeat(ctx, game, current)
@@ -251,7 +256,9 @@ const commitManhuntMove = async (
   state.moves.push({ hop: state.hop, kind })
 
   const stepped = stepManhuntCandidates(secret.candidates, kind, game)
-  const pick = pickManhuntClue(game, isoCode, stepped, state.hop, state.clues)
+  const pick = recordedDraw(game, drawLabel.manhuntClue(), () =>
+    pickManhuntClue(game, isoCode, stepped, state.hop, state.clues)
+  )
   secret.candidates = pick.matches
   secret.markers = {}
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
