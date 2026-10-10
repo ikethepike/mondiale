@@ -126,6 +126,14 @@ describe('probeDistance', () => {
     expect(result).not.toHaveProperty('isoCode')
   })
 
+  it('measures from the clicked point when the probe carries one', () => {
+    const hotCold = challenge({ _type: 'hot-cold-challenge', country: 'UA' })
+    const fromMoscow = probeDistance(hotCold, { isoCode: 'RU', latLng: { lat: 55.75, lng: 37.62 } })
+    const fromCentroid = probeDistance(hotCold, { isoCode: 'RU' })
+    expect(fromMoscow.distanceKm!).toBeLessThan(fromCentroid.distanceKm! / 2)
+    expect(probeDistance(hotCold, { isoCode: 'RU', latLng: 'junk' as never })).toEqual(fromCentroid)
+  })
+
   it('stays empty for other modes and junk codes', () => {
     expect(probeDistance(challenge({ _type: 'ghost-state-challenge' }), { isoCode: 'FR' })).toEqual(
       {}
