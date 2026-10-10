@@ -97,7 +97,6 @@ describe('beatPickedCountry', () => {
       submittedAnswer: {
         _type: 'sunset-blitz-challenge',
         namedCountries: ['BR', 'AR'],
-        inPlay: ['BR', 'AR'],
       },
     })
     expect(beatPickedCountry(swept)).toBeUndefined()

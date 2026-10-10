@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { MapCode } from '~~/data/map.gen'
 import { playableCountries } from '~~/lib/game-rules'
-import { sunsetDuskCoordinate, sunsetWindowAround } from './sunset-window'
+import { sunsetWindowAround } from './sunset-window'
 import {
-  darkPrefixCount,
   settledMidPx,
   SEA_OPAQUE_VW,
   SUNSET_VEIL_FEATHER,
   SUNSET_VEIL_TILT_DEG,
+  SUNSET_POOL_CLEAR,
   sweepBounds,
+  twilightPool,
   veilCodes,
+  veilKeyframes,
   veilMidPx,
   veilPlaneSize,
   veilTransforms,
@@ -18,7 +20,6 @@ import type { MapViewBox } from './use-map-viewbox'
 
 const pool = playableCountries({ variant: 'world', difficulty: 'hard', includeMicroNations: false })
 const window = sunsetWindowAround(pool, 'hard', 'HR')!
-const field = [...window.countries]
 
 /** A camera on the window at the screen's aspect, like the map keeps it. */
 const cameraFor = (viewport: { width: number; height: number }): MapViewBox => {
@@ -49,28 +50,37 @@ const apply = (
 }
 
 describe('sunset veil', () => {
-  it('sorts the window east→west so the dark set is a prefix', () => {
-    for (let i = 1; i < field.length; i++) {
-      expect(sunsetDuskCoordinate(field[i - 1]!)).toBeGreaterThanOrEqual(
-        sunsetDuskCoordinate(field[i]!)
-      )
-    }
+  it('samples the sweep into keyframes the plane and its inverse share', () => {
+    const midPxAt = (elapsed: number) => 1500 - elapsed * 30
+    const { plane, inverse } = veilKeyframes(midPxAt, 40)
+    expect(plane).toHaveLength(inverse.length)
+    expect(plane[0]!.offset).toBe(0)
+    expect(plane.at(-1)!.offset).toBe(1)
+    plane.forEach((frame, index) => {
+      expect(inverse[index]!.offset).toBe(frame.offset)
+      const transforms = veilTransforms(midPxAt(frame.offset! * 40))
+      expect(frame.transform).toBe(transforms.plane)
+      expect(inverse[index]!.transform).toBe(transforms.inverse)
+    })
   })
 
-  it('counts exactly the dark countries, monotone in the sweep', () => {
+  it('pools the light around the dealt frame', () => {
     const vb = cameraFor(LANDSCAPE)
-    const { start, end } = sweepBounds(vb)
-    let previous = 0
-    for (let step = 0; step <= 100; step++) {
-      const dusk = start - (step / 100) * (start - end)
-      const count = darkPrefixCount(field, dusk)
-      const expected = field.filter(iso => sunsetDuskCoordinate(iso) >= dusk).length
-      expect(count).toBe(expected)
-      expect(count).toBeGreaterThanOrEqual(previous)
-      previous = count
+    const rect = rectFor(LANDSCAPE)
+    const pool = twilightPool(vb, window.frame, rect)
+    const [x, y, w, h] = window.frame
+    const centre = {
+      x: ((x + w / 2 - vb.x) / vb.w) * rect.width,
+      y: ((y + h / 2 - vb.y) / vb.h) * rect.height,
     }
-    expect(darkPrefixCount(field, start)).toBe(0)
-    expect(darkPrefixCount(field, end)).toBe(field.length)
+    expect(pool.cx).toBeCloseTo(centre.x)
+    expect(pool.cy).toBeCloseTo(centre.y)
+    // Every corner of the frame stands in full light
+    const corner = Math.hypot(
+      ((w / vb.w) * rect.width) / 2 / pool.rx,
+      ((h / vb.h) * rect.height) / 2 / pool.ry
+    )
+    expect(corner).toBeLessThanOrEqual(SUNSET_POOL_CLEAR)
   })
 
   for (const [name, viewport] of [
