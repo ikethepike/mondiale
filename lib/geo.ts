@@ -450,8 +450,10 @@ const settleAt = <T extends LogoFootprint>(placements: T[], scale: number): T[] 
       // Measured off the ARTWORK, never the footprint: a caption is far wider
       // than the crest it names, and drift bought on the chip's width walks
       // the crest onto the neighbour.
-      const limitX = (placement.reach ? placement.reach.x * scale : placement.width) * LOGO_MAX_DRIFT
-      const limitY = (placement.reach ? placement.reach.y * scale : placement.height) * LOGO_MAX_DRIFT
+      const limitX =
+        (placement.reach ? placement.reach.x * scale : placement.width) * LOGO_MAX_DRIFT
+      const limitY =
+        (placement.reach ? placement.reach.y * scale : placement.height) * LOGO_MAX_DRIFT
       placement.x = clamp(placement.x + pushes[index]!.x, origin.x - limitX, origin.x + limitX)
       placement.y = clamp(placement.y + pushes[index]!.y, origin.y - limitY, origin.y + limitY)
     }
