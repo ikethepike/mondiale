@@ -30,6 +30,13 @@ if (!externalServer) {
   fs.mkdirSync(path.dirname(process.env.PLAYTEST_SERVER_LOG), { recursive: true })
 }
 const envFile = fs.existsSync('.env') ? '--env-file=.env ' : ''
+// Software WebGL renders the board at ~1fps, and GSAP's lag smoothing then
+// stretches a 0.35s fade to ~10s: a genuinely stale screen the auditor reports.
+// Play on the Mac's GPU; where there is none (CI), take the 2D board fallback.
+const chromiumGraphics =
+  process.platform === 'darwin'
+    ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist']
+    : ['--disable-webgl']
 
 export default defineConfig({
   testDir: './e2e',
@@ -53,7 +60,9 @@ export default defineConfig({
           name: 'chromium',
           use: {
             ...devices['Desktop Chrome'],
-            launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+            launchOptions: {
+              args: ['--autoplay-policy=no-user-gesture-required', ...chromiumGraphics],
+            },
           },
         },
   ],
