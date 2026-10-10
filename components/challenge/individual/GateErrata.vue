@@ -49,7 +49,7 @@ const showDoubleTapHint = ref(false)
 /** Innocents the bought hint has struck off — dimmed and no longer tappable. */
 const cleared = ref(new Set<ISOCountryCode>())
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+const { secondsLeft, elapsedFraction, stop } = useGateClock({
   // The map has to be put right even when nobody answered — the stage taught
   // the lie either way.
   onExpire: () => {

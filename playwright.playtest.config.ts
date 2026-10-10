@@ -1,11 +1,14 @@
+import { randomUUID } from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
 /**
  * The playtest client (e2e/playtest.spec.ts): whole games played by browser
- * seats beside server bots, with a freeze detector reading the server's own
- * record from redis. Never on port 3000 — the everyday dev server. Point
- * PLAYTEST_BASE_URL at a running server (and PLAYTEST_SERVER_LOG at its
- * stdout) to iterate without rebuilding.
+ * seats beside server bots, checked against the server's own record through
+ * `/debug/rooms`. Never on port 3000 — the everyday dev server. Point
+ * PLAYTEST_BASE_URL (+ PLAYTEST_DEBUG_TOKEN, and PLAYTEST_SERVER_LOG when its
+ * stdout is reachable) at a running server to iterate without rebuilding.
  */
 try {
   process.loadEnvFile('.env')
@@ -14,7 +17,19 @@ try {
 }
 
 const externalServer = process.env.PLAYTEST_BASE_URL
-const PORT = 3110
+const PORT = Number(process.env.PLAYTEST_PORT ?? 3110)
+
+// Workers inherit the runner's environment, so a token minted here reaches
+// both the server it boots and every spec process.
+if (!externalServer) {
+  process.env.PLAYTEST_DEBUG_TOKEN ??= `playtest-${randomUUID()}`
+  process.env.PLAYTEST_SERVER_LOG ??= path.resolve(
+    process.env.PLAYTEST_OUT ?? 'test-results/playtest',
+    `server-${PORT}.log`
+  )
+  fs.mkdirSync(path.dirname(process.env.PLAYTEST_SERVER_LOG), { recursive: true })
+}
+const envFile = fs.existsSync('.env') ? '--env-file=.env ' : ''
 
 export default defineConfig({
   testDir: './e2e',
@@ -42,9 +57,13 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `exec node --env-file=.env .output/server/index.mjs`,
+          command: `exec node ${envFile}.output/server/index.mjs >> "${process.env.PLAYTEST_SERVER_LOG}" 2>&1`,
           url: `http://127.0.0.1:${PORT}`,
-          env: { PORT: String(PORT), HOST: '127.0.0.1' },
+          env: {
+            PORT: String(PORT),
+            HOST: '127.0.0.1',
+            NUXT_DEBUG_TOKEN: process.env.PLAYTEST_DEBUG_TOKEN!,
+          },
           reuseExistingServer: false,
           timeout: 120_000,
         },

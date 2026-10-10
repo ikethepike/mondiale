@@ -1,0 +1,157 @@
+# The seat-cursor contract, played: whole games by browser seats beside
+# server bots, every page's rendered cursor checked against the server's own
+# through /debug/rooms, the shared invariants run over the live room, and the
+# server log grepped for seat-audit / seat-illegal / seat-unsent lines
+# (e2e/playtest.spec.ts).
+#
+# Opt-in: runs on PRs labelled `contract` and by hand. No schedule.
+#
+# Needs (repo → Settings → Secrets and variables → Actions):
+#   PREVIEW_UPSTASH_REDIS_REST_URL / PREVIEW_UPSTASH_REDIS_REST_TOKEN — the
+#     preview Redis the CI-built server plays on (shared with fly-preview.yml).
+#   PLAYTEST_DEBUG_TOKEN — optional. Staged on the PR's Fly preview as
+#     NUXT_DEBUG_TOKEN by fly-preview.yml; when present, the preview pass
+#     plays against https://pr-N-mondiale.fly.dev too.
+name: Contract playtest
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  workflow_dispatch:
+
+concurrency:
+  group: playtest-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UPSTASH_REDIS_REST_URL: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_URL }}
+  UPSTASH_REDIS_REST_TOKEN: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_TOKEN }}
+  PLAYTEST_ROOMS: '2'
+
+jobs:
+  local:
+    name: Playtest (CI-built server)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'contract')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: bunx playwright install --with-deps chromium
+
+      - name: Install Chromium system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: bunx playwright install-deps chromium
+
+      - name: Build
+        run: bun run build
+
+      # Every seat is teleported to the gauntlet, so two short rooms reach
+      # victory inside the budget: the whole endgame, verdict holds and all.
+      - name: Playtest — forced gauntlet
+        run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
+        env:
+          FORCE_FINAL_CHALLENGE: '1'
+          PLAYTEST_MINUTES: '8'
+          PLAYTEST_OUT: test-results/playtest/forced-final
+
+      # The natural mix for a fixed window — rounds, walks and gates; a short
+      # game rarely ends inside it, so victory is not required here.
+      - name: Playtest — mixed
+        if: '!cancelled()'
+        run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
+        env:
+          PLAYTEST_MINUTES: '6'
+          PLAYTEST_REQUIRE_VICTORY: '0'
+          PLAYTEST_OUT: test-results/playtest/mixed
+
+      - name: Upload playtest results
+        if: '!cancelled()'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playtest-local
+          path: test-results/playtest/
+          retention-days: 14
+
+  preview:
+    name: Playtest (Fly preview)
+    if: >
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'contract') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PLAYTEST_BASE_URL: https://pr-${{ github.event.number }}-mondiale.fly.dev
+      PLAYTEST_DEBUG_TOKEN: ${{ secrets.PLAYTEST_DEBUG_TOKEN }}
+    steps:
+      - name: Skip without a debug token
+        if: env.PLAYTEST_DEBUG_TOKEN == ''
+        run: echo "::notice::PLAYTEST_DEBUG_TOKEN is not set — the preview pass is skipped."
+
+      - uses: actions/checkout@v7
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+
+      - uses: oven-sh/setup-bun@v2
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+        run: bunx playwright install --with-deps chromium
+
+      # fly-preview.yml deploys the same push in parallel: wait for /health to
+      # report this commit before playing on it.
+      - name: Wait for the preview to serve this commit
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+        run: |
+          want=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
+          for attempt in $(seq 1 90); do
+            got=$(curl -fsS "$PLAYTEST_BASE_URL/health" | jq -r '.commit // empty' || true)
+            [ "$got" = "$want" ] && exit 0
+            sleep 20
+          done
+          echo "::error::the preview never served $want"
+          exit 1
+
+      # FORCE_* hooks are server env, so the preview plays the natural mix.
+      - name: Playtest — preview, mixed
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+        run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
+        env:
+          PLAYTEST_MINUTES: '6'
+          PLAYTEST_REQUIRE_VICTORY: '0'
+          PLAYTEST_OUT: test-results/playtest/preview
+
+      - name: Upload playtest results
+        if: ${{ !cancelled() && env.PLAYTEST_DEBUG_TOKEN != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playtest-preview
+          path: test-results/playtest/
+          retention-days: 14

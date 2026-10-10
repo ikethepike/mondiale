@@ -240,6 +240,7 @@ import {
 } from '~~/lib/challenges/final-challenge'
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
+import { seatVerdictOn } from '~~/lib/seat-view'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
 import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
@@ -248,7 +249,6 @@ import { formatAmount, formatCompact } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import type {
   ChangeChallenge,
-  FinalChallenge,
   FinalChallengeAnswer,
 } from '~~/types/challenges/final-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -275,12 +275,7 @@ const {
 const questionSubject = computed(() => seatCursor.value?.subject ?? '')
 
 /** The server's verdict on the question on screen. */
-const verdict = computed(() => {
-  const cursor = seatCursor.value
-  return cursor?.verdict?.kind === 'final' && cursor.verdict.subject === cursor.subject
-    ? cursor.verdict
-    : undefined
-})
+const verdict = computed(() => seatVerdictOn(seatCursor.value, 'final'))
 
 /** The verdict: the server's, or this seat's own preview until it lands. */
 const status = computed<'correct' | 'incorrect' | undefined>(() => {

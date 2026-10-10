@@ -68,7 +68,9 @@ export const compareJournals = (
   for (const seat of new Set([...expected.keys(), ...actual.keys()])) {
     const want = (expected.get(seat) ?? []).map(transitionSignature)
     const got = actual.get(seat) ?? []
-    const at = want.findIndex((signature, index) => !got[index] || transitionSignature(got[index]) !== signature)
+    const at = want.findIndex(
+      (signature, index) => !got[index] || transitionSignature(got[index]) !== signature
+    )
     if (at !== -1) {
       const replayedAt = got[at] ? transitionSignature(got[at]) : '(nothing)'
       mismatches.push(`${seat} #${at}: recorded "${want[at]}", replayed "${replayedAt}"`)
@@ -104,7 +106,10 @@ const replaySocket = (playerId: string) =>
     disconnect: () => undefined,
   }) as never
 
-export const replayRoom = async (bundle: RoomExport, clock: ReplayClock): Promise<ReplayOutcome> => {
+export const replayRoom = async (
+  bundle: RoomExport,
+  clock: ReplayClock
+): Promise<ReplayOutcome> => {
   if (!bundle.checkpoint) throw new Error(`Room ${bundle.id} has no checkpoint to replay from`)
   // Its own id: nothing the recorded room still has in flight in this
   // process (queue tasks, journal listeners) can reach the replay.
@@ -118,13 +123,17 @@ export const replayRoom = async (bundle: RoomExport, clock: ReplayClock): Promis
   }
   const violations: SeatViolation[] = []
   const check = async () => {
-    violations.push(...seatInvariantViolations(await table.read(), { now: Date.now(), armed: table.armed() }))
+    violations.push(
+      ...seatInvariantViolations(await table.read(), { now: Date.now(), armed: table.armed() })
+    )
   }
 
   try {
     rearmLiveRound(table.ctx(start.host), start)
     const inputs = bundle.events
-      .filter((record): record is Extract<SeatEventRecord, { kind: 'event' }> => record.kind === 'event')
+      .filter(
+        (record): record is Extract<SeatEventRecord, { kind: 'event' }> => record.kind === 'event'
+      )
       .sort((a, b) => a.at - b.at)
     for (const record of inputs) {
       await clock.advance(Math.max(0, record.at - Date.now()))
@@ -169,7 +178,10 @@ const replayServerAct = async (
   table: Awaited<ReturnType<typeof createTestTable>>,
   record: Extract<SeatEventRecord, { kind: 'event' }>
 ) => {
-  const { playerId, autopilot } = record.data as { playerId: string; autopilot?: Player['autopilot'] }
+  const { playerId, autopilot } = record.data as {
+    playerId: string
+    autopilot?: Player['autopilot']
+  }
   await enqueueGameTask(table.id, async () => {
     const server = useServerSideEvents(table.ctx(playerId))
     const game = await server.fetchGame(table.id)

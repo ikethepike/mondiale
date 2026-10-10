@@ -205,7 +205,9 @@ const stampTable = (game: Game) => {
 
 setSeatSaveHooks({
   afterFetch: game => {
-    if (migrateLegacySeats(game)) logSeatLine('seat-migrate', { game: game.id })
+    if (!migrateLegacySeats(game)) return
+    stampTable(game)
+    logSeatLine('seat-migrate', { game: game.id })
   },
   beforeSave: stampTable,
   afterSave: async (game, ctx) => {

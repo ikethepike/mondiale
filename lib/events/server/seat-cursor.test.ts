@@ -24,7 +24,13 @@ import type { SeatStep } from '~~/types/seat.types'
 import { unsentRevFor } from '../server-side'
 import { setDrawSource } from './draws'
 import { rearmSeats, dropArmedTimersForTests } from './seat-cursor'
-import { createClientMirror, createTestTable, type TestTable, uniqueGameId, warmDeferredModules } from './test-table'
+import {
+  createClientMirror,
+  createTestTable,
+  type TestTable,
+  uniqueGameId,
+  warmDeferredModules,
+} from './test-table'
 import { scriptDraws, testCursor } from './test-seat'
 
 const TWO_TRUTHS = {

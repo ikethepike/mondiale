@@ -1,10 +1,6 @@
 import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
-import {
-  adoptRevision,
-  isStaleSeat,
-  isStaleSnapshot,
-} from '~~/lib/events/client/snapshot-revision'
+import { adoptRevision, isStaleSeat, isStaleSnapshot } from '~~/lib/events/client/snapshot-revision'
 
 /**
  * Seat + that seat's round slice: the moved seat's record (its cursor), and

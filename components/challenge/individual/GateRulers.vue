@@ -39,7 +39,7 @@ const { status, showInterstitial, submitAnswer, giveUp, isHard } = useGateChalle
 
 const showDoubleTapHint = ref(false)
 
-const { secondsLeft, remainingFraction, stop } = useGateClock({
+const { secondsLeft, stop } = useGateClock({
   // The stage dressed a country in someone else's logo; it has to be put right
   // whether or not anybody answered.
   onExpire: () => {

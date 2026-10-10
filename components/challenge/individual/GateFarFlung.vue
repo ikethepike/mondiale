@@ -53,7 +53,7 @@ onMounted(() => {
   footerReady.value = true
 })
 
-const { secondsLeft, remainingFraction, stop } = useGateClock({
+const { secondsLeft, stop } = useGateClock({
   // Clear the pull-out BEFORE the miss lands: the clock and the camera tween
   // end in the same beat, and a still-armed zoomOut holds the camera lock the
   // result fly-to needs (the release order the zoomOut watcher documents).

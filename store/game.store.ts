@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { LatLng, MapBox } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
+import { previewOn } from '~~/lib/seat-view'
 import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -339,8 +340,7 @@ export const useGameStore = defineStore('game', {
     },
     /** The view's own optimistic verdict, but only while its subject is on screen. */
     previewStatus(): PreviewVerdict['value'] | undefined {
-      const preview = this.map.status
-      return preview && preview.subject === this.seatCursor?.subject ? preview.value : undefined
+      return previewOn(this.map.status, this.seatCursor)?.value
     },
     /** In the booth — a latecomer watcher or a finisher watching. The write
      *  gate in client-side.ts keys off this. */

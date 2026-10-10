@@ -119,7 +119,7 @@ const RUNG_LABELS: { [rung in ScriptoriumRung]: string } = {
   country: 'Name one country',
 }
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+const { secondsLeft, elapsedFraction, stop } = useGateClock({
   onExpire: () => giveUp(),
 })
 

@@ -1,4 +1,5 @@
 import { describeRoom } from '~~/lib/debug-rooms'
+import { enqueueGameTask } from '~~/lib/events/server-side'
 import { armedTimersFor } from '~~/lib/events/server/seat-cursor'
 import { ownerKey, thisMachineId } from '~~/lib/events/server/game-ownership'
 import { debugRedis, requireDebugAccess } from '../../../utils/debug-access'
@@ -16,7 +17,13 @@ export default defineEventHandler(async event => {
     setResponseStatus(event, 409)
     return
   }
-  const room = await describeRoom({ redis, gameId, armed: armedTimersFor(gameId) })
+  // Through the game's queue, like the auditor: never between a save and the
+  // arm that follows it in the same task.
+  const room = await enqueueGameTask(gameId, () =>
+    describeRoom({ redis, gameId, armed: armedTimersFor(gameId) })
+  ).catch(() => {
+    throw createError({ statusCode: 503 })
+  })
   if (!room) throw createError({ statusCode: 404 })
   return { machine, ...room }
 })

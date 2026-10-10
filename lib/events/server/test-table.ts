@@ -106,7 +106,10 @@ export const createTestTable = async (
         emits.push({ event, payload: clone(payload), target })
       },
       fetchSockets: async () =>
-        (options.connected ?? []).map(playerId => ({ id: `socket-${playerId}`, data: { playerId } })),
+        (options.connected ?? []).map(playerId => ({
+          id: `socket-${playerId}`,
+          data: { playerId },
+        })),
     }),
     of: () => ({ sockets: new Map() }),
   } as unknown as GameServer

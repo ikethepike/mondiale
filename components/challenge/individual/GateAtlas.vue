@@ -103,7 +103,7 @@ const bounce = (message: string) => {
 }
 onBeforeUnmount(() => noteTimer && clearTimeout(noteTimer))
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+const { secondsLeft, elapsedFraction, stop } = useGateClock({
   onExpire: () => {
     missNote.value = `Time ran out on “${letter.value}”`
     giveUp()

@@ -94,7 +94,7 @@ let outlineHintLoading = false
 const isoHint = ref<ISOCountryCode>()
 const footerReady = ref(false)
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+const { secondsLeft, elapsedFraction, stop } = useGateClock({
   onExpire: () => {
     // Bring the world back before the result lands — the same restore the
     // answered path does, and the reason a timeout can't just call giveUp.

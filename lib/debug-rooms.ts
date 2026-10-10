@@ -26,7 +26,10 @@ export const LIVE_ROOMS_KEY = 'debug:live-rooms'
 export type DebugAccess = 'ok' | 'disabled' | 'denied'
 
 /** No configured token disables the endpoint outright; a wrong one is denied. */
-export const debugAccess = (configured: string | undefined, presented: string | undefined): DebugAccess => {
+export const debugAccess = (
+  configured: string | undefined,
+  presented: string | undefined
+): DebugAccess => {
   if (!configured) return 'disabled'
   if (!presented) return 'denied'
   const expected = Buffer.from(configured)
@@ -94,7 +97,8 @@ export const describeRoom = async ({
 }: {
   redis: unknown
   gameId: string
-  armed: readonly ArmedSeatTimer[]
+  /** This machine's timers for the room; absent when another machine owns it. */
+  armed?: readonly ArmedSeatTimer[]
   now?: number
 }): Promise<DebugRoom | undefined> => {
   const game = (await (redis as ReadRedis).get<Game>(gameId)) ?? undefined
@@ -105,7 +109,7 @@ export const describeRoom = async ({
   ])
   const seats = Object.values(game.players).map((seat): DebugSeat => {
     const own = renders.find(render => render.seat === seat.id && render.viewer === seat.id)
-    const timer = armed.find(entry => entry.seat === seat.id)
+    const timer = armed?.find(entry => entry.seat === seat.id)
     return {
       id: seat.id,
       name: seat.name,
@@ -123,7 +127,7 @@ export const describeRoom = async ({
       ...(timer ? { armed: { kind: timer.kind, seq: timer.seq, inMs: timer.fireAt - now } } : {}),
     }
   })
-  const table = armed.find(entry => entry.kind === 'next-round')
+  const table = armed?.find(entry => entry.kind === 'next-round')
   return {
     id: game.id,
     rev: game.rev,
@@ -136,7 +140,7 @@ export const describeRoom = async ({
     violations: seatInvariantViolations(game, {
       now,
       capsOn: SERVER_CONTROLLED_CAPS,
-      armed: armed.filter(entry => entry.kind !== 'next-round'),
+      armed: armed?.filter(entry => entry.kind !== 'next-round'),
       renders,
     }),
   }
@@ -144,9 +148,14 @@ export const describeRoom = async ({
 
 /** Rooms the auditor saw with a live socket inside the window. */
 export const liveRoomIds = async (redis: unknown, now = Date.now()): Promise<string[]> => {
-  const members = await (redis as ReadRedis).zrange?.(LIVE_ROOMS_KEY, now - LIVE_ROOM_WINDOW_MS, now, {
-    byScore: true,
-  })
+  const members = await (redis as ReadRedis).zrange?.(
+    LIVE_ROOMS_KEY,
+    now - LIVE_ROOM_WINDOW_MS,
+    now,
+    {
+      byScore: true,
+    }
+  )
   return (members ?? []).map(String)
 }
 

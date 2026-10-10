@@ -25,7 +25,12 @@ const clock: ReplayClock = {
 /** A lobby the brain can play end to end: two bots and a human it covers. */
 const autopilotTable = (): Game => {
   const id = uniqueGameId('replay')
-  const human = { ...createPlayer('human'), name: 'Human', ready: true, autopilot: { sinceRound: 0 } }
+  const human = {
+    ...createPlayer('human'),
+    name: 'Human',
+    ready: true,
+    autopilot: { sinceRound: 0 },
+  }
   const bots = [createBot([human]), createBot([human])]
   bots[1]!.name = `${bots[1]!.name}-2`
   return {
@@ -96,10 +101,14 @@ describe('deterministic replay', () => {
   const fixtures = fs.existsSync(REPLAYS_DIR)
     ? fs.readdirSync(REPLAYS_DIR).filter(name => name.endsWith('.json'))
     : []
-  it.each(fixtures)('replays the captured room %s without a divergence', async name => {
-    const bundle = JSON.parse(fs.readFileSync(path.join(REPLAYS_DIR, name), 'utf8')) as RoomExport
-    const outcome = await replayRoom(bundle, clock)
-    expect(outcome.mismatches).toEqual([])
-    expect(outcome.violations).toEqual([])
-  }, 120_000)
+  it.each(fixtures)(
+    'replays the captured room %s without a divergence',
+    async name => {
+      const bundle = JSON.parse(fs.readFileSync(path.join(REPLAYS_DIR, name), 'utf8')) as RoomExport
+      const outcome = await replayRoom(bundle, clock)
+      expect(outcome.mismatches).toEqual([])
+      expect(outcome.violations).toEqual([])
+    },
+    120_000
+  )
 })

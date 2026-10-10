@@ -72,7 +72,7 @@ const VALUES_REVEAL_ELAPSED = 2 / 3
 const { status, isHard, submitAnswer, giveUp } = useGateChallenge()
 
 const struck = ref(new Set<ISOCountryCode>())
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+const { secondsLeft, elapsedFraction, stop } = useGateClock({
   onExpire: () => giveUp(),
 })
 const strikeHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)

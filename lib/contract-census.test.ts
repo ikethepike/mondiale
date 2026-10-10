@@ -329,6 +329,28 @@ describe('the wire', () => {
     'gate-reveal-done': true,
   }
 
+  type LegacyEcho<E extends ClientEventData['event']> = Extract<
+    keyof Extract<ClientEventData, { event: E }>,
+    'gateTile' | 'turn' | 'roundIndex' | 'remainingFraction'
+  >
+  const noLegacyEcho: {
+    [E in (typeof SEAT_EVENTS)[number]]: LegacyEcho<E> extends never ? true : false
+  } = {
+    'close-tutorial': true,
+    'enter-movement-phase': true,
+    'round-play': true,
+    'round-reveal-done': true,
+    'submit-group-challenge-answers': true,
+    'submit-individual-challenge-answer': true,
+    'submit-final-challenge-answer': true,
+    'gate-reveal-done': true,
+  }
+
+  it('no seat event carries a gateTile, turn or roundIndex echo', () => {
+    expect(Object.values(noLegacyEcho).every(Boolean)).toBe(true)
+    expect(read('types/events.types.ts')).not.toMatch(/\b(gateTile|roundIndex)\b/)
+  })
+
   it('every seat event echoes the cursor it answers', () => {
     expect(Object.keys(echoes).sort()).toEqual([...SEAT_EVENTS].sort())
   })

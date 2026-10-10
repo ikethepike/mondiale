@@ -131,8 +131,7 @@ export const migrateLegacySeats = (game: Game, now = Date.now()): boolean => {
   for (const seat of Object.values(game.players)) {
     if (seat.cursor) continue
     seat.cursor = legacyCursorFor(game, seat, now)
-    const legacy = seat as unknown as Record<string, unknown>
-    for (const field of LEGACY_SEAT_FIELDS) delete legacy[field]
+    for (const field of LEGACY_SEAT_FIELDS) Reflect.deleteProperty(seat, field)
     changed = true
   }
   return changed

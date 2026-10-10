@@ -59,7 +59,7 @@ const { status, isEasy, submitAnswer, giveUp } = useGateChallenge()
 const boughtRelation = ref(false)
 const footerReady = ref(false)
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+const { secondsLeft, elapsedFraction, stop } = useGateClock({
   onExpire: () => giveUp(),
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)

@@ -1,5 +1,5 @@
 import { SEAT_STEP_SPECS, type SeatViewFamily } from '~~/lib/seat-transitions'
-import type { SeatCursor } from '~~/types/seat.types'
+import type { SeatCursor, SeatVerdict } from '~~/types/seat.types'
 
 /**
  * Which view a cursor renders, and the identity its component is keyed on.
@@ -27,3 +27,22 @@ export const seatViewKey = (cursor: Pick<SeatCursor, 'step' | 'subject' | 'walk'
       return family
   }
 }
+
+/** The cursor's `kind` verdict, only while the cursor and the verdict are both on `subject`. */
+export const seatVerdictOn = <K extends SeatVerdict['kind']>(
+  cursor: Pick<SeatCursor, 'subject' | 'verdict'> | undefined,
+  kind: K,
+  subject: string | undefined = cursor?.subject
+): Extract<SeatVerdict, { kind: K }> | undefined => {
+  const verdict = cursor?.verdict
+  if (verdict?.kind !== kind || verdict.subject !== subject || cursor?.subject !== subject) {
+    return undefined
+  }
+  return verdict as Extract<SeatVerdict, { kind: K }>
+}
+
+/** A view's optimistic grade, only while the subject it graded is on screen. */
+export const previewOn = <T extends { subject: string }>(
+  preview: T | undefined,
+  cursor: Pick<SeatCursor, 'subject'> | undefined
+): T | undefined => (preview && preview.subject === cursor?.subject ? preview : undefined)

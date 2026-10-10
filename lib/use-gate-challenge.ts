@@ -33,6 +33,7 @@ import { createRedeliver, useClientEvents } from './events/client-side'
 import { gateClockFor, gateClockFraction, gateVerdictLeadMs } from './gate-timing'
 import { isBrowsableGateVariant } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
+import { seatVerdictOn } from './seat-view'
 import { secondsOnDeadline } from './use-deadline-clock'
 import { useServerNow } from './use-server-now'
 
@@ -137,12 +138,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
   )
 
   /** The server's verdict on THIS gate, once it lands. */
-  const verdict = computed(() => {
-    const cursor = seatCursor.value
-    return cursor?.subject === subject && cursor.verdict?.kind === 'gate'
-      ? cursor.verdict
-      : undefined
-  })
+  const verdict = computed(() => seatVerdictOn(seatCursor.value, 'gate', subject))
   const status = computed<'correct' | 'incorrect' | undefined>(() => {
     if (verdict.value) return verdict.value.correct ? 'correct' : 'incorrect'
     return gameStore.previewStatus

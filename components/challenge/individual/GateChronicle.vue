@@ -119,7 +119,7 @@ const buyAnchor = () => {
   anchorSlug.value = chronicleSolution(dealt.value)[0]
 }
 
-const { secondsLeft, remainingFraction, stop, elapsedFraction } = useGateClock({
+const { secondsLeft, stop, elapsedFraction } = useGateClock({
   onExpire: () => resolve(),
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)

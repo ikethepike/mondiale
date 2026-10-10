@@ -11,6 +11,8 @@ name: Fly PR Preview
 #     optional. A free separate Upstash database keeps preview games out of
 #     production Redis. When absent, the deploy still works but multiplayer
 #     rooms will fail to persist (the socket server needs a Redis token).
+#   PLAYTEST_DEBUG_TOKEN — optional. Staged as NUXT_DEBUG_TOKEN so /debug/rooms
+#     answers on the preview (playtest.yml's preview pass, capture-replay).
 on:
   pull_request:
     types: [opened, reopened, synchronize, closed]
@@ -21,6 +23,7 @@ env:
   APP: pr-${{ github.event.number }}-mondiale
   PREVIEW_REDIS_URL: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_URL }}
   PREVIEW_REDIS_TOKEN: ${{ secrets.PREVIEW_UPSTASH_REDIS_REST_TOKEN }}
+  PLAYTEST_DEBUG_TOKEN: ${{ secrets.PLAYTEST_DEBUG_TOKEN }}
 
 # One deploy per PR at a time; a newer push cancels the older build.
 concurrency:
@@ -53,6 +56,10 @@ jobs:
           flyctl secrets set --app "$APP" --stage \
             UPSTASH_REDIS_REST_URL="$PREVIEW_REDIS_URL" \
             UPSTASH_REDIS_REST_TOKEN="$PREVIEW_REDIS_TOKEN"
+
+      - name: Stage the preview debug token
+        if: env.PLAYTEST_DEBUG_TOKEN != ''
+        run: flyctl secrets set --app "$APP" --stage NUXT_DEBUG_TOKEN="$PLAYTEST_DEBUG_TOKEN"
 
       # --ha=false keeps previews on one machine (rooms shard per machine via
       # game-routing.ts, but a preview never needs more than one). Rolling
