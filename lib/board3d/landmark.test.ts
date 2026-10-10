@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { pickBoatMooring } from './boat'
 import { pickLakeSite, withLakeBed } from './lake'
-import { LANDMARK_KINDS, pickLandmarkSite } from './landmark'
+import { Vector3 } from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { LANDMARK_KINDS, LANDMARK_REGIONS, pickLandmarkSite } from './landmark'
+import { landmarkParts } from './landmark-models'
 import { createTilePath } from './path'
 import { pickRiverPath, withRiverBed } from './river'
 import { furniturePoints, pickScenerySites, pickWaymarkSites } from './scenery'
@@ -10,6 +13,7 @@ import { createHeightSampler, EDGE_FADE_START, withEdgeFalloff, withPathShelf } 
 import { pickTownSite } from './town'
 import { pickPondSite, withPondBasin } from './water'
 import type { Tile } from '~~/types/game.types'
+import { REGION_LABELS } from '~~/lib/variant'
 
 /** Mirror the builder's chain up to the landmark, which is sited last. */
 const worldFor = (seed: string, count = 65) => {
@@ -96,4 +100,23 @@ describe('pickLandmarkSite', () => {
     }
     expect(checked).toBeGreaterThan(0)
   }, 60_000)
+
+  it('reaches every region and Antarctica', () => {
+    const covered = new Set<string>(Object.values(LANDMARK_REGIONS))
+    for (const region of [...Object.keys(REGION_LABELS), 'antarctica']) {
+      expect(covered.has(region), region).toBe(true)
+    }
+  })
+
+  it('builds every monument into mergeable, finite geometry', () => {
+    for (const kind of LANDMARK_KINDS) {
+      const parts = landmarkParts({ kind, center: new Vector3(), sink: 0.4, radius: 2.6, yaw: 0 })
+      const merged = mergeGeometries(parts.map(part => part.geometry.toNonIndexed()))
+      expect(merged, kind).toBeTruthy()
+      merged.computeBoundingBox()
+      const { min, max } = merged.boundingBox!
+      expect(Number.isFinite(max.y), kind).toBe(true)
+      expect(Math.max(-min.x, max.x, -min.z, max.z), kind).toBeLessThanOrEqual(2.6)
+    }
+  })
 })

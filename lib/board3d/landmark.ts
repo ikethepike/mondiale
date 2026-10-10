@@ -1,6 +1,7 @@
 import Alea from 'alea'
 import { Vector3 } from 'three'
 import { sample } from '~~/lib/arrays'
+import type { Region } from '~~/types/geography.types'
 import type { HeightSampler } from './terrain'
 import { EDGE_FADE_START } from './terrain'
 import type { TilePathResult } from './path'
@@ -15,26 +16,39 @@ import { type LakeSite, lakeShoreDistance } from './lake'
  * board treat, purely visual. Placement only — geometry lives in
  * board-builder with the other mesh construction.
  */
-export const LANDMARK_KINDS = [
-  'eiffelTower',
-  'whiteHouse',
-  'motherland',
-  'tajMahal',
-  'colosseum',
-  'stockholmCityHall',
-  'berlinTvTower',
-  'machuPicchu',
-  'gizaPyramids',
-  'bigBen',
-  'sydneyOperaHouse',
-  'moai',
-] as const
+export const LANDMARK_REGIONS = {
+  eiffelTower: 'europe',
+  colosseum: 'europe',
+  bigBen: 'europe',
+  stockholmCityHall: 'europe',
+  berlinTvTower: 'europe',
+  motherland: 'europe',
+  tajMahal: 'asia',
+  templeOfHeaven: 'asia',
+  fujiPagoda: 'asia',
+  burjKhalifa: 'middle-east',
+  gizaPyramids: 'africa',
+  djenneMosque: 'africa',
+  whiteHouse: 'north-america',
+  statueOfLiberty: 'north-america',
+  chichenItza: 'north-america',
+  machuPicchu: 'south-america',
+  moai: 'south-america',
+  sydneyOperaHouse: 'oceania',
+  uluru: 'oceania',
+  southPole: 'antarctica',
+} as const satisfies Record<string, Region | 'antarctica'>
 
-export type LandmarkKind = (typeof LANDMARK_KINDS)[number]
+export type LandmarkKind = keyof typeof LANDMARK_REGIONS
+
+export const LANDMARK_KINDS = Object.keys(LANDMARK_REGIONS) as LandmarkKind[]
 
 export interface LandmarkSite {
   kind: LandmarkKind
+  /** y = the HIGHEST ground under the footprint, where the plinth tops out. */
   center: Vector3
+  /** How far the ground falls away below `center.y` — the plinth's skirt. */
+  sink: number
   /** Footprint claim — later pickers keep out of it. */
   radius: number
   /** The monument's front faces the nearest stretch of track. */
@@ -56,7 +70,7 @@ const LANDMARK_CHANCE = 0.2
 /** Footprint (world units — the monuments are built at house scale). */
 const LANDMARK_RADIUS = 2.6
 /** Height spread tolerated across the footprint (world units). */
-const MAX_SPREAD = 0.9
+const MAX_SPREAD = 0.6
 const SCAN_STEP = 3
 
 export const pickLandmarkSite = (
@@ -100,7 +114,9 @@ export const pickLandmarkSite = (
 
   // Level, open plots near enough the track that the pawns pass it by.
   const reach = EDGE_FADE_START - radius - 2
-  let best: { x: number; z: number; y: number; score: number; nearest: Vector3 } | undefined
+  let best:
+    | { x: number; z: number; high: number; spread: number; score: number; nearest: Vector3 }
+    | undefined
   for (let x = -reach; x <= reach; x += SCAN_STEP) {
     for (let z = -reach; z <= reach; z += SCAN_STEP) {
       if (Math.hypot(x, z) > reach) continue
@@ -118,9 +134,9 @@ export const pickLandmarkSite = (
       const y = sampler(x, z)
       let low = y
       let high = y
-      for (const ring of [radius, radius * 0.55]) {
-        for (let arm = 0; arm < 8; arm++) {
-          const angle = (arm * Math.PI) / 4
+      for (const ring of [radius, radius * 0.7, radius * 0.4]) {
+        for (let arm = 0; arm < 12; arm++) {
+          const angle = (arm * Math.PI) / 6
           const edge = sampler(x + Math.sin(angle) * ring, z + Math.cos(angle) * ring)
           low = Math.min(low, edge)
           high = Math.max(high, edge)
@@ -129,14 +145,15 @@ export const pickLandmarkSite = (
       const spread = high - low
       if (spread > MAX_SPREAD) continue
       const score = -spread * 2 - (trackDistance - trackClearance) / spacing
-      if (!best || score > best.score) best = { x, z, y, score, nearest }
+      if (!best || score > best.score) best = { x, z, high, spread, score, nearest }
     }
   }
   if (!best) return undefined
 
   return {
     kind,
-    center: new Vector3(best.x, best.y, best.z),
+    center: new Vector3(best.x, best.high, best.z),
+    sink: best.spread,
     radius,
     yaw: Math.atan2(best.nearest.x - best.x, best.nearest.z - best.z),
   }

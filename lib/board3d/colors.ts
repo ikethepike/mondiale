@@ -16,8 +16,10 @@ export const BOARD_COLORS = {
   pondBlue: '#4d92b3',
   // Scene-only: weathered volcanic stone (the moai)
   basalt: '#7d7672',
-  // Scene-only: the shaded flank of sandstone (the pyramids)
+  // Scene-only: the shaded flank of sandstone (the pyramids), sun-baked mud
   duneShade: '#cf9a66',
+  // Scene-only: red desert rock (Uluru)
+  ochre: '#c2673f',
 } as const
 
 // Scene-only gate-top washes: each brand hue mixed toward sourMilk so a
