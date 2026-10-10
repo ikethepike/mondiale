@@ -212,7 +212,7 @@ const {
   announce,
   gameStore,
   update,
-  registerCleanup,
+  createViewTimer,
 } = useGroupChallenge('atlas-challenge', { solo: false })
 
 const state = computed(() => challenge.value?.state)
@@ -524,7 +524,7 @@ const paintChain = (staggered: boolean) => {
 
 watch(challenge, () => !finished.value && paintChain(false), { immediate: true, deep: true })
 
-let replayTimer: ReturnType<typeof setTimeout> | undefined
+const scheduleReplay = createViewTimer()
 
 // The reveal replay: blank the path, then let it re-arrive hop by hop, with
 // the local player's missed continuations glowing as the lesson. Immediate, so
@@ -537,8 +537,7 @@ watch(
     gameStore.map.countryGroupings = undefined
     gameStore.map.landRoutes = []
     gameStore.map.pulsing = []
-    clearTimeout(replayTimer)
-    replayTimer = setTimeout(() => {
+    scheduleReplay(() => {
       paintChain(true)
       const outs = state.value?.missedOuts[gameStore.seatId] ?? []
       gameStore.map.tints = Object.fromEntries(outs.map(isoCode => [isoCode, 'optimal']))
@@ -546,7 +545,6 @@ watch(
   },
   { immediate: true }
 )
-registerCleanup(() => clearTimeout(replayTimer))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

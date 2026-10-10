@@ -262,6 +262,7 @@ const {
   announce,
   entries,
   registerCleanup,
+  createViewTimer,
   gameStore,
   update,
 } = useGroupChallenge('manhunt-challenge', { solo: false })
@@ -738,7 +739,7 @@ const revealSeaLinks = (walk: ISOCountryCode[]): string[] => {
   return keys
 }
 
-let replayTimer: ReturnType<typeof setTimeout> | undefined
+const scheduleReplay = createViewTimer()
 
 // The reveal replay: the whole escape trail re-arrives hop by hop for the
 // entire table — the trail is finally public inside state.outcome. Immediate,
@@ -753,8 +754,7 @@ watch(
     gameStore.map.pulsing = []
     gameStore.map.ringed = []
     gameStore.map.landRoutes = []
-    clearTimeout(replayTimer)
-    replayTimer = setTimeout(() => {
+    scheduleReplay(() => {
       const groupings: CountryColorGrouping[] = walk.map((isoCode, index) => ({
         color: trailColor(index, walk.length, index === walk.length - 1),
         countries: [isoCode],
@@ -768,7 +768,6 @@ watch(
   },
   { immediate: true }
 )
-registerCleanup(() => clearTimeout(replayTimer))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

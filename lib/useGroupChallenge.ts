@@ -320,6 +320,18 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
+  /** A view timeout that dies with the view; arming it again replaces the
+   *  pending one. A bare setTimeout outlived its view and painted the old
+   *  round's map over the next screen. */
+  const createViewTimer = () => {
+    let handle: ReturnType<typeof setTimeout> | undefined
+    registerCleanup(() => clearTimeout(handle))
+    return (fn: () => void, ms: number) => {
+      clearTimeout(handle)
+      handle = setTimeout(fn, ms)
+    }
+  }
+
   // Watch mode: run the round clock as AMBIENCE on the spectator's own time —
   // hint unlocks and staged reveals key off elapsedFraction and would stay
   // frozen otherwise. Keyed on the ROUND NUMBER, not the duration: two
@@ -361,6 +373,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     submitOnce,
     stopCountdown,
     registerCleanup,
+    createViewTimer,
     isDisposed: () => disposed,
     gameStore,
     update,
