@@ -81,12 +81,12 @@ export interface PlaytestScope {
 /** The live question's identity for the driver's stale-verdict check. */
 export const questionKeyOf = (
   move: { endTile: { position: number }; challenge?: { _type: string } } | undefined,
-  walkSeq?: number
+  walkSeq: number | undefined
 ): string | undefined => {
   const challenge = move?.challenge as
     { _type: string; turn?: number; challenges?: unknown[] } | undefined
   if (challenge?._type === 'final-challenge') {
-    return `final:${challenge.turn ?? 0}:${challenge.challenges?.length ?? 0}`
+    return `final:${walkSeq}:${challenge.turn ?? 0}:${challenge.challenges?.length ?? 0}`
   }
   // The walk is part of a gate's identity: a blocked seat lands on the same
   // tile next round, and that re-landing is a fresh question.

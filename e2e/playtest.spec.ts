@@ -68,6 +68,8 @@ const CHAOS_OFFLINE_MS: [number, number] = [2000, 8000]
 /** How long after a disconnect a skipped beat is the reconnect's resync. */
 const RECONNECT_WINDOW_MS = 15_000
 const TICK_TIMEOUT_MS = 15_000
+/** Longer than any incident's recovery watch plus reload: past it a tick is hung. */
+const TICK_HANG_MS = 120_000
 /** Screenshot every presented view once it settles (PLAYTEST_SHOTS=1). */
 const SHOTS = process.env.PLAYTEST_SHOTS === '1'
 const VIEW_SETTLE_MS = 3000
@@ -113,13 +115,13 @@ interface Seat {
   longTasksSeen: number
   errors: string[]
   console: string[]
-  /** A tick is in flight — the loop never overlaps two on one seat. */
-  ticking?: boolean
+  ticking?: number
+  tickHangReported?: boolean
   /** Until when chaos holds this seat offline — lag checks wait it out. */
   offlineUntil: number
   shots: number
   /** The live question and when it opened — a verdict must be earned on it. */
-  question?: { key: string; at: number; checked: boolean }
+  question?: { key: string; at?: number; checked: boolean }
   /** The last view swap, held until its residue check has run. */
   swap?: { at: number; from?: string; to?: string; prompts: string[]; verdicts: string[] }
 }
@@ -128,8 +130,6 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
-
-const pick = <T>(list: readonly T[]): T => sample(list)!
 
 const readProbe = (page: Page) =>
   page.evaluate(() => (window as unknown as PlaytestScope).__gameProbe?.()).catch(() => undefined)
@@ -165,14 +165,14 @@ const act = async (page: Page) => {
 
     const input = page.locator('.guess-form input:visible').first()
     if ((await input.count()) && (await input.isEnabled())) {
-      await input.fill(pick(GUESSES), quick)
+      await input.fill(sample(GUESSES)!, quick)
       await input.press('Enter', quick)
       return
     }
 
     await page.evaluate(
       isoCode => document.dispatchEvent(new CustomEvent('mapClick', { detail: { isoCode } })),
-      pick(MAP_CODES)
+      sample(MAP_CODES)!
     )
   } catch {
     // A view swapped under the click — the next tick reads the new one.
@@ -527,7 +527,7 @@ for (let room = 0; room < ROOMS; room += 1) {
           prompts: before?.prompts ?? [],
           verdicts: before?.verdicts ?? [],
         }
-        if (SHOTS && presented) {
+        if (SHOTS) {
           const shot = path.join(
             outDir,
             'views',
@@ -555,28 +555,35 @@ for (let room = 0; room < ROOMS; room += 1) {
 
       // A fresh gate or gauntlet question must open bare: a verdict painted on
       // it before the seat graded anything is a previous answer's, carried
-      // over (the gauntlet beat matched by turn alone did exactly this).
+      // over (the gauntlet beat matched by turn alone did exactly this). The
+      // clock starts when the question is ON SCREEN with no verdict of the
+      // seat's own still playing — a correct gate shifts the key at the answer,
+      // while that answer's verdict rightly holds for its beat.
       if (probe.questionKey !== seat.question?.key) {
-        seat.question = probe.questionKey
-          ? { key: probe.questionKey, at: probe.at, checked: false }
-          : undefined
+        seat.question = probe.questionKey ? { key: probe.questionKey, checked: false } : undefined
       }
       const question = seat.question
+      const onQuestion =
+        probe.presented === 'individual-challenge' || probe.presented === 'final-challenge'
+      if (question && question.at === undefined && onQuestion && !probe.localVerdict) {
+        question.at = probe.at
+      }
       if (
-        question &&
+        question?.at !== undefined &&
         !question.checked &&
+        onQuestion &&
         probe.at - question.at >= STALE_VERDICT_FROM_MS &&
-        probe.at - question.at <= STALE_VERDICT_UNTIL_MS
+        probe.at - question.at <= STALE_VERDICT_UNTIL_MS &&
+        probe.screen.verdicts.length &&
+        !probe.localVerdict
       ) {
-        if (probe.screen.verdicts.length && !probe.localVerdict) {
-          question.checked = true
-          await report(
-            seat,
-            'stale-verdict',
-            `${question.key} opened with verdict "${probe.screen.verdicts[0]}" before any answer`,
-            server
-          )
-        }
+        question.checked = true
+        await report(
+          seat,
+          'stale-verdict',
+          `${question.key} opened with verdict "${probe.screen.verdicts[0]}" before any answer`,
+          server
+        )
       }
 
       // What the swap left painted: the previous view's prompt or verdict
@@ -630,14 +637,27 @@ for (let room = 0; room < ROOMS; room += 1) {
 
       // A tick can hold for a whole incident (the recovery watch, a reload):
       // the loop moves on after TICK_TIMEOUT_MS but never starts a second
-      // tick on a seat whose first is still running.
+      // tick on a seat whose first is still running. One that never returns
+      // is itself the finding — a page too hung to answer the probe.
+      for (const seat of seats) {
+        if (seat.ticking && !seat.tickHangReported && Date.now() - seat.ticking > TICK_HANG_MS) {
+          seat.tickHangReported = true
+          incidents.push({
+            kind: 'tick-hang',
+            seat: seat.name,
+            at: new Date().toISOString(),
+            detail: `no tick has returned for ${Math.round((Date.now() - seat.ticking) / 1000)}s`,
+          })
+        }
+      }
       await Promise.all(
         seats
           .filter(seat => !seat.ticking)
           .map(async seat => {
-            seat.ticking = true
+            seat.ticking = Date.now()
             const tick = tickSeat(seat).finally(() => {
-              seat.ticking = false
+              seat.ticking = undefined
+              seat.tickHangReported = false
             })
             let timer: ReturnType<typeof setTimeout> | undefined
             const timeout = new Promise<void>(resolve => {
