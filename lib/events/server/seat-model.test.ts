@@ -253,7 +253,7 @@ const runScenario = async (scenario: Scenario) => {
   const actives = [...roles].filter(([, role]) => role === 'active').map(([id]) => id)
   const bots = [...roles].filter(([, role]) => role === 'bot').map(([id]) => id)
   const connected = humans.filter(id => id === game.host || roles.get(id) !== 'autopilot')
-  const table = await createTestTable(game, { connected })
+  const table = await createTestTable(game, { connected, captureEmits: false })
 
   const highest = new Map<string, number>()
   const echoes = new Map<string, SeatEcho[]>()
@@ -445,6 +445,6 @@ describe('the seat contract under random play', () => {
         ...(REPLAY_PATH ? { path: REPLAY_PATH } : {}),
       })
     },
-    20 * 60_000
+    Math.max(20 * 60_000, RUNS * 2000)
   )
 })

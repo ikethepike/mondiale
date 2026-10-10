@@ -151,7 +151,7 @@ const act = async (page: Page) => {
   try {
     const acks = page.getByRole('button', { name: ACK_BUTTON })
     for (const button of (await acks.all()).slice(0, 3)) {
-      if ((await button.isVisible()) && (await button.isEnabled())) {
+      if ((await button.isVisible()) && (await button.isEnabled(quick))) {
         await button.click(quick)
         return
       }
@@ -164,7 +164,9 @@ const act = async (page: Page) => {
     if (optionCount) return void (await options.nth(randomInt(0, optionCount - 1)).click(quick))
 
     const input = page.locator('.guess-form input:visible').first()
-    if ((await input.count()) && (await input.isEnabled())) {
+    // isEnabled WAITS for its element: one the swap just removed would hold
+    // the tick until the next round's input appears.
+    if ((await input.count()) && (await input.isEnabled(quick))) {
       await input.fill(sample(GUESSES)!, quick)
       await input.press('Enter', quick)
       return

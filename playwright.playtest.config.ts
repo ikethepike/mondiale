@@ -34,11 +34,15 @@ const envFile = fs.existsSync('.env') ? '--env-file=.env ' : ''
 export default defineConfig({
   testDir: './e2e',
   testMatch: /playtest\.spec\.ts/,
+  // Playwright empties its output dir on every run: each run gets its own, so
+  // two passes (CI) or two matrix cells never wipe each other's results.
+  outputDir: path.join(process.env.PLAYTEST_OUT ?? 'test-results/playtest', '.playwright'),
   fullyParallel: true,
   workers: Number(process.env.PLAYTEST_ROOMS ?? 1),
   use: {
     baseURL: externalServer ?? `http://127.0.0.1:${PORT}`,
     trace: 'retain-on-failure',
+    actionTimeout: 10_000,
   },
   // One engine per run (PLAYTEST_BROWSER=webkit for the Safari pass): every
   // room is a full game, so running both by default doubles a long run.

@@ -91,7 +91,8 @@ export const uniqueGameId = (prefix = 'table') => `${prefix}-${++tableSeq}-${Dat
 
 export const createTestTable = async (
   game: Game,
-  options: { connected?: readonly string[] } = {}
+  /** `captureEmits: false` for long property runs: each capture clones the whole game. */
+  options: { connected?: readonly string[]; captureEmits?: boolean } = {}
 ) => {
   const redis = fakeTableRedis()
   await redis.set(game.id, game)
@@ -103,7 +104,7 @@ export const createTestTable = async (
   const io = {
     in: () => ({
       emit: (event: string, payload: ServerEnvelope, target: ClientEventTarget) => {
-        emits.push({ event, payload: clone(payload), target })
+        if (options.captureEmits !== false) emits.push({ event, payload: clone(payload), target })
       },
       fetchSockets: async () =>
         (options.connected ?? []).map(playerId => ({
