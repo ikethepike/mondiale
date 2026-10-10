@@ -3,7 +3,7 @@ import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
 import type { UniqueCategoryId } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
-import type { SeatStep } from './seat.types'
+import { SEAT_STEPS, type SeatStep } from './seat.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
  *  verdict — only that the player answered. `taken` is a contested-pool
@@ -539,3 +539,19 @@ export type MapHoverEvent = CustomEvent<{ isoCode?: ISOCountryCode | string }>
 export const isMapHoverEvent = (event: Event): event is MapHoverEvent => {
   return event && Reflect.has(event, 'detail')
 }
+
+const RENDER_FIELD_MAX = 120
+
+/** A render ack worth storing: well-formed and bounded, whatever a client sent. */
+export const isSeatRender = (
+  data: ClientEventData
+): data is Extract<ClientEventData, { event: 'seat-rendered' }> =>
+  data.event === 'seat-rendered' &&
+  typeof data.seatId === 'string' &&
+  data.seatId.length <= RENDER_FIELD_MAX &&
+  Number.isInteger(data.seq) &&
+  (SEAT_STEPS as readonly string[]).includes(data.step) &&
+  typeof data.subject === 'string' &&
+  data.subject.length <= RENDER_FIELD_MAX &&
+  typeof data.view === 'string' &&
+  data.view.length <= RENDER_FIELD_MAX

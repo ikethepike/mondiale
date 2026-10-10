@@ -17,6 +17,7 @@ import { forgetCheerBucket } from '~~/lib/events/server/player-cheering.handler'
 import { forgetGuessBucket } from '~~/lib/events/server/player-guessing.handler'
 import { forgetTauntBucket } from '~~/lib/events/server/manhunt-taunt.handler'
 import {
+  authorizeClientEvent,
   runClientEvent,
   SERVER_SIDE_EVENT_HANDLERS,
   UNQUEUED_CLIENT_EVENTS,
@@ -31,6 +32,7 @@ import type {
   ClientEventData,
   ClientEventTarget,
 } from '~~/types/events.types'
+import { isSeatRender } from '~~/types/events.types'
 
 export type EventHandler = (configuration: {
   redis: Redis
@@ -44,6 +46,19 @@ export type EventHandler = (configuration: {
 /** Per-socket cap on 'error' log lines: the event is client-emittable, so a
  *  socket's share of the log has to be bounded. */
 const SOCKET_ERROR_LOG_CAP = 3
+
+// Render acks cost two Redis writes and a log line each, so a socket gets a budget.
+const RENDER_ACK_WINDOW_MS = 10_000
+const RENDER_ACKS_PER_WINDOW = 20
+const renderAcks = new WeakMap<GameSocket, number[]>()
+const renderBudget = (socket: GameSocket): boolean => {
+  const now = Date.now()
+  const recent = (renderAcks.get(socket) ?? []).filter(at => now - at < RENDER_ACK_WINDOW_MS)
+  if (recent.length >= RENDER_ACKS_PER_WINDOW) return false
+  recent.push(now)
+  renderAcks.set(socket, recent)
+  return true
+}
 
 /**
  * A watcher's socket dropped — remove them from the spectator set so the "N
@@ -191,29 +206,22 @@ export default defineEventHandler(({ node }) => {
             // where an 'error' receipt would make it give up for good.
             if (isDraining()) return
 
-            // Authorization: the handshake (or `join`) establishes the
-            // socket→player binding; every other event must target the SAME
-            // player this socket claimed. This is the one chokepoint that
-            // stops a client forging another player's actions
-            // (server-originated re-entries call the handler functions
-            // directly and never pass through here).
-            // An UNBOUND socket (refused join left connected, pre-join
-            // handshake) must match nothing: undefined !== undefined is
-            // false, so without the explicit bind check a crafted
-            // `playerId: undefined` target sailed through this guard.
-            if (
-              eventKey !== 'join' &&
-              (!socket.data.playerId || eventTarget.playerId !== socket.data.playerId)
-            ) {
+            const verdict = authorizeClientEvent(eventKey, eventData, eventTarget, socket.data)
+            if (verdict !== 'ok') {
               console.warn(
-                `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
+                `Rejected ${eventKey} (${verdict}): socket ${socket.data.playerId ?? '(unbound)'} in ${socket.data.gameId ?? '(no room)'} tried to act as ${eventTarget.playerId}`
               )
-              ack?.({ ok: false, reason: 'unbound', serverNow: Date.now() })
+              ack?.({
+                ok: false,
+                reason: verdict === 'mismatch' ? 'error' : 'unbound',
+                serverNow: Date.now(),
+              })
               return
             }
 
             const event = eventKey as ClientEvent
             if (eventData.event === 'seat-rendered') {
+              if (!isSeatRender(eventData) || !renderBudget(socket)) return
               recordSeatRender(redis, eventTarget.gameId, {
                 viewer: eventTarget.playerId,
                 seat: eventData.seatId,

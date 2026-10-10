@@ -1,7 +1,7 @@
 import type { Redis } from '@upstash/redis'
 import type { ClientEvent, ClientEventData, ClientEventTarget } from '~~/types/events.types'
 import type { EventHandler } from '~~/server/middleware/socket.server'
-import { enqueueGameTask, type GameServer, type GameSocket } from '../server-side'
+import { enqueueGameTask, type GameServer, type GameSocket, type SocketData } from '../server-side'
 import { recordSeatEvent } from './seat-journal'
 import { closeTutorialHandler } from './close-tutorial.handler'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
@@ -174,6 +174,28 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'time-sync': {
     handler: () => undefined,
   },
+}
+
+/**
+ * The one chokepoint between a socket and a handler. The handler is chosen by
+ * the payload, so the payload must name the event it was sent as (a `join`
+ * carrying another event's payload would skip the binding). Every event but
+ * `join` must target the player the socket is bound to, in the room it is
+ * bound to — an unbound socket matches nothing. Server re-entries call
+ * handlers directly and never pass through here.
+ */
+export const authorizeClientEvent = (
+  eventKey: string,
+  eventData: Partial<ClientEventData> | undefined,
+  eventTarget: ClientEventTarget,
+  bound: SocketData
+): 'ok' | 'mismatch' | 'unbound' => {
+  if (eventData?.event !== eventKey) return 'mismatch'
+  if (eventKey === 'join') return 'ok'
+  if (!bound.playerId || !bound.gameId) return 'unbound'
+  return eventTarget.playerId === bound.playerId && eventTarget.gameId === bound.gameId
+    ? 'ok'
+    : 'unbound'
 }
 
 /** Dispatch-only events: never enqueued, never recorded for replay. */

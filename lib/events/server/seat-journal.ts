@@ -131,7 +131,11 @@ const supportsHashes = (redis: unknown): redis is RenderRedis =>
 export const recordSeatRender = async (redis: unknown, gameId: string, render: SeatRender) => {
   logSeatLine('seat-rendered', { game: gameId, ...render })
   if (!supportsHashes(redis)) return
-  await redis.hset(rendersKey(gameId), { [render.viewer]: JSON.stringify(render) })
+  // Per viewer AND seat: a booth's ack for the seat it follows must never
+  // overwrite the viewer's ack for their own seat.
+  await redis.hset(rendersKey(gameId), {
+    [`${render.viewer}|${render.seat}`]: JSON.stringify(render),
+  })
   await redis.expire(rendersKey(gameId), GAME_STATE_TTL_SECONDS)
 }
 
