@@ -62,7 +62,7 @@ import type {
   StatDetectiveChallenge,
   TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
-import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
+import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type {
   RoundChallenge,
   RoundChallengeKind,
@@ -307,9 +307,13 @@ describe('round beats', () => {
     expect(gateResultHoldMsFor('chronicle')).toBe(GATE_BROWSE_CAP_MS)
     // A variant's verdict lead plays INSIDE the server's hold: a lead that
     // outgrew it would end the beat before the result card ever swapped in.
-    for (const variant of ['logo-politics', 'trend-duel'] as IndividualChallengeVariant[]) {
-      expect(gateVerdictLeadMs(variant), variant).toBeGreaterThan(0)
-      expect(gateVerdictLeadMs(variant), variant).toBeLessThan(gateResultHoldMsFor(variant))
+    for (const challenge of [
+      { variant: 'logo-politics', partyLogo: { image: '', name: '', ask: 'ruling' } },
+      { variant: 'trend-duel' },
+    ] as Pick<IndividualChallenge, 'variant' | 'partyLogo'>[]) {
+      const { variant } = challenge
+      expect(gateVerdictLeadMs(challenge), variant).toBeGreaterThan(0)
+      expect(gateVerdictLeadMs(challenge), variant).toBeLessThan(gateResultHoldMsFor(variant))
     }
     expect(REVEAL_BEAT_MS).toBeLessThan(GATE_RESULT_HOLD_MS)
     // The gate punch-in plays INSIDE the arrival hold: the hold is what keeps

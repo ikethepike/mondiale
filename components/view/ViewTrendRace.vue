@@ -89,7 +89,7 @@
       </TransitionGroup>
       <Transition name="caption">
         <BrowseContinue
-          v-if="revealed"
+          v-if="revealed && browseHold !== undefined"
           class="continue-button"
           :seconds-left="browseSecondsLeft"
           @continue="finish"
@@ -225,11 +225,12 @@ const scrollToOutcome = () => {
 // The reveal is browsable: the pick is submitted at once and the server holds
 // the seat on its verdict for the kind's browse cap; Continue ends the hold
 // early. The countdown is that hold, read off the server's stamp.
-const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(() =>
+const browseHold = computed(() =>
   seatCursor.value?.subject === subject && seatCursor.value.step === 'round-verdict'
     ? seatCursor.value.holdUntil
     : undefined
 )
+const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(browseHold)
 const { send: finish } = useAckOnce(() => ({ event: 'round-reveal-done', ...seatEcho(subject) }))
 
 /** One resolution path for both the tap and the timeout. */

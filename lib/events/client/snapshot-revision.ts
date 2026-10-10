@@ -46,6 +46,20 @@ export const isStaleSeat = (current: Game | undefined, incoming: Game, seatId: s
 }
 
 /**
+ * A seat slice is only safe when both sides agree which round is live. A
+ * rejoin race (a reveal the payload predates, or vice versa) makes indexing
+ * one side with the other's length silent cross-round corruption — so across
+ * a round change the payload is taken whole, unless it is itself the stale
+ * side. True when the slice must not be applied.
+ */
+export const takeWholeAcrossRounds = (store: { game?: Game }, incoming: Game): boolean => {
+  const current = store.game
+  if (!current || current.rounds.length === incoming.rounds.length) return false
+  if (!isStaleSnapshot(current, incoming)) store.game = incoming
+  return true
+}
+
+/**
  * The dispatch gate: a FULL-REPLACE snapshot older than the one on screen is
  * dropped. The registry's `snapshotScope` exempts the two shapes that must
  * never be: the join full-sync (the recovery moment, and the one emit that can

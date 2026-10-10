@@ -51,5 +51,10 @@ export const createClockEstimator = (window = CLOCK_WINDOW) => {
       trips.length = 0
       floor = undefined
     },
+    /** A new connection may reach another machine: its snapshot stamps start
+     *  a fresh floor, while the round trips age out on their own. */
+    resetFloor() {
+      floor = undefined
+    },
   }
 }

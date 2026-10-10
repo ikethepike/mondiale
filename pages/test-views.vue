@@ -161,7 +161,7 @@ import {
   groundPlanSeconds,
   isClassicGroupRound,
 } from '~~/lib/round-beats'
-import { settleGroupRound } from '~~/lib/harness/settle-group-round'
+import { settleGroupRound, stampMockClassicClock } from '~~/lib/harness/settle-group-round'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import type {
   AtlasChallenge,
@@ -201,7 +201,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { Player } from '~~/types/player.type'
 import type { SeatStep } from '~~/types/seat.types'
-import { mockSeatCursor } from '~~/lib/harness/mock-cursor'
+import { mockFinalCursor, mockGateCursor, mockSeatCursor } from '~~/lib/harness/mock-cursor'
 import type { Component } from 'vue'
 
 const gameStore = useGameStore()
@@ -822,7 +822,7 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
 }
 
 const groupRound = (groupChallenge: unknown): Round =>
-  ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
+  stampMockClassicClock({ groupChallenge, groupAnswers: {}, playerTurns: {} } as unknown as Round)
 
 /** A finished timeline round flipped to its scorecard, settled the way
  *  timeline-turns does: the real scorer's points, each card flattened to its
@@ -4363,6 +4363,7 @@ const sunsetFixture = (difficulty: GameDifficulty, seed?: ISOCountryCode): Final
 const finalGame = (challenges: FinalChallengeItem[], difficulty: GameDifficulty = 'hard'): Game => {
   const game = mockGame('final', [settledRound()])
   game.difficulty = difficulty
+  game.players[ME]!.cursor = mockFinalCursor(challenges[0], difficulty)
   game.players[ME]!.moves = [
     {
       endTile: game.tiles[game.tiles.length - 1]!,
@@ -4394,7 +4395,9 @@ const membershipLineup = (
 /** A real dealer run — same randomness as production. */
 const gauntletGame = (difficulty: GameDifficulty): Game => {
   const game = finalGame([], difficulty)
-  game.players[ME]!.moves[0]!.challenge = getFinalChallenges({ game })
+  const gauntlet = getFinalChallenges({ game })
+  game.players[ME]!.moves[0]!.challenge = gauntlet
+  game.players[ME]!.cursor = mockFinalCursor(gauntlet.challenges[0], difficulty)
   return game
 }
 
@@ -4418,17 +4421,15 @@ const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   const game = mockGame('gate', [settledRound()])
   const me = game.players[ME]!
-  me.moves = [
-    {
-      endTile: game.tiles[6]!,
-      challenge: {
-        _type: 'individual-challenge',
-        id: 'flag',
-        country: 'FR',
-        ...challenge,
-      },
-    },
-  ] as never
+  const gate = {
+    _type: 'individual-challenge',
+    id: 'flag',
+    country: 'FR',
+    ...challenge,
+  } as IndividualChallenge
+  const endTile = game.tiles[6]!
+  me.moves = [{ endTile, challenge: gate }] as never
+  me.cursor = mockGateCursor(gate, endTile.position)
   return game
 }
 

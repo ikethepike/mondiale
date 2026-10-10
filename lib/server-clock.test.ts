@@ -117,4 +117,16 @@ describe('createClockEstimator', () => {
     clock.reset()
     expect(clock.offset()).toBe(0)
   })
+
+  it('drops only the snapshot floor on a reconnect', () => {
+    const clock = createClockEstimator()
+    clock.add(snapshotSample(0, 10 * MINUTE))
+    clock.resetFloor()
+    clock.add(snapshotSample(0, MINUTE))
+    expect(clock.offset()).toBe(MINUTE)
+
+    clock.add({ offset: 42, rtt: 10 })
+    clock.resetFloor()
+    expect(clock.offset()).toBe(42)
+  })
 })

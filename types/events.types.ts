@@ -242,8 +242,9 @@ export type ClientEventData =
       event: 'enter-movement-phase'
     })
   | (SeatEcho & {
-      /** A seat opened its own timed window (an audio play tap, Empire's
-       *  buzz): the server stamps the seat's deadline from this moment. */
+      /** A seat started its own clock (an audio play tap, Empire's buzz, a
+       *  gate's or the gauntlet's opening card dismissed): the server stamps
+       *  the seat's deadline from this moment, never later than it stood. */
       event: 'round-play'
     })
   | (SeatEcho & {

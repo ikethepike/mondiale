@@ -30,11 +30,17 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { createRedeliver, useClientEvents } from './events/client-side'
-import { gateClockFor, gateClockFraction, gateVerdictLeadMs } from './gate-timing'
+import {
+  gateClockFor,
+  gateClockFraction,
+  gateInterstitialEndsAt,
+  gateVerdictLeadMs,
+} from './gate-timing'
 import { isBrowsableGateVariant } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { seatVerdictOn } from './seat-view'
 import { secondsOnDeadline } from './use-deadline-clock'
+import { useSeatClockStart } from './use-seat-clock'
 import { useServerNow } from './use-server-now'
 
 export interface GateSubmitOptions {
@@ -59,9 +65,7 @@ export interface GateChallengeContext {
   isEasy: Ref<boolean>
   submittedISOCode: ComputedRef<ISOCountryCode | undefined>
   submittedCountry: Ref<Country | undefined>
-  /** The gate's subject — what every send from this mount answers. */
   subject: string
-  /** Server time the gate's clock runs out, if it has one. */
   deadline: ComputedRef<number | undefined>
   showInterstitial: Ref<boolean>
   /**
@@ -95,7 +99,6 @@ export interface GateChallengeContext {
   /** The browsable reveal's explicit exit: end the hold now. */
   finishBeat: () => void
   submitAnswer: (isoCode: ISOCountryCode, options?: GateSubmitOptions) => void
-  /** The clock ran out — see `giveUp` below. */
   giveUp: () => void
 }
 
@@ -162,14 +165,15 @@ export const provideGateChallenge = (): GateChallengeContext => {
     },
     { immediate: true }
   )
+  const clockRanOut = ref(false)
+  const timedOut = computed(() => verdict.value?.timedOut ?? clockRanOut.value)
+  const verdictLeadMs = computed(() => (timedOut.value ? 0 : gateVerdictLeadMs(challenge.value)))
   const verdictShown = computed(
     () =>
       !!status.value &&
       gradedAt.value !== undefined &&
-      now.value >= gradedAt.value + gateVerdictLeadMs(variant.value)
+      now.value >= gradedAt.value + verdictLeadMs.value
   )
-  const clockRanOut = ref(false)
-  const timedOut = computed(() => verdict.value?.timedOut ?? clockRanOut.value)
   const deadline = computed(() =>
     seatCursor.value?.subject === subject ? seatCursor.value.deadline : undefined
   )
@@ -178,9 +182,20 @@ export const provideGateChallenge = (): GateChallengeContext => {
       ? seatCursor.value.holdUntil
       : undefined
   )
-  // A remount on the verdict (a refresh mid-hold) does not replay the card,
-  // and the booth never plays it — every director cut would restart it.
-  const showInterstitial = ref(!gameStore.watching && seatCursor.value?.step === 'gate')
+  // A remount on the verdict or after the clock started (a refresh) does not
+  // replay the card, and the booth never plays it — every director cut would
+  // restart it.
+  const mountedOn = seatCursor.value
+  const showInterstitial = ref(
+    !gameStore.watching &&
+      mountedOn?.step === 'gate' &&
+      !!challenge.value &&
+      now.value < gateInterstitialEndsAt(challenge.value, mountedOn)
+  )
+  const startSeatClock = useSeatClockStart()
+  watch(showInterstitial, shown => {
+    if (!shown && gateClockFor(variant.value)) startSeatClock(subject)
+  })
   const missNote = ref<string>()
   const duelOutcomes = ref<DuelOutcome[]>([])
   const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
@@ -194,7 +209,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     verdict,
     landed => {
       if (!landed || !challenge.value) return
-      previewVerdict(landed.correct ? 'correct' : 'incorrect')
+      previewVerdict(landed.correct ? 'correct' : 'incorrect', subject)
       if (!gameStore.map.reveal) {
         gameStore.map.reveal =
           landed.correct && landed.submitted ? landed.submitted : challenge.value.country
@@ -241,7 +256,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
       // subject — zoom the reveal to the country the player actually got right.
       gameStore.map.reveal = correct ? isoCode : active.country
     }
-    previewVerdict(correct ? 'correct' : 'incorrect')
+    previewVerdict(correct ? 'correct' : 'incorrect', subject)
   }
 
   /**
@@ -254,7 +269,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     clockRanOut.value = true
     gameStore.map.highlighted.clear()
     gameStore.map.reveal = challenge.value.country
-    previewVerdict('incorrect')
+    previewVerdict('incorrect', subject)
   }
 
   const context: GateChallengeContext = {
@@ -299,9 +314,9 @@ export const provideGateChallenge = (): GateChallengeContext => {
  * FULL until the question is actually on screen.
  */
 export interface GateClockOptions {
-  /** The clock reached zero and nobody had answered. */
+  /** The clock reached zero and nobody had answered, or the server's timeout
+   *  verdict landed first — whichever comes first, once. */
   onExpire: () => void
-  /** Runs on each new second — the outline draw rides it. */
   onTick?: (secondsLeft: number) => void
 }
 
@@ -311,10 +326,9 @@ export const useGateClock = (
   secondsLeft: ComputedRef<number>
   remainingFraction: ComputedRef<number>
   elapsedFraction: ComputedRef<number>
-  /** Hold the reading it stopped on (an answer, an expiry). */
   stop: () => void
 } => {
-  const { variant, deadline, status } = useGateChallenge()
+  const { variant, deadline, status, timedOut } = useGateChallenge()
   const { now } = useServerNow()
   const seconds = computed(() => gateClockFor(variant.value)?.seconds ?? 0)
   const frozen = ref<{ seconds: number; fraction: number }>()
@@ -336,13 +350,23 @@ export const useGateClock = (
   }
 
   watch(secondsLeft, (left, previous) => {
-    if (frozen.value || status.value) return
-    if (left !== previous) options.onTick?.(left)
-    if (left <= 0 && deadline.value !== undefined) {
+    if (frozen.value || status.value || left === previous) return
+    options.onTick?.(left)
+  })
+
+  let expired = false
+  watch(
+    () =>
+      timedOut.value ||
+      (!frozen.value && !status.value && deadline.value !== undefined && secondsLeft.value <= 0),
+    due => {
+      if (!due || expired) return
+      expired = true
       stop()
       options.onExpire()
-    }
-  })
+    },
+    { immediate: true }
+  )
 
   return { secondsLeft, remainingFraction, elapsedFraction, stop }
 }

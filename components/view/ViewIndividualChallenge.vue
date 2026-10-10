@@ -33,7 +33,10 @@
           <!-- A browsable reveal (Chronicle's storied record) holds the walk
                until the reader is done — or the browse cap. The beat is solo,
                so Continue delays nobody else. -->
-          <div v-if="browseReveal && !gameStore.watching" class="browse-continue">
+          <div
+            v-if="browseReveal && !gameStore.watching && holdUntil !== undefined"
+            class="browse-continue"
+          >
             <BrowseContinue :seconds-left="browseSecondsLeft" @continue="finishBeat" />
           </div>
         </ChallengeResult>

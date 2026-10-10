@@ -2,7 +2,12 @@ import { io } from 'socket.io-client'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
 import { dropsSnapshot } from '~~/lib/events/client/snapshot-revision'
 import { useGameStore } from '~~/store/game.store'
-import { clientSendTime, noteAckClock, noteSnapshotClock } from '~~/lib/use-server-now'
+import {
+  clientSendTime,
+  noteAckClock,
+  noteReconnect,
+  noteSnapshotClock,
+} from '~~/lib/use-server-now'
 import type { ClientEventAck, ServerEnvelope } from '~~/types/events.types'
 
 export type { ClientSideEventHandler } from '~~/lib/events/client-registry'
@@ -70,9 +75,14 @@ export default defineNuxtPlugin(() => {
 
   socket.on('connect', async () => {
     gameStore.disconnected = false
+    noteReconnect()
     for (let probe = 0; probe < CLOCK_SYNC_BURST; probe++) await syncClock()
   })
   setInterval(syncClock, CLOCK_SYNC_MS)
+  // A slept tab's clock may have jumped; re-probe before the next interval.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void syncClock()
+  })
 
   socket.on('connect_error', err => {
     console.warn(`connect_error due to ${err.message}`)

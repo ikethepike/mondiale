@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, reactive, ref } from 'vue'
 import { testCursor } from '~~/lib/events/server/test-seat'
-import { gateVerdictLeadMs } from '~~/lib/gate-timing'
-import { GATE_RESULT_HOLD_MS } from '~~/lib/round-beats'
+import { gateClockDeadline, gateDeadline, gateVerdictLeadMs } from '~~/lib/gate-timing'
+import { GATE_RESULT_HOLD_MS, INTERSTITIAL_TOTAL_MS } from '~~/lib/round-beats'
 import { seatSubject } from '~~/lib/seat-transitions'
 import type { SeatCursor, SeatVerdict } from '~~/types/seat.types'
 import type { PreviewVerdict } from '~~/store/game.store'
@@ -48,10 +48,12 @@ const stub = {
 }
 
 // The shell runs in a bare effect scope, not a component: provide() has no
-// instance to attach to, and the tests never inject the context.
+// instance to attach to, so the context is handed straight to inject().
+const shellContext = vi.hoisted(() => ({ value: undefined as unknown }))
 vi.mock('vue', async importOriginal => ({
   ...(await importOriginal<typeof import('vue')>()),
-  provide: vi.fn(),
+  provide: vi.fn((_key: unknown, value: unknown) => (shellContext.value = value)),
+  inject: vi.fn(() => shellContext.value),
 }))
 
 vi.mock('~~/lib/events/client-side', () => ({
@@ -69,30 +71,42 @@ vi.mock('~~/lib/use-server-now', () => ({
   useServerNow: () => ({ now: serverNow, offset: ref(0) }),
 }))
 
-const { provideGateChallenge } = await import('~~/lib/use-gate-challenge')
+const { provideGateChallenge, useGateClock } = await import('~~/lib/use-gate-challenge')
 
-const gate = (position: number, country: 'FI' | 'PE' | 'SE', variant = 'rosetta') => ({
+const gate = (
+  position: number,
+  country: 'FI' | 'PE' | 'SE',
+  variant = 'rosetta',
+  extra: Record<string, unknown> = {}
+) => ({
   endTile: { position, type: 'flag' },
-  challenge: { _type: 'individual-challenge', id: 'isoCode', country, variant },
+  challenge: { _type: 'individual-challenge', id: 'isoCode', country, variant, ...extra },
 })
+
+const RULING = { partyLogo: { image: '', name: '', ask: 'ruling' } }
 
 const FIRST = seatSubject.gate(1, 5)
 const NEXT = seatSubject.gate(1, 8)
 
-const onGate = (subject: string, seq: number): SeatCursor =>
+const onGate = (subject: string, seq: number, variant = 'rosetta'): SeatCursor =>
   testCursor('gate', {
     subject,
     seq,
     enteredAt: serverNow.value,
-    deadline: serverNow.value + 30_000,
+    deadline: gateDeadline({ variant } as never, serverNow.value),
   })
 
-const gateVerdict = (subject: string, correct: boolean, seq: number): SeatCursor => {
+const gateVerdict = (
+  subject: string,
+  correct: boolean,
+  seq: number,
+  timedOut = false
+): SeatCursor => {
   const verdict: SeatVerdict = {
     kind: 'gate',
     subject,
     correct,
-    timedOut: false,
+    timedOut,
     submitted: correct ? 'FI' : 'SE',
     steps: correct ? 3 : 0,
     browsable: false,
@@ -112,6 +126,22 @@ const mountShell = () => {
   const shell = scope.run(() => provideGateChallenge())!
   return { ...shell, unmount: () => scope.stop() }
 }
+
+/** The shell with a variant's clock riding it, as a timed `Gate*` mounts one. */
+const mountClock = () => {
+  const onExpire = vi.fn()
+  const scope = effectScope()
+  const shell = scope.run(() => {
+    const context = provideGateChallenge()
+    return { ...context, clock: useGateClock({ onExpire }) }
+  })!
+  return { ...shell, onExpire, unmount: () => scope.stop() }
+}
+
+const roundPlays = () =>
+  (update.mock.calls as unknown as [{ event: string }][]).filter(
+    ([payload]) => payload.event === 'round-play'
+  )
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -270,8 +300,9 @@ describe('the gate shell holds exactly its own gate', () => {
   })
 
   it('swaps to the result card only after the variant’s lead, counted from the grade', async () => {
-    currentMove.value = gate(5, 'FI', 'logo-politics')
-    const lead = gateVerdictLeadMs('logo-politics')
+    const ruling = gate(5, 'FI', 'logo-politics', RULING)
+    currentMove.value = ruling
+    const lead = gateVerdictLeadMs(ruling.challenge as never)
     expect(lead).toBeGreaterThan(0)
     const { status, verdictShown, submitAnswer, unmount } = mountShell()
 
@@ -283,6 +314,131 @@ describe('the gate shell holds exactly its own gate', () => {
     serverNow.value += lead - 1
     expect(verdictShown.value).toBe(false)
     serverNow.value += 1
+    expect(verdictShown.value).toBe(true)
+    unmount()
+  })
+})
+
+describe('the opening card fronts the gate’s clock', () => {
+  it('a remount once the clock has started skips the card', () => {
+    seatCursor.value = testCursor('gate', {
+      subject: FIRST,
+      seq: 10,
+      enteredAt: serverNow.value - INTERSTITIAL_TOTAL_MS,
+      deadline: gateDeadline({ variant: 'rosetta' }, serverNow.value - INTERSTITIAL_TOTAL_MS),
+    })
+    const late = mountShell()
+    expect(late.showInterstitial.value).toBe(false)
+    late.unmount()
+
+    seatCursor.value = testCursor('gate', {
+      subject: FIRST,
+      seq: 11,
+      enteredAt: serverNow.value - 900,
+      deadline: gateClockDeadline({ variant: 'rosetta' }, serverNow.value - 100),
+    })
+    const tapped = mountShell()
+    expect(tapped.showInterstitial.value).toBe(false)
+    tapped.unmount()
+  })
+
+  it('dismissing the card starts a timed gate’s clock on the server, once', async () => {
+    const { showInterstitial, unmount } = mountShell()
+    showInterstitial.value = false
+    await nextTick()
+    showInterstitial.value = true
+    await nextTick()
+    showInterstitial.value = false
+    await nextTick()
+    expect(roundPlays()).toEqual([[{ event: 'round-play', subject: FIRST, seq: 10 }]])
+    unmount()
+  })
+
+  it('an untimed gate and the booth start nothing', async () => {
+    currentMove.value = gate(5, 'FI', 'find')
+    seatCursor.value = onGate(FIRST, 10, 'find')
+    const untimed = mountShell()
+    untimed.showInterstitial.value = false
+    await nextTick()
+    untimed.unmount()
+
+    currentMove.value = gate(5, 'FI')
+    seatCursor.value = onGate(FIRST, 10)
+    gameStore.watching = true
+    const booth = mountShell()
+    booth.showInterstitial.value = false
+    await nextTick()
+    booth.unmount()
+    expect(roundPlays()).toEqual([])
+  })
+})
+
+describe('the gate clock’s expiry runs once, whichever end sees it first', () => {
+  it('a gate mounting on a spent clock expires at once', () => {
+    seatCursor.value = testCursor('gate', {
+      subject: FIRST,
+      seq: 10,
+      deadline: serverNow.value - 1,
+    })
+    const { onExpire, unmount } = mountClock()
+    expect(onExpire).toHaveBeenCalledTimes(1)
+    unmount()
+  })
+
+  it('a server timeout verdict landing first still runs the cleanup', async () => {
+    const { onExpire, unmount } = mountClock()
+    expect(onExpire).not.toHaveBeenCalled()
+    seatCursor.value = gateVerdict(FIRST, false, 11, true)
+    await nextTick()
+    expect(onExpire).toHaveBeenCalledTimes(1)
+
+    serverNow.value += 60_000
+    await nextTick()
+    expect(onExpire).toHaveBeenCalledTimes(1)
+    unmount()
+  })
+
+  it('a local expiry followed by the timeout verdict cleans up once', async () => {
+    const { onExpire, unmount } = mountClock()
+    serverNow.value = seatCursor.value!.deadline! + 1
+    await nextTick()
+    expect(onExpire).toHaveBeenCalledTimes(1)
+
+    seatCursor.value = gateVerdict(FIRST, false, 11, true)
+    await nextTick()
+    expect(onExpire).toHaveBeenCalledTimes(1)
+    unmount()
+  })
+
+  it('an answered gate never expires', async () => {
+    const { submitAnswer, onExpire, unmount } = mountClock()
+    submitAnswer('SE')
+    serverNow.value = seatCursor.value!.deadline! + 1
+    await nextTick()
+    expect(onExpire).not.toHaveBeenCalled()
+    unmount()
+  })
+})
+
+describe('the verdict lead', () => {
+  it('a timeout shows the result card at once — there is no wash to read', async () => {
+    currentMove.value = gate(5, 'FI', 'logo-politics', RULING)
+    seatCursor.value = onGate(FIRST, 10, 'logo-politics')
+    const { verdictShown, unmount } = mountShell()
+    seatCursor.value = gateVerdict(FIRST, false, 11, true)
+    await nextTick()
+    expect(verdictShown.value).toBe(true)
+    unmount()
+  })
+
+  it('an origin question shows it at once too', async () => {
+    currentMove.value = gate(5, 'FI', 'logo-politics', {
+      partyLogo: { image: '', name: '', ask: 'origin' },
+    })
+    seatCursor.value = onGate(FIRST, 10, 'logo-politics')
+    const { verdictShown, submitAnswer, unmount } = mountShell()
+    submitAnswer('SE')
+    await nextTick()
     expect(verdictShown.value).toBe(true)
     unmount()
   })

@@ -131,6 +131,7 @@ const {
   submitOnce,
   currentRound,
   gameStore,
+  boothAnswer,
 } = useGroupChallenge('stat-detective-challenge')
 
 // The ladder's edges. `v-if`'d behind the reveal, so the getter form matters —
@@ -249,9 +250,19 @@ const begin = () => {
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
-watch(playWindow.expired, ran => {
-  if (ran && started.value) resolve(undefined, 0)
-})
+watch(
+  () => playWindow.expired.value && started.value && !gameStore.watching,
+  ran => {
+    if (ran) resolve(undefined, 0)
+  }
+)
+watch(
+  boothAnswer,
+  answer => {
+    if (answer) resolve(answer.submitted[0], 0)
+  },
+  { immediate: true }
+)
 
 const onGuess = (country: Country) => {
   const active = challenge.value

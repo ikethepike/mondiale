@@ -1,10 +1,13 @@
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { guessPolicyFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import type { LatLng } from '~~/lib/geo'
 import { clamp01 } from '~~/lib/number'
 import { playGateMsFor } from '~~/lib/round-beats'
+import { roundSettled } from '~~/lib/spectate'
+import { useSeatClockStart } from '~~/lib/use-seat-clock'
+import { provideSpentInterstitial } from '~~/lib/use-spent-interstitial'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
 import { useServerNow } from '~~/lib/use-server-now'
 import type { GuessTickerEntry } from '~~/store/game.store'
@@ -42,6 +45,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
 ) => {
   const { gameStore, update, currentRound, clearBoard, seatCursor, seatEcho, previewVerdict } =
     useClientEvents()
+  const startSeatClockOn = useSeatClockStart()
   const { now } = useServerNow()
   // Captured once: the view is keyed on the round's subject, so this is the
   // question every send from this mount answers.
@@ -71,6 +75,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   // started, since the racers are already in it. Same for a banked remount.
   const showInterstitial = ref(!gameStore.watching && !answeredOnMount)
   const started = ref(gameStore.watching || answeredOnMount)
+  const playStartsAt = currentRound.value?.round.playStartsAt
+  provideSpentInterstitial(playStartsAt !== undefined && now.value >= playStartsAt)
 
   // The submit latch. Local state ORed with the seat's own cursor: once the
   // seat is past its question (on its verdict), a remount reads that, never
@@ -306,6 +312,16 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     frozenSeconds.value = secondsLeft.value
   }
 
+  /** Watch mode: the followed seat's banked answer, once the booth may show it.
+   *  Hide-spoilers holds it until the whole table is out of the answering
+   *  window — a reveal paints the shared map, outside the mount's veil. */
+  const boothAnswer = computed(() => {
+    if (!gameStore.watching) return undefined
+    const answer = currentRound.value?.round.groupAnswers[gameStore.seatId]
+    if (!answer || !gameStore.spectateHideSpoilers) return answer
+    return roundSettled(Object.values(gameStore.game?.players ?? {})) ? answer : undefined
+  })
+
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
@@ -350,7 +366,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     gameStore,
     update,
     seatEcho,
-    previewVerdict,
+    previewVerdict: (value: Parameters<typeof previewVerdict>[0]) => previewVerdict(value, subject),
+    startSeatClock: () => startSeatClockOn(subject),
+    boothAnswer,
     clearBoard,
   }
 }

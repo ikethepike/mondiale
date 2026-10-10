@@ -1,6 +1,7 @@
 import { clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
 import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
+import type { Round } from '~~/types/game.types'
 import {
   roundChallengeKind,
   type RoundChallenge,
@@ -573,4 +574,26 @@ export const classicPlaySeconds = (challenge: RoundChallenge | undefined): numbe
   if (derived !== undefined) return derived
   if ('durationSeconds' in challenge && challenge.durationSeconds) return challenge.durationSeconds
   return undefined
+}
+
+/** The classic clock's full budget in ms, or undefined when the kind is
+ *  untimed and the caps are off (no server clock — by explicit choice). */
+const classicBudgetMs = (round: Round): number | undefined => {
+  const seconds =
+    classicPlaySeconds(round.groupChallenge) ??
+    (SERVER_CONTROLLED_CAPS ? UNTIMED_CLASSIC_CAP_SECONDS : undefined)
+  if (!seconds) return undefined
+  // A play-gated kind's window opens on a LOCAL tap, so the stamp has to
+  // cover the wait as well as the play. Widening here rather than at the
+  // stamp site means every caller inherits it — the reveal, the round-1
+  // tutorial close, and the rejoin re-stamp alike.
+  return seconds * 1000 + playGateMsFor(round.groupChallenge) + FIRST_TURN_GRACE_MS
+}
+
+/** The one stamp of a classic round's clock: its play start and its close. */
+export const stampClassicClock = (round: Round, now: number) => {
+  const budget = classicBudgetMs(round)
+  if (!budget) return
+  round.playStartsAt = now + FIRST_TURN_GRACE_MS
+  round.deadline = now + budget
 }

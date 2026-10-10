@@ -1,6 +1,10 @@
 import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
-import { adoptRevision, isStaleSeat } from '~~/lib/events/client/snapshot-revision'
+import {
+  adoptRevision,
+  isStaleSeat,
+  takeWholeAcrossRounds,
+} from '~~/lib/events/client/snapshot-revision'
 
 export const playerUpdateEvent: ClientSideEventHandler = async ({
   gameStore,
@@ -21,6 +25,7 @@ export const playerUpdateEvent: ClientSideEventHandler = async ({
   if (isStaleSeat(gameStore.game, game, playerId)) {
     return console.warn(`Dropped a seat update that would move ${playerId} backwards`)
   }
+  if (takeWholeAcrossRounds(gameStore, game)) return
   gameStore.game.players[playerId] = game.players[playerId]
   adoptRevision(gameStore.game, game)
 }

@@ -137,9 +137,8 @@ export const useClientEvents = () => {
     seq: seatCursor.value?.seq ?? 0,
   })
 
-  /** A view's own optimistic grade, tagged with the subject on screen. */
-  const previewVerdict = (value: PreviewVerdict['value'] | undefined) => {
-    const subject = seatCursor.value?.subject
+  /** A view's own optimistic grade, tagged with the subject it answered. */
+  const previewVerdict = (value: PreviewVerdict['value'] | undefined, subject: string) => {
     gameStore.map.status = value && subject ? { subject, value } : undefined
   }
 

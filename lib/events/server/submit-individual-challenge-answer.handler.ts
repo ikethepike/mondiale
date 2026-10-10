@@ -39,7 +39,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
       game,
       player,
       { correct, timedOut: false, submitted: eventData.isoCode, steps },
-      gateResultHoldMsFor(challenge.variant) + gateVerdictLeadMs(challenge.variant),
+      gateResultHoldMsFor(challenge.variant) + gateVerdictLeadMs(challenge),
       isBrowsableGateVariant(challenge.variant),
       'event:submit-individual-challenge-answer'
     )

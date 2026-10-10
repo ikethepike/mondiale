@@ -200,8 +200,7 @@ const {
   gameStore,
   submitOnce,
   subject,
-  seatEcho,
-  update,
+  startSeatClock,
 } = useGroupChallenge('empire-challenge')
 const { seatCursor } = useClientEvents()
 
@@ -264,17 +263,23 @@ let beat1Guess: string | undefined
 let beat1Score = 0
 
 // Beat 1 is resolved and the stamped tap beat has begun: the overlay lifts.
-watch(tapWindow.running, live => {
-  if (!live || beat.value !== 'resolved') return
-  ghostField.value?.fadeOut()
-  gameStore.map.solo = false
-  gameStore.map.landmass = false
-  beat.value = 'tap'
-  nextTick(() => countryInput.value?.focus({ auto: true }))
-})
-watch(tapWindow.expired, ran => {
-  if (ran) lockIn()
-})
+watch(
+  () => tapWindow.running.value && beat.value === 'resolved',
+  live => {
+    if (!live) return
+    ghostField.value?.fadeOut()
+    gameStore.map.solo = false
+    gameStore.map.landmass = false
+    beat.value = 'tap'
+    nextTick(() => countryInput.value?.focus({ auto: true }))
+  }
+)
+watch(
+  () => tapWindow.expired.value && beat.value === 'tap',
+  ran => {
+    if (ran) lockIn()
+  }
+)
 
 const stakes = computed(() =>
   challenge.value?.options
@@ -343,10 +348,20 @@ const start = async () => {
       }
     },
   })
+  // A remount after the buzz: the seat's tap window is already stamped.
+  if (tapWindow.opensAt.value !== undefined) resolveBeat1(undefined, 0)
   await nextTick()
   await ghostField.value?.build()
+  if (beat.value !== 'guess') return settleGhost()
   ghostField.value?.play()
   nextTick(() => nameInput.value?.focus({ auto: true }))
+}
+
+/** The ghost built after beat 1 already resolved: park it where the beat left it. */
+const settleGhost = () => {
+  ghostField.value?.freezeAtPeak()
+  if (beat.value === 'tap') ghostField.value?.fadeOut()
+  if (beat.value === 'reveal') ghostField.value?.fadeIn()
 }
 
 /** A wrong buzz costs a lockout beat, not points — the silhouette contract. */
@@ -434,7 +449,7 @@ const resolveBeat1 = (guessedId: string | undefined, clientScore: number) => {
 
   // Opens the tap beat: the server stamps its window past the memorize hold.
   beat.value = 'resolved'
-  if (!gameStore.watching) void update({ event: 'round-play', ...seatEcho(subject) })
+  startSeatClock()
 }
 
 const toggle = (isoCode: ISOCountryCode) => {

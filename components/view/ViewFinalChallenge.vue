@@ -241,6 +241,9 @@ import {
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { seatVerdictOn } from '~~/lib/seat-view'
+import { finalInterstitialEndsAt, finalQuestionNumber } from '~~/lib/final-timing'
+import { useSeatClockStart } from '~~/lib/use-seat-clock'
+import { readServerNow } from '~~/lib/use-server-now'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { playableCountries } from '~~/lib/game-rules'
 import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
@@ -296,7 +299,7 @@ const knockedOut = computed(() => !!verdict.value?.knockedOut)
 watch(
   verdict,
   landed => {
-    if (landed) previewVerdict(landed.correct ? 'correct' : 'incorrect')
+    if (landed) previewVerdict(landed.correct ? 'correct' : 'incorrect', landed.subject)
   },
   { immediate: true }
 )
@@ -307,13 +310,18 @@ watch(
 // question cap lands on a spent subject.
 const finalRedeliver = createRedeliver('final answer')
 onBeforeUnmount(() => finalRedeliver.dispose())
-const submitFinalAnswer = (submittedAnswer: FinalChallengeAnswer) => {
+const submitFinalAnswer = (
+  submittedAnswer: FinalChallengeAnswer,
+  correct = checkAnswer(submittedAnswer)
+) => {
+  const subject = questionSubject.value
+  previewVerdict(correct ? 'correct' : 'incorrect', subject)
   // The booth mounts this stage read-only, and the auto-finishing modes'
   // clocks call here with no user input: a watcher must not arm a minute of
   // doomed redelivery against the write gate (same guard as submitOnce and
   // the gate shell).
   if (gameStore.watching) return
-  const echo = seatEcho(questionSubject.value)
+  const echo = seatEcho(subject)
   return finalRedeliver.deliver(() =>
     update({ event: 'submit-final-challenge-answer', submittedAnswer, ...echo })
   )
@@ -336,13 +344,9 @@ const livesRemaining = computed(() => gauntlet.value?.lives ?? 0)
 const initialLives = computed(() =>
   gauntlet.value ? GAUNTLET_LIVES[gauntlet.value.difficulty] : 0
 )
-const currentChallengeCount = computed(() => {
-  if (!gauntlet.value) return 0
-  return Math.min(
-    totalChallengeCount.value,
-    totalChallengeCount.value - gauntlet.value.challenges.length + 1
-  )
-})
+const currentChallengeCount = computed(() =>
+  gauntlet.value ? finalQuestionNumber(gauntlet.value) : 0
+)
 
 /** What the hearts show: the server spends the life in the verdict's own
  *  save, so the player and every watcher break it on the same frame. */
@@ -667,7 +671,7 @@ const triggerMembershipChallenge = () => {
 watch(questionSubject, () => {
   gameStore.map.reveal = undefined
   gameStore.map.revealStat = undefined
-  previewVerdict(undefined)
+  previewVerdict(undefined, questionSubject.value)
   // World of Change drops the subject's pin at its reveal
   gameStore.map.pinAnswer = undefined
   gameStore.map.highlighted.clear()
@@ -706,10 +710,24 @@ watch(displayedLives, (now, before) => {
 })
 
 // The run's opening card plays once, on its first question; a remount later in
-// the run (a refresh) and the booth go straight to the question.
+// the run or once the first clock is running (a refresh) and the booth go
+// straight to the question.
+const openedOn = seatCursor.value
 const showInterstitial = ref(
-  !gameStore.watching && seatCursor.value?.step === 'final' && (gauntlet.value?.turn ?? 0) === 0
+  !gameStore.watching &&
+    openedOn?.step === 'final' &&
+    (gauntlet.value?.turn ?? 0) === 0 &&
+    readServerNow() <
+      finalInterstitialEndsAt(
+        currentFinalChallenge.value,
+        game.value?.difficulty ?? 'normal',
+        openedOn
+      )
 )
+const startSeatClock = useSeatClockStart()
+watch(showInterstitial, shown => {
+  if (!shown) startSeatClock(questionSubject.value)
+})
 
 const clearScalesPicks = () => {
   for (const isoCode of scalesPicks.value) gameStore.map.highlighted.delete(isoCode)
@@ -760,7 +778,6 @@ const submitMembership = (isoCode: ISOCountryCode) => {
   // stands apart, so the dossier adds only a capital and a population — and
   // on a phone it sits over the card that did the teaching.
   gameStore.map.highlighted.add(answered.reveal)
-  previewVerdict(checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(answered.submittedAnswer)
 }
@@ -787,7 +804,6 @@ const submitScales = () => {
   }
   // No map.reveal here — the beam card carries the verdict; the country
   // dossier would just shout the target's population over it
-  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -798,7 +814,6 @@ const onNocturneFinished = (namedCities: string[]) => {
 
   nocturneResult.value = namedCities
   const submittedAnswer = { _type: 'city-nocturne-challenge', namedCities } as const
-  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -808,7 +823,6 @@ const onBoundaryFinished = (drawn: [number, number][]) => {
   if (challenge?._type !== 'boundary-challenge') return
 
   const submittedAnswer = { _type: 'boundary-challenge', drawn } as const
-  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -821,7 +835,6 @@ const onChangeFinished = ({ isoCode, decade }: { isoCode: ISOCountryCode; decade
 
   const submittedAnswer = { _type: 'change-challenge', isoCode, decade } as const
   revealChange(challenge, isoCode)
-  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
   submitFinalAnswer(submittedAnswer)
 }
 
@@ -839,7 +852,6 @@ const onYearbookFinished = (year: number) => {
 
   yearbookDialed.value = year
   const submittedAnswer = { _type: 'yearbook-challenge', year } as const
-  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -850,7 +862,6 @@ const onSunsetFinished = (named: ISOCountryCode[]) => {
 
   sunsetResult.value = named
   const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
-  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -881,7 +892,6 @@ const onMapClick = (event: Event) => {
         const submittedAnswer = { _type: 'region-challenge', region: selectedRegion } as const
 
         gameStore.map.reveal = currentFinalChallenge.value.country
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
         submitFinalAnswer(submittedAnswer)
       }
@@ -905,9 +915,8 @@ const onMapClick = (event: Event) => {
       // to; the highlight does its tint.
       gameStore.map.focus = [revealIso]
       gameStore.map.highlighted.add(revealIso)
-      previewVerdict(correct ? 'correct' : 'incorrect')
 
-      submitFinalAnswer(submittedAnswer)
+      submitFinalAnswer(submittedAnswer, correct)
       break
     }
     case 'language-challenge':
@@ -922,7 +931,6 @@ const onMapClick = (event: Event) => {
         }
 
         const submittedAnswer = { _type: 'language-challenge', isoCode } as const
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
         submitFinalAnswer(submittedAnswer)
       }
@@ -952,7 +960,6 @@ const onMapClick = (event: Event) => {
           _type: 'born-challenge',
           isoCodes: [...bornPicks.value],
         }
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         submitFinalAnswer(submittedAnswer)
       }
       break
@@ -990,7 +997,6 @@ const onMapClick = (event: Event) => {
           _type: 'diaspora-challenge',
           isoCodes: [...diasporaPicks.value],
         }
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         submitFinalAnswer(submittedAnswer)
       }
       break
@@ -1024,7 +1030,6 @@ const onMapClick = (event: Event) => {
           _type: 'endonym-challenge',
           isoCodes: [...endonymPicks.value],
         }
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         submitFinalAnswer(submittedAnswer)
       }
       break
@@ -1038,7 +1043,6 @@ const onMapClick = (event: Event) => {
         }
         const submittedAnswer = { _type: 'change-challenge', isoCode } as const
         revealChange(currentFinalChallenge.value, isoCode)
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
         submitFinalAnswer(submittedAnswer)
       }
@@ -1055,7 +1059,6 @@ const onMapClick = (event: Event) => {
         }
 
         const submittedAnswer = { _type: 'made-challenge', isoCode } as const
-        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         madeRevealTimeout = setTimeout(() => (madeRevealReady.value = true), 1200)
 
         submitFinalAnswer(submittedAnswer)

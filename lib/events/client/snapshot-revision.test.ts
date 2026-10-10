@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
 import { testCursor } from '~~/lib/events/server/test-seat'
 import type { Game } from '~~/types/game.types'
-import { adoptRevision, isStaleSeat, isStaleSnapshot } from './snapshot-revision'
+import {
+  adoptRevision,
+  isStaleSeat,
+  isStaleSnapshot,
+  takeWholeAcrossRounds,
+} from './snapshot-revision'
 
 const game = (fields: Record<string, unknown>) => fields as unknown as Game
 
@@ -82,6 +87,47 @@ describe('the gate’s registry exemptions', () => {
     expect(CLIENT_SIDE_EVENT_HANDLERS['player-joined'].snapshotScope).toBe('authoritative')
     for (const event of ['update', 'name-set', 'color-set', 'seat-advanced'] as const) {
       expect(CLIENT_SIDE_EVENT_HANDLERS[event].snapshotScope, event).toBe('seat-slice')
+    }
+  })
+})
+
+describe('takeWholeAcrossRounds', () => {
+  const rounds = (count: number, rev?: number) =>
+    game({ id: 'g', rev, rounds: Array.from({ length: count }, () => ({})), players: {} })
+
+  it('leaves a same-round slice to its applier', () => {
+    const store = { game: rounds(2, 5) }
+    const held = store.game
+    expect(takeWholeAcrossRounds(store, rounds(2, 6))).toBe(false)
+    expect(store.game).toBe(held)
+  })
+
+  it('takes a payload from another round whole', () => {
+    const store = { game: rounds(2, 5) }
+    const incoming = rounds(3, 6)
+    expect(takeWholeAcrossRounds(store, incoming)).toBe(true)
+    expect(store.game).toBe(incoming)
+  })
+
+  it('never takes the stale side whole, and never slices it either', () => {
+    const store = { game: rounds(3, 9) }
+    const held = store.game
+    expect(takeWholeAcrossRounds(store, rounds(2, 4))).toBe(true)
+    expect(store.game).toBe(held)
+  })
+
+  it('both seat-slice appliers route through it', () => {
+    for (const event of ['update', 'seat-advanced'] as const) {
+      const store = { game: rounds(2, 5) }
+      const incoming = rounds(3, 6)
+      void CLIENT_SIDE_EVENT_HANDLERS[event].handler({
+        eventKey: event,
+        payload: { event, game: incoming } as never,
+        gameStore: store as never,
+        eventTarget: { gameId: 'g', playerId: 'a' },
+        playerId: 'a',
+      })
+      expect(store.game, event).toBe(incoming)
     }
   })
 })

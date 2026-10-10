@@ -1,6 +1,10 @@
 import { hasGame } from '~~/types/events.types'
 import type { ClientSideEventHandler } from '~~/lib/events/client-registry'
-import { adoptRevision, isStaleSeat, isStaleSnapshot } from '~~/lib/events/client/snapshot-revision'
+import {
+  adoptRevision,
+  isStaleSeat,
+  takeWholeAcrossRounds,
+} from '~~/lib/events/client/snapshot-revision'
 
 /**
  * Seat + that seat's round slice: the moved seat's record (its cursor), and
@@ -23,15 +27,7 @@ export const seatAdvancedEvent: ClientSideEventHandler = async ({
     return console.warn(`Dropped a seat slice that would move ${playerId} backwards`)
   }
 
-  // The slice is only safe when both sides agree which round is live. A
-  // rejoin race (a reveal the payload predates, or vice versa) makes indexing
-  // one side with the other's length silent cross-round corruption — take
-  // the payload whole instead, but only when it is not itself the stale side.
-  if (gameStore.game.rounds.length !== game.rounds.length) {
-    if (isStaleSnapshot(gameStore.game, game)) return
-    gameStore.game = game
-    return
-  }
+  if (takeWholeAcrossRounds(gameStore, game)) return
 
   gameStore.game.players[playerId] = game.players[playerId]
   const roundIndex = gameStore.game.rounds.length - 1

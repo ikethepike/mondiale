@@ -1,13 +1,9 @@
 import {
   briefingHolds,
   CLASSIC_SETTLE_SLACK_MS,
-  classicPlaySeconds,
-  FIRST_TURN_GRACE_MS,
   isClassicGroupRound,
-  playGateMsFor,
   revealBudgetMsFor,
-  SERVER_CONTROLLED_CAPS,
-  UNTIMED_CLASSIC_CAP_SECONDS,
+  stampClassicClock,
 } from '~~/lib/round-beats'
 import { latestRound } from '~~/lib/rounds'
 import { ROUND_SETTLE_STEPS } from '~~/lib/seat-transitions'
@@ -26,20 +22,6 @@ import { scheduleEngineTask, settleRoundScores, type EngineContext } from './rou
  * this engine never carries a number of its own.
  */
 
-/** The classic clock's full budget in ms, or undefined when the kind is
- *  untimed and the caps are off (no server clock — by explicit choice). */
-const classicBudgetMs = (round: Round): number | undefined => {
-  const seconds =
-    classicPlaySeconds(round.groupChallenge) ??
-    (SERVER_CONTROLLED_CAPS ? UNTIMED_CLASSIC_CAP_SECONDS : undefined)
-  if (!seconds) return undefined
-  // A play-gated kind's window opens on a LOCAL tap, so the stamp has to
-  // cover the wait as well as the play. Widening here rather than at the
-  // stamp site means every caller inherits it — the reveal, the round-1
-  // tutorial close, and the rejoin re-stamp alike.
-  return seconds * 1000 + playGateMsFor(round.groupChallenge) + FIRST_TURN_GRACE_MS
-}
-
 /** Stamp the play window onto the round being revealed — BEFORE the save, so
  *  the revealed snapshot carries a live clock every client repaints from.
  *  On a play-gated kind (the audio rounds) this is a BACKSTOP CEILING, not
@@ -51,14 +33,6 @@ export const startClassicClock = (round: Round) => {
   // ready or the cap — its own beats file owns that moment.
   if (briefingHolds(round.groupChallenge)) return
   stampClassicClock(round, Date.now())
-}
-
-/** The one stamp of a classic round's clock: its play start and its close. */
-const stampClassicClock = (round: Round, now: number) => {
-  const budget = classicBudgetMs(round)
-  if (!budget) return
-  round.playStartsAt = now + FIRST_TURN_GRACE_MS
-  round.deadline = now + budget
 }
 
 /**

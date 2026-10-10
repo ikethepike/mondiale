@@ -9,6 +9,7 @@ import type {
   IndividualChallenge,
   IndividualChallengeVariant,
 } from '~~/types/challenges/individual-challenge.type'
+import type { SeatCursor } from '~~/types/seat.types'
 
 /**
  * How long each timed gate gives you. The server stamps the gate's deadline
@@ -89,33 +90,62 @@ const GATE_CLOCKS: Partial<Record<IndividualChallengeVariant, GateClock>> = {
 }
 
 /**
- * Variants that paint their own verdict on the question (a wash, a flipped
+ * Questions that paint their own verdict on the question (a wash, a flipped
  * pair) before the result card takes over. The answer is sent at once; the
  * shell shows the result card only once this lead has passed, and the
  * server's hold is longer by the same amount so the card keeps its full beat.
+ * Logo Politics' origin question grades on the wire and paints no wash.
  */
-const GATE_VERDICT_LEADS: Partial<Record<IndividualChallengeVariant, number>> = {
-  'logo-politics': REVEAL_BEAT_MS,
-  'trend-duel': TREND_DUEL_REVEAL_MS,
+const GATE_VERDICT_LEADS: Partial<
+  Record<IndividualChallengeVariant, (challenge: Pick<IndividualChallenge, 'partyLogo'>) => number>
+> = {
+  'logo-politics': ({ partyLogo }) =>
+    partyLogo?.ask && partyLogo.ask !== 'origin' ? REVEAL_BEAT_MS : 0,
+  'trend-duel': () => TREND_DUEL_REVEAL_MS,
 }
 
-export const gateVerdictLeadMs = (variant: IndividualChallengeVariant | undefined): number =>
-  (variant && GATE_VERDICT_LEADS[variant]) || 0
+export const gateVerdictLeadMs = (
+  challenge: Pick<IndividualChallenge, 'variant' | 'partyLogo'> | undefined
+): number => {
+  const lead = challenge?.variant && GATE_VERDICT_LEADS[challenge.variant]
+  return lead ? lead(challenge) : 0
+}
 
 export const gateClockFor = (variant: IndividualChallengeVariant | undefined) =>
   variant ? GATE_CLOCKS[variant] : undefined
 
+/** A timed gate's deadline when its clock is released at `releasedAt` — the
+ *  interstitial over. Undefined on an untimed gate. */
+export const gateClockDeadline = (
+  challenge: Pick<IndividualChallenge, 'variant'>,
+  releasedAt: number
+): number | undefined => {
+  const clock = gateClockFor(challenge.variant)
+  return clock && releasedAt + clock.leadMs + clock.seconds * 1000
+}
+
 /**
  * The gate's answer window, stamped when the seat lands. A timed gate's clock
- * runs after the interstitial (and any lead); an untimed gate gets the cap.
+ * runs after the full interstitial (and any lead) — a seat that dismisses the
+ * card sooner releases it early through `round-play`; an untimed gate gets
+ * the cap.
  */
 export const gateDeadline = (
   challenge: Pick<IndividualChallenge, 'variant'>,
   enteredAt: number
-): number | undefined => {
+): number | undefined =>
+  gateClockDeadline(challenge, enteredAt + INTERSTITIAL_TOTAL_MS) ??
+  (SERVER_CONTROLLED_CAPS ? enteredAt + INDIVIDUAL_GATE_CAP_MS : undefined)
+
+/** When the gate's interstitial is spent: its clock's release on a timed
+ *  gate (however it was stamped), the full card on an untimed one. */
+export const gateInterstitialEndsAt = (
+  challenge: Pick<IndividualChallenge, 'variant'>,
+  cursor: Pick<SeatCursor, 'enteredAt' | 'deadline'>
+): number => {
   const clock = gateClockFor(challenge.variant)
-  if (clock) return enteredAt + INTERSTITIAL_TOTAL_MS + clock.leadMs + clock.seconds * 1000
-  return SERVER_CONTROLLED_CAPS ? enteredAt + INDIVIDUAL_GATE_CAP_MS : undefined
+  if (!clock || cursor.deadline === undefined) return cursor.enteredAt + INTERSTITIAL_TOTAL_MS
+  return cursor.deadline - clock.leadMs - clock.seconds * 1000
 }
 
 /**

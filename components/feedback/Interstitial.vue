@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="!watching"
+    v-if="!dormant"
     ref="root"
     class="intro-overlay interstitial"
     :class="[tone, { dressed: !!backdrop }]"
@@ -35,6 +35,7 @@ import { seedFrom } from '~~/lib/random'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
+import { useSpentInterstitial } from '~~/lib/use-spent-interstitial'
 import { useGameStore } from '~~/store/game.store'
 import ContourRipple from './ContourRipple.vue'
 
@@ -79,6 +80,8 @@ const emit = defineEmits<{ done: [] }>()
 // fire. The card skips itself and emits `done` as if the beat had played.
 const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
+const spent = useSpentInterstitial()
+const dormant = computed(() => watching.value || spent)
 const roundNumber = computed(() => gameStore.currentRound?.number ?? 1)
 const category = computed(() => (props.kind ? challengeCategory(props.kind) : undefined))
 // Room + round: identical on every seat, stable across a re-render.
@@ -107,7 +110,7 @@ const { skip } = useIntroBeat(
   () => emit('done')
 )
 
-useKeyboardSkip(() => !watching.value, skip)
+useKeyboardSkip(() => !dormant.value, skip)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

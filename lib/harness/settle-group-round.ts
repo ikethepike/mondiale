@@ -3,7 +3,14 @@ import {
   gradeGroupAnswer,
   type GroupSubmission,
 } from '~~/lib/events/server/grade-group-answer'
-import { GROUP_SCORES_CAP_MS, revealBudgetMsFor, SERVER_CONTROLLED_CAPS } from '~~/lib/round-beats'
+import {
+  briefingHolds,
+  GROUP_SCORES_CAP_MS,
+  isClassicGroupRound,
+  revealBudgetMsFor,
+  SERVER_CONTROLLED_CAPS,
+  stampClassicClock,
+} from '~~/lib/round-beats'
 import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -23,6 +30,18 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * comes entirely from `gradeGroupAnswer`. It deliberately deals no moves: the
  * harness runs no board, and the scorecard reads only the round.
  */
+
+/**
+ * The reveal's classic clock, as `classic-rounds.ts` stamps it — the play
+ * start after the card, the close after the play (plus any play-gate wait) —
+ * so a dealt preview ticks instead of sitting on a full clock.
+ */
+export const stampMockClassicClock = (round: Round, now = Date.now()): Round => {
+  if (isClassicGroupRound(round.groupChallenge) && !briefingHolds(round.groupChallenge)) {
+    stampClassicClock(round, now)
+  }
+  return round
+}
 
 /** How many of the answer set a rival finds, so the scorecard is not a wall of
  *  zeros. Seeded off the seat index — stable across a re-deal, never random. */

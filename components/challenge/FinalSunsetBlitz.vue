@@ -114,7 +114,8 @@ const elapsedSeconds = computed(() =>
 )
 // Undefined until the camera settles — the dusk line stays parked off-screen.
 // The veil animates on the compositor's own timeline, so its start is the
-// server clock's elapsed time translated onto `performance.now()` at the lock.
+// server clock's start translated onto `performance.now()` — never clamped to
+// the lock, and re-translated when a dismissed card pulls the start in.
 const sweep = shallowRef<{
   duskAt: (elapsedSeconds: number) => number
   startTime: number
@@ -178,11 +179,16 @@ const lockSweep = (sinceStartMs: number) => {
   const start = Math.max(sweepBounds(vb).start, sunsetDuskCoordinate(field.value[0]!))
   sweep.value = {
     duskAt: sunsetSweep(field.value, schedule.value, start),
-    startTime: performance.now() - elapsedSeconds.value * 1000,
+    startTime: veilStartTime(),
     duration: schedule.value.at(-1) ?? 0,
   }
   void nextTick(() => guessInput.value?.focus({ auto: true }))
 }
+
+const veilStartTime = () => performance.now() - (now.value - (startsAt.value ?? now.value))
+watch(startsAt, () => {
+  if (sweep.value) sweep.value = { ...sweep.value, startTime: veilStartTime() }
+})
 
 /** When this stage's scene opened, in server time — the camera's settle clock. */
 let sceneOpenedAt: number | undefined

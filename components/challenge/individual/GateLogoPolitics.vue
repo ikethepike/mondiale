@@ -11,6 +11,7 @@
       :key="option"
       class="card-option"
       type="button"
+      :disabled="settled"
       @click="answerOrigin(option)"
     >
       <CountryChip tag="span" :country="getCountry(option)" />
@@ -23,7 +24,7 @@
       :key="String(choice)"
       class="card-option"
       type="button"
-      :disabled="answered"
+      :disabled="settled"
       :class="verdictOn(choice === truthOfRuling)"
       @click="answer(choice === truthOfRuling)"
     >
@@ -55,7 +56,7 @@
         min="0"
         max="1000"
         :value="Math.round(slid * 1000)"
-        :disabled="answered"
+        :disabled="settled"
         :aria-label="prompt"
         :aria-valuetext="SPECTRUM_LABELS[spectrumAt(slid)]"
         @input="onSlide"
@@ -71,7 +72,7 @@
          scoring ~1 in 4 for free. The placement has to be a decision. -->
     <ButtonFilled
       v-if="!answered"
-      :disabled="!moved"
+      :disabled="!moved || settled"
       @click="answer(spectrumAt(slid) === challenge.partyLogo?.band)"
     >
       {{ moved ? 'Place them here' : 'Drag to place them' }}
@@ -112,7 +113,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { submitAnswer, giveUp } = useGateChallenge()
+const { submitAnswer, giveUp, status } = useGateChallenge()
 
 // Every timed sibling forfeits on the buzzer; this gate had no clock at all,
 // which also meant it paid the pot whole where the others decay.
@@ -130,6 +131,7 @@ const prompt = computed(() => logoPoliticsPrompt(ask.value, countryName(props.ch
 // `answered` rather than truthiness — a wrong pick is still a pick.
 const picked = ref<boolean | undefined>()
 const answered = computed(() => picked.value !== undefined)
+const settled = computed(() => answered.value || !!status.value)
 
 // The slider starts dead centre: any other resting place is a hint.
 const slid = ref(0.5)
@@ -156,7 +158,7 @@ const thumbColor = computed(() => {
 const moved = ref(false)
 
 const onSlide = (event: Event) => {
-  if (answered.value) return
+  if (settled.value) return
   slid.value = Number((event.target as HTMLInputElement).value) / 1000
   moved.value = true
 }
@@ -176,7 +178,7 @@ const answerOrigin = (isoCode: ISOCountryCode) => {
 }
 
 const answer = (correct: boolean) => {
-  if (picked.value !== undefined) return
+  if (settled.value) return
   picked.value = correct
   // Sent at the answer: the wash holds on the question for the variant's
   // verdict lead, which the shell reads off the server clock.
