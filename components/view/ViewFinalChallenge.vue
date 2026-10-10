@@ -238,7 +238,6 @@ import {
   weighScalesPicks,
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
-import { sunsetQuota } from '~~/lib/sunset-window'
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
@@ -409,9 +408,7 @@ const displayedLives = computed(() =>
 const lastGuess = ref<ISOCountryCode | undefined>(undefined)
 const scalesPicks = ref<ISOCountryCode[]>([])
 const scalesResult = ref<ScalesResult | undefined>(undefined)
-const sunsetResult = ref<
-  { named: ISOCountryCode[]; inPlay: ISOCountryCode[]; quota: number } | undefined
->(undefined)
+const sunsetResult = ref<ISOCountryCode[] | undefined>(undefined)
 const nocturneResult = ref<string[] | undefined>(undefined)
 const yearbookDialed = ref<number | undefined>(undefined)
 // The made-in reveal waits a beat so the lit map registers before the card
@@ -900,16 +897,12 @@ const onYearbookFinished = (year: number) => {
   submitFinalAnswer(submittedAnswer)
 }
 
-const onSunsetFinished = (named: ISOCountryCode[], inPlay: ISOCountryCode[]) => {
+const onSunsetFinished = (named: ISOCountryCode[]) => {
   const challenge = currentFinalChallenge.value
   if (challenge?._type !== 'sunset-blitz-challenge') return
 
-  sunsetResult.value = { named, inPlay, quota: sunsetQuota(inPlay, challenge.quotaRatio) }
-  const submittedAnswer = {
-    _type: 'sunset-blitz-challenge',
-    namedCountries: named,
-    inPlay,
-  } as const
+  sunsetResult.value = named
+  const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
   gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
 
   submitFinalAnswer(submittedAnswer)

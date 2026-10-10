@@ -1,7 +1,7 @@
 import { MAP_REGIONS } from '~~/data/map.gen'
 import { sample } from '~~/lib/arrays'
 import { mainlandBox, pointInBox, unionBox, type MapBox } from '~~/lib/geo'
-import { clamp } from '~~/lib/number'
+import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -10,24 +10,24 @@ export const SUNSET_TILT = 0.17
 
 /**
  * The night window per difficulty: how many countries the dealt frame holds,
- * the share of the field that passes, and how long the sweep buys each one.
- * The ratios are set against the field a SCREEN puts in play — two to three
- * times the dealt count on a desktop — not the dealt window alone. Easy never
- * deals the finale; its row keeps the record total.
+ * the share of them that passes, and the night's pace — seconds it spends on
+ * each country, easing from the first to the last so the run tightens as it
+ * goes. Easy never deals the finale; its row keeps the record total.
  */
 export const SUNSET_TUNING: {
   [difficulty in GameDifficulty]: {
     countries: [minimum: number, maximum: number]
     quotaRatio: number
-    secondsPerCountry: number
+    pace: [first: number, last: number]
   }
 } = {
-  easy: { countries: [8, 11], quotaRatio: 0.3, secondsPerCountry: 6 },
-  normal: { countries: [10, 14], quotaRatio: 0.35, secondsPerCountry: 5 },
-  hard: { countries: [12, 16], quotaRatio: 0.45, secondsPerCountry: 4 },
+  easy: { countries: [8, 10], quotaRatio: 0.4, pace: [6, 4.5] },
+  normal: { countries: [9, 12], quotaRatio: 0.5, pace: [5, 3.5] },
+  hard: { countries: [11, 15], quotaRatio: 0.6, pace: [4, 2.5] },
 }
 
-export const SUNSET_SECONDS: [minimum: number, maximum: number] = [40, 120]
+/** The night's approach from off-screen east before its first country's turn. */
+export const SUNSET_LEAD_SECONDS = 2
 
 // The frame's shape must survive the camera's aspect correction: a strip
 // (Chile with Argentina, the Levant alone) would frame with most of the
@@ -69,13 +69,115 @@ export const sunsetDuskCoordinate = (isoCode: ISOCountryCode): number => {
 export const windowCountries = (pool: ISOCountryCode[], frame: MapBox): ISOCountryCode[] =>
   pool.filter(isoCode => pointInBox(mapRegionCentre(isoCode), frame))
 
-/** The pass mark for a field — the dealt window, or the wider set a screen
- *  put in play — as the difficulty's share of it. */
-export const sunsetQuota = (field: readonly ISOCountryCode[], quotaRatio: number): number =>
-  Math.ceil(field.length * quotaRatio)
+export const sunsetQuota = ({
+  countries,
+  quotaRatio,
+}: Pick<SunsetBlitzChallenge, 'countries' | 'quotaRatio'>): number =>
+  Math.ceil(countries.length * quotaRatio)
+
+/**
+ * When the night takes each country of a field, in seconds from the sweep's
+ * start, east→west: one turn per country rather than one speed across the
+ * map, so a dense cluster never falls in a burst and an empty stretch never
+ * idles. The grading and the drawn line both read this one schedule.
+ */
+export const sunsetSchedule = (countryCount: number, difficulty: GameDifficulty): number[] => {
+  const [first, last] = SUNSET_TUNING[difficulty].pace
+  const times: number[] = []
+  let at = SUNSET_LEAD_SECONDS
+  for (let index = 0; index < countryCount; index++) {
+    at += first + (last - first) * (index / Math.max(1, countryCount - 1))
+    times.push(at)
+  }
+  return times
+}
 
 export const sunsetSeconds = (countryCount: number, difficulty: GameDifficulty): number =>
-  clamp(countryCount * SUNSET_TUNING[difficulty].secondsPerCountry, ...SUNSET_SECONDS)
+  Math.ceil(sunsetSchedule(countryCount, difficulty).at(-1) ?? SUNSET_LEAD_SECONDS)
+
+/** How many of the field the night has taken `elapsed` seconds in. */
+export const sunsetDarkCount = (schedule: readonly number[], elapsed: number): number => {
+  let count = 0
+  while (count < schedule.length && schedule[count]! <= elapsed) count++
+  return count
+}
+
+/**
+ * The run's verdict as soon as it is settled: `held` once the quota is lit,
+ * `lost` once the countries still standing can no longer reach it.
+ */
+export const sunsetOutcome = (
+  lit: number,
+  standing: number,
+  quota: number
+): 'held' | 'lost' | undefined => {
+  if (lit >= quota) return 'held'
+  if (lit + standing < quota) return 'lost'
+  return undefined
+}
+
+/**
+ * The terminator over time: from `start` (off-screen east) through each
+ * country's dusk coordinate at the very instant the schedule takes it, on a
+ * monotone cubic so the line eases between turns instead of lurching at every
+ * knot — and never backs up, so "who is dark" stays a prefix of the field.
+ */
+export const sunsetSweep = (
+  field: readonly ISOCountryCode[],
+  schedule: readonly number[],
+  start: number
+): ((elapsed: number) => number) => {
+  const times = [0, ...schedule]
+  const dusks = [start, ...field.map(sunsetDuskCoordinate)]
+  const slopes = monotoneSlopes(times, dusks)
+  return elapsed => {
+    if (elapsed <= 0) return start
+    let index = 1
+    while (index < times.length - 1 && times[index]! < elapsed) index++
+    if (elapsed >= times[index]!) return dusks[index]!
+    const t0 = times[index - 1]!
+    const span = times[index]! - t0
+    const u = (elapsed - t0) / span
+    const u2 = u * u
+    const u3 = u2 * u
+    return (
+      (2 * u3 - 3 * u2 + 1) * dusks[index - 1]! +
+      (u3 - 2 * u2 + u) * span * slopes[index - 1]! +
+      (-2 * u3 + 3 * u2) * dusks[index]! +
+      (u3 - u2) * span * slopes[index]!
+    )
+  }
+}
+
+// Fritsch–Carlson tangents: a Hermite spline through these never overshoots
+// a knot, so a non-increasing series stays non-increasing between them
+const monotoneSlopes = (xs: readonly number[], ys: readonly number[]): number[] => {
+  const n = xs.length
+  const secants = xs.slice(1).map((x, i) => (ys[i + 1]! - ys[i]!) / (x - xs[i]!))
+  const slopes = xs.map((_, i) => {
+    if (i === 0) return secants[0] ?? 0
+    if (i === n - 1) return secants[n - 2]!
+    const [before, after] = [secants[i - 1]!, secants[i]!]
+    return before * after <= 0 ? 0 : (before + after) / 2
+  })
+  for (let i = 0; i < n - 1; i++) {
+    const secant = secants[i]!
+    if (secant === 0) {
+      slopes[i] = 0
+      slopes[i + 1] = 0
+      continue
+    }
+    const a = slopes[i]! / secant
+    const b = slopes[i + 1]! / secant
+    const norm = a * a + b * b
+    if (norm > 9) {
+      const scale = 3 / Math.sqrt(norm)
+      slopes[i] = scale * a * secant
+      slopes[i + 1] = scale * b * secant
+    }
+  }
+  return slopes
+}
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y)

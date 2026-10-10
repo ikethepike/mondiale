@@ -1,15 +1,14 @@
 import { MAP_BOUNDS, MAP_REGIONS, type MapCode } from '~~/data/map.gen'
 import { regionsIntersect, type MapBox } from '~~/lib/geo'
-import { SUNSET_TILT, sunsetDuskCoordinate } from '~~/lib/sunset-window'
+import { SUNSET_TILT } from '~~/lib/sunset-window'
 import { bleedBox, projectToRect, type MapViewBox, type ScreenRect } from '~~/lib/use-map-viewbox'
-import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * The night as one moving plane: the sweep runs in map-space dusk coordinates
  * (lib/sunset-window) and lands on screen as a single compositor transform,
- * with the darkened land a static svg counter-transformed inside it. Both
- * ends of that seam — the ticker placing the plane and the view grading who
- * is dark — read this module, so the drawn line and the rule never disagree.
+ * with the darkened land a static svg counter-transformed inside it. The
+ * plane's keyframes and the view's grading both read `sunsetSweep`'s one
+ * schedule, so the drawn line and the rule never disagree.
  */
 export interface Viewport {
   width: number
@@ -46,17 +45,6 @@ export const sweepBounds = (vb: MapViewBox): { start: number; end: number } => (
   end: vb.x - (vb.y + vb.h) * TAN - SUNSET_SWEEP_MARGIN,
 })
 
-/**
- * How many of `field` the night has taken. The field is sorted east→west by
- * dusk coordinate, so the dark countries are always its leading run — one
- * integer, changing only as a country crosses, is the whole dark set.
- */
-export const darkPrefixCount = (field: readonly ISOCountryCode[], dusk: number): number => {
-  let count = 0
-  while (count < field.length && sunsetDuskCoordinate(field[count]!) >= dusk) count++
-  return count
-}
-
 /** Where the terminator crosses the map's vertical centre, in viewport px. */
 export const veilMidPx = (vb: MapViewBox, dusk: number, rect: ScreenRect): number => {
   const midY = vb.y + vb.h / 2
@@ -84,11 +72,62 @@ export const veilPlaneSize = (viewport: Viewport): Viewport => {
 }
 
 /** The plane's transform and the exact inverse its land layer wears. Only
- *  `midPx` moves, so both interpolate in lockstep under one transition. */
+ *  `midPx` moves, so both interpolate in lockstep. */
 export const veilTransforms = (midPx: number): { plane: string; inverse: string } => ({
   plane: `translateX(${midPx}px) rotate(${SUNSET_VEIL_TILT_DEG}deg)`,
   inverse: `rotate(${-SUNSET_VEIL_TILT_DEG}deg) translateX(${-midPx}px)`,
 })
+
+/** Keyframes per second of sweep — linear between samples of a smooth curve. */
+const SWEEP_SAMPLES_PER_SECOND = 8
+
+/**
+ * The whole sweep as two compositor animations' keyframes, sampled once: the
+ * plane and its inverse play them from one start time, so the night moves
+ * with no main-thread work per frame. Both lists share offsets and only their
+ * `translateX` varies, so linear interpolation keeps them exact inverses.
+ */
+export const veilKeyframes = (
+  midPxAt: (elapsedSeconds: number) => number,
+  durationSeconds: number
+): { plane: Keyframe[]; inverse: Keyframe[] } => {
+  const steps = Math.max(1, Math.ceil(durationSeconds * SWEEP_SAMPLES_PER_SECOND))
+  const plane: Keyframe[] = []
+  const inverse: Keyframe[] = []
+  for (let step = 0; step <= steps; step++) {
+    const offset = step / steps
+    const transforms = veilTransforms(midPxAt(offset * durationSeconds))
+    plane.push({ offset, transform: transforms.plane })
+    inverse.push({ offset, transform: transforms.inverse })
+  }
+  return { plane, inverse }
+}
+
+/** How far the window's pool of light reaches, as a multiple of the frame's
+ *  half-extent, and where along that radius dusk begins to take it — the
+ *  frame's corners (√2 out) must sit inside the clear part. */
+export const SUNSET_POOL_REACH = 2
+export const SUNSET_POOL_CLEAR = 0.72
+
+/**
+ * The pool of light the window stands in, in viewport px: an ellipse around
+ * the dealt frame on screen. Everything past it is already dusk.
+ */
+export const twilightPool = (
+  vb: MapViewBox,
+  frame: MapBox,
+  rect: ScreenRect
+): { cx: number; cy: number; rx: number; ry: number } => {
+  const [x, y, width, height] = frame
+  const topLeft = projectToRect(vb, { x, y }, rect)
+  const bottomRight = projectToRect(vb, { x: x + width, y: y + height }, rect)
+  return {
+    cx: (topLeft.x + bottomRight.x) / 2,
+    cy: (topLeft.y + bottomRight.y) / 2,
+    rx: ((bottomRight.x - topLeft.x) / 2) * SUNSET_POOL_REACH,
+    ry: ((bottomRight.y - topLeft.y) / 2) * SUNSET_POOL_REACH,
+  }
+}
 
 const asBox = (vb: MapViewBox): MapBox => [vb.x, vb.y, vb.w, vb.h]
 

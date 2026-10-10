@@ -66,7 +66,7 @@ export type FinalChallengeAnswer =
    *  field they were named from — the dealt window plus whatever else the
    *  player's screen showed. The window is the floor, so the field can only
    *  ever be wider than what was dealt. */
-  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[]; inPlay: ISOCountryCode[] }
+  | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
   | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'made-challenge'; isoCode: ISOCountryCode }
@@ -173,23 +173,21 @@ export interface LanguageChallenge {
 }
 
 /**
- * The finale: night sweeps the framed window east→west; type each country's
- * name before the dark takes it. Client-trust graded like higher-lower gates —
- * the client runs the sweep and submits the named set once. Dealt, framed
- * and graded through `lib/sunset-window.ts`.
+ * The finale: the world is already dark but for the framed window, and night
+ * takes its countries one turn at a time; name enough before the dark does.
+ * Client-trust graded like higher-lower gates — the client runs the sweep and
+ * submits the named set once. Dealt, framed, paced and graded through
+ * `lib/sunset-window.ts`.
  */
 export interface SunsetBlitzChallenge {
   _type: 'sunset-blitz-challenge'
   /** The night window in map space — the camera frames this. */
   frame: MapBox
-  /** The dealt field: every playable country whose centre the frame holds,
-   *  ordered east→west (darkening order). The screen's aspect shows more
-   *  around it, and everything on screen is in play — this is the floor. */
+  /** The field: every playable country whose centre the frame holds,
+   *  ordered east→west (darkening order). Nothing else is in play. */
   countries: ISOCountryCode[]
-  /** Share of the field in play that must be named. */
+  /** Share of the field that must be named — read through `sunsetQuota`. */
   quotaRatio: number
-  /** The clock for the dealt field — the client scales it to what its screen
-   *  actually put in play, through `sunsetSeconds`. */
   durationSeconds: number
 }
 
