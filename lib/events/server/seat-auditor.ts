@@ -8,18 +8,21 @@ import {
   isDraining,
   useServerSideEvents,
   type GameServer,
+  type GameSocket,
 } from '../server-side'
 import { machineOwnsGame } from './game-ownership'
+import { rearmLiveRound } from './rearm-round'
 import { armedTimersFor } from './seat-cursor'
 import { LIVE_ROOM_WINDOW_MS, LIVE_ROOMS_KEY, readRenders } from '~~/lib/debug-rooms'
 import { logSeatLine } from './seat-journal'
 
 /**
- * The production auditor: a periodic, READ-ONLY sweep of every live room this
- * machine owns, running the shared seat invariants against the saved game,
- * the in-process timers and the viewers' render acks. Each new violation is
- * one structured `seat-audit` line — the frozen-until-refresh class becomes a
- * log search instead of a player report.
+ * The production auditor: a periodic sweep of every live room this machine
+ * owns, running the shared seat invariants against the saved game, the
+ * in-process timers and the viewers' render acks. Each new violation is one
+ * structured `seat-audit` line — the frozen-until-refresh class becomes a log
+ * search instead of a player report. It never writes the game; a wait whose
+ * timer is gone is re-armed from persisted state, as a rejoin would.
  */
 export const SEAT_AUDIT_MS = 10_000
 /** Run the invariants for one game with every piece of evidence this machine holds. */
@@ -41,6 +44,17 @@ export const auditGame = async (
 const reported = new Map<string, number>()
 const reportKey = (gameId: string, violation: SeatViolation) =>
   `${gameId}|${violation.kind}|${violation.seat ?? ''}|${violation.detail.replace(/\d+ms/g, '')}`
+
+/** What a rearm from persisted state can heal: a wait whose timer is gone or never fired. */
+const HEALABLE: readonly SeatViolation['kind'][] = [
+  'overdue',
+  'unarmed',
+  'table-overdue',
+  'table-unarmed',
+  'round-overdue',
+]
+export const needsRearm = (violations: readonly SeatViolation[]) =>
+  violations.some(violation => HEALABLE.includes(violation.kind))
 
 export const reportViolations = (gameId: string, violations: readonly SeatViolation[]) => {
   const now = Date.now()
@@ -66,6 +80,34 @@ export const markLiveRoom = async (
   await redis.expire(LIVE_ROOMS_KEY, GAME_STATE_TTL_SECONDS)
 }
 
+/**
+ * One room's sweep, inside its game queue: report what the invariants see,
+ * and re-arm from persisted state when a wait has lost its timer — a fetch
+ * that failed or a body that threw leaves no exit until someone rejoins, so
+ * the sweep is the other recovery moment.
+ */
+export const sweepGame = async (
+  { io, redis }: { io: GameServer; redis: Redis },
+  game: Game,
+  connectedSeats: readonly string[]
+) => {
+  const violations = await auditGame(redis, game, connectedSeats)
+  reportViolations(game.id, violations)
+  if (needsRearm(violations)) {
+    logSeatLine('seat-heal', { game: game.id, at: Date.now() })
+    rearmLiveRound(
+      {
+        io,
+        redis,
+        socket: {} as GameSocket,
+        eventTarget: { gameId: game.id, playerId: game.host },
+      },
+      game
+    )
+  }
+  return violations
+}
+
 let auditorStarted = false
 
 export const startSeatAuditor = ({ io, redis }: { io: GameServer; redis: Redis }) => {
@@ -88,8 +130,7 @@ export const startSeatAuditor = ({ io, redis }: { io: GameServer; redis: Redis }
         await markLiveRoom(redis, gameId)
         await enqueueGameTask(gameId, async () => {
           const game = await server.fetchGame(gameId)
-          if (!game?.started) return
-          reportViolations(gameId, await auditGame(redis, game, [...connected]))
+          if (game?.started) await sweepGame({ io, redis }, game, [...connected])
         })
       })().catch(error => console.error(`Seat audit failed for ${gameId}`, error))
     }

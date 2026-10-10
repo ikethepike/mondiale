@@ -35,7 +35,11 @@ const lastRearmedAt = new Map<string, number>()
 export const rearmLiveRound = (
   ctx: EngineContext,
   game: Game,
-  options: RearmOptions = { armBriefingCaps: true }
+  // An open rules card gates ONLY the briefing caps — a cap must not
+  // force-start a round under it.
+  options: RearmOptions = {
+    armBriefingCaps: !Object.values(game.players).some(seat => seat.cursor.step === 'tutorial'),
+  }
 ) => {
   const now = Date.now()
   const last = lastRearmedAt.get(game.id) ?? 0

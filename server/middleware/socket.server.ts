@@ -1,3 +1,4 @@
+import { gameRedisConfig } from '../utils/game-redis'
 import { Redis } from '@upstash/redis'
 import { Server } from 'socket.io'
 import {
@@ -94,9 +95,8 @@ const pruneSpectatorOnDisconnect = (io: GameServer, redis: Redis, socket: GameSo
 let warnedMissingRedisToken = false
 
 export default defineEventHandler(({ node }) => {
-  const { REDIS_PASSWORD, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = process.env
-  const redisToken = UPSTASH_REDIS_REST_TOKEN ?? REDIS_PASSWORD
-  if (!redisToken) {
+  const redisConfig = gameRedisConfig()
+  if (!redisConfig) {
     // PR previews may deploy without Redis secrets (see fly-preview.yml):
     // the site must still serve — /health especially, or Fly's health checks
     // can never pass — so skip the socket server instead of failing every
@@ -112,10 +112,7 @@ export default defineEventHandler(({ node }) => {
 
   // Use globalThis for better cross-environment compatibility
   if (!globalThis.io) {
-    const redis = new Redis({
-      url: UPSTASH_REDIS_REST_URL ?? 'https://pure-ghost-24372.upstash.io',
-      token: redisToken,
-    })
+    const redis = new Redis(redisConfig)
 
     // Create a new Socket.IO server only if it doesn't already exist
     const httpServer = (node.res.socket as { server?: import('node:http').Server })?.server

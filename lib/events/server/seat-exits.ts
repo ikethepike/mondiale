@@ -66,7 +66,6 @@ export const commitSeat = async (server: ServerSide, game: Game, seat: Player) =
   )
 }
 
-/** Into the scorecard with a fresh moveset: the steps the score bought. */
 export const enterScores = async (
   game: Game,
   seat: Player,
@@ -377,7 +376,6 @@ export interface SeatExit {
   seat: Player
 }
 
-/** What each seat timer does when its cursor's stamp comes due. */
 export const SEAT_TIMER_EXITS: Record<SeatTimerKind, (exit: SeatExit) => Promise<void>> = {
   'tutorial-cap': async ({ ctx, game, server, seat }) => {
     console.warn(`Tutorial cap closing rules card for ${seat.id} in ${game.id}`)
@@ -486,7 +484,10 @@ export const revealNextRound = async (ctx: EngineContext, game: Game, server: Se
   if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
   startClassicClock(revealedRound)
   // Manhunt and government seed their secrets into side keys before the
-  // reveal saves, so the answers never ride a broadcast.
+  // reveal saves, so the answers never ride a broadcast. A reveal that died
+  // before its save left a previous deal's secrets under this index: the
+  // seeders are idempotent on the key, so clear it first.
+  for (const key of roundSideKeys(game)) await ctx.redis.del(key)
   if (isManhuntChallenge(revealed)) await startManhunt(ctx, game, revealed)
   if (isGovernmentChallenge(revealed)) await startGovernment(ctx, game, revealed)
 

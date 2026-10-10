@@ -34,6 +34,7 @@ export const recordedDrawAsync = async <T>(
 /** The labels a draw is recorded under — one spelling per kind of draw. */
 export const drawLabel = {
   moves: (seatId: string) => `moves:${seatId}`,
+  color: (seatId: string) => `color:${seatId}`,
   round: () => 'round',
   finalReplacement: () => 'final-replacement',
   chainSeed: () => 'chain-seed',

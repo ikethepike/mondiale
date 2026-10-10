@@ -9,7 +9,8 @@ import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.typ
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { seatFireAt } from '~~/lib/seat-transitions'
-import { armSeat, armTable, dropArmedTimersForTests, rearmSeats } from './seat-cursor'
+import { sweepGame } from './seat-auditor'
+import { armSeat, armTable, dropArmedTimersForTests } from './seat-cursor'
 import { testCursor, testSeat } from './test-seat'
 import { createTestTable, type TestTable, uniqueGameId } from './test-table'
 
@@ -62,7 +63,7 @@ describe('a timer whose body never ran', () => {
     return blip
   }
 
-  it('is re-armed by the next rearm, and the seat moves on', async () => {
+  it('is re-armed by the auditor’s sweep, and the seat moves on with no one rejoining', async () => {
     const seat = testSeat('parked', 'scores', {
       cursor: testCursor('scores', { deadline: Date.now() + 1000 }),
     })
@@ -80,7 +81,32 @@ describe('a timer whose body never ran', () => {
       'unarmed'
     )
 
-    rearmSeats(ctx, await table.read())
+    await sweepGame({ io: table.io, redis: table.redis as never }, await table.read(), [])
+    await vi.advanceTimersByTimeAsync(10)
+    expect((await table.read()).players.parked!.cursor.step).toBe('walk')
+  })
+
+  it('is healed by the sweep when its body threw part-way (the save failed)', async () => {
+    const seat = testSeat('parked', 'scores', {
+      cursor: testCursor('scores', { deadline: Date.now() + 1000 }),
+    })
+    const game = buildGame([seat])
+    table = await createTestTable(game)
+    armSeat(table.ctx(seat.id), game, seat)
+    const set = table.redis.set.bind(table.redis)
+    let failing = true
+    table.redis.set = async (key: string, value: unknown) => {
+      if (failing && key === game.id) throw new Error('upstash blip')
+      return set(key, value)
+    }
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await vi.advanceTimersByTimeAsync(
+      seatFireAt(seat.cursor)! - Date.now() + SEAT_OVERDUE_SLACK_MS + 10
+    )
+    failing = false
+    expect((await table.read()).players.parked!.cursor.step).toBe('scores')
+
+    await sweepGame({ io: table.io, redis: table.redis as never }, await table.read(), [])
     await vi.advanceTimersByTimeAsync(10)
     expect((await table.read()).players.parked!.cursor.step).toBe('walk')
   })

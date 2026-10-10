@@ -126,14 +126,10 @@ export const joinEventHandler: EventHandler = async ({
   }
 
   // In-memory timers die with a restart; Redis outlives them. Rejoining is
-  // the recovery moment: every seat re-arms the one timer its cursor implies,
+  // a recovery moment: every seat re-arms the one timer its cursor implies,
   // and the live round's engine re-arms its own clocks. Idempotent beside
-  // live timers. Open tutorials gate ONLY the briefing caps — a cap must not
-  // force-start under a rules card.
-  const tutorialsUp = Object.values(game.players).some(entry => entry.cursor.step === 'tutorial')
-  if (game.started) {
-    rearmLiveRound({ io, redis, socket, eventTarget }, game, { armBriefingCaps: !tutorialsUp })
-  }
+  // live timers.
+  if (game.started) rearmLiveRound({ io, redis, socket, eventTarget }, game)
 
   await socket.join(gameId)
 

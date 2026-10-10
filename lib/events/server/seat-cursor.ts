@@ -1,3 +1,4 @@
+import type { ArmedSeatTimer } from '~~/lib/seat-invariants'
 import {
   applySeatMove,
   IllegalTransition,
@@ -92,9 +93,7 @@ const tableKey = (gameId: string) => `${gameId}|@table`
 const seatKey = (gameId: string, seatId: string) => `${gameId}|${seatId}`
 
 /** What this process has armed for a game — the auditor and `/debug/rooms` read it. */
-export const armedTimersFor = (
-  gameId: string
-): { seat: string; seq: number; kind: ArmedTimer['kind']; fireAt: number }[] =>
+export const armedTimersFor = (gameId: string): ArmedSeatTimer[] =>
   [...armed.entries()]
     .filter(([key]) => key.startsWith(`${gameId}|`))
     .map(([key, timer]) => ({
