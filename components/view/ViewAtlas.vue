@@ -191,6 +191,7 @@ import { playerDisplayName, seatLabel } from '~~/lib/player'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useAckOnce } from '~~/lib/use-ack-once'
+import { REPLAY_REDRAW_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -212,6 +213,7 @@ const {
   announce,
   gameStore,
   update,
+  createViewTimer,
 } = useGroupChallenge('atlas-challenge', { solo: false })
 
 const state = computed(() => challenge.value?.state)
@@ -523,6 +525,8 @@ const paintChain = (staggered: boolean) => {
 
 watch(challenge, () => !finished.value && paintChain(false), { immediate: true, deep: true })
 
+const scheduleReplay = createViewTimer()
+
 // The reveal replay: blank the path, then let it re-arrive hop by hop, with
 // the local player's missed continuations glowing as the lesson. Immediate, so
 // a client that arrives with the round already finished (reconnect, harness)
@@ -534,11 +538,11 @@ watch(
     gameStore.map.countryGroupings = undefined
     gameStore.map.landRoutes = []
     gameStore.map.pulsing = []
-    setTimeout(() => {
+    scheduleReplay(() => {
       paintChain(true)
       const outs = state.value?.missedOuts[gameStore.seatId] ?? []
       gameStore.map.tints = Object.fromEntries(outs.map(isoCode => [isoCode, 'optimal']))
-    }, 400)
+    }, REPLAY_REDRAW_MS)
   },
   { immediate: true }
 )

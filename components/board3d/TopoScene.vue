@@ -937,6 +937,17 @@ watch(
   }
 )
 
+// A racer's pin ends with their own next walk (walkSeq bumps once per walk):
+// held across it, the camera opened on the rival and hid the own pawn's
+// blocked banner.
+watch(
+  () => props.game.players[gameStore.seatId]?.walkSeq,
+  (walkSeq, previous) => {
+    if (boothMode.value || walkSeq === undefined || previous === undefined) return
+    gameStore.board.spectateTargetId = undefined
+  }
+)
+
 // Stuck-at-a-challenge wobble: a slow, repeating rock while blocked. A named
 // sync (not just a watcher body) because the beat must only ever play ON
 // SCREEN: while the stage is hidden the watcher holds without latching, and

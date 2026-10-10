@@ -53,6 +53,14 @@ import { useGameAnnouncements } from '~~/lib/use-game-announcements'
 import { useJoinRoom } from '~~/lib/use-join-room'
 import { usePhaseTransition } from '~~/lib/phase-transitions'
 import {
+  observeLongTasks,
+  playtestScope,
+  questionKeyOf,
+  readScreen,
+  traceTransitionHooks,
+  type TransitionTrace,
+} from '~~/lib/playtest-probe'
+import {
   AUTOPILOT_RECLAIM_HOLD_MS,
   BOARD_TO_CHALLENGE_HOLD_MS,
   CHALLENGE_SWAP_VERIFY_MS,
@@ -214,13 +222,15 @@ watch(
 
 // Test instrumentation, armed by `?viewlog=1`: record every presented view
 // swap so the e2e transition-grammar assertions can catch a wrong view that
-// flashes too briefly for selector polling to ever see.
-if (import.meta.client && 'viewlog' in useRoute().query) {
+// flashes too briefly for selector polling to ever see, and expose the probe
+// the playtest driver's freeze detector polls.
+const viewLogArmed = import.meta.client && 'viewlog' in useRoute().query
+const transitionTrace: TransitionTrace = {}
+if (viewLogArmed) {
   watch(
     presentedView,
     view => {
-      const scope = window as unknown as { __viewLog?: { key: string; at: number }[] }
-      const log = (scope.__viewLog ??= [])
+      const log = (playtestScope().__viewLog ??= [])
       const key = view?.key ?? 'none'
       // Snapshots rebuild the resolved-view object every evaluation; only a
       // KEY change is a real swap (the Transition is keyed the same way).
@@ -229,11 +239,30 @@ if (import.meta.client && 'viewlog' in useRoute().query) {
     },
     { immediate: true }
   )
+  playtestScope().__gameProbe = () => ({
+    at: Date.now(),
+    playerId: self.value?.id,
+    rev: game.value?.rev,
+    phase: self.value?.phase,
+    active: activeView.value?.key,
+    presented: presentedView.value?.key,
+    rounds: game.value?.rounds.length,
+    position: self.value?.currentPosition,
+    moveChallenge: self.value?.moves[0]?.challenge?._type,
+    questionKey: questionKeyOf(self.value?.moves[0], self.value?.walkSeq),
+    localVerdict: !!gameStore.map.status,
+    resolving: self.value?.resolving,
+    connected: gameStore.socket?.connected,
+    transition: { ...transitionTrace },
+    screen: readScreen(),
+  })
+  observeLongTasks()
 }
 
-const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = usePhaseTransition(
-  () => presentedView.value?.kind ?? 'card'
-)
+const phaseHooks = usePhaseTransition(() => presentedView.value?.kind ?? 'card')
+const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = viewLogArmed
+  ? traceTransitionHooks(phaseHooks, transitionTrace)
+  : phaseHooks
 
 const joinRoom = useJoinRoom()
 

@@ -132,6 +132,10 @@ export const armIndividualGateCap = (ctx: EngineContext, player: Player) => {
   scheduleEngineTask(ctx, INDIVIDUAL_GATE_CAP_MS, async (fresh, server) => {
     const seat = fresh.players[playerId]
     if (!seat || seat.phase !== 'individual-challenge' || seat.resolving) return
+    // A blocked seat lands on the SAME gate tile next round: without the walk
+    // token this cap forfeits the new landing, and its continuation carries a
+    // dead walkSeq the movement handler drops — the seat never leaves the gate.
+    if (seat.walkSeq !== walkSeq) return
     const currentMove = seat.moves[0]
     if (currentMove?.challenge?._type !== 'individual-challenge') return
     if (currentMove.endTile.position !== gateTile) return
@@ -166,6 +170,8 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
   scheduleEngineTask(ctx, FINAL_QUESTION_CAP_MS, async (fresh, server) => {
     const seat = fresh.players[playerId]
     if (!seat || seat.phase !== 'final-challenge' || seat.resolving) return
+    // A fresh gauntlet on a later walk restarts at turn 0 — same trap as the gate cap.
+    if (seat.walkSeq !== walkSeq) return
     const liveGauntlet = seat.moves[0]?.challenge
     if (liveGauntlet?._type !== 'final-challenge') return
     if ((liveGauntlet.turn ?? 0) !== turn) return
@@ -177,8 +183,14 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
     const { survives } = await applyFinalMiss({ game: fresh, gauntlet: liveGauntlet, player: seat })
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (!survives) seat.moves = []
+    // The survivor's hold is a result beat like an answered one: the latch
+    // keeps the brain and the rearm sweep off a question nobody has seen yet.
+    else seat.resolving = true
     await server.updateGameState(fresh)
-    server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+    // A knockout's snapshot goes now (the view latches the burned question);
+    // a survivor's next question waits out the reveal hold like an answered
+    // one, or it lands before the beat and the verdict has no question to sit on.
+    if (!survives) server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
     // A burned question is a verdict too: without this the watcher's view
     // sits on the old question until the next one appears, with no sign a
     // life just went. No `submittedAnswer` — nothing was submitted.
@@ -201,7 +213,7 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
       )
       return
     }
-    armFinalQuestionCap(ctx, seat)
+    await clearFinalResultBeat(ctx, seat)
   })
 }
 

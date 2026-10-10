@@ -32,6 +32,9 @@ export const DWELL = {
  */
 export const REVEAL_BEAT_MS = 700
 
+/** The beat a chain or trail reveal holds blank before its replay redraws, in ms. */
+export const REPLAY_REDRAW_MS = 400
+
 /** GSAP ease names matching the CSS custom-property easings. */
 export const EASE = {
   /** Entrances — matches --ease-out-expressive */

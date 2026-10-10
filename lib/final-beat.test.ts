@@ -49,6 +49,18 @@ describe('latestBeatFor', () => {
     expect(latestBeatFor(beats, 'ike', { turn: 5, now: NOW })).toBeUndefined()
   })
 
+  it('never narrates the NEXT question — the live turn alone cannot tell them apart', () => {
+    // A correct answer to question A (turn 1) bumps the snapshot to turn 2 for
+    // the reveal hold, and question B then opens on that SAME turn. Matched by
+    // turn alone, A's "Correct!" lit B before the player touched it, and the
+    // shell read B as answered until the server's cap burned it.
+    const answered = { _type: 'region-challenge', country: 'BR' } as FinalBeatEntry['challenge']
+    const next = { _type: 'region-challenge', country: 'MD' } as FinalBeatEntry['challenge']
+    const beats = [beat({ turn: 1, challenge: answered })]
+    expect(latestBeatFor(beats, 'ike', { turn: 2, challenge: answered, now: NOW })?.turn).toBe(1)
+    expect(latestBeatFor(beats, 'ike', { turn: 2, challenge: next, now: NOW })).toBeUndefined()
+  })
+
   it('has no beat without a seat', () => {
     expect(latestBeatFor([beat()], undefined, { now: NOW })).toBeUndefined()
   })

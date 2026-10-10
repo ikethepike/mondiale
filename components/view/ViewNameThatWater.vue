@@ -114,6 +114,7 @@ const {
   submitOnce,
   registerCleanup,
   gameStore,
+  isDisposed,
 } = useGroupChallenge('name-water-challenge', { solo: false })
 
 // This mode runs its own clock, because the reveal holds after the countdown
@@ -138,6 +139,7 @@ watch(
   async active => {
     if (!active || options.value.length) return
     const { WATER_FEATURES } = await import('~~/data/water.gen')
+    if (isDisposed()) return
     const feature = WATER_FEATURES[active.featureId]
     if (feature) {
       gameStore.map.feature = { d: feature.d, kind: 'area', bounds: feature.bounds }

@@ -93,6 +93,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const secondsLeft = ref(duration.value ?? 0)
   let countdown: ReturnType<typeof setInterval> | undefined
   const cleanups: (() => void)[] = []
+  /** Views await data chunks before calling `begin`; one that unmounted
+   *  meanwhile must not start a clock nobody will ever clear. */
+  let disposed = false
 
   // Until the round starts, the clock is FULL, not expired. The challenge
   // usually arrives after this composable mounts, so without this sync the
@@ -267,6 +270,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const begin = (
     hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
   ) => {
+    if (disposed) return
     showInterstitial.value = false
     started.value = true
     if (!duration.value) return
@@ -319,6 +323,17 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
+  /** A view timeout that dies with the view; arming it again replaces the
+   *  pending one. */
+  const createViewTimer = () => {
+    let handle: ReturnType<typeof setTimeout> | undefined
+    registerCleanup(() => clearTimeout(handle))
+    return (fn: () => void, ms: number) => {
+      clearTimeout(handle)
+      handle = setTimeout(fn, ms)
+    }
+  }
+
   // Watch mode: run the round clock as AMBIENCE on the spectator's own time —
   // hint unlocks and staged reveals key off elapsedFraction and would stay
   // frozen otherwise. Keyed on the ROUND NUMBER, not the duration: two
@@ -337,6 +352,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   }
 
   onBeforeUnmount(() => {
+    disposed = true
     clearBoard({ preserveLiveGuesses: gameStore.watching })
     if (countdown) clearInterval(countdown)
     for (const fn of cleanups) fn()
@@ -359,6 +375,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     submitOnce,
     stopCountdown,
     registerCleanup,
+    createViewTimer,
+    isDisposed: () => disposed,
     gameStore,
     update,
     clearBoard,

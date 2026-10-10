@@ -242,6 +242,7 @@ import {
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
 import { useAckOnce } from '~~/lib/use-ack-once'
+import { REPLAY_REDRAW_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sample } from '~~/lib/arrays'
 import { playableCountries, unplayableCountries } from '~~/lib/game-rules'
@@ -262,6 +263,7 @@ const {
   announce,
   entries,
   registerCleanup,
+  createViewTimer,
   gameStore,
   update,
 } = useGroupChallenge('manhunt-challenge', { solo: false })
@@ -738,6 +740,8 @@ const revealSeaLinks = (walk: ISOCountryCode[]): string[] => {
   return keys
 }
 
+const scheduleReplay = createViewTimer()
+
 // The reveal replay: the whole escape trail re-arrives hop by hop for the
 // entire table — the trail is finally public inside state.outcome. Immediate,
 // so a reconnecting client still gets the replay.
@@ -751,7 +755,7 @@ watch(
     gameStore.map.pulsing = []
     gameStore.map.ringed = []
     gameStore.map.landRoutes = []
-    setTimeout(() => {
+    scheduleReplay(() => {
       const groupings: CountryColorGrouping[] = walk.map((isoCode, index) => ({
         color: trailColor(index, walk.length, index === walk.length - 1),
         countries: [isoCode],
@@ -761,7 +765,7 @@ watch(
       gameStore.map.seaLinks = revealSeaLinks(walk)
       gameStore.map.landRoutes = revealLandRoutes(walk)
       gameStore.map.focus = [...walk]
-    }, 400)
+    }, REPLAY_REDRAW_MS)
   },
   { immediate: true }
 )

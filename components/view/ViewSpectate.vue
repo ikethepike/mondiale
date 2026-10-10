@@ -245,7 +245,15 @@ const paintKey = computed(
     `${stage.value}|${!!mountedView.value}|${gameStore.spectateHideSpoilers}|${(story.value.focus ?? []).join(',')}`
 )
 onMounted(paintMap)
-watch(paintKey, paintMap)
+// Post-flush: a cut from a mounted view to a story card unmounts that view in
+// the same patch, and its unmount clearBoard would wipe a pre-flush paint.
+watch(paintKey, paintMap, { flush: 'post' })
+// Pre-flush, the mirror case: a view about to mount gets a clean map — the
+// scorecard never clears on mount, and the booth's glow sat under it.
+watch(
+  () => !!mountedView.value,
+  mounted => mounted && clearBoard({ preserveLiveGuesses: true })
+)
 // The page transition is mode="out-in", so this unmount completes before the
 // next view's setup reads seatId — that ordering is what keeps a returning
 // finisher's views off the followed seat. The 3D follow target must clear
