@@ -1,7 +1,7 @@
 <template>
   <main>
     <article class="intro pane tr tl decorator-bottom">
-      <form :action="`/room/${roomName}`" @submit.prevent="onSubmit">
+      <form action="/new" @submit.prevent="onSubmit">
         <header class="pane-content">
           <a class="logo" />
           <p>A world of facts and figures.</p>
@@ -40,9 +40,8 @@
   </main>
 </template>
 <script lang="ts" setup>
-import { generate } from 'random-words'
 import { forgeFlag } from '~~/lib/flags/forge'
-const roomName = ref(generate({ exactly: 3, join: '-' }))
+import { newRoomName } from '~~/lib/room-name'
 const router = useRouter()
 const currentYear = new Date().getFullYear()
 const { commitHash } = useRuntimeConfig().public
@@ -55,15 +54,12 @@ definePageMeta({
 })
 
 const onSubmit = (event: Event) => {
-  const target = event.target as HTMLFormElement
-
-  const url = new URL(target.action)
-  const data = new FormData(target)
-  for (const [key, value] of data.entries()) {
-    url.searchParams.append(key, value.toString())
+  const params = new URLSearchParams()
+  for (const [key, value] of new FormData(event.target as HTMLFormElement).entries()) {
+    params.append(key, value.toString())
   }
-
-  router.push(url.pathname + url.search)
+  const search = params.size ? `?${params}` : ''
+  router.push(`/room/${newRoomName()}${search}`)
 }
 </script>
 <style lang="scss" scoped>
