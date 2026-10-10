@@ -183,6 +183,9 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
     const { survives } = await applyFinalMiss({ game: fresh, gauntlet: liveGauntlet, player: seat })
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (!survives) seat.moves = []
+    // The survivor's hold is a result beat like an answered one: the latch
+    // keeps the brain and the rearm sweep off a question nobody has seen yet.
+    else seat.resolving = true
     await server.updateGameState(fresh)
     // A knockout's snapshot goes now (the view latches the burned question);
     // a survivor's next question waits out the reveal hold like an answered

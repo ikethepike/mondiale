@@ -217,10 +217,12 @@ describe('armFinalQuestionCap', () => {
     // The burned question's verdict goes first; the next question only after
     // the reveal hold, the answered path's shape — never ahead of the beat.
     expect(emittedFor(game.id)).toEqual(['final-beat'])
+    expect(store.get(game.id)!.players.a.resolving).toBe(true)
 
     await vi.advanceTimersByTimeAsync(FINAL_REVEAL_HOLD_MS + 100)
     await vi.runAllTicks()
     expect(emittedFor(game.id)).toContain('final-challenge-checked')
+    expect(store.get(game.id)!.players.a.resolving).toBe(false)
   })
 
   it('dies on the turn token once the question was answered', async () => {
