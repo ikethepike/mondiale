@@ -11,7 +11,11 @@
         '--heading': `${compass.degrees ?? 0}deg`,
       }"
     >
-      <span :key="`ping-${compass.replays}`" class="pings">
+      <span
+        :key="`ping-${compass.replays}`"
+        class="pings"
+        :class="{ flare: compass.trend === 'closest' && !compass.replays }"
+      >
         <span class="ping" />
         <span v-if="compass.trend === 'closest' && !compass.replays" class="ping echo" />
       </span>
@@ -110,12 +114,12 @@ const placed = computed(() => {
   transform: translate(-50%, -50%);
 
   &.warm {
-    --warmth: hsla(29.7, 79.9%, 55%, 1);
-    --warmth-wash: hsla(29.7, 79.9%, 55%, 0.35);
+    --warmth: #{ember()};
+    --warmth-wash: #{ember(0.35)};
   }
   &.cold {
     --warmth: var(--soft-blue);
-    --warmth-wash: hsla(197.6, 51.2%, 41.8%, 0.32);
+    --warmth-wash: color-mix(in srgb, var(--soft-blue) 32%, transparent);
   }
 }
 
@@ -147,7 +151,7 @@ const placed = computed(() => {
   border-color: var(--soft-blue);
 }
 
-.compass.closest .pings::before {
+.pings.flare::before {
   content: '';
   inset: -0.6rem;
   opacity: 0;
@@ -449,7 +453,6 @@ const placed = computed(() => {
   }
 
   .pings,
-  .compass.closest .pings::before,
   .burst {
     display: none;
   }

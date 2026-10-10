@@ -125,8 +125,9 @@ const clueFor = (probe: HotColdProbe): string => {
 
 const trendLead = ({ trend, deltaKm }: Trend): string => {
   if (trend === 'closest') return 'Warmer — your closest yet!'
-  if (trend === 'warmer') return `Warmer, ${formatApproxKm(deltaKm)} closer.`
-  return `Colder, ${formatApproxKm(deltaKm)} further.`
+  const lead = trend === 'warmer' ? 'Warmer' : 'Colder'
+  if (deltaKm < 100) return `${lead}, only just.`
+  return `${lead}, ${formatApproxKm(deltaKm)} ${trend === 'warmer' ? 'closer' : 'further'}.`
 }
 
 const submitRound = () => {
@@ -183,7 +184,6 @@ const onMapClick = (event: Event) => {
     degrees: heading.degrees,
     crossesDateLine: heading.crossesDateLine,
     trend: trend?.trend,
-    deltaKm: trend?.deltaKm,
     replays: 0,
   }
   probes.value.push(probe)

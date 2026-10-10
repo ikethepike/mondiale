@@ -86,7 +86,6 @@ export interface HotColdProbe {
   degrees?: number
   crossesDateLine?: boolean
   trend?: ProbeTrend
-  deltaKm?: number
   /** Free re-clicks of this country since it was probed. */
   replays: number
 }
