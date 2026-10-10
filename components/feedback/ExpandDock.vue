@@ -68,21 +68,23 @@ const close = () => {
 
 useDialogKeys(open, { close, initialFocus: () => closeButton.value })
 
-// Swipe-to-dismiss (phones): two stops — centred, and clear of the viewport's
-// bottom edge. The frame is CENTRED on the stage (not bottom-anchored like
-// the history drawer), so offscreen is half the viewport plus half the frame.
-// `open` unmounts the frame, so a fresh mount always starts untranslated.
+// Swipe-to-dismiss (phones): two stops — seated, and clear of the viewport's
+// bottom edge. On a phone the frame is a bottom sheet, so offscreen is its own
+// height. `open` unmounts the frame, so a fresh mount always starts untranslated.
 const frame = ref<HTMLElement>()
 const isPhone = useIsPhone()
 const { onDragStart } = useDragSheet({
   el: () => frame.value,
   enabled: () => isPhone.value,
-  stops: () => [0, (window.innerHeight + (frame.value?.offsetHeight ?? 0)) / 2],
+  stops: () => [0, frame.value?.offsetHeight ?? window.innerHeight],
   momentumEase: 'power1.in',
   onSettle: index => index === 1 && close(),
 })
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/breakpoints' as *;
+
 // Stage, scrim, frame and close button are templates/_dock.scss. The frame
 // centres its subject: a chart fills the width and rides the middle. Column
 // flow so the phone grab pill stacks above the subject; with one child the
@@ -91,9 +93,56 @@ const { onDragStart } = useDragSheet({
   display: flex;
   padding: 1.6rem;
   align-items: center;
-  border-radius: 1.2rem;
   justify-content: center;
   flex-flow: column nowrap;
   background: var(--background-color);
+  border: 0.1rem solid var(--text-color);
+  border-bottom-width: 0.6rem;
+  border-top-right-radius: $cardRadius;
+  box-shadow:
+    0 0.2rem 0.6rem ink(0.12),
+    0 1.6rem 4rem ink(0.22);
+}
+
+// A cream card over a cream wash had no edge; the ink tint sets it apart.
+.expand-dock .dock-scrim {
+  background: linear-gradient(ink(0.16), ink(0.16)), milk(0.45);
+}
+
+// Phones: a bottom sheet, matching the grab pill and swipe-down dismissal —
+// seated on the screen's edge, so the card's bottom rule gives way to the
+// home-indicator clearance and it rises rather than scales in.
+@media screen and (max-width: $tablet) {
+  .expand-dock {
+    align-items: flex-end;
+  }
+
+  .expand-dock .dock-frame {
+    width: 100%;
+    border-bottom: none;
+    padding-bottom: calc(1.6rem + var(--safe-bottom));
+    border-radius: $cardRadius $cardRadius 0 0;
+    box-shadow: 0 -1rem 3rem ink(0.2);
+  }
+
+  .expand-dock .dock-close {
+    top: 0.4rem;
+    right: 0.8rem;
+  }
+
+  .expand-dock.dock-enter-from,
+  .expand-dock.dock-leave-to {
+    transform: none;
+  }
+
+  .expand-dock.dock-enter-active .dock-frame,
+  .expand-dock.dock-leave-active .dock-frame {
+    transition: transform var(--motion-base) var(--ease-out-expressive);
+  }
+
+  .expand-dock.dock-enter-from .dock-frame,
+  .expand-dock.dock-leave-to .dock-frame {
+    transform: translateY(100%);
+  }
 }
 </style>

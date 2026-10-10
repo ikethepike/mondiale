@@ -688,9 +688,14 @@ figcaption.source-only {
 
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-flow: column nowrap;
 
+  // The plot takes what the source caption leaves: at 100% it pushed the
+  // caption past the frame and onto its bottom rule.
   .plot {
-    height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
     box-sizing: border-box;
   }
 

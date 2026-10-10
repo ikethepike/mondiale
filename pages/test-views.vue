@@ -173,6 +173,7 @@ import {
   activeTimelinePlayerId,
   placedYears,
   resolveSlot,
+  scoreTimeline,
   timelineEvent,
 } from '~~/lib/timeline'
 import { flagSwatches } from '~~/lib/audio-palette'
@@ -824,6 +825,98 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
 
 const groupRound = (groupChallenge: unknown): Round =>
   ({ groupChallenge, groupAnswers: {}, playerTurns: {} }) as unknown as Round
+
+/** A finished timeline round flipped to its scorecard, settled the way
+ *  timeline-turns does: the real scorer's points, each card flattened to its
+ *  anchor country. */
+const settledTimelineGame = (game: Game): Game => {
+  const round = game.rounds[game.rounds.length - 1]!
+  const challenge = latestChallengeOfType(game, 'timeline-challenge')!
+  const scores = scoreTimeline(challenge)
+  game.players = Object.fromEntries(
+    challenge.state.order.map(playerId => [
+      playerId,
+      { ...game.players[playerId]!, phase: 'group-scores' as const },
+    ])
+  )
+  for (const playerId of challenge.state.order) {
+    const mine = challenge.state.placements.filter(entry => entry.playerId === playerId)
+    round.groupAnswers[playerId] = {
+      submitted: mine.flatMap(entry => timelineEvent(entry.slug)?.country ?? []),
+      correct: mine.flatMap(entry =>
+        entry.correct ? (timelineEvent(entry.slug)?.country ?? []) : []
+      ),
+    }
+    round.playerTurns[playerId] = { points: scores[playerId]! }
+  }
+  return game
+}
+
+/** One seat, seven cards: two misses (one filed early, one late) and a timeout,
+ *  so every verdict and both ghost marks are on screen. */
+const soloTimelineGame = (): Game => {
+  const card = (
+    slug: string,
+    chosenSlot: number,
+    correctSlot: number,
+    slotCount: number,
+    kind: 'placed' | 'timeout' = 'placed'
+  ) => ({
+    playerId: ME,
+    slug,
+    chosenSlot,
+    correctSlot,
+    correct: kind === 'placed' && chosenSlot === correctSlot,
+    slotCount,
+    kind,
+  })
+  return mockGame('group-challenge', [
+    groupRound({
+      _type: 'timeline-challenge',
+      turnSeconds: 22,
+      revealSeconds: 7,
+      maximumPoints: MAXIMUM_POINTS,
+      state: {
+        deck: [
+          'fall-of-constantinople',
+          'boston-tea-party',
+          'battle-of-sekigahara',
+          'suez-canal',
+          'black-death',
+          'spanish-flu',
+          'normandy-landings',
+          'haitian-revolution',
+        ],
+        placed: [
+          'black-death',
+          'fall-of-constantinople',
+          'battle-of-sekigahara',
+          'boston-tea-party',
+          'haitian-revolution',
+          'suez-canal',
+          'spanish-flu',
+          'normandy-landings',
+        ],
+        card: 8,
+        order: [ME],
+        activeIndex: 0,
+        turn: 7,
+        deadline: Date.now() + 60000,
+        finished: true,
+        revealDone: [ME],
+        placements: [
+          card('boston-tea-party', 1, 1, 2),
+          card('battle-of-sekigahara', 1, 1, 3),
+          card('suez-canal', 2, 3, 4),
+          card('black-death', 0, 0, 5),
+          card('spanish-flu', 5, 5, 6, 'timeout'),
+          card('normandy-landings', 6, 6, 7),
+          card('haitian-revolution', 6, 4, 8),
+        ],
+      },
+    }),
+  ])
+}
 
 /**
  * A Ground Plan round for one roster city, at whichever cut the variant asks
@@ -1632,6 +1725,18 @@ const scenarios: Scenario[] = [
           },
         }),
       ]),
+  },
+  {
+    id: 'timeline-scores',
+    label: 'Timeline — scorecard',
+    variants: [
+      { id: 'solo', label: 'Solo — a miss and a timeout' },
+      { id: 'table', label: 'Three seats' },
+    ],
+    build: variant =>
+      variant?.id === 'table'
+        ? settledTimelineGame(scenarios.find(entry => entry.id === 'timeline-reveal')!.build())
+        : settledTimelineGame(soloTimelineGame()),
   },
   {
     id: 'composition',
