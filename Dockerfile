@@ -50,6 +50,12 @@ ENV GIT_SHA=$GIT_SHA
 #   4096 → 4843 MB, exit 0
 #   5120 → 5180 MB, exit 0
 #
+# 2026-10-11, Linux (node 20, the CI runner's), V8's own heap message again —
+# GitHub's e2e/playtest builds died in the Nitro step, main included:
+#   3584 → OOM, live heap 3527 MB at death (main and the seat-cursor branch alike)
+#   4096 → exit 0, live heap peaked at 3486 MB — ~600 MB clear, too thin
+#   4608 → exit 0, live heap peaked at 3361 MB  ← chosen
+#
 # Note what the numbers say: peak RSS runs ~1.4 GB ABOVE the JS heap cap. That
 # gap is everything outside V8's heap — source text held by rollup, esbuild's
 # own memory, sourcemaps — and it is why "4.5 MB of SVG" costs gigabytes. The
@@ -57,7 +63,7 @@ ENV GIT_SHA=$GIT_SHA
 # sourcemapped, several representations live at once.
 #
 # The builder is Depot (16 GB), not the 4 GB machine the 2026-08 note assumed,
-# so 3584 is not close to any kernel limit. If this fails again as SIGKILL
+# so 4608 (peak RSS ~1.4 GB above it) is not close to any kernel limit. If this fails again as SIGKILL
 # rather than a V8 message, the answer is to shrink the data, not to raise
 # this.
 #
@@ -66,7 +72,7 @@ ENV GIT_SHA=$GIT_SHA
 # still runs at the script's value. Keep the two numbers identical, and when
 # measuring a new ceiling call `npx nuxt build` directly or the experiment
 # measures nothing.
-ENV NODE_OPTIONS="--max-old-space-size=3584"
+ENV NODE_OPTIONS="--max-old-space-size=4608"
 RUN bun run build
 
 # ---- Runtime stage ----
