@@ -312,6 +312,7 @@ const gauntlet = computed(() =>
 const liveBeat = computed(() =>
   latestBeatFor(gameStore.board.finalBeats, gameStore.seatId, {
     turn: gauntlet.value?.turn ?? 0,
+    challenge: currentFinalChallenge.value,
   })
 )
 

@@ -26,18 +26,25 @@ import { FINAL_BEAT_TTL_MS } from './round-beats'
  *
  * A miss that redeals keeps the same queue position but still bumps the turn,
  * so the same rule holds for both outcomes.
+ *
+ * The turn guard cannot end the reveal, though: once the hold is over the
+ * NEXT question opens on that same bumped turn. Pass the question on screen
+ * as `challenge` and a beat must be about it — otherwise the last verdict
+ * paints over a question the player has not answered.
  */
 export const latestBeatFor = (
   beats: readonly FinalBeatEntry[],
   seatId: string | undefined,
-  options: { turn?: number; now?: number } = {}
+  options: { turn?: number; challenge?: FinalBeatEntry['challenge']; now?: number } = {}
 ): FinalBeatEntry | undefined => {
   if (!seatId) return undefined
   const now = options.now ?? Date.now()
   const liveTurn = options.turn
+  const onScreen = options.challenge ? JSON.stringify(options.challenge) : undefined
   return beats
     .filter(beat => beat.playerId === seatId && beat.at > now - FINAL_BEAT_TTL_MS)
     .filter(beat => liveTurn === undefined || beat.turn >= liveTurn - 1)
+    .filter(beat => onScreen === undefined || JSON.stringify(beat.challenge) === onScreen)
     .reduce<FinalBeatEntry | undefined>(
       (newest, beat) => (!newest || beat.at >= newest.at ? beat : newest),
       undefined
