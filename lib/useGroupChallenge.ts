@@ -92,6 +92,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const secondsLeft = ref(duration.value ?? 0)
   let countdown: ReturnType<typeof setInterval> | undefined
   const cleanups: (() => void)[] = []
+  /** Views await data chunks before calling `begin`; one that unmounted
+   *  meanwhile must not start a clock nobody will ever clear. */
+  let disposed = false
 
   // Until the round starts, the clock is FULL, not expired. The challenge
   // usually arrives after this composable mounts, so without this sync the
@@ -264,6 +267,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const begin = (
     hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
   ) => {
+    if (disposed) return
     showInterstitial.value = false
     started.value = true
     if (!duration.value) return
@@ -334,6 +338,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   }
 
   onBeforeUnmount(() => {
+    disposed = true
     clearBoard({ preserveLiveGuesses: gameStore.watching })
     if (countdown) clearInterval(countdown)
     for (const fn of cleanups) fn()
@@ -356,6 +361,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     submitOnce,
     stopCountdown,
     registerCleanup,
+    isDisposed: () => disposed,
     gameStore,
     update,
     clearBoard,

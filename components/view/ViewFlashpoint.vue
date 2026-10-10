@@ -156,6 +156,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  isDisposed,
 } = useGroupChallenge('flashpoint-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -251,6 +252,7 @@ const start = async () => {
   if (!active) return
 
   const { CONFLICT_FIELDS, CONFLICT_FIELDS_ABROAD } = await import('~~/data/conflict-events.gen')
+  if (isDisposed()) return
   field.value = CONFLICT_FIELDS[active.country]
   abroadField.value = CONFLICT_FIELDS_ABROAD[active.country]
 
