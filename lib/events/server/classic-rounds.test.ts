@@ -10,8 +10,10 @@ import {
 } from '~~/lib/round-beats'
 import type { AnthemBuzzChallenge, TwoTruthsChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
 import type { EngineContext } from './round-engine'
+import { armedTimersFor, dropArmedTimersForTests } from './seat-cursor'
+import { testCursor, testSeat } from './test-seat'
 
 /**
  * The classic engine's whole reason to exist: a round whose only clock used
@@ -36,17 +38,8 @@ const ANTHEM: AnthemBuzzChallenge = {
   maximumPoints: 10,
 } as AnthemBuzzChallenge
 
-const seat = (id: string, phase: PlayerPhase): Player =>
-  ({
-    id,
-    name: id,
-    phase,
-    moves: [],
-    currentPosition: 0,
-  }) as unknown as Player
-
 const buildGame = (
-  phases: { [playerId: string]: PlayerPhase },
+  steps: { [playerId: string]: SeatStep },
   challenge: TwoTruthsChallenge | AnthemBuzzChallenge = CHALLENGE
 ): Game =>
   ({
@@ -56,7 +49,9 @@ const buildGame = (
     variant: 'world',
     difficulty: 'normal',
     started: true,
-    players: Object.fromEntries(Object.entries(phases).map(([id, phase]) => [id, seat(id, phase)])),
+    players: Object.fromEntries(
+      Object.entries(steps).map(([id, step]) => [id, testSeat(id, step)])
+    ),
     rounds: [{ groupChallenge: { ...challenge }, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
@@ -81,6 +76,7 @@ const roundOf = (gameId: string): Round => store.get(gameId)!.rounds[0]
 
 beforeEach(() => {
   vi.useFakeTimers()
+  dropArmedTimersForTests()
   store.clear()
   emitted.length = 0
 })
@@ -96,18 +92,19 @@ const elapseSettle = async (round: Round) => {
 
 describe('startClassicClock', () => {
   it('stamps the play window plus the opening grace', () => {
-    const game = buildGame({ a: 'group-challenge' })
+    const game = buildGame({ a: 'round' })
     const round = game.rounds[0]
     startClassicClock(round)
     expect(round.deadline).toBe(
       Date.now() + 25_000 + playGateMsFor(round.groupChallenge) + FIRST_TURN_GRACE_MS
     )
+    expect(round.playStartsAt).toBe(Date.now() + FIRST_TURN_GRACE_MS)
     // An ungated kind opens its window at the reveal: no gate in the budget.
     expect(playGateMsFor(round.groupChallenge)).toBe(0)
   })
 
   it('leaves engine rounds to their own state clocks', () => {
-    const game = buildGame({ a: 'group-challenge' })
+    const game = buildGame({ a: 'round' })
     const round = game.rounds[0]
     round.groupChallenge = { _type: 'border-chain-challenge' } as never
     startClassicClock(round)
@@ -117,11 +114,12 @@ describe('startClassicClock', () => {
 
 describe('scheduleClassicSettle', () => {
   it('banks a zero for every seat that never answered and advances the table', async () => {
-    const game = buildGame({ a: 'group-scores', b: 'group-challenge' })
+    const game = buildGame({ a: 'scores', b: 'round' })
     const round = game.rounds[0]
     // 'a' answered and advanced normally; 'b' went dark mid-round.
     round.groupAnswers.a = { submitted: ['SE'], correct: ['SE'] }
     round.playerTurns.a = { points: { scored: 8, maximum: 10 } }
+    const aCursor = { ...game.players.a.cursor }
     startClassicClock(round)
     const ctx = context(game)
 
@@ -131,16 +129,28 @@ describe('scheduleClassicSettle', () => {
     const settled = roundOf(game.id)
     expect(settled.groupAnswers.b).toEqual({ submitted: [], correct: ['SE'] })
     expect(settled.playerTurns.b.points).toEqual({ scored: 0, maximum: 10 })
-    expect(store.get(game.id)!.players.b.phase).toBe('group-scores')
+    const b = store.get(game.id)!.players.b
+    expect(b.cursor.step).toBe('scores')
+    expect(b.cursor.cause).toBe('table:settle')
+    // The swept seat owes the table a walk only a click normally sends: its
+    // scorecard carries the cap that walks a dead tab.
+    expect(b.cursor.deadline).toBeGreaterThan(Date.now())
+    expect(armedTimersFor(game.id)).toContainEqual(
+      expect.objectContaining({ seat: 'b', kind: 'scores-cap', seq: b.cursor.seq })
+    )
     // 'a' is untouched — no rescore, no re-walk.
     expect(settled.playerTurns.a.points).toEqual({ scored: 8, maximum: 10 })
-    expect(store.get(game.id)!.players.a.phase).toBe('group-scores')
+    expect(store.get(game.id)!.players.a.cursor).toEqual(aCursor)
     expect(emitted).toContain('table-updated')
   })
 
-  it('advances a stranded submitter from the banked score without rescoring', async () => {
-    const game = buildGame({ b: 'group-challenge' })
+  it('advances a seat whose verdict hold died from the banked score without rescoring', async () => {
+    const game = buildGame({ b: 'round' })
     const round = game.rounds[0]
+    game.players.b.cursor = testCursor('round-verdict', {
+      holdUntil: Date.now() - 1,
+      verdict: { kind: 'round', subject: 'round:0', scored: 6, maximum: 10 },
+    })
     round.groupAnswers.b = { submitted: ['SE'], correct: ['SE'] }
     round.playerTurns.b = { points: { scored: 6, maximum: 10 } }
     startClassicClock(round)
@@ -149,7 +159,7 @@ describe('scheduleClassicSettle', () => {
     scheduleClassicSettle(ctx, game)
     await elapseSettle(round)
 
-    expect(store.get(game.id)!.players.b.phase).toBe('group-scores')
+    expect(store.get(game.id)!.players.b.cursor.step).toBe('scores')
     expect(roundOf(game.id).playerTurns.b.points).toEqual({ scored: 6, maximum: 10 })
   })
 
@@ -157,7 +167,7 @@ describe('scheduleClassicSettle', () => {
     // A late joiner still typing their name is walk-exempt but NOT in the
     // round — banking it a zero would hand it a scorecard for a round it
     // never saw.
-    const game = buildGame({ a: 'group-scores', b: 'naming' })
+    const game = buildGame({ a: 'scores', b: 'lobby' })
     const round = game.rounds[0]
     round.groupAnswers.a = { submitted: ['SE'], correct: ['SE'] }
     startClassicClock(round)
@@ -167,11 +177,11 @@ describe('scheduleClassicSettle', () => {
     await elapseSettle(round)
 
     expect(roundOf(game.id).groupAnswers.b).toBeUndefined()
-    expect(store.get(game.id)!.players.b.phase).toBe('naming')
+    expect(store.get(game.id)!.players.b.cursor.step).toBe('lobby')
   })
 
   it('settles nothing when every seat already advanced', async () => {
-    const game = buildGame({ a: 'group-scores', b: 'movement-summary' })
+    const game = buildGame({ a: 'scores', b: 'settled' })
     const round = game.rounds[0]
     round.groupAnswers.a = { submitted: ['SE'], correct: ['SE'] }
     startClassicClock(round)
@@ -184,14 +194,14 @@ describe('scheduleClassicSettle', () => {
     expect(emitted).not.toContain('table-updated')
   })
 
-  it('dies on the round-index token when a newer round staged', async () => {
-    const game = buildGame({ b: 'group-challenge' })
+  it('dies on the round-index token when a newer round was dealt', async () => {
+    const game = buildGame({ b: 'round' })
     const round = game.rounds[0]
     startClassicClock(round)
     const ctx = context(game)
     scheduleClassicSettle(ctx, game)
 
-    // A new round staged before the timer fired: the old task must not touch it.
+    // A new round dealt before the timer fired: the old task must not touch it.
     const fresh = store.get(game.id)!
     fresh.rounds.push({
       groupChallenge: { ...CHALLENGE },
@@ -200,7 +210,7 @@ describe('scheduleClassicSettle', () => {
     } as Round)
 
     await elapseSettle(round)
-    expect(store.get(game.id)!.players.b.phase).toBe('group-challenge')
+    expect(store.get(game.id)!.players.b.cursor.step).toBe('round')
     expect(store.get(game.id)!.rounds[1].groupAnswers).toEqual({})
   })
 })
@@ -212,14 +222,14 @@ describe('scheduleClassicSettle', () => {
  */
 describe('play-gated rounds', () => {
   it('stamps the play window behind the play-tap allowance', () => {
-    const game = buildGame({ a: 'group-challenge' }, ANTHEM)
+    const game = buildGame({ a: 'round' }, ANTHEM)
     const round = game.rounds[0]
     startClassicClock(round)
     expect(round.deadline).toBe(Date.now() + 30_000 + PLAY_GATE_CAP_MS + FIRST_TURN_GRACE_MS)
   })
 
   it('does not bank a zero on a seat still inside the play allowance', async () => {
-    const game = buildGame({ a: 'group-challenge' }, ANTHEM)
+    const game = buildGame({ a: 'round' }, ANTHEM)
     const round = game.rounds[0]
     startClassicClock(round)
     const ctx = context(game)
@@ -233,12 +243,12 @@ describe('play-gated rounds', () => {
     )
     await vi.runAllTicks()
 
-    expect(store.get(game.id)!.players.a.phase).toBe('group-challenge')
+    expect(store.get(game.id)!.players.a.cursor.step).toBe('round')
     expect(roundOf(game.id).groupAnswers.a).toBeUndefined()
   })
 
   it('still sweeps a seat that never taps play', async () => {
-    const game = buildGame({ a: 'group-challenge' }, ANTHEM)
+    const game = buildGame({ a: 'round' }, ANTHEM)
     const round = game.rounds[0]
     startClassicClock(round)
     const ctx = context(game)
@@ -247,7 +257,7 @@ describe('play-gated rounds', () => {
 
     // Bounded on purpose: the gate buys time, it never lets a silent seat
     // hold the table open.
-    expect(store.get(game.id)!.players.a.phase).toBe('group-scores')
+    expect(store.get(game.id)!.players.a.cursor.step).toBe('scores')
     expect(roundOf(game.id).playerTurns.a.points.scored).toBe(0)
     expect(emitted).toContain('table-updated')
   })
@@ -255,7 +265,7 @@ describe('play-gated rounds', () => {
 
 describe('rearmClassicRound', () => {
   it('re-arms the settle for a stamped live round', async () => {
-    const game = buildGame({ b: 'group-challenge' })
+    const game = buildGame({ b: 'round' })
     const round = game.rounds[0]
     startClassicClock(round)
     const ctx = context(game)
@@ -264,11 +274,11 @@ describe('rearmClassicRound', () => {
     rearmClassicRound(ctx, game)
     await elapseSettle(round)
 
-    expect(store.get(game.id)!.players.b.phase).toBe('group-scores')
+    expect(store.get(game.id)!.players.b.cursor.step).toBe('scores')
   })
 
   it('re-stamps a revealed round that has no deadline (pre-stamp snapshot)', async () => {
-    const game = buildGame({ b: 'group-challenge' })
+    const game = buildGame({ b: 'round' })
     const ctx = context(game)
 
     rearmClassicRound(ctx, game)
@@ -279,18 +289,17 @@ describe('rearmClassicRound', () => {
     expect(stamped).toBeGreaterThan(Date.now())
 
     await elapseSettle(roundOf(game.id))
-    expect(store.get(game.id)!.players.b.phase).toBe('group-scores')
+    expect(store.get(game.id)!.players.b.cursor.step).toBe('scores')
   })
 
-  it('never arms a staged-but-unrevealed round', async () => {
-    const game = buildGame({ b: 'movement-summary' })
-    game.pendingRoundStart = true
+  it('never arms a round no seat is playing', async () => {
+    const game = buildGame({ b: 'settled' })
     const ctx = context(game)
 
     rearmClassicRound(ctx, game)
     await vi.advanceTimersByTimeAsync(600_000)
 
     expect(roundOf(game.id).deadline).toBeUndefined()
-    expect(store.get(game.id)!.players.b.phase).toBe('movement-summary')
+    expect(store.get(game.id)!.players.b.cursor.step).toBe('settled')
   })
 })

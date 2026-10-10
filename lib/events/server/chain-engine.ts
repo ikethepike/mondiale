@@ -18,7 +18,6 @@ import {
   TIMEOUT_SLACK_MS,
   TRAP_HOLD_MS,
 } from '~~/lib/round-beats'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * The turn-chain engine — the shared rhythm behind the seat-by-seat
@@ -319,7 +318,7 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
       // The reveal follow-up fires exactly once: scoring marks the round.
       if (!round || Object.keys(round.groupAnswers).length) return
 
-      const advanced = await settleRoundScores({
+      await settleRoundScores({
         game: fresh,
         round,
         order: current.state.order,
@@ -335,9 +334,6 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
       // Not 'group-challenge-scored': its client handler applies only the
       // target player's slice, and this scoring lands for the whole table.
       freshServer.emit({ event: 'chain-updated', game: fresh }, ctx.eventTarget)
-      // The advanced seats now owe the table a movement request only a click
-      // sends — one cohort cap so a dead tab can't freeze the room here.
-      armGroupScoresCaps(ctx, fresh, advanced)
     })
   }
 

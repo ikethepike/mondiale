@@ -20,7 +20,6 @@ import {
   type EngineContext,
   type RearmOptions,
 } from './round-engine'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * Clean Sweep's beat engine: the briefing gate in front of one whole-table
@@ -211,7 +210,7 @@ const scheduleSweepSettle = (ctx: EngineContext) => {
     if (!round || Object.keys(round.groupAnswers).length) return
 
     const claimedBy = sweepClaimedBy(current)
-    const advanced = await settleRoundScores({
+    await settleRoundScores({
       game: fresh,
       round,
       order: current.state.order,
@@ -230,7 +229,6 @@ const scheduleSweepSettle = (ctx: EngineContext) => {
     // Not 'group-challenge-scored': its client handler applies only the target
     // player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'sweep-updated', game: fresh }, ctx.eventTarget)
-    armGroupScoresCaps(ctx, fresh, advanced)
   })
 }
 

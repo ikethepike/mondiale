@@ -1,32 +1,73 @@
-import { getIndividualChallenge } from '~~/lib/challenges'
+import { getIndividualChallenge, getRoundChallenge } from '~~/lib/challenges'
 import {
   individualChallengeAccessors,
   isValidIndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
+import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
+import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, PlayerMove } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { bufferDeal } from './seat-journal'
+
+/**
+ * The replay harness feeds recorded deals back through here, so a replayed
+ * game draws the same gates and rounds the recorded one did. Production never
+ * sets it.
+ */
+export interface DealReplay {
+  moves: (seatId: string) => PlayerMove[] | undefined
+  round: () => RoundChallenge | undefined
+  finalReplacement: () => FinalChallengeItem | null | undefined
+}
+let dealReplay: DealReplay | undefined
+export const setDealReplay = (replay: DealReplay | undefined) => {
+  dealReplay = replay
+}
+
+/** THE moveset deal: every scored seat's walk is dealt (and recorded) here. */
+export const dealMoves = async (args: {
+  game: Game
+  player: Player
+  scored: number
+  /** A fixed moveset (the FORCE_FINAL_CHALLENGE hook) — still recorded. */
+  moves?: PlayerMove[]
+}): Promise<PlayerMove[]> => {
+  const moves =
+    dealReplay?.moves(args.player.id) ?? args.moves ?? (await movesForScoredPoints(args))
+  bufferDeal(args.game, { what: 'moves', seat: args.player.id, value: moves })
+  return moves
+}
+
+/** A missed LAST gauntlet question is replaced, never skipped. Null: nothing left to deal. */
+export const dealFinalReplacement = async (
+  game: Game,
+  exclude: FinalChallengeItem['_type'][]
+): Promise<FinalChallengeItem | null> => {
+  const replayed = dealReplay?.finalReplacement()
+  let replacement: FinalChallengeItem | null
+  if (replayed !== undefined) {
+    replacement = replayed
+  } else {
+    // Deferred module: final-challenge carries ~1.2MB of endgame data (#110).
+    const { dealReplacementChallenge } = await import('~~/lib/challenges/final-challenge')
+    replacement = dealReplacementChallenge({ game, exclude }) ?? null
+  }
+  bufferDeal(game, { what: 'final-replacement', value: replacement })
+  return replacement
+}
+
+/** THE round deal, at the reveal. */
+export const dealRound = async (game: Game): Promise<RoundChallenge> => {
+  const round = dealReplay?.round() ?? (await getRoundChallenge({ game }))
+  bufferDeal(game, { what: 'round', value: round })
+  return round
+}
 
 /**
  * The scored points ARE the tiles to walk: the slice starts one past the tile
  * the player stands on and runs `scored` tiles forward, split into one move
- * per challenge gate along the way. Shared by the per-player submit path
- * (submit-group-challenge-answers) and the server-resolved rounds
- * (Border Chain), so the two can never drift.
+ * per challenge gate along the way.
  */
-/**
- * Hand a player a fresh moveset and open a new walk generation. Every dealer
- * goes through this: the bumped `walkSeq` is what kills movement continuations
- * still in flight from the previous walk (see enterMovementPhaseHandler).
- */
-export const startWalk = (player: Player, moves: PlayerMove[]) => {
-  player.moves = moves
-  player.walkSeq = (player.walkSeq ?? 0) + 1
-  // The one moveset dealer, so every turn-OPENING walk carries the intro
-  // marker by construction; the walk's first step (or a zero-tile arrival)
-  // clears it. Between-gates resumes never pass here and stay intro-less.
-  player.walkIntro = true
-}
-
 export const movesForScoredPoints = async ({
   game,
   player,

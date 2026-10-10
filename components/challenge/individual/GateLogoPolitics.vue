@@ -82,10 +82,9 @@
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { REVEAL_BEAT_MS } from '~~/lib/motion'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
-import { LOGO_POLITICS_SECONDS } from './timing'
+import { LOGO_POLITICS_SECONDS } from '~~/lib/gate-timing'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import {
   logoPoliticsPrompt,
@@ -117,7 +116,7 @@ const { submitAnswer, giveUp } = useGateChallenge()
 
 // Every timed sibling forfeits on the buzzer; this gate had no clock at all,
 // which also meant it paid the pot whole where the others decay.
-const { secondsLeft, remainingFraction, stop } = useGateClock(LOGO_POLITICS_SECONDS, {
+const { secondsLeft, stop } = useGateClock({
   onExpire: () => giveUp(),
 })
 
@@ -170,27 +169,19 @@ const verdictOn = (isTruth: boolean) => {
   return picked.value ? 'was-right' : 'was-truth'
 }
 
-let verdictTimer: ReturnType<typeof setTimeout> | undefined
-onBeforeUnmount(() => clearTimeout(verdictTimer))
-
 /** The origin question answers with a country, so it grades on the wire. */
 const answerOrigin = (isoCode: ISOCountryCode) => {
   stop()
-  submitAnswer(isoCode, { remainingFraction: remainingFraction.value })
+  submitAnswer(isoCode)
 }
 
 const answer = (correct: boolean) => {
   if (picked.value !== undefined) return
   picked.value = correct
-  // Banked at the moment of the answer, not after the hold — the verdict beat
-  // is display-only and must not cost the player the clock they earned.
-  const earned = remainingFraction.value
+  // Sent at the answer: the wash holds on the question for the variant's
+  // verdict lead, which the shell reads off the server clock.
   stop()
-  verdictTimer = setTimeout(() => {
-    submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
-      remainingFraction: earned,
-    })
-  }, REVEAL_BEAT_MS)
+  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge))
 }
 </script>
 

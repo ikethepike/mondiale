@@ -119,6 +119,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { mainlandOutline } from '~~/lib/outline'
 import type { SpectateStageKind, SpectateStory } from '~~/lib/spectate'
+import { isTerminalStep } from '~~/lib/seat-transitions'
 import { isGroupChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Player } from '~~/types/player.type'
 
@@ -209,7 +210,7 @@ const scorecards = computed(() => gameStore.rankedScores)
 const answerChips = computed(() => {
   if (!game.value || !round.value) return []
   return Object.values(game.value.players)
-    .filter(player => !['kicked', 'victory'].includes(player.phase))
+    .filter(player => !isTerminalStep(player.cursor.step))
     .map(player => ({ player, answered: !!round.value?.groupAnswers[player.id] }))
 })
 </script>

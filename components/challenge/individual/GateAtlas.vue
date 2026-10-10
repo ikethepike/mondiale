@@ -71,7 +71,7 @@ import { playableWorldCountries } from '~~/lib/game-rules'
 import { DWELL } from '~~/lib/motion'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
-import { ATLAS_SECONDS } from './timing'
+import { ATLAS_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
@@ -103,10 +103,10 @@ const bounce = (message: string) => {
 }
 onBeforeUnmount(() => noteTimer && clearTimeout(noteTimer))
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(ATLAS_SECONDS, {
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
   onExpire: () => {
     missNote.value = `Time ran out on “${letter.value}”`
-    giveUp(hintsUsed.value)
+    giveUp()
   },
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
@@ -173,7 +173,6 @@ const onGuess = (country: Country) => {
     stop()
     gameStore.map.pulsing = []
     return submitAnswer(props.challenge.country, {
-      remainingFraction: remainingFraction.value,
       hintsUsed: hintsUsed.value,
       reveal: false,
     })

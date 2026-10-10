@@ -57,7 +57,7 @@
         <!-- Beat 1: buzz with the empire's name — option cards outside hard
              (flag tiles only when every option has an honest one), free-typed
              inside the bar on hard. -->
-        <template v-if="beat === 'guess'">
+        <template v-if="beat === 'guess' || beat === 'resolved'">
           <div
             v-if="challenge.options"
             class="options card-options"
@@ -171,7 +171,8 @@ import {
   normalizeEmpireAnswer,
 } from '~~/lib/empires'
 import { prefersReducedMotion } from '~~/lib/motion'
-import { EMPIRE_INTERBEAT_HOLD_MS } from '~~/lib/round-beats'
+import { useClientEvents } from '~~/lib/events/client-side'
+import { useServerWindow } from '~~/lib/use-server-window'
 import { buzzScore } from '~~/lib/scoring'
 import { formatEventYear } from '~~/lib/timeline'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -198,14 +199,17 @@ const {
   entries,
   gameStore,
   submitOnce,
-  registerCleanup,
+  subject,
+  seatEcho,
+  update,
 } = useGroupChallenge('empire-challenge')
+const { seatCursor } = useClientEvents()
 
 // The camera frames the empire's extent above the console (and the keyboard)
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-type Beat = 'guess' | 'tap' | 'reveal'
+type Beat = 'guess' | 'resolved' | 'tap' | 'reveal'
 const beat = ref<Beat>('guess')
 
 // Solo blanks the board (the harness default); landmass keeps the continents
@@ -223,7 +227,22 @@ const precisions = ref<number[]>()
 const flags = ref<Record<string, string>>({})
 const spent = ref<string[]>([])
 const picks = ref<ISOCountryCode[]>([])
-const tapSecondsLeft = ref(0)
+/**
+ * The tap beat is a window the seat opens itself: beat 1's buzz (or timeout)
+ * sends `round-play`, and the server stamps the seat's deadline past the
+ * memorize hold. The beat starts and ends on that stamp, for the racer and
+ * for anyone watching them.
+ */
+const tapWindow = useServerWindow(
+  () => {
+    const cursor = seatCursor.value
+    const active = challenge.value
+    if (cursor?.subject !== subject || cursor.deadline === undefined || !active) return undefined
+    return cursor.deadline - active.tapSeconds * 1000
+  },
+  () => challenge.value?.tapSeconds ?? 0
+)
+const tapSecondsLeft = tapWindow.secondsLeft
 /** The beat-1 outcome banner: flag, name, year and the buzz's worth — a
  *  moment, not a toast; never the orange hint channel. */
 const verdict = ref<{ tone: 'won' | 'missed'; eyebrow: string; name: string }>()
@@ -244,11 +263,17 @@ const onProgress = (t: number) => timebar.value?.setT(t)
 let beat1Guess: string | undefined
 let beat1Score = 0
 
-let beatTimer: ReturnType<typeof setTimeout> | undefined
-let tapClock: ReturnType<typeof setInterval> | undefined
-registerCleanup(() => {
-  if (beatTimer) clearTimeout(beatTimer)
-  if (tapClock) clearInterval(tapClock)
+// Beat 1 is resolved and the stamped tap beat has begun: the overlay lifts.
+watch(tapWindow.running, live => {
+  if (!live || beat.value !== 'resolved') return
+  ghostField.value?.fadeOut()
+  gameStore.map.solo = false
+  gameStore.map.landmass = false
+  beat.value = 'tap'
+  nextTick(() => countryInput.value?.focus({ auto: true }))
+})
+watch(tapWindow.expired, ran => {
+  if (ran) lockIn()
 })
 
 const stakes = computed(() =>
@@ -258,14 +283,14 @@ const stakes = computed(() =>
 )
 
 const headline = computed(() => {
-  if (beat.value === 'guess') return 'What power is this?'
+  if (beat.value === 'guess' || beat.value === 'resolved') return 'What power is this?'
   if (beat.value === 'tap') return 'Name every modern country inside it'
   const display = empireDisplayName(empire.value?.name ?? 'the empire')
   return `${sentenceCase(display)} — greatest extent, ${formatEventYear(challenge.value?.peakYear ?? 0)}`
 })
 
 const subline = computed(() => {
-  if (beat.value === 'guess')
+  if (beat.value === 'guess' || beat.value === 'resolved')
     return 'The shape sweeps from rise to dissolution — the story is the hint.'
   if (beat.value === 'tap') return 'Its heartlands only — edge territories are forgiven either way.'
   return ''
@@ -407,19 +432,9 @@ const resolveBeat1 = (guessedId: string | undefined, clientScore: number) => {
   ghostField.value?.freezeAtPeak()
   if (yearEl.value) yearEl.value.textContent = formatEventYear(active.peakYear)
 
-  const hold = prefersReducedMotion() ? 400 : EMPIRE_INTERBEAT_HOLD_MS
-  beatTimer = setTimeout(() => {
-    ghostField.value?.fadeOut()
-    gameStore.map.solo = false
-    gameStore.map.landmass = false
-    beat.value = 'tap'
-    tapSecondsLeft.value = active.tapSeconds
-    tapClock = setInterval(() => {
-      tapSecondsLeft.value--
-      if (tapSecondsLeft.value <= 0) lockIn()
-    }, 1000)
-    nextTick(() => countryInput.value?.focus({ auto: true }))
-  }, hold)
+  // Opens the tap beat: the server stamps its window past the memorize hold.
+  beat.value = 'resolved'
+  if (!gameStore.watching) void update({ event: 'round-play', ...seatEcho(subject) })
 }
 
 const toggle = (isoCode: ISOCountryCode) => {
@@ -454,8 +469,7 @@ const foundCount = computed(() => {
 const lockIn = () => {
   const active = challenge.value
   if (!active || beat.value !== 'tap' || submitted.value) return
-  if (tapClock) clearInterval(tapClock)
-  tapClock = undefined
+  tapWindow.stop()
   beat.value = 'reveal'
   verdict.value = undefined
 

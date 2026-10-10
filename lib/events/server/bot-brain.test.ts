@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AUTOPILOT_GRACE_MS, BOT_PUMP_MS } from '~~/lib/round-beats'
+import { AUTOPILOT_GRACE_MS, BOT_PUMP_MS, NEW_ROUND_PAUSE_MS } from '~~/lib/round-beats'
 import type {
   NeighbourBlitzChallenge,
   TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
+import type { Player } from '~~/types/player.type'
 import type {
   MembershipChallenge,
   SunsetBlitzChallenge,
@@ -24,6 +24,7 @@ import {
   releaseAutopilot,
 } from './bot-brain'
 import type { EngineContext } from './round-engine'
+import { testCursor, testSeat } from './test-seat'
 
 const BLITZ: NeighbourBlitzChallenge = {
   _type: 'neighbour-blitz-challenge',
@@ -39,9 +40,6 @@ const BUZZ: TwoTruthsChallenge = {
   durationSeconds: 25,
   maximumPoints: 10,
 } as TwoTruthsChallenge
-
-const seat = (id: string, phase: PlayerPhase, extra: Partial<Player> = {}): Player =>
-  ({ id, name: id, phase, moves: [], currentPosition: 0, ...extra }) as unknown as Player
 
 const buildGame = (challenge: object, players: Player[]): Game =>
   ({
@@ -59,7 +57,7 @@ const roundOf = (game: Game): Round => game.rounds[0]
 
 describe('composeClassicSubmission', () => {
   it("composes a blitz answer sliced from the mode's own correct set", async () => {
-    const game = buildGame(BLITZ, [seat('bot:x', 'group-challenge', { bot: true })])
+    const game = buildGame(BLITZ, [testSeat('bot:x', 'round', { bot: true })])
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeDefined()
     expect(submission!.ranking.length).toBeGreaterThanOrEqual(1)
@@ -78,7 +76,7 @@ describe('composeClassicSubmission', () => {
   })
 
   it('composes a single-pick buzz answer with a clamped claim', async () => {
-    const game = buildGame(BUZZ, [seat('bot:x', 'group-challenge', { bot: true })])
+    const game = buildGame(BUZZ, [testSeat('bot:x', 'round', { bot: true })])
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeDefined()
     expect(submission!.ranking.length).toBeLessThanOrEqual(1)
@@ -94,7 +92,7 @@ describe('composeClassicSubmission', () => {
 
   it('returns nothing for a seat the ranking round never dealt to', async () => {
     const game = buildGame({ countriesPerPlayer: {}, id: 'population', maximumPoints: 10 }, [
-      seat('bot:x', 'group-challenge', { bot: true }),
+      testSeat('bot:x', 'round', { bot: true }),
     ])
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeUndefined()
@@ -102,7 +100,7 @@ describe('composeClassicSubmission', () => {
 })
 
 describe('finalAnswerFor', () => {
-  const game = buildGame(BUZZ, [seat('bot:x', 'final-challenge', { bot: true })])
+  const game = buildGame(BUZZ, [testSeat('bot:x', 'final', { bot: true })])
 
   const MEMBERSHIP: MembershipChallenge = {
     _type: 'membership-challenge',
@@ -195,7 +193,7 @@ describe('the AFK autopilot lifecycle', () => {
   }
 
   it('takes over a seat whose socket stayed gone past the grace window', async () => {
-    const game = buildGame(BUZZ, [seat('human', 'group-challenge')])
+    const game = buildGame(BUZZ, [testSeat('human', 'round')])
     armAfkTakeover(context(game, 'human'), 'dead-socket')
     await elapseGrace()
     expect(store.get('bot-test')!.players['human'].autopilot).toEqual({ sinceRound: 0 })
@@ -203,7 +201,7 @@ describe('the AFK autopilot lifecycle', () => {
   })
 
   it('stands down when the player reconnected on a new socket', async () => {
-    const game = buildGame(BUZZ, [seat('human', 'group-challenge')])
+    const game = buildGame(BUZZ, [testSeat('human', 'round')])
     roomSockets = [{ id: 'fresh-socket', data: { playerId: 'human' } }]
     armAfkTakeover(context(game, 'human'), 'dead-socket')
     await elapseGrace()
@@ -211,20 +209,20 @@ describe('the AFK autopilot lifecycle', () => {
   })
 
   it('never touches bots, finished seats, or unstarted games', async () => {
-    const lobby = buildGame(BUZZ, [seat('human', 'naming')])
+    const lobby = buildGame(BUZZ, [testSeat('human', 'lobby')])
     lobby.started = false
     armAfkTakeover(context(lobby, 'human'), 'dead-socket')
     await elapseGrace()
     expect(store.get('bot-test')!.players['human'].autopilot).toBeUndefined()
 
-    const winner = buildGame(BUZZ, [seat('human', 'victory')])
+    const winner = buildGame(BUZZ, [testSeat('human', 'victory')])
     armAfkTakeover(context(winner, 'human'), 'dead-socket')
     await elapseGrace()
     expect(store.get('bot-test')!.players['human'].autopilot).toBeUndefined()
   })
 
   it('release clears the latch and reports the covered span', async () => {
-    const covered = seat('human', 'group-scores', { autopilot: { sinceRound: 0 } })
+    const covered = testSeat('human', 'scores', { autopilot: { sinceRound: 0 } })
     const game = buildGame(BUZZ, [covered])
     roundOf(game).playerTurns['human'] = { points: { scored: 7, maximum: 10 } }
     releaseAutopilot(context(game, 'human'), game, covered)
@@ -237,7 +235,7 @@ describe('the AFK autopilot lifecycle', () => {
   })
 
   it('releases a winner to the table without the catch-up ceremony', async () => {
-    const winner = seat('human', 'victory', { autopilot: { sinceRound: 0 } })
+    const winner = testSeat('human', 'victory', { autopilot: { sinceRound: 0 } })
     const game = buildGame(BUZZ, [winner])
     releaseAutopilot(context(game, 'human'), game, winner)
     // The table still hears it — NoticeToast shows the line to everyone BUT
@@ -260,7 +258,7 @@ describe('the bot pump', () => {
    *  room of its own — a reused id inherits the previous test's live chain and
    *  `armBotPump` refuses the duplicate. */
   const pumpGameFor = (): Game => {
-    const game = buildGame(BUZZ, [seat('bot:x', 'group-challenge', { bot: true })])
+    const game = buildGame(BUZZ, [testSeat('bot:x', 'round', { bot: true })])
     game.id = `pump-test-${++gameNumber}`
     return game
   }
@@ -324,10 +322,11 @@ describe('the bot pump', () => {
     await vi.advanceTimersByTimeAsync(BOT_PUMP_MS * 2)
     expect(await ticked()).toBe(false)
 
-    // The recovery join.event owes it — including mid-staging, where the
+    // The recovery join.event owes it — including between rounds, where the
     // round engines have nothing to revive and skip `rearmLiveRound`.
     roomSockets = [{ id: 'back', data: { playerId: 'human' } }]
-    game.pendingRoundStart = true
+    game.players['bot:x'].cursor = testCursor('settled')
+    game.nextRoundAt = Date.now() + NEW_ROUND_PAUSE_MS
     armBotPump(context(game), game)
     expect(await ticked()).toBe(true)
   })

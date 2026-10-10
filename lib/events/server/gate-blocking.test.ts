@@ -1,18 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  BOARD_TO_CHALLENGE_HOLD_MS,
+  GATE_RESULT_HOLD_MS,
+  STEP_INTERVAL_MS,
+  WALK_RESUME_LEAD_MS,
+} from '~~/lib/round-beats'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
+import { seatSubject } from '~~/lib/seat-transitions'
 import type { Game, PlayerMove, Tile } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
-import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
-import { startWalk } from './moves'
-import { RetryableReject } from '../server-side'
-import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answer.handler'
-import { submitIndividualChallengeAnswersHandler } from './submit-individual-challenge-answer.handler'
+import { dropArmedTimersForTests, rearmSeats } from './seat-cursor'
+import { enterScores } from './seat-exits'
+import { createTestTable, uniqueGameId, type TestTable } from './test-table'
+import { testCursor, testSeat } from './test-seat'
 
 /**
  * Regression cover for the `milk-major-pot` incident: a failed gate must leave
  * a visible, durable trace (the `blocked` turn record) and settle the pawn at
- * gate − 1 — and the stale-timer hardening around it (walk generations, the
- * gate-tile echo) must reject everything that could walk a pawn it shouldn't.
+ * gate − 1 — and nothing that is not this gate's own subject may judge or move it.
  */
 
 const tile = (position: number, type: Tile['type'] = 'normal'): Tile => ({ position, type })
@@ -27,28 +33,27 @@ const gateMove = (position: number, variant = 'find'): PlayerMove => ({
   } as PlayerMove['challenge'],
 })
 
-const seat = (id: string, overrides: Partial<Player> = {}): Player =>
-  ({
-    id,
-    name: id,
-    ready: true,
-    color: '#000000',
-    phase: 'group-challenge',
-    moves: [],
-    currentPosition: 0,
+const onGate = (position: number, overrides: Partial<Player> = {}): Player =>
+  testSeat('a', 'gate', {
+    currentPosition: position - 1,
+    cursor: testCursor('gate', {
+      subject: seatSubject.gate(1, position),
+      deadline: Date.now() + 90_000,
+    }),
     ...overrides,
-  }) as unknown as Player
+  })
 
-const buildGame = (players: { [id: string]: Player }): Game =>
+const buildGame = (players: Player[]): Game =>
   ({
-    id: 'test-game',
+    id: uniqueGameId('gate'),
     host: 'a',
+    started: true,
     variant: 'world',
     difficulty: 'hard',
     tiles: Array.from({ length: 12 }, (_, index) =>
       index === 5 || index === 8 ? tile(index, 'flag') : tile(index)
     ),
-    players,
+    players: Object.fromEntries(players.map(player => [player.id, player])),
     rounds: [
       {
         groupChallenge: { _type: 'group-challenge' },
@@ -58,269 +63,132 @@ const buildGame = (players: { [id: string]: Player }): Game =>
     ],
   }) as unknown as Game
 
-/** An in-memory redis + a no-op io: enough for save/emit/fetch. */
-const store = new Map<string, Game>()
-
-const context = (game: Game) => {
-  store.set(game.id, game)
-  return {
-    io: { in: () => ({ emit: () => undefined }) },
-    redis: {
-      get: async (key: string) => store.get(key),
-      set: async (key: string, value: Game) => void store.set(key, value),
-      expire: async () => 1,
-    },
-    socket: {},
-  } as never as { io: never; redis: never; socket: never }
+let tables: TestTable[] = []
+const open = async (game: Game) => {
+  const table = await createTestTable(game)
+  tables.push(table)
+  rearmSeats(table.ctx('a'), game)
+  return table
+}
+const seatA = async (table: TestTable) => (await table.read()).players.a!
+const answer = async (table: TestTable, isoCode: ISOCountryCode) => {
+  const { subject, seq } = (await seatA(table)).cursor
+  await table.send('a', { event: 'submit-individual-challenge-answer', isoCode, subject, seq })
 }
 
-const playerOf = (gameId: string, playerId: string) => store.get(gameId)!.players[playerId]
-
-beforeEach(() => {
-  vi.useFakeTimers()
-  store.clear()
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => {
+  dropArmedTimersForTests()
+  for (const table of tables) table.dispose()
+  tables = []
+  vi.useRealTimers()
 })
-
-afterEach(() => vi.useRealTimers())
 
 describe('a failed gate blocks the walk', () => {
+  // A second, round-bound seat keeps the table unsettled so no new round is owed.
   const failedGame = () =>
-    buildGame({
-      // Standing at gate − 1 with the gate move at the head and a second gate
-      // chunk banked behind it — the forfeit must count all of it.
-      a: seat('a', {
-        phase: 'individual-challenge',
-        currentPosition: 4,
-        moves: [gateMove(5), gateMove(8)],
-      }),
-      // A second, round-bound seat keeps the table unsettled so the handler
-      // never stages a new round (which would deal real challenges).
-      b: seat('b'),
+    buildGame([onGate(5, { moves: [gateMove(5), gateMove(8)] }), testSeat('b', 'round')])
+
+  it('holds the verdict, then records the block, forfeits every banked step and settles at gate − 1', async () => {
+    const table = await open(failedGame())
+    await answer(table, 'NO')
+
+    const judged = await seatA(table)
+    expect(judged.cursor.step).toBe('gate-verdict')
+    expect(judged.cursor.verdict).toMatchObject({
+      correct: false,
+      timedOut: false,
+      submitted: 'NO',
     })
+    // Nothing is forfeited while the verdict holds.
+    expect(judged.moves).toHaveLength(2)
 
-  it('records the block, forfeits every banked step, and settles at gate − 1', async () => {
-    const game = failedGame()
-    const ctx = context(game)
-
-    await submitIndividualChallengeAnswersHandler({
-      ...ctx,
-      eventKey: 'submit-individual-challenge-answer',
-      eventData: { event: 'submit-individual-challenge-answer', isoCode: 'NO', gateTile: 5 },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-
-    const blocked = store.get(game.id)!.rounds[0].playerTurns.a.blocked
-    expect(blocked).toEqual({ atTile: 5, forfeitedSteps: 4 })
-    expect(playerOf(game.id, 'a').moves).toEqual([])
-    expect(playerOf(game.id, 'a').currentPosition).toBe(4)
-
-    // The 5s result beat settles the seat where it stands — never past the gate.
-    await vi.advanceTimersByTimeAsync(5100)
-    expect(playerOf(game.id, 'a').phase).toBe('movement-summary')
-    expect(playerOf(game.id, 'a').currentPosition).toBe(4)
-    expect(playerOf(game.id, 'a').resolving).toBe(false)
-
-    // A replayed duplicate of the failed answer finds a settled seat and dies.
-    await submitIndividualChallengeAnswersHandler({
-      ...ctx,
-      eventKey: 'submit-individual-challenge-answer',
-      eventData: { event: 'submit-individual-challenge-answer', isoCode: 'NO', gateTile: 5 },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-    expect(playerOf(game.id, 'a').phase).toBe('movement-summary')
-    expect(playerOf(game.id, 'a').currentPosition).toBe(4)
-  })
-
-  it('leaves no block on a correct answer and leaps the gate', async () => {
-    const game = failedGame()
-    const ctx = context(game)
-
-    await submitIndividualChallengeAnswersHandler({
-      ...ctx,
-      eventKey: 'submit-individual-challenge-answer',
-      eventData: {
-        event: 'submit-individual-challenge-answer',
-        isoCode: 'FI',
-        remainingFraction: 1,
-        gateTile: 5,
-      },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-
-    expect(store.get(game.id)!.rounds[0].playerTurns.a.blocked).toBeUndefined()
-    expect(playerOf(game.id, 'a').currentPosition).toBe(4 + gateLeapSteps(1, 0, gatePot('find')))
-    expect(playerOf(game.id, 'a').moves).toHaveLength(1)
-  })
-
-  /**
-   * The precondition behind the gate shell's beat fallback (use-gate-challenge):
-   * a deep-pot leap can cover the whole walk to the NEXT gate, and then the
-   * result beat settles the seat straight back into 'individual-challenge'
-   * with no 'moving' step in between. Nothing on the wire changes phase, so a
-   * client that ends its result beat by unmounting would never end it.
-   */
-  it('re-enters the next gate with no walk when the leap covers it', async () => {
-    const game = buildGame({
-      // Rosetta's pot is 4 and the gates are three tiles apart: a full-clock
-      // win WOULD land the pawn on gate 8 itself — the leap clamps to the
-      // stop tile at 7, or the seat stands past a gate it never answered.
-      a: seat('a', {
-        phase: 'individual-challenge',
-        currentPosition: 4,
-        moves: [gateMove(5, 'rosetta'), gateMove(8)],
-      }),
-      b: seat('b'),
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + 10)
+    const settled = await seatA(table)
+    expect((await table.read()).rounds[0]!.playerTurns.a!.blocked).toEqual({
+      atTile: 5,
+      forfeitedSteps: 4,
     })
-    const ctx = context(game)
-
-    await submitIndividualChallengeAnswersHandler({
-      ...ctx,
-      eventKey: 'submit-individual-challenge-answer',
-      eventData: {
-        event: 'submit-individual-challenge-answer',
-        isoCode: 'FI',
-        remainingFraction: 1,
-        gateTile: 5,
-      },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-    // Clamped to gate 8's stop tile, not 4 + the full pot.
-    expect(playerOf(game.id, 'a').currentPosition).toBe(7)
-
-    const phases: string[] = []
-    for (let elapsed = 0; elapsed < 8000; elapsed += 250) {
-      await vi.advanceTimersByTimeAsync(250)
-      phases.push(playerOf(game.id, 'a').phase)
-    }
-
-    // Parked on the next gate, and the seat was never 'moving' on the way —
-    // the phase the client renders from never changed at all.
-    expect(playerOf(game.id, 'a').phase).toBe('individual-challenge')
-    expect(playerOf(game.id, 'a').moves[0].endTile.position).toBe(8)
-    expect(phases).not.toContain('moving')
+    expect(settled.moves).toEqual([])
+    expect(settled.currentPosition).toBe(4)
+    expect(settled.cursor.step).toBe('settled')
   })
 
-  it('rejects a submit whose gate-tile echo no longer matches the head gate', async () => {
-    const game = failedGame()
-    const ctx = context(game)
+  it('leaves no block on a correct answer and pays the leap when the verdict ends', async () => {
+    const table = await open(failedGame())
+    await answer(table, 'FI')
+    expect((await seatA(table)).currentPosition).toBe(4)
 
-    // An ack redelivery for a PREVIOUS gate arriving while gate 5 is the head.
-    await submitIndividualChallengeAnswersHandler({
-      ...ctx,
-      eventKey: 'submit-individual-challenge-answer',
-      eventData: { event: 'submit-individual-challenge-answer', isoCode: 'NO', gateTile: 8 },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + 10)
+    const resumed = await seatA(table)
+    expect((await table.read()).rounds[0]!.playerTurns.a!.blocked).toBeUndefined()
+    expect(resumed.currentPosition).toBe(
+      Math.min(4 + gateLeapSteps(undefined, undefined, gatePot('find')), 7)
+    )
+    expect(resumed.cursor.step).toBe('walk')
+    expect(resumed.cursor.leg).toBe(1)
+  })
 
-    expect(playerOf(game.id, 'a').moves).toHaveLength(2)
-    expect(playerOf(game.id, 'a').resolving).toBeUndefined()
-    expect(store.get(game.id)!.rounds[0].playerTurns.a.blocked).toBeUndefined()
+  it('lands a leap that covers the next gate on that gate as a fresh subject', async () => {
+    const table = await open(
+      buildGame([onGate(5, { moves: [gateMove(5), gateMove(6)] }), testSeat('b', 'round')])
+    )
+    await answer(table, 'FI')
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + 10)
+    // Clamped to the next gate's stop tile: nothing to walk, but the walk still announces.
+    expect((await seatA(table)).currentPosition).toBe(5)
+    expect((await seatA(table)).cursor.step).toBe('walk')
+
+    await vi.advanceTimersByTimeAsync(WALK_RESUME_LEAD_MS + 10)
+    expect((await seatA(table)).cursor).toMatchObject({
+      step: 'arrive',
+      subject: seatSubject.gate(1, 6),
+    })
+    await vi.advanceTimersByTimeAsync(BOARD_TO_CHALLENGE_HOLD_MS + 10)
+    expect((await seatA(table)).cursor).toMatchObject({
+      step: 'gate',
+      subject: seatSubject.gate(1, 6),
+    })
+  })
+
+  it('drops an answer echoing any other subject — a resync, never a verdict', async () => {
+    const table = await open(failedGame())
+    await table.send('a', {
+      event: 'submit-individual-challenge-answer',
+      isoCode: 'FI',
+      subject: seatSubject.gate(1, 8),
+      seq: 1,
+    })
+    expect((await seatA(table)).cursor.step).toBe('gate')
+    expect(table.emits.at(-1)?.event).toBe('update')
   })
 })
 
-describe('walk generations', () => {
-  it('drops a continuation armed under an older walk', async () => {
-    const game = buildGame({
-      a: seat('a', {
-        phase: 'moving',
-        currentPosition: 0,
-        moves: [{ endTile: tile(3) }],
-        walkSeq: 2,
-      }),
-      b: seat('b'),
-    })
-    const ctx = context(game)
-
-    await enterMovementPhaseHandler({
-      ...ctx,
-      eventKey: 'enter-movement-phase',
-      eventData: { event: 'enter-movement-phase', continuation: true, walkSeq: 1 },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-    expect(playerOf(game.id, 'a').currentPosition).toBe(0)
-
-    await enterMovementPhaseHandler({
-      ...ctx,
-      eventKey: 'enter-movement-phase',
-      eventData: { event: 'enter-movement-phase', continuation: true, walkSeq: 2 },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-    expect(playerOf(game.id, 'a').currentPosition).toBe(1)
+describe('the walk counter', () => {
+  it('opens a new walk on every fresh deal, so a re-landing is never the same subject', async () => {
+    const game = buildGame([testSeat('a', 'round')])
+    const seat = game.players.a!
+    await enterScores(game, seat, 0, 'table:settle', { moves: [gateMove(5)] })
+    const first = seat.cursor.walk
+    seat.cursor = testCursor('round', { walk: first })
+    await enterScores(game, seat, 0, 'table:settle', { moves: [gateMove(5)] })
+    expect(seat.cursor.walk).toBe(first + 1)
+    expect(seatSubject.gate(first, 5)).not.toBe(seatSubject.gate(seat.cursor.walk, 5))
   })
 
-  it('opens a new generation on every fresh deal', () => {
-    const player = seat('a')
-    startWalk(player, [{ endTile: tile(3) }])
-    expect(player.walkSeq).toBe(1)
-    startWalk(player, [{ endTile: tile(6) }])
-    expect(player.walkSeq).toBe(2)
-  })
-})
-
-/**
- * The answer-integrity seams the audit added: a latch mid-hold is a
- * RETRYABLE reject (an ok:true ack told the client its eaten answer ran),
- * and staleness echoes pin an answer to the question/round it was given on.
- */
-describe('answer integrity', () => {
-  it('rejects a latched submit as retryable, never as a success', async () => {
-    const game = buildGame({
-      a: seat('a', {
-        phase: 'individual-challenge',
-        currentPosition: 4,
-        resolving: true,
-        moves: [gateMove(5)],
-      }),
-      b: seat('b'),
-    })
-    const ctx = context(game)
-
-    await expect(
-      submitIndividualChallengeAnswersHandler({
-        ...ctx,
-        eventKey: 'submit-individual-challenge-answer',
-        eventData: { event: 'submit-individual-challenge-answer', isoCode: 'FI', gateTile: 5 },
-        eventTarget: { gameId: game.id, playerId: 'a' },
-      } as never)
-    ).rejects.toBeInstanceOf(RetryableReject)
-    // Nothing consumed: the retry will be judged fresh once the hold clears.
-    expect(playerOf(game.id, 'a').moves).toHaveLength(1)
-  })
-
-  it('drops a final answer whose turn echo is stale instead of grading it', async () => {
-    const gauntletMove = {
-      endTile: tile(11, 'final'),
-      challenge: {
-        _type: 'final-challenge',
-        difficulty: 'hard',
-        challenges: [{ _type: 'membership-challenge', lineup: ['SE', 'FI'], exception: 'SE' }],
-        lives: 1,
-        turn: 3,
-        totalCount: 5,
-        answeredCorrect: 2,
-      },
-    } as unknown as PlayerMove
-    const game = buildGame({
-      a: seat('a', { phase: 'final-challenge', currentPosition: 10, moves: [gauntletMove] }),
-      b: seat('b'),
-    })
-    const ctx = context(game)
-
-    await submitFinalChallengeAnswerHandler({
-      ...ctx,
-      eventKey: 'submit-final-challenge-answer',
-      eventData: {
-        event: 'submit-final-challenge-answer',
-        submittedAnswer: { _type: 'membership-challenge', isoCode: 'SE' },
-        // The cap already burned turn 2 — this answer lost the race.
-        turn: 2,
-      },
-      eventTarget: { gameId: game.id, playerId: 'a' },
-    } as never)
-
-    const challenge = playerOf(game.id, 'a').moves[0]?.challenge
-    expect(challenge?._type === 'final-challenge' && challenge.answeredCorrect).toBe(2)
-    expect(challenge?._type === 'final-challenge' && challenge.challenges).toHaveLength(1)
-    expect(playerOf(game.id, 'a').resolving).toBeFalsy()
+  it('kills a timer armed for an older seq the moment the seat moves on', async () => {
+    const table = await open(
+      buildGame([onGate(5, { moves: [gateMove(5)] }), testSeat('b', 'round')])
+    )
+    const stale = await table.read()
+    await answer(table, 'NO')
+    // A rejoin re-arming from a snapshot taken before the answer.
+    rearmSeats(table.ctx('a'), stale)
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + 10)
+    expect((await seatA(table)).cursor.step).toBe('settled')
+    await vi.advanceTimersByTimeAsync(120_000 + STEP_INTERVAL_MS)
+    // The stale gate cap had its turn and changed nothing.
+    expect((await seatA(table)).cursor.step).toBe('settled')
+    expect((await table.read()).rounds[0]!.playerTurns.a!.blocked?.atTile).toBe(5)
   })
 })

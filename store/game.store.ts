@@ -6,6 +6,7 @@ import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/gam
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { CountryColorGrouping, MapFeatureOverlay, MapInset } from '~~/types/map.type'
 import type { Player } from '~~/types/player.type'
+import type { SeatCursor } from '~~/types/seat.types'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
 
@@ -55,7 +56,12 @@ export interface TableNoticeEntry {
 /** A gauntlet verdict, DERIVED from the wire arm so the store can never drift
  *  from what the server sends — `at` is restamped on arrival (see the
  *  applier's clock note), so it replaces the payload's. */
-export type FinalBeatEntry = Omit<Extract<ServerEventData, { event: 'final-beat' }>, 'event'>
+/** A view's own optimistic grade, tagged with the subject it graded — the
+ *  layout and the shells only show it while that subject is still on screen. */
+export interface PreviewVerdict {
+  subject: string
+  value: 'incorrect' | 'correct'
+}
 
 interface GameStoreState {
   game?: Game
@@ -76,7 +82,7 @@ interface GameStoreState {
     reveal?: ISOCountryCode
     /** Educational stat shown on the reveal card ("Women in parliament · 61%"). */
     revealStat?: { label: string; value: string }
-    status?: 'incorrect' | 'correct'
+    status?: PreviewVerdict
     highlighted: Set<ISOCountryCode>
     /** Shapes-only mode: only highlighted/tinted countries render (traversal). */
     solo: boolean
@@ -187,9 +193,6 @@ interface GameStoreState {
     cheers: CheerEntry[]
     /** Table announcements (autopilot takeover/return), self-expiring. */
     notices: TableNoticeEntry[]
-    /** Gauntlet verdicts, self-expiring — the only place a watcher (or a
-     *  player parked on the board) learns an answer landed. */
-    finalBeats: FinalBeatEntry[]
     /** Status panel fold override; undefined = auto (folded on phones). */
     panelFolded?: boolean
     /** Round-history drawer visibility (board phases only). */
@@ -204,8 +207,8 @@ interface GameStoreState {
     /** WebGL missing or the board chunk failed for good: the overlay swaps
      *  in the 2D fallback board instead. */
     stageFailed: boolean
-    /** `playerId:walkSeq` whose "On the move!" beat already played, so an
-     *  overlay remount mid-lead can't replay the interstitial. */
+    /** `seatId:subject` of the walk whose "On the move!" beat already
+     *  played, so an overlay remount mid-lead can't replay the interstitial. */
     introSeenKey?: string
   }
   /**
@@ -303,7 +306,6 @@ export const useGameStore = defineStore('game', {
       spectateTargetId: undefined,
       cheers: [],
       notices: [],
-      finalBeats: [],
       panelFolded: undefined,
       historyOpen: false,
       stageActive: false,
@@ -316,14 +318,7 @@ export const useGameStore = defineStore('game', {
   getters: {
     currentRound: (state): { round: Round; number: number } | undefined => {
       if (!state.game) return undefined
-      // A staged-but-unrevealed round (the 2s settle pause) is not the live
-      // round: seats are still on the finished round's scorecards, and
-      // pointing them at the fresh empty round blanks every score and swaps
-      // the reveal to a challenge nobody has seen. Staging always pushes
-      // onto an existing round, so the fallback index is safe.
-      const index = state.game.pendingRoundStart
-        ? state.game.rounds.length - 2
-        : state.game.rounds.length - 1
+      const index = state.game.rounds.length - 1
       const round = state.game.rounds[index]
       if (!round) return undefined
 
@@ -337,6 +332,15 @@ export const useGameStore = defineStore('game', {
      *  identity for emits, host checks and the routing `self`. */
     seatId(state): string {
       return state.spectateSeatId ?? state.playerId
+    },
+    /** The cursor of the seat this UI renders. */
+    seatCursor(): SeatCursor | undefined {
+      return this.game?.players[this.seatId]?.cursor
+    },
+    /** The view's own optimistic verdict, but only while its subject is on screen. */
+    previewStatus(): PreviewVerdict['value'] | undefined {
+      const preview = this.map.status
+      return preview && preview.subject === this.seatCursor?.subject ? preview.value : undefined
     },
     /** In the booth — a latecomer watcher or a finisher watching. The write
      *  gate in client-side.ts keys off this. */

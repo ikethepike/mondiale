@@ -5,7 +5,7 @@
       tone="info"
       kind="ghost-state"
       title="A country almost nobody recognizes"
-      :stakes="`All you get is the flag. Point to where on Earth it is — the closer you land, the more you score. ${DURATION_SECONDS} seconds.`"
+      :stakes="`All you get is the flag. Point to where on Earth it is — the closer you land, the more you score. ${challenge?.durationSeconds ?? ''} seconds.`"
       @done="start"
     />
     <template v-else>
@@ -76,9 +76,8 @@ const {
   submitOnce,
   registerCleanup,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('ghost-state-challenge', { solo: false })
-
-const DURATION_SECONDS = 25
 
 const territory = ref<RecognitionTerritory>()
 const flagSvg = ref('')
@@ -255,7 +254,7 @@ const submitRound = (isoCode: ISOCountryCode | undefined) => {
   // Green wash on success, nothing on failure — as ViewCapitalGuess and
   // ViewFlagPalette do. `'incorrect'` floods every country orange, which here
   // reads as "the whole world is wrong" rather than "you missed".
-  gameStore.map.status = correct ? 'correct' : undefined
+  previewVerdict(correct ? 'correct' : undefined)
 
   submitOnce(isoCode ? [isoCode] : [])
 }

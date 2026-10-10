@@ -66,6 +66,7 @@ import {
   sunsetSweep,
 } from '~~/lib/sunset-window'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
+import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -94,7 +95,6 @@ const schedule = computed(() =>
 const durationSeconds = computed(() => Math.ceil(schedule.value.at(-1) ?? 0))
 const quota = computed(() => sunsetQuota(props.challenge))
 
-const TICK_MS = 100
 // The frame is the subject: the default pad floor would push the field into
 // the middle third of the screen
 const WINDOW_FRAME_PAD = { scale: 0.06, floor: 12 }
@@ -112,9 +112,15 @@ const { toScreenPercent } = useMapViewBox()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-const secondsLeft = ref(durationSeconds.value)
-// Undefined until the camera settles — the night stays parked off-screen and
-// the clock holds through the camera's flight
+// The question's server clock: the schedule runs from its start, which the
+// server placed after the camera's flight.
+const { now, startsAt, secondsLeft, expired, stop } = useFinalStageClock(durationSeconds)
+const elapsedSeconds = computed(() =>
+  startsAt.value === undefined ? 0 : Math.max(0, (now.value - startsAt.value) / 1000)
+)
+// Undefined until the camera settles — the dusk line stays parked off-screen.
+// The veil animates on the compositor's own timeline, so its start is the
+// server clock's elapsed time translated onto `performance.now()` at the lock.
 const sweep = shallowRef<{
   duskAt: (elapsedSeconds: number) => number
   startTime: number
@@ -169,28 +175,28 @@ const forget = (isoCode: ISOCountryCode) => {
 const SETTLE_DELAY_MS = 1500
 let lastSeenBox: string | undefined
 
-const lockSweep = (elapsedMs: number) => {
+const lockSweep = (sinceStartMs: number) => {
   const vb = currentViewBox()
   const seen = vb?.w ? `${vb.x} ${vb.y} ${vb.w} ${vb.h}` : undefined
   const still = seen !== undefined && seen === lastSeenBox
   lastSeenBox = seen
-  if (elapsedMs < SETTLE_DELAY_MS || !still || !vb) return
+  if (sinceStartMs < SETTLE_DELAY_MS || !still || !vb) return
   const start = Math.max(sweepBounds(vb).start, sunsetDuskCoordinate(field.value[0]!))
   sweep.value = {
     duskAt: sunsetSweep(field.value, schedule.value, start),
-    startTime: performance.now(),
+    startTime: performance.now() - elapsedSeconds.value * 1000,
     duration: schedule.value.at(-1) ?? 0,
   }
   void nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
-let ticker: ReturnType<typeof setInterval> | undefined
-let startedAt = 0
+/** When this stage's scene opened, in server time — the camera's settle clock. */
+let sceneOpenedAt: number | undefined
 
 const finish = () => {
   if (finished.value) return
   finished.value = true
-  if (ticker) clearInterval(ticker)
+  stop()
   // The standard highlight is the post-round "stayed lit" state on the base
   // map — stamped once, under the settled night, never per guess
   for (const isoCode of named.value) gameStore.map.highlighted.add(isoCode)
@@ -206,28 +212,29 @@ const settleIfDecided = () => {
 }
 
 const tick = () => {
-  if (!sweep.value) return lockSweep(performance.now() - startedAt)
-  const elapsed = (performance.now() - sweep.value.startTime) / 1000
-  const dark = sunsetDarkCount(schedule.value, elapsed)
+  if (sceneOpenedAt === undefined || finished.value) return
+  if (!sweep.value) lockSweep(now.value - sceneOpenedAt)
+  const dark = sunsetDarkCount(schedule.value, elapsedSeconds.value)
   if (dark !== darkCount.value) {
     for (const isoCode of field.value.slice(darkCount.value, dark)) {
       if (!named.value.has(isoCode)) lose(isoCode)
     }
     darkCount.value = dark
   }
-  const left = Math.max(0, Math.ceil(sweep.value.duration - elapsed))
-  if (left !== secondsLeft.value) secondsLeft.value = left
   settleIfDecided()
 }
+watch(now, tick)
+watch(expired, ran => {
+  if (ran) finish()
+})
 
 const start = () => {
-  if (ticker || finished.value) return
+  if (sceneOpenedAt !== undefined || finished.value) return
   gameStore.map.frame = props.challenge.frame
   gameStore.map.framePad = WINDOW_FRAME_PAD
   gameStore.map.spotlight = [...field.value]
   document.body.classList.add('sunset-blitz')
-  startedAt = performance.now()
-  ticker = setInterval(tick, TICK_MS)
+  sceneOpenedAt = now.value
 }
 
 let feedbackTimeout: ReturnType<typeof setTimeout> | undefined
@@ -262,7 +269,6 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  if (ticker) clearInterval(ticker)
   if (feedbackTimeout) clearTimeout(feedbackTimeout)
   document.body.classList.remove('sunset-blitz')
   document.body.classList.remove('sunset-settled')

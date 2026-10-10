@@ -56,19 +56,6 @@ export type GameSocket = Socket<DefaultEventsMap, DefaultEventsMap, DefaultEvent
 export type GameServer = Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, SocketData>
 
 /**
- * A handler rejection the CLIENT should retry: the state that blocked it is
- * transient (a `resolving` latch mid-hold), so the same payload will be
- * accepted once the beat clears. Thrown instead of warn-returned because a
- * warn-return acks `{ok: true}` — which told the client its answer ran when
- * it was actually dropped (the audit's eaten-answer bug: a post-reload
- * answer to the NEXT question died in the latch with a success ack, and the
- * question cap later burned it as a miss). The middleware acks these
- * `{ok: false, reason}`, which the client's retry loop treats as retryable
- * (only 'error' — a genuine throw — fails fast).
- */
-export class RetryableReject extends Error {}
-
-/**
  * Handlers read-modify-write the whole game to Redis, so two of them running
  * concurrently for the same game clobber each other's saves. One process
  * serves all games — a per-game promise chain fully serializes them. Pacing
@@ -101,17 +88,51 @@ export const gameQueueCount = () => gameQueues.size
  *  tails final. */
 export const settleGameQueues = () => Promise.allSettled([...gameQueues.values()])
 
+/**
+ * Seat transitions are stamped onto the game in memory by `advanceSeat`; the
+ * save home hands them to the seat cursor module, which journals them and arms
+ * each seat's follow-up AFTER the write lands. Injected (not imported) so this
+ * module stays a leaf: the cursor module registers itself on load, and only
+ * that module can create pending transitions, so the hooks are always present
+ * whenever there is something to flush.
+ */
+export interface SeatSaveHooks {
+  afterFetch: (game: Game) => void
+  beforeSave: (game: Game) => void
+  afterSave: (game: Game, ctx: { io: GameServer; redis: Redis }) => Promise<boolean>
+}
+let seatSaveHooks: SeatSaveHooks | undefined
+export const setSeatSaveHooks = (hooks: SeatSaveHooks) => {
+  seatSaveHooks = hooks
+}
+
+/**
+ * Never save what you don't send: a save carrying seat transitions must reach
+ * the wire inside the same queued task. Tracked per game; checked when the
+ * task settles, logged as `seat-unsent` if a task ever breaks the rule.
+ */
+const unsentRevs = new Map<string, number>()
+const checkUnsent = (gameId: string) => {
+  const rev = unsentRevs.get(gameId)
+  if (rev === undefined) return
+  unsentRevs.delete(gameId)
+  console.error(`seat-unsent ${JSON.stringify({ game: gameId, rev })}`)
+}
+/** Test seam: the rev a game saved with transitions but has not emitted yet. */
+export const unsentRevFor = (gameId: string) => unsentRevs.get(gameId)
+
 export const enqueueGameTask = <T>(gameId: string, task: () => T | Promise<T>): Promise<T> => {
   if (draining) return Promise.reject(new Error(`Draining — refused task for ${gameId}`))
   const tail = gameQueues.get(gameId) ?? Promise.resolve()
-  const next = tail.then(task)
-  const settled = next.catch(error => {
-    // A RetryableReject is a deliberate, acked deferral (the middleware
-    // already warns) — not a failed task; logging it as one would page on
-    // every latch retry.
-    if (!(error instanceof RetryableReject)) {
-      console.error(`Game task failed for ${gameId}`, error)
+  const next = tail.then(async () => {
+    try {
+      return await task()
+    } finally {
+      checkUnsent(gameId)
     }
+  })
+  const settled = next.catch(error => {
+    console.error(`Game task failed for ${gameId}`, error)
   })
   gameQueues.set(gameId, settled)
   // A settled tail that is STILL the current tail is a finished queue — drop
@@ -133,9 +154,18 @@ export const useServerSideEvents = ({
 }) => {
   return {
     emit(eventData: ServerEventData, eventTarget: ClientEventTarget) {
-      io.in(eventTarget.gameId).emit(eventData.event, eventData, eventTarget)
+      const unsent = unsentRevs.get(eventTarget.gameId)
+      if (unsent !== undefined && 'game' in eventData && (eventData.game.rev ?? 0) >= unsent) {
+        unsentRevs.delete(eventTarget.gameId)
+      }
+      io.in(eventTarget.gameId).emit(
+        eventData.event,
+        { ...eventData, serverNow: Date.now() },
+        eventTarget
+      )
     },
     async updateGameState(game: Game) {
+      seatSaveHooks?.beforeSave(game)
       // The one save home stamps the snapshot revision: every emit reuses the
       // just-saved object, so the rev rides every wire snapshot for free. The
       // per-game queue serializes saves on the owning machine; a handover race
@@ -143,6 +173,9 @@ export const useServerSideEvents = ({
       game.rev = (game.rev ?? 0) + 1
       // The upstash client (de)serializes JSON itself — store the object as-is
       await setWithGameTtl(redis, game.id, game)
+      if (await seatSaveHooks?.afterSave(game, { io, redis })) {
+        unsentRevs.set(game.id, game.rev)
+      }
     },
     async fetchGame(gameId: string): Promise<Game | undefined> {
       if (!gameId) throw new EvalError('Blank string passed')
@@ -152,6 +185,7 @@ export const useServerSideEvents = ({
         console.warn('Invalid game', game)
         return undefined
       }
+      seatSaveHooks?.afterFetch(game)
 
       return game
     },

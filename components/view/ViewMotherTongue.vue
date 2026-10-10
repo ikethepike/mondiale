@@ -77,6 +77,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('mother-tongue-challenge', { solo: false })
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -86,7 +87,7 @@ const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
 const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
-  { submitted, started, announce, submitOnce, begin, gameStore },
+  { submitted, started, announce, submitOnce, begin, gameStore, previewVerdict },
   {
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country =>

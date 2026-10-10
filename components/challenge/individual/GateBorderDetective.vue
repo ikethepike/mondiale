@@ -78,7 +78,7 @@ import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { ringSlot } from './ring'
 // Timed like the other mystery gates: the clock scales the leap (buzz curve,
 // applied server-side from the reported fraction) and runs out into a miss.
-import { BORDER_DETECTIVE_SECONDS } from './timing'
+import { BORDER_DETECTIVE_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -94,17 +94,14 @@ let outlineHintLoading = false
 const isoHint = ref<ISOCountryCode>()
 const footerReady = ref(false)
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(
-  BORDER_DETECTIVE_SECONDS,
-  {
-    onExpire: () => {
-      // Bring the world back before the result lands — the same restore the
-      // answered path does, and the reason a timeout can't just call giveUp.
-      gameStore.map.solo = false
-      giveUp()
-    },
-  }
-)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+  onExpire: () => {
+    // Bring the world back before the result lands — the same restore the
+    // answered path does, and the reason a timeout can't just call giveUp.
+    gameStore.map.solo = false
+    giveUp()
+  },
+})
 const outlineHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 const isoHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_SECOND_ELAPSED)
 const hintsUsed = computed(() => (outlineHint.value ? 1 : 0) + (isoHint.value ? 1 : 0))
@@ -140,7 +137,6 @@ const onGuess = (country: Country) => {
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false
   submitAnswer(country.isoCode, {
-    remainingFraction: remainingFraction.value,
     hintsUsed: hintsUsed.value,
   })
 }

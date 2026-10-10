@@ -18,7 +18,7 @@ export const addBotHandler = defineGameHandler('add-bot', async ({ game, server,
   // READY, so seating one first leaves a nameless chair above a row of ready
   // players and lets `isEveryoneReady` turn on Start Game for a table whose
   // host has no name. The view hides the affordance; this refuses the event.
-  if (game.players[eventTarget.playerId]?.phase === 'naming')
+  if (game.players[eventTarget.playerId]?.ready === false)
     return console.warn(`Ignoring add-bot from unnamed host in ${game.id}`)
   if (Object.keys(game.players).length >= MAX_PLAYERS)
     return console.warn(`Table full — refusing add-bot in ${game.id}`)
@@ -39,7 +39,7 @@ export const addBotHandler = defineGameHandler('add-bot', async ({ game, server,
  * In the lobby the seat simply vanishes. Mid-race the record must survive
  * (its name anchors every past round's history), so the bot is marked
  * `retiring` instead: the brain plays out any round it is bound to and
- * retires the seat to 'kicked' — a settled phase — at the next safe beat
+ * retires the seat to 'kicked' — a settled step — at the next safe beat
  * (bot-brain's dispatchRetirement).
  */
 export const removeBotHandler = defineGameHandler(
@@ -53,11 +53,12 @@ export const removeBotHandler = defineGameHandler(
     if (!target?.bot) return console.warn(`Invalid remove-bot target for ${game.id}`)
 
     if (game.started) {
-      if (target.phase === 'kicked' || target.retiring) return
+      if (target.cursor.step === 'kicked' || target.retiring) return
       // A winner is past removing — there is nothing left to play, and the
       // retiring latch could never be consumed (the pump treats victory as
       // terminal), leaving "Leaving after this round" on the podium forever.
-      if (target.phase === 'victory') return console.warn(`Refusing to remove winner ${target.id}`)
+      if (target.cursor.step === 'victory')
+        return console.warn(`Refusing to remove winner ${target.id}`)
       target.retiring = true
       await server.updateGameState(game)
       server.emit({ event: 'update', game }, { gameId: game.id, playerId: target.id })

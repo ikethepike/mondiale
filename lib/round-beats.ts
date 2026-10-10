@@ -6,7 +6,6 @@ import {
   type RoundChallenge,
   type RoundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
-import type { PlayerPhase } from '~~/types/player.type'
 
 /**
  * The one home for a round's rhythm: which side runs each kind's clock, how
@@ -16,10 +15,21 @@ import type { PlayerPhase } from '~~/types/player.type'
  * can never drift.
  */
 
+/**
+ * How long a reveal holds its first act before the second, in ms. Long enough
+ * for the caption fades (--motion-base) to finish and a sparkline to read, so
+ * the follow-up settles the cards rather than colliding with them.
+ */
+export const REVEAL_BEAT_MS = 700
+
 /** Post-round basking time before an engine round settles into scores. */
 export const REVEAL_HOLD_MS = 6000
 /** Buzzer grace so an on-the-wire submit beats its own turn's timeout. */
 export const TIMEOUT_SLACK_MS = 350
+/** How long past a seat's answer window the server waits before it times the
+ *  seat out — a stage that submits AT its clock's zero (the gauntlet's map
+ *  stages) must land first even over a slow phone link. */
+export const SEAT_DEADLINE_GRACE_MS = 2500
 /** The round interstitial stands in front of a clock that is already running,
  *  so the server hands that time back. Must cover INTERSTITIAL_TOTAL_MS —
  *  pinned in round-beats.test.ts, since a card lengthened without this is play
@@ -58,27 +68,6 @@ export const BEAT_VERDICT_HOLD_MS = 2600
  *  so there is no timer to arm, lose or re-arm. */
 export const SWEEP_LOCKOUT_MS = 3500
 
-/** Phases that no longer take part in a round's movement. */
-export const SETTLED_PHASES: readonly PlayerPhase[] = ['movement-summary', 'victory', 'kicked']
-
-/** Phases that live INSIDE the round (or before the game): never walkable.
- *  Walking one ejects the seat to 'movement-summary' mid-round — the reveal
- *  flips seats to 'group-challenge' with `moves: []`, and a watchdog tick
- *  armed before the reveal (up to 8s earlier) lands exactly there. */
-export const ROUND_BOUND_PHASES: readonly PlayerPhase[] = [
-  'naming',
-  'waiting-for-game',
-  'tutorial',
-  'group-challenge',
-]
-
-/** Phases a round SETTLE may force-grade and advance — the seats actually in
- *  (or gated behind the rules card of) the live round. Deliberately narrower
- *  than ROUND_BOUND_PHASES: a late joiner still typing their name is
- *  walk-exempt but was never dealt into the round, and banking it a zero
- *  would hand it a scorecard for a round it never saw. */
-export const ROUND_SETTLE_PHASES: readonly PlayerPhase[] = ['tutorial', 'group-challenge']
-
 /**
  * Master switch for the seam caps below — the timers that force-advance a
  * seat parked OUTSIDE a round's own clock (an unread scorecard, an open
@@ -90,23 +79,18 @@ export const SERVER_CONTROLLED_CAPS = true
 /** A scorecard left unread force-walks its seat. */
 export const GROUP_SCORES_CAP_MS = 90000
 /**
- * The walk protocol's leads: EVERY walk (client- or server-initiated)
- * announces itself — phase 'moving' rides its own snapshot — then lets the
- * lead pass before the first step, so the stage is on screen and the steps
- * play in view. A turn-OPENING walk (walkIntro) leads long enough for the
- * "On the move!" beat to fit inside it; a between-gates resume leads only a
- * view transition — the gate verdict the player just watched IS the
- * announcement.
+ * The walk protocol's leads: EVERY walk announces itself — the `walk` step
+ * rides its own snapshot with the lead as `holdUntil` — before the first
+ * step, so the stage is on screen and the steps play in view. A turn-opening
+ * walk (leg 0) leads long enough for the "On the move!" beat to fit inside
+ * it; a between-gates resume leads only a view transition — the gate verdict
+ * the player just watched IS the announcement.
  */
 export const WALK_LEAD_MS = 2600
 export const WALK_RESUME_LEAD_MS = 900
-/** Snapshot delivery grace inside the lead, so a slow wire can't push the
- *  announcement beat past the first step. */
-export const WALK_ANNOUNCE_WIRE_GRACE_MS = 350
-/** Minimum slack between the announcement beat and the first step. The lead
- *  used to sit EXACTLY on the interstitial total + wire grace, so any retune
- *  of the card pushed the pawn's first hop behind it with nothing to catch it.
- *  Enforced in round-beats.test.ts. */
+/** Minimum slack between the announcement beat and the first step: a lead
+ *  sitting EXACTLY on the interstitial total let any retune of the card push
+ *  the pawn's first hop behind it. Enforced in round-beats.test.ts. */
 export const WALK_LEAD_HEADROOM_MS = 250
 
 /** The "On the move!" interstitial, sized to FIT INSIDE the walk lead by
@@ -164,24 +148,15 @@ export const LANDING_SETTLE_MS = 650
 export const ARRIVAL_RIPPLE_MS = 800
 /** Slack on the arrival flourish before the view may take the stage away. */
 export const ARRIVAL_PAD_MS = 170
-/** How long the board holds after a gate arrival before the challenge view
- *  swaps in — the full arrival flourish, composed so it can't drift. */
+/** The server's landing beat (`arrive`): how long the board holds after a
+ *  gate arrival before the challenge opens — the full arrival flourish,
+ *  composed so it can't drift. */
 export const BOARD_TO_CHALLENGE_HOLD_MS =
   PAWN_HOP_MS + LANDING_SETTLE_MS + ARRIVAL_RIPPLE_MS + ARRIVAL_PAD_MS
-/** How long the dispatcher parks a DIRECT challenge→challenge resolution
- *  before re-reading the live view — no legitimate phase sequence produces
- *  one (a board or scores beat always intervenes), so it is a snapshot-burst
- *  transient that self-heals, and this is the verify window. */
-export const CHALLENGE_SWAP_VERIFY_MS = 250
-
 /** One tile per tick — the walk cadence. 500 read as trudging once every
  *  step became live and visible; the hop (PAWN_HOP_MS) must stay under it. */
 export const STEP_INTERVAL_MS = 400
-/** How much earlier than the cadence a step tick may land before it reads
- *  as a duplicate chain's tick (the single-stepper latch in
- *  enter-movement-phase). */
-export const STEP_LATCH_SLACK_MS = 150
-/** Staged round → reveal settle pause. */
+/** The last racer settles → the next round is dealt and revealed. */
 export const NEW_ROUND_PAUSE_MS = 2000
 /** A round-1 tutorial card left open force-closes. Also bounds how long the
  *  round-1 classic clock can wait on one AFK reader (the last-close stamp). */
@@ -191,23 +166,16 @@ export const INDIVIDUAL_GATE_CAP_MS = 90000
 /** An unanswered final-gauntlet question burns its miss. */
 export const FINAL_QUESTION_CAP_MS = 90000
 /** A gate's result beat: how long the seat basks in its verdict before the
- *  walk resumes. The gate shell reads it too — the beat normally ends by the
- *  view unmounting (the seat walks on), but a leap that lands the pawn at the
- *  NEXT gate's stop tile re-enters the same phase with nothing to walk, so the
- *  shell has to time the beat's end itself. One beat, one constant. */
+ *  walk resumes — the `gate-verdict` step's `holdUntil`. */
 export const GATE_RESULT_HOLD_MS = 5000
-/** Wire grace on the shell's copy of the beat, so the server's own resume —
- *  which unmounts the view in the ordinary walked case — lands first and the
- *  shell's fallback stays a fallback. */
-export const GATE_RESULT_WIRE_GRACE_MS = 750
 /** A browsable gate reveal (Chronicle's storied record): the player reads at
  *  their own pace and leaves by an explicit Continue; this cap is the AFK
  *  backstop, not the beat. The beat is SOLO — a long cap delays nobody else. */
 export const GATE_BROWSE_CAP_MS = 45000
 /** The variants whose reveal is worth reading, not just basking in. ONE home
- *  for the decision: the server's result hold, the shell's fallback timer and
- *  the view's Continue button all read it here — a client-only or server-only
- *  entry would ship a Continue that does nothing, or a hold nobody can end. */
+ *  for the decision: the server's result hold and the view's Continue button
+ *  both read it here — a one-sided entry would ship a Continue that does
+ *  nothing, or a hold nobody can end. */
 const GATE_BROWSE_VARIANTS = new Set<IndividualChallengeVariant>(['chronicle'])
 export const isBrowsableGateVariant = (variant: IndividualChallengeVariant | undefined): boolean =>
   !!variant && GATE_BROWSE_VARIANTS.has(variant)
@@ -215,13 +183,6 @@ export const isBrowsableGateVariant = (variant: IndividualChallengeVariant | und
  *  reveal is browsable, the shared verdict bask everywhere else. */
 export const gateResultHoldMsFor = (variant: IndividualChallengeVariant | undefined): number =>
   isBrowsableGateVariant(variant) ? GATE_BROWSE_CAP_MS : GATE_RESULT_HOLD_MS
-/** The shell's fallback end of the variant-aware beat — DERIVED, never an
- *  ad-hoc sum at a call site. */
-export const gateResultFallbackMsFor = (variant: IndividualChallengeVariant | undefined): number =>
-  gateResultHoldMsFor(variant) + GATE_RESULT_WIRE_GRACE_MS
-/** The no-variant fallback, kept as the named shape recovery paths reach for
- *  when the answered gate's variant is unknowable. */
-export const GATE_RESULT_FALLBACK_MS = gateResultFallbackMsFor(undefined)
 /** The browsable Continue's countdown appears inside this final stretch,
  *  seconds — ONE hint window for every browse button (trend-race, the
  *  timeline chronicle, the gate record), so they flip in step. */
@@ -230,17 +191,11 @@ export const BROWSE_HINT_S = 10
  *  protocol tests read the SAME number the spec row carries, never a private
  *  fallback that would keep tests green while the engine drifted. */
 export const TIMELINE_BROWSE_CAP_MS = 60000
-/** The mid-gauntlet reveal (clearFinalResultBeat): the teachable scorecards —
+/** The mid-gauntlet reveal (`final-verdict`): the teachable scorecards —
  *  rankings, lessons, the fact you missed — need longer on screen than a
  *  gate's verdict pill. The knockout keeps the shorter gate hold: its exit
  *  line says everything. */
 export const FINAL_REVEAL_HOLD_MS = 8000
-
-/** How long a gauntlet beat stands before it prunes itself. DERIVED from the
- *  reveal it narrates, plus slack for the wire: a beat that expired mid-hold
- *  would blank a watcher's verdict while the runner still sees theirs, which
- *  is the exact desync this whole event exists to close. */
-export const FINAL_BEAT_TTL_MS = FINAL_REVEAL_HOLD_MS + 2000
 
 /** Ceiling for classic kinds that carry no clock of their own (a ranking
  *  being dragged, a sketch being drawn) — only armed under the cap switch. */
@@ -295,15 +250,6 @@ export const BOT_SWEEP_JITTER_MS = 1800
 /** Where in a classic round's play window a bot's answer lands, as fractions
  *  of the budget — never first-instant, never at the buzzer. */
 export const BOT_CLASSIC_WINDOW: readonly [number, number] = [0.3, 0.75]
-/** Where a retiring bot may actually leave: past its round, not yet (or no
- *  longer) owing the table a turn. Beside the other phase buckets so the
- *  escapability matrix pins it when a new PlayerPhase lands. */
-export const RETIREMENT_PHASES: readonly PlayerPhase[] = [
-  'group-scores',
-  'moving',
-  'movement-summary',
-]
-
 /** A vanished socket must stay gone this long mid-race before the autopilot
  *  takes the seat over — a refresh or a tunnel must not trigger a takeover. */
 export const AUTOPILOT_GRACE_MS = 25000
@@ -389,10 +335,20 @@ export interface RoundBeatSpec {
    *  watch-mode ambience calls `begin()` off the round number, and no
    *  spectator ever taps the play button a gated clock waits for. */
   playGateMs?: number
+  /** A timed window the SEAT opens with its own gesture — the audio play tap,
+   *  Empire's buzz into its tap beat. The view sends `round-play` at that
+   *  moment and the server stamps the seat's `cursor.deadline` this long
+   *  after it, so the window every surface counts down is the server's. */
+  seatWindowMs?: (challenge: RoundChallenge) => number | undefined
   // Future beats (a twist, a bonus, a second guess window) are added HERE as
   // named optional fields — never as a view-local timer or a per-engine
   // constant. Every beat needs a server-owned exit and a rearm branch.
 }
+
+const durationMsOf = (challenge: RoundChallenge): number | undefined =>
+  'durationSeconds' in challenge && challenge.durationSeconds
+    ? challenge.durationSeconds * 1000
+    : undefined
 
 const engine = (spec: Partial<Omit<RoundBeatSpec, 'owner'>> = {}) =>
   ({ owner: 'engine', revealHoldMs: REVEAL_HOLD_MS, ...spec }) satisfies RoundBeatSpec
@@ -410,8 +366,18 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   silhouette: { owner: 'classic', revealHoldMs: 4000 },
   // The two audio kinds: no `playSeconds` (their play length genuinely IS
   // `durationSeconds`), but a play gate — the clock starts on the tap.
-  'anthem-buzz': { owner: 'classic', revealHoldMs: 7000, playGateMs: PLAY_GATE_CAP_MS },
-  'tongue-buzz': { owner: 'classic', revealHoldMs: 7000, playGateMs: PLAY_GATE_CAP_MS },
+  'anthem-buzz': {
+    owner: 'classic',
+    revealHoldMs: 7000,
+    playGateMs: PLAY_GATE_CAP_MS,
+    seatWindowMs: challenge => durationMsOf(challenge),
+  },
+  'tongue-buzz': {
+    owner: 'classic',
+    revealHoldMs: 7000,
+    playGateMs: PLAY_GATE_CAP_MS,
+    seatWindowMs: challenge => durationMsOf(challenge),
+  },
   'hot-cold': { owner: 'classic', revealHoldMs: 1200 },
   sketch: { owner: 'classic', revealHoldMs: 0 },
   'stat-detective': {
@@ -496,6 +462,11 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
           challenge.tapSeconds +
           Math.ceil(EMPIRE_INTERBEAT_HOLD_MS / 1000)
         : undefined,
+    // The buzz (or beat 1's timeout) opens the tap beat, after the memorize hold.
+    seatWindowMs: challenge =>
+      isChallengeOfType(challenge, 'empire-challenge')
+        ? EMPIRE_INTERBEAT_HOLD_MS + challenge.tapSeconds * 1000
+        : undefined,
   },
   atlas: engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'border-chain': engine({ briefingCapMs: BRIEFING_CAP_MS }),
@@ -530,18 +501,28 @@ export const isClassicGroupRound = (challenge: RoundChallenge | undefined): bool
 export const revealHoldMsFor = (challenge: RoundChallenge | undefined): number =>
   roundBeats(challenge).revealHoldMs
 
-/** The full reveal allowance the settle backstop budgets with: the
- *  server-paced hold plus any player-paced browse cap. */
+/** The full reveal allowance — the seat's `round-verdict` hold, and what the
+ *  settle backstop budgets with: the server-paced hold plus any player-paced
+ *  browse cap. */
 export const revealBudgetMsFor = (challenge: RoundChallenge | undefined): number => {
   const spec = roundBeats(challenge)
   return spec.revealHoldMs + (spec.browseCapMs ?? 0)
 }
+
+/** A classic round whose reveal the player browses and leaves by Continue
+ *  (`round-reveal-done`) — the hold is only the cap. */
+export const isBrowsableRound = (challenge: RoundChallenge | undefined): boolean =>
+  isClassicGroupRound(challenge) && !!roundBeats(challenge).browseCapMs
 
 /** The pre-play allowance a kind's window opens behind; 0 where the clock
  *  starts at the reveal. Rides the PLAY budget (it is time before the
  *  answer), never `revealBudgetMsFor` — counting it in both double-counts. */
 export const playGateMsFor = (challenge: RoundChallenge | undefined): number =>
   roundBeats(challenge).playGateMs ?? 0
+
+/** The window a seat opens with its own gesture, or undefined for kinds with none. */
+export const seatWindowMsFor = (challenge: RoundChallenge | undefined): number | undefined =>
+  challenge ? roundBeats(challenge).seatWindowMs?.(challenge) : undefined
 
 /**
  * Whether the client's countdown may read `round.deadline`. False where the
@@ -577,12 +558,13 @@ export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): 
  */
 export const remainingFractionOn = (
   deadline: number | undefined,
-  totalSeconds: number | undefined
+  totalSeconds: number | undefined,
+  now: number
 ): number => {
   const total = (totalSeconds ?? 0) * 1000
   if (!total) return 1
   if (!deadline) return 0
-  return clamp01((deadline - Date.now()) / total)
+  return clamp01((deadline - now) / total)
 }
 
 export const classicPlaySeconds = (challenge: RoundChallenge | undefined): number | undefined => {

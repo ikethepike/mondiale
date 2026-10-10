@@ -16,7 +16,7 @@
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
-import { RULERS_SECONDS } from './timing'
+import { RULERS_SECONDS } from '~~/lib/gate-timing'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -39,7 +39,7 @@ const { status, showInterstitial, submitAnswer, giveUp, isHard } = useGateChalle
 
 const showDoubleTapHint = ref(false)
 
-const { secondsLeft, remainingFraction, stop } = useGateClock(RULERS_SECONDS, {
+const { secondsLeft, remainingFraction, stop } = useGateClock({
   // The stage dressed a country in someone else's logo; it has to be put right
   // whether or not anybody answered.
   onExpire: () => {
@@ -102,7 +102,7 @@ const restoreStage = () => {
 
 const resolve = (isoCode: ISOCountryCode) => {
   restoreStage()
-  submitAnswer(isoCode, { remainingFraction: remainingFraction.value })
+  submitAnswer(isoCode)
 }
 
 // Tap to select, tap again to confirm — the find gate's contract. A misfire

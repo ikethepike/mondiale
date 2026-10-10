@@ -1,11 +1,11 @@
 import type { Redis } from '@upstash/redis'
 import type { ClientEventTarget } from '~~/types/events.types'
 import type { Game, Round } from '~~/types/game.types'
-import type { Player } from '~~/types/player.type'
 import { useServerSideEvents, type GameServer, type GameSocket } from '../server-side'
 import { scheduleGameTask } from './deferred-task'
-import { movesForScoredPoints, startWalk } from './moves'
-import { REVEAL_HOLD_MS, ROUND_SETTLE_PHASES, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { REVEAL_HOLD_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { ROUND_SETTLE_STEPS } from '~~/lib/seat-transitions'
+import { enterScores } from './seat-exits'
 
 /**
  * The scaffolding every clocked round engine (chain-turns, timeline-turns,
@@ -43,14 +43,13 @@ export const scheduleEngineTask = (
   ctx: EngineContext,
   delayMs: number,
   task: (game: Game, server: ServerSide) => Promise<void>
-) => {
+) =>
   scheduleGameTask({ redis: ctx.redis, gameId: ctx.eventTarget.gameId }, delayMs, async () => {
     const server = useServerSideEvents(ctx)
     const game = await server.fetchGame(ctx.eventTarget.gameId)
     if (!game) return
     await task(game, server)
   })
-}
 
 /** A shot-clock follow-up: fires just after `deadline`, with buzzer slack. */
 export const scheduleDeadlineTask = (
@@ -66,23 +65,10 @@ export const scheduleRevealTask = (
 ) => scheduleEngineTask(ctx, REVEAL_HOLD_MS, task)
 
 /**
- * THE per-seat advance out of a scored round: flip to the scorecard and walk
- * the steps the score bought. Every path that moves a seat past its answer —
- * the submit handler's flip, its stranded-submitter heal, whole-table
- * settles, the classic reveal flip — runs through here, never a private
- * phase-and-walk of its own.
- */
-export const advanceScoredSeat = async (game: Game, player: Player, scored: number) => {
-  player.phase = 'group-scores'
-  startWalk(player, await movesForScoredPoints({ game, player, scored }))
-}
-
-/**
  * Bank the finished round for the whole table: every seat's answer and
  * points land on the round, and players still parked in the challenge move
  * on with the steps their score bought. The caller guards the once-only
- * latch (`round.groupAnswers` non-empty) before calling. Returns the seats
- * it advanced, so callers can arm their scorecard caps after the save.
+ * latch (`round.groupAnswers` non-empty) before calling.
  */
 export const settleRoundScores = async ({
   game,
@@ -99,23 +85,18 @@ export const settleRoundScores = async ({
   maximumPoints: number
   /** Mode-specific scorecard answer; empty submitted/correct when omitted. */
   answerFor?: (playerId: string) => Round['groupAnswers'][string]
-}): Promise<string[]> => {
-  const advanced: string[] = []
+}): Promise<void> => {
   for (const playerId of order) {
     const player = game.players[playerId]
     const scoring = scores[playerId] ?? { scored: 0, maximum: maximumPoints }
     round.groupAnswers[playerId] = answerFor?.(playerId) ?? { submitted: [], correct: [] }
     round.playerTurns[playerId] = { points: scoring }
-    // Any seat IN the round advances — 'group-challenge' or parked behind
-    // the round-1 rules card ('tutorial'), which would otherwise hold
-    // `tableIsSettled` false forever. NOT the wider walk-exemption bucket:
-    // a late joiner still typing their name was never dealt in, and walkable
-    // phases ('moving', 'group-scores') already banked and are mid-walk —
-    // re-walking one is the mid-round ejection class.
-    if (player && ROUND_SETTLE_PHASES.includes(player.phase)) {
-      await advanceScoredSeat(game, player, scoring.scored)
-      advanced.push(playerId)
+    // Any seat IN the round advances — playing, on its verdict, or parked
+    // behind the round-1 rules card, which would otherwise hold the table
+    // unsettled forever. Seats already past the round are mid-walk and keep
+    // their banked walk.
+    if (player && ROUND_SETTLE_STEPS.includes(player.cursor.step)) {
+      await enterScores(game, player, scoring.scored, 'table:settle')
     }
   }
-  return advanced
 }

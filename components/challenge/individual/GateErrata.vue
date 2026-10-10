@@ -35,7 +35,7 @@ import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
-import { ERRATA_SECONDS } from './timing'
+import { ERRATA_SECONDS } from '~~/lib/gate-timing'
 import { isMapClickEvent } from '~~/types/events.types'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -49,12 +49,12 @@ const showDoubleTapHint = ref(false)
 /** Innocents the bought hint has struck off — dimmed and no longer tappable. */
 const cleared = ref(new Set<ISOCountryCode>())
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(ERRATA_SECONDS, {
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
   // The map has to be put right even when nobody answered — the stage taught
   // the lie either way.
   onExpire: () => {
     restoreStage()
-    giveUp(hintsUsed())
+    giveUp()
   },
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
@@ -97,11 +97,11 @@ const restoreStage = () => {
   return undefined
 }
 
-/** Every ANSWERED way out. Expiry goes through the clock's `giveUp` instead,
- *  which reports the same zero clock this would. */
+/** Every ANSWERED way out. Expiry goes through the clock's `giveUp` instead —
+ *  the server's own cap delivers that verdict. */
 const resolve = (isoCode: ISOCountryCode) => {
   restoreStage()
-  submitAnswer(isoCode, { remainingFraction: remainingFraction.value, hintsUsed: hintsUsed() })
+  submitAnswer(isoCode, { hintsUsed: hintsUsed() })
 }
 
 /** Strike out half the innocents. Never a culprit — the hint narrows the

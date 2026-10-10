@@ -1,31 +1,12 @@
 import { generateTiles } from '~~/lib/tiles'
-import type { Player } from '~~/types/player.type'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { createPlayer, joinVerdict } from '../../../lib/player'
 import { isBotId } from '~~/lib/bots'
-import { armBotPump, noteSeatPresence, releaseAutopilot } from './bot-brain'
+import { noteSeatPresence, releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
-import { scheduleMovementPhase, tableIsSettled } from './enter-movement-phase.handler'
-import { revealHoldMsFor, SETTLED_PHASES } from '~~/lib/round-beats'
-import { movesForScoredPoints, startWalk } from './moves'
 import { rearmLiveRound } from './rearm-round'
-
-/**
- * A seat whose answer is banked but whose phase advance was lost. The table
- * cannot advance past it (`readyForNextTurn` needs every seat settled), and
- * the submit handler's own heal only fires if the client sends a duplicate —
- * which a client that exhausted its ack retries, or closed its tab, never
- * does. Rejoining is the recovery moment.
- */
-export const isStrandedSubmitter = ({
-  phase,
-  answered,
-}: {
-  phase: Player['phase']
-  answered: boolean
-}): boolean => phase === 'group-challenge' && answered
 
 export const joinEventHandler: EventHandler = async ({
   io,
@@ -144,117 +125,14 @@ export const joinEventHandler: EventHandler = async ({
     game.players[playerId] = createPlayer(playerId, takenColors)
   }
 
-  // Safety logic for returning players: someone who left before answering owes
-  // the live round an answer, so hand them back the challenge. Guarded on the
-  // answer being ABSENT — a player whose answer is already banked has finished
-  // the round, and demoting them would strand the table on a seat that can
-  // never submit again (the duplicate guard heals that case, but this must not
-  // manufacture it) — and on NO round being mid-stage: during the 2s settle
-  // pause the latest round exists but is unrevealed, and flipping a seat early
-  // would fail the reveal's tableIsSettled check with `pendingRoundStart` left
-  // true forever (the watchdog refuses to arm while it is set).
-  const index = game.rounds.length - 1
-  if (index !== -1 && !game.pendingRoundStart) {
-    const latestRound = game.rounds[index]
-    if (
-      game.players[playerId].phase === 'movement-summary' &&
-      !latestRound.groupAnswers[playerId]
-    ) {
-      game.players[playerId].phase = 'group-challenge'
-    }
-  }
-
-  // Movement pacing runs on in-memory timers — a server restart mid-pause
-  // orphans the player: a challenge phase with no move to show (blank
-  // screen), a saved 'moving' phase nobody is walking, or a `resolving`
-  // latch whose 5s result beat died before clearing it (the seat can never
-  // submit again and, with a move still queued, matches no other heal).
-  // Rejoining is the recovery moment: re-enter the movement flow, which is
-  // safe to repeat — it clears the latch and re-lands the player on their
-  // gate or resumes their walk.
-  const rejoining = game.players[playerId]
-  const orphanedInChallenge =
-    ['individual-challenge', 'final-challenge'].includes(rejoining.phase) &&
-    (rejoining.moves.length === 0 || rejoining.resolving === true)
-  const wedgedMoving = rejoining.phase === 'moving'
-
-  // Every seat settled but the round never staged: the advance is driven by a
-  // client flag held in browser memory, so a refresh (or a board chunk that
-  // failed to load) can leave the whole table parked on "Finished this turn"
-  // with nobody able to ask the server to move on. Rejoining is the recovery
-  // moment — re-entering is idempotent, so make the refresh the escape hatch.
-  // Any settled seat may be the one refreshing (a winner's re-check re-enters
-  // as a pure advance check), so the guard is the settled set, not one phase.
-  const tableSettledButStuck =
-    SETTLED_PHASES.includes(rejoining.phase) && tableIsSettled(Object.values(game.players))
-
-  // An answer banked while the phase advance was LOST: the seat sits in
-  // 'group-challenge' forever, and because `readyForNextTurn` needs every
-  // seat settled, that one seat freezes the whole table. The submit handler
-  // heals this when a duplicate arrives — but a client that gave up (its
-  // ack retries exhausted, or the tab closed) sends no duplicate, so the
-  // refresh has to be the cure. Same recipe as the handler's heal: read the
-  // banked score, never recompute it.
-  const banked = game.rounds[index]?.playerTurns[playerId]?.points
-  const strandedSubmitter = isStrandedSubmitter({
-    phase: rejoining.phase,
-    answered: !!game.rounds[index]?.groupAnswers[playerId],
-  })
-
-  // On a kind with a reveal beat, answer-banked-but-still-in-challenge is
-  // the NORMAL mid-hold state — the flip task (or rearmClassicRound's
-  // banked-seat sweep below) owns the advance, and healing here would yank
-  // the rejoiner to the scorecard mid-beat. Only heal where the flip is
-  // inline (hold 0) and the state really is a lost advance.
-  const midRevealHold = !!revealHoldMsFor(game.rounds[index]?.groupChallenge)
-  if (game.started && strandedSubmitter && !midRevealHold) {
-    console.warn(`Healing stranded submitter ${playerId} on rejoin (answer banked, phase was not)`)
-    rejoining.phase = 'group-scores'
-    startWalk(
-      rejoining,
-      await movesForScoredPoints({ game, player: rejoining, scored: banked?.scored ?? 0 })
-    )
-  }
-
-  if (game.started && (orphanedInChallenge || wedgedMoving || tableSettledButStuck)) {
-    console.warn(`Healing wedged player ${playerId} (phase: ${rejoining.phase})`)
-    // A heal is server-originated: it travels as a continuation, which may
-    // re-enter ANY walkable phase — including 'moving' directly, where it
-    // steps or arrives in place. (The old phase reset to 'group-scores' was
-    // a relic of the pre-continuation guard, and it flashed a healthy
-    // walker back to their scorecard on every mid-walk reconnect.) A
-    // surviving step chain beside this heal is deduped by the single-stepper
-    // latch. No walkSeq — the heal targets whatever generation is current.
-    // A seat mid-result-beat is NOT wedged: the movement handler's
-    // stale-tick guard drops this tick while `resultBeatUntil` is live, so a
-    // reconnect can never walk a chronicle reader off their record —
-    // `rearmSeatExits` below re-arms the beat's own remaining window.
-    scheduleMovementPhase(1500, { io, redis, socket, eventTarget }, { continuation: true })
-  }
-
-  // The clocked round engines pace themselves on in-memory timers too — a
-  // restart mid-round leaves a shot clock, reveal hold, or briefing cap that
-  // nobody will ever fire. Re-arm whatever the live round is waiting on;
-  // idempotent alongside live timers (see rearm-round.ts). Never while a
-  // round is staged-but-unrevealed (its clocks only stamp at the reveal).
-  // Open tutorials (the forced round-1 seam) gate ONLY the briefing caps —
-  // a cap must not force-start under a rules card, but every other shape
-  // (shot clock, reveal hold, settle) must recover even mid-round-1, or one
-  // AFK tutorial seat disables the whole safety net.
-  // Arming BEFORE this handler's save is safe — the armed tasks re-fetch and
-  // join's pending mutations never touch engine state — but it is an
-  // exception to the engines' "arm AFTER the save" contract, not a pattern
-  // to copy.
-  const tutorialsUp = Object.values(game.players).some(entry => entry.phase === 'tutorial')
-  if (game.started && !game.pendingRoundStart) {
+  // In-memory timers die with a restart; Redis outlives them. Rejoining is
+  // the recovery moment: every seat re-arms the one timer its cursor implies,
+  // and the live round's engine re-arms its own clocks. Idempotent beside
+  // live timers. Open tutorials gate ONLY the briefing caps — a cap must not
+  // force-start under a rules card.
+  const tutorialsUp = Object.values(game.players).some(entry => entry.cursor.step === 'tutorial')
+  if (game.started) {
     rearmLiveRound({ io, redis, socket, eventTarget }, game, { armBriefingCaps: !tutorialsUp })
-  } else if (game.started) {
-    // Mid-staging rejoins skip the engine rearm (there is no live round to
-    // revive) but MUST still wake the pump: it stands itself down when the
-    // room empties, and `rearmLiveRound` is its only other recovery. Without
-    // this, a table that emptied during a round transition comes back to
-    // frozen bots. Idempotent — a live pump refuses the duplicate.
-    armBotPump({ io, redis, socket, eventTarget }, game)
   }
 
   await socket.join(gameId)
@@ -264,6 +142,7 @@ export const joinEventHandler: EventHandler = async ({
   // summary goes out. AFTER socket.join, or the returning tab (the one
   // client the summary is FOR) is not yet in the room to receive it; the
   // save below carries the cleared latch.
+  const rejoining = game.players[playerId]
   if (game.started && rejoining.autopilot) {
     releaseAutopilot({ io, redis, socket, eventTarget }, game, rejoining)
   }

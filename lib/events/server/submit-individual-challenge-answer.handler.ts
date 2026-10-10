@@ -1,122 +1,49 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
-import { moveStopTile } from '~~/lib/player-status'
-import { latestRound } from '~~/lib/rounds'
+import { gateRemainingFraction, gateVerdictLeadMs } from '~~/lib/gate-timing'
+import { gateResultHoldMsFor, isBrowsableGateVariant } from '~~/lib/round-beats'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
-import type { Game } from '~~/types/game.types'
-import type { Player } from '~~/types/player.type'
-import { defineGameHandler, RetryableReject } from '../server-side'
-import { scheduleMovementPhase } from './enter-movement-phase.handler'
-import { gateResultHoldMsFor } from '~~/lib/round-beats'
+import { defineGameHandler } from '../server-side'
+import { commitSeat, gateVerdict } from './seat-exits'
 
 /**
- * A blocked gate: the record lands before the moves are forfeited — without
- * it a blocked walk is indistinguishable from a clean one, on the board and
- * in the round history. Shared by the wrong-answer branch below and the
- * gate cap's timeout (seat-exits.ts), so a forfeit is one shape everywhere.
+ * A gate answer. Accepted only on the seat's live gate subject; the verdict
+ * holds on that subject, and the leap (or forfeit) is paid when the hold ends.
  */
-export const forfeitGate = (
-  game: Game,
-  player: Player,
-  currentMove: NonNullable<Player['moves']>[number]
-) => {
-  const turn = latestRound(game)?.playerTurns[player.id]
-  const lastMove = player.moves[player.moves.length - 1]
-  if (turn && lastMove) {
-    turn.blocked = {
-      atTile: currentMove.endTile.position,
-      forfeitedSteps: lastMove.endTile.position - player.currentPosition,
-    }
-  }
-  player.moves = []
-}
-
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
-  async ({ game, player, server, eventData, eventTarget, io, redis, socket }) => {
-    // Idempotency guard: only answer while genuinely blocked on this gate.
-    // The player must be in the individual-challenge phase (set when the pawn
-    // lands on the gate) AND the head move must still carry an individual
-    // challenge.
-    if (player.phase !== 'individual-challenge') {
-      return console.warn(`Ignoring stale/duplicate individual submit (phase: ${player.phase})`)
+  async ({ game, player, server, eventData, eventTarget }) => {
+    const { cursor } = player
+    if (eventData.subject !== cursor.subject) {
+      return server.emit({ event: 'update', game }, eventTarget)
+    }
+    // Same subject, already judged: the redelivered duplicate of this answer.
+    if (cursor.step !== 'gate') return
+
+    const gate = player.moves[0]
+    if (gate?.challenge?._type !== 'individual-challenge') {
+      return console.warn(`Gate submit with no gate at the head for ${player.id}`)
     }
 
-    const currentMove = player.moves[0]
-    if (!currentMove || currentMove.challenge?._type !== 'individual-challenge') {
-      return console.warn(`Unable to retrieve current individual challenge`)
-    }
-
-    // Echo-token check (submit-chain-move's `turn` posture): an ack-redelivered
-    // answer that lands after the walk already reached the NEXT gate must not
-    // be judged against it.
-    if (eventData.gateTile !== undefined && eventData.gateTile !== currentMove.endTile.position) {
-      return console.warn(
-        `Ignoring individual submit for gate ${eventData.gateTile} — head gate is ${currentMove.endTile.position}`
-      )
-    }
-
-    // The `resolving` latch closes the duplicate window. On a correct answer
-    // the whole move is shifted off, so the phase stays `individual-challenge`
-    // across the 5s result beat while `moves[0]` is ALREADY the next move — a
-    // bare move-level flag can't tell a replay of the answered gate from a
-    // genuine answer to that next gate. The player-level latch is set here and
-    // cleared only when the walk resumes (`enterMovementPhaseHandler`), which
-    // is also the only path that reaches the next gate; a duplicate fired
-    // during the pause is rejected. Stamp it BEFORE any await.
-    if (player.resolving) {
-      // Retryable, not a dead duplicate: a post-reload answer to the NEXT
-      // gate lands inside this hold too. The retry outlasts the hold; a true
-      // duplicate then dies on its stale `gateTile` echo instead.
-      throw new RetryableReject('resolving')
-    }
-    player.resolving = true
-    // The beat's token: recovery re-arms the REMAINING window, a stale hold
-    // tick from a PRIOR beat dies on it, and gate-reveal-done requires it.
-    // Stamped from the answered gate's variant HERE because the shift below
-    // makes the variant unrecoverable from state.
-    const resultHoldMs = gateResultHoldMsFor(currentMove.challenge.variant)
-    player.resultBeatUntil = Date.now() + resultHoldMs
-
-    const correct = isCorrectIndividualAnswer(currentMove.challenge, eventData.isoCode)
-    if (correct) {
-      // Timed gates scale the leap by the clock; bought hints bite steps off.
-      // The pot is the variant's, read through the shared `gatePot` so the
-      // steps the client promised and the steps the server pays can't drift.
-      player.currentPosition += gateLeapSteps(
-        eventData.remainingFraction,
-        eventData.hintsUsed,
-        gatePot(currentMove.challenge.variant)
-      )
-      player.moves.shift()
-      // A deep-pot leap can overshoot the NEXT gate's stop tile (pot 4 over a
-      // gap-3 gate lands ON it): clamp to the stop, or the seat stands past a
-      // gate it never answered and a later forfeit records zero steps.
-      const nextMove = player.moves[0]
-      if (nextMove?.challenge) {
-        player.currentPosition = Math.min(player.currentPosition, moveStopTile(nextMove))
-      }
-    } else {
-      forfeitGate(game, player, currentMove)
-    }
-
-    await server.updateGameState(game)
-    server.emit({ event: 'individual-challenge-checked', game }, eventTarget)
-
-    // Let the player bask in the result, then continue their movement.
-    // The pause runs OUTSIDE the per-game queue — holding the lock for the
-    // beat would stall every other player's events — and the follow-up
-    // re-enters through the queue with a fresh game fetch. It is the walk's
-    // own resumption, so it travels as a continuation under the current walk
-    // generation. Browsable variants (Chronicle's storied record) get the
-    // browse cap instead of the bask, and may leave early via
-    // 'gate-reveal-done' — an early resume clears `resultBeatUntil`, and a
-    // LATER beat's live stamp kills this tick outright, so a browse hold can
-    // never cross into the next gate answered on the same walk.
-    scheduleMovementPhase(
-      resultHoldMs,
-      { io, redis, socket, eventTarget },
-      { continuation: true, walkSeq: player.walkSeq }
+    const { challenge } = gate
+    const correct = isCorrectIndividualAnswer(challenge, eventData.isoCode)
+    // The clock is the server's own stamp, so the leap is priced here — the
+    // view shows the same fraction off the same deadline.
+    const steps = correct
+      ? gateLeapSteps(
+          gateRemainingFraction(challenge, cursor.deadline, Date.now()),
+          eventData.hintsUsed,
+          gatePot(challenge.variant)
+        )
+      : 0
+    gateVerdict(
+      game,
+      player,
+      { correct, timedOut: false, submitted: eventData.isoCode, steps },
+      gateResultHoldMsFor(challenge.variant) + gateVerdictLeadMs(challenge.variant),
+      isBrowsableGateVariant(challenge.variant),
+      'event:submit-individual-challenge-answer'
     )
+    await commitSeat(server, game, player)
   },
   { player: 'warn' }
 )

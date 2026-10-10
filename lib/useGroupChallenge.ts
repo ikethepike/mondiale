@@ -4,11 +4,12 @@ import { guessPolicyFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import type { LatLng } from '~~/lib/geo'
 import { clamp01 } from '~~/lib/number'
-import { clockRidesRoundDeadline } from '~~/lib/round-beats'
+import { playGateMsFor } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
+import { useServerNow } from '~~/lib/use-server-now'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { ClientEventData, GuessKind, HintTone } from '~~/types/events.types'
+import type { ClientEventData, GuessKind, HintTone, SeatEcho } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
@@ -20,7 +21,7 @@ export type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
  *  the event declares it — and can never drift from what the server reads. */
 export type SubmitExtras = Omit<
   Extract<ClientEventData, { event: 'submit-group-challenge-answers' }>,
-  'event' | 'ranking' | 'clientScore' | 'buzzAt'
+  'event' | 'ranking' | 'clientScore' | 'buzzAt' | keyof SeatEcho
 >
 
 const PRUNE_INTERVAL_MS = 250
@@ -39,7 +40,12 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   typeName: T,
   options: { solo?: boolean } = {}
 ) => {
-  const { gameStore, update, currentRound, clearBoard } = useClientEvents()
+  const { gameStore, update, currentRound, clearBoard, seatCursor, seatEcho, previewVerdict } =
+    useClientEvents()
+  const { now } = useServerNow()
+  // Captured once: the view is keyed on the round's subject, so this is the
+  // question every send from this mount answers.
+  const subject = seatCursor.value?.subject ?? ''
 
   type Challenge = Extract<TypedRoundChallenge, { _type: T }>
   const challenge = computed<Challenge | undefined>(() => {
@@ -55,11 +61,10 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   clearBoard({ preserveLiveGuesses: gameStore.watching })
   if (options.solo !== false) gameStore.map.solo = true
 
-  // A remount whose answer is already banked (a refresh mid-reveal-hold) is
-  // NOT a fresh round: the seat answered, the server's flip is pending, and
-  // replaying the interstitial + an empty console would let the player
-  // "answer" a question they already spent.
-  const answeredOnMount = !!currentRound.value?.round.groupAnswers[gameStore.playerId]
+  // A remount on its verdict (a refresh mid-reveal-hold) is NOT a fresh
+  // round: the seat answered and the hold is running, and replaying the
+  // interstitial + an empty console would offer a question already spent.
+  const answeredOnMount = seatCursor.value?.step === 'round-verdict'
 
   // Watch mode (the booth mounting this view read-only): no interstitial —
   // every director cut would replay the 2.4s beat — and the round counts as
@@ -67,18 +72,13 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const showInterstitial = ref(!gameStore.watching && !answeredOnMount)
   const started = ref(gameStore.watching || answeredOnMount)
 
-  // The submit latch. Local state ORed with the snapshot's banked answer —
-  // the followed seat's in watch mode, our OWN otherwise (the reveal-hold
-  // flow banks while the phase stays in-challenge, so a remount must read
-  // the round, not browser memory). The OR matters: a getter that ignored
-  // the local side would silently break every re-entrancy guard.
+  // The submit latch. Local state ORed with the seat's own cursor: once the
+  // seat is past its question (on its verdict), a remount reads that, never
+  // browser memory. The OR matters: a getter that ignored the local side would
+  // silently break every re-entrancy guard.
   const submittedLocal = ref(false)
   const submitted = computed({
-    get: () =>
-      submittedLocal.value ||
-      !!currentRound.value?.round.groupAnswers[
-        gameStore.watching ? gameStore.seatId : gameStore.playerId
-      ],
+    get: () => submittedLocal.value || seatCursor.value?.step === 'round-verdict',
     set: value => {
       submittedLocal.value = value
     },
@@ -90,26 +90,42 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       ? (challenge.value.durationSeconds as number)
       : undefined
   )
-  const secondsLeft = ref(duration.value ?? 0)
-  let countdown: ReturnType<typeof setInterval> | undefined
   const cleanups: (() => void)[] = []
   /** Views await data chunks before calling `begin`; one that unmounted
-   *  meanwhile must not start a clock nobody will ever clear. */
+   *  meanwhile must not start anything. */
   let disposed = false
 
-  // Until the round starts, the clock is FULL, not expired. The challenge
-  // usually arrives after this composable mounts, so without this sync the
-  // idle stage read secondsLeft 0 → elapsedFraction 1 — and anything staged
-  // off elapsed time (the audio field's colour drift) fired before play.
-  watch(duration, value => {
-    if (!started.value) secondsLeft.value = value ?? 0
+  /**
+   * When this seat's countdown reaches zero, in server time: the round's own
+   * play start plus the kind's duration, or — for a kind whose window opens
+   * on the player's own play tap — the deadline the server stamped on the
+   * seat when that tap landed. Undefined until a stamp exists; the clock
+   * then reads FULL.
+   */
+  const clockEndsAt = computed(() => {
+    const round = currentRound.value?.round
+    if (!duration.value || !round) return undefined
+    if (playGateMsFor(challenge.value)) return seatCursor.value?.deadline
+    return round.playStartsAt ? round.playStartsAt + duration.value * 1000 : undefined
+  })
+  /** A stopped clock holds the reading it stopped on. */
+  const frozenSeconds = ref<number>()
+  const secondsLeft = computed(() => {
+    if (frozenSeconds.value !== undefined) return frozenSeconds.value
+    if (!duration.value) return 0
+    if (clockEndsAt.value === undefined) return duration.value
+    return Math.min(duration.value, secondsOnDeadline(clockEndsAt.value, now.value))
   })
 
   /** Clock left as a 0..1 fraction — what buzz scoring and staged reveals key
    *  off. The one place the division lives; views must not re-derive it. */
-  const remainingFraction = computed(() =>
-    duration.value ? clamp01(secondsLeft.value / duration.value) : 0
-  )
+  const remainingFraction = computed(() => {
+    if (!duration.value) return 0
+    if (frozenSeconds.value !== undefined || clockEndsAt.value === undefined) {
+      return clamp01(secondsLeft.value / duration.value)
+    }
+    return clamp01((clockEndsAt.value - now.value) / (duration.value * 1000))
+  })
   /** 1 − remaining, for reveals that unlock as time passes. */
   const elapsedFraction = computed(() => (duration.value ? 1 - remainingFraction.value : 0))
 
@@ -146,18 +162,17 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     buzzAt?: number,
     extras?: SubmitExtras
   ) => {
-    // The round echo is captured HERE, when the answer is given: a buffered
-    // redelivery flushing after the settle advanced the table then dies on
-    // the mismatch instead of being graded against the next round.
-    const roundIndex = (gameStore.game?.rounds.length ?? 1) - 1
+    // The echo names the subject this mount rendered: a buffered redelivery
+    // flushing after the settle advanced the table lands on a spent subject.
+    const echo = seatEcho(subject)
     return redeliver.deliver(() =>
       update({
         event: 'submit-group-challenge-answers',
         ranking,
         clientScore,
         buzzAt,
-        roundIndex,
         ...extras,
+        ...echo,
       })
     )
   }
@@ -243,9 +258,9 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const dwellFor = (entry: GuessTickerEntry) => (entry.kind === 'taunt' ? DWELL.taunt : DWELL.hint)
   const expired = (entry: GuessTickerEntry, now: number) => entry.at + dwellFor(entry) <= now
   const pruner = setInterval(() => {
-    const now = Date.now()
-    if (gameStore.map.liveGuesses.some(entry => expired(entry, now))) {
-      gameStore.map.liveGuesses = gameStore.map.liveGuesses.filter(entry => !expired(entry, now))
+    const at = Date.now()
+    if (gameStore.map.liveGuesses.some(entry => expired(entry, at))) {
+      gameStore.map.liveGuesses = gameStore.map.liveGuesses.filter(entry => !expired(entry, at))
     }
   }, PRUNE_INTERVAL_MS)
 
@@ -253,71 +268,42 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   cleanups.push(() => clearInterval(pruner))
 
   /**
-   * Leave the interstitial and start the round. `onTimeout` (if a countdown
-   * exists) fires once when the clock hits zero — typically a fail-submit.
-   * `onTick` runs on each new second for mode-specific reveals.
-   *
-   * The clock's truth is the server-stamped `round.deadline` when one rides
-   * the snapshot: every repaint re-derives from the wall clock, so a
-   * backgrounded tab whose intervals were throttled snaps to the true time
-   * the moment it wakes — the round can no longer silently outlive its
-   * window in browser memory. Rounds without a stamp (older snapshots,
-   * booth ambience) keep the local decrement as a fallback — as do the
-   * play-gated kinds BY DESIGN: an audio round's window opens on the
-   * player's own play tap, and a round-level stamp cannot measure that per
-   * seat, so counting from it would burn the wait before the clip started.
+   * Leave the interstitial and start the round. The clock itself is the
+   * server's — it runs whether or not anyone called this; `begin` only lifts
+   * the card and attaches the view's hooks. `onTimeout` fires once when the
+   * clock reaches zero (typically a fail-submit; the server's settle is the
+   * backstop either way). `onTick` runs on each new second for mode-specific
+   * reveals.
    */
-  const begin = (
-    hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
-  ) => {
+  let hooks: { onTimeout?: () => void; onTick?: (secondsLeft: number) => void } = {}
+  let begun = false
+  let timedOut = false
+  const begin = (next: typeof hooks = {}) => {
     if (disposed) return
     showInterstitial.value = false
     started.value = true
-    if (!duration.value) return
-    // Re-entrant callers (the watch-mode round-boundary restart) must
-    // replace the clock, never stack a second interval beside it
-    if (countdown) clearInterval(countdown)
-    const total = duration.value
-    // The stamped deadline drives the clock ONLY when it measures this very
-    // countdown — `clockRidesRoundDeadline` owns that question (a derived
-    // multi-beat budget stamps the WHOLE round; a play-gated window had not
-    // opened when the stamp was made). Those kinds keep the local decrement;
-    // the server settle still backstops them.
-    const deadline = clockRidesRoundDeadline(challenge.value)
-      ? currentRound.value?.round.deadline
-      : undefined
-    if (deadline) {
-      secondsLeft.value = Math.min(total, secondsOnDeadline(deadline))
-      // Already expired at begin() (a rejoin landing after the window): the
-      // dedupe guard below would swallow every tick, so fire the timeout now.
-      if (secondsLeft.value <= 0) return hooks.onTimeout?.()
-    } else {
-      secondsLeft.value = total
-    }
-    countdown = setInterval(() => {
-      // Deadline-driven: re-derive from the wall clock every tick, so a
-      // throttled tab snaps to true time the moment it wakes. (The stamp
-      // includes the opening grace, so the clock holds FULL while it burns.)
-      const next = deadline ? Math.min(total, secondsOnDeadline(deadline)) : secondsLeft.value - 1
-      if (next === secondsLeft.value) return
-      secondsLeft.value = next
-      hooks.onTick?.(next)
-      if (next <= 0) {
-        if (countdown) clearInterval(countdown)
-        countdown = undefined
-        hooks.onTimeout?.()
-      }
-    }, 1000)
+    hooks = next
+    begun = true
+    if (duration.value && clockEndsAt.value !== undefined && secondsLeft.value <= 0) fireTimeout()
   }
+  const fireTimeout = () => {
+    if (timedOut || frozenSeconds.value !== undefined) return
+    timedOut = true
+    hooks.onTimeout?.()
+  }
+  watch(secondsLeft, (left, previous) => {
+    if (!begun || frozenSeconds.value !== undefined || !duration.value) return
+    if (left !== previous) hooks.onTick?.(left)
+    if (left <= 0 && clockEndsAt.value !== undefined) fireTimeout()
+  })
 
   /**
    * Stop the clock early. Buzz-in modes (silhouette, stat-detective) resolve
-   * before zero and must not keep ticking through their reveal hold — the
+   * before zero and must not keep counting through their reveal hold — the
    * countdown drives on-screen reveals, not just the timeout.
    */
   const stopCountdown = () => {
-    if (countdown) clearInterval(countdown)
-    countdown = undefined
+    frozenSeconds.value = secondsLeft.value
   }
 
   /** Register a view-specific teardown (extra timers, listeners). */
@@ -334,32 +320,16 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     }
   }
 
-  // Watch mode: run the round clock as AMBIENCE on the spectator's own time —
-  // hint unlocks and staged reveals key off elapsedFraction and would stay
-  // frozen otherwise. Keyed on the ROUND NUMBER, not the duration: two
-  // same-kind rounds in a row swap the challenge under a live component (the
-  // mount is keyed on subject and kind) with an identical duration value, and
-  // the clock must still restart. No hooks: the resolve truth arrives from
-  // the snapshot (use-buzz-round's watch path), never a local timeout.
-  if (gameStore.watching) {
-    watch(
-      () => (duration.value ? currentRound.value?.number : undefined),
-      roundNumber => {
-        if (roundNumber !== undefined) begin()
-      },
-      { immediate: true }
-    )
-  }
-
   onBeforeUnmount(() => {
     disposed = true
     clearBoard({ preserveLiveGuesses: gameStore.watching })
-    if (countdown) clearInterval(countdown)
     for (const fn of cleanups) fn()
   })
 
   return {
     challenge,
+    subject,
+    clockEndsAt,
     currentRound,
     showInterstitial,
     started,
@@ -379,6 +349,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     isDisposed: () => disposed,
     gameStore,
     update,
+    seatEcho,
+    previewVerdict,
     clearBoard,
   }
 }

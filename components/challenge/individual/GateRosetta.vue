@@ -48,7 +48,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { countryName } from '~~/lib/country'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
-import { ROSETTA_SECONDS } from './timing'
+import { ROSETTA_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
@@ -59,8 +59,8 @@ const { status, isEasy, submitAnswer, giveUp } = useGateChallenge()
 const boughtRelation = ref(false)
 const footerReady = ref(false)
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(ROSETTA_SECONDS, {
-  onExpire: () => giveUp(hintsUsed.value),
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+  onExpire: () => giveUp(),
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
@@ -86,7 +86,6 @@ const onGuess = (country: Country) => {
   if (status.value) return
   stop()
   submitAnswer(country.isoCode, {
-    remainingFraction: remainingFraction.value,
     hintsUsed: hintsUsed.value,
   })
 }

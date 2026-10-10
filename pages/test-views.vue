@@ -142,7 +142,7 @@ import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import { latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { REGION_LABELS } from '~~/lib/variant'
-import { resolveChallengeView } from '~/components/view/dispatch'
+import { resolveSeatView } from '~/components/view/dispatch'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
   atlasContinuations,
@@ -203,7 +203,9 @@ import type { IndividualChallenge } from '~~/types/challenges/individual-challen
 import type { Game, GameDifficulty, PlayerColor, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
-import type { Player, PlayerPhase } from '~~/types/player.type'
+import type { Player } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
+import { mockSeatCursor } from '~~/lib/harness/mock-cursor'
 import type { Component } from 'vue'
 
 const gameStore = useGameStore()
@@ -640,18 +642,18 @@ const simulateTerraReady = () => {
   challenge.state.briefing = false
 }
 
-const mockPlayer = (id: string, name: string, color: PlayerColor, phase: PlayerPhase): Player =>
+const mockPlayer = (id: string, name: string, color: PlayerColor, step: SeatStep): Player =>
   ({
     id,
     name,
     color,
     ready: true,
-    phase,
+    cursor: mockSeatCursor(step, { subject: step === 'round' ? 'round:0' : step }),
     moves: [],
     currentPosition: 4,
   }) as unknown as Player
 
-const mockGame = (phase: PlayerPhase, rounds: unknown[]): Game => {
+const mockGame = (step: SeatStep, rounds: unknown[]): Game => {
   const game = {
     id: 'view-harness',
     host: ME,
@@ -663,9 +665,9 @@ const mockGame = (phase: PlayerPhase, rounds: unknown[]): Game => {
     liveGuesses: true,
     rounds,
     players: {
-      [ME]: mockPlayer(ME, 'Harness', PLAYER_COLORS[0]!, phase),
-      [RIVAL]: mockPlayer(RIVAL, 'Rival', PLAYER_COLORS[1]!, phase),
-      [THIRD]: mockPlayer(THIRD, 'Wanderer', PLAYER_COLORS[2]!, phase),
+      [ME]: mockPlayer(ME, 'Harness', PLAYER_COLORS[0]!, step),
+      [RIVAL]: mockPlayer(RIVAL, 'Rival', PLAYER_COLORS[1]!, step),
+      [THIRD]: mockPlayer(THIRD, 'Wanderer', PLAYER_COLORS[2]!, step),
     },
   } as unknown as Game
   return game
@@ -770,7 +772,7 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
       maximum: BEAT_POINTS[beat],
     }))
 
-  const game = mockGame('group-challenge', [
+  const game = mockGame('round', [
     groupRound({
       _type: 'government-challenge',
       country: deal.country,
@@ -836,7 +838,10 @@ const settledTimelineGame = (game: Game): Game => {
   game.players = Object.fromEntries(
     challenge.state.order.map(playerId => [
       playerId,
-      { ...game.players[playerId]!, phase: 'group-scores' as const },
+      {
+        ...game.players[playerId]!,
+        cursor: mockSeatCursor('scores', { subject: `scores:${game.rounds.length - 1}` }),
+      },
     ])
   )
   for (const playerId of challenge.state.order) {
@@ -870,7 +875,7 @@ const soloTimelineGame = (): Game => {
     slotCount,
     kind,
   })
-  return mockGame('group-challenge', [
+  return mockGame('round', [
     groupRound({
       _type: 'timeline-challenge',
       turnSeconds: 22,
@@ -932,7 +937,7 @@ const groundPlanGame = (city: string | undefined, signature: boolean): Game => {
     .map(other => other.city)
   const hints = signature ? groundPlanHints(entry) : []
 
-  return mockGame('group-challenge', [
+  return mockGame('round', [
     groupRound({
       _type: 'ground-plan-challenge',
       country: entry.country,
@@ -978,10 +983,10 @@ interface Scenario {
   id: string
   label: string
   /**
-   * Override for the views that route OUTSIDE `resolveChallengeView` — the
+   * Override for the views that route OUTSIDE `resolveSeatView` — the
    * synthetic galleries, the lobby and the tutorial. Leave it off and the
    * harness renders whatever the REAL dispatcher resolves for the pinned
-   * seat's phase, so a round that plays through to its settle lands on the
+   * seat's cursor, so a round that plays through to its settle lands on the
    * scorecard by itself instead of needing a second scenario for the reveal.
    */
   component?: Component
@@ -1084,7 +1089,7 @@ const longAtlasGame = (finished: boolean): Game => {
       ;(named[playerId] ??= []).push(isoCode)
     })
   }
-  return mockGame('group-challenge', [
+  return mockGame('round', [
     groupRound({
       _type: 'atlas-challenge',
       turnSeconds: 14,
@@ -1168,7 +1173,7 @@ const governmentBeatGame = (
   isoCode: ISOCountryCode = 'SE'
 ): Game => {
   const deal = dealGovernment(GOVERNMENT_RULES, 'normal', isoCode)!
-  return mockGame('group-challenge', [
+  return mockGame('round', [
     groupRound({
       _type: 'government-challenge',
       country: deal.country,
@@ -1216,7 +1221,7 @@ const scenarios: Scenario[] = [
     id: 'ranking',
     label: 'Ranking (5 tiles)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'group-challenge',
           id: 'economics.gdpPerCapita',
@@ -1228,7 +1233,7 @@ const scenarios: Scenario[] = [
     id: 'ranking-long',
     label: 'Ranking (6 tiles, overflow)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'group-challenge',
           id: 'people.population',
@@ -1242,7 +1247,7 @@ const scenarios: Scenario[] = [
     id: 'ranking-marriage-notes',
     label: 'Ranking reveal (per-country notes)',
     build: () =>
-      mockGame('group-scores', [
+      mockGame('scores', [
         settledRound('humanRights.gayMarriageLegalized', ['GB', 'FI', 'NL', 'SE', 'MX']),
       ]),
   },
@@ -1252,15 +1257,13 @@ const scenarios: Scenario[] = [
     id: 'ranking-negative-bars',
     label: 'Ranking reveal (negative values)',
     build: () =>
-      mockGame('group-scores', [
-        settledRound('people.netMigration', ['SY', 'LB', 'AE', 'QA', 'US']),
-      ]),
+      mockGame('scores', [settledRound('people.netMigration', ['SY', 'LB', 'AE', 'QA', 'US'])]),
   },
   {
     id: 'anthem-scores',
     label: 'Opening Ceremony scores (buzz race)',
     build: () =>
-      mockGame('group-scores', [
+      mockGame('scores', [
         {
           groupChallenge: {
             _type: 'anthem-buzz-challenge',
@@ -1290,7 +1293,7 @@ const scenarios: Scenario[] = [
     id: 'two-truths',
     label: 'Two truths and a lie',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'two-truths-challenge',
           country: 'IS',
@@ -1309,7 +1312,7 @@ const scenarios: Scenario[] = [
     id: 'two-truths-scaled',
     label: 'Two truths and a lie (bounded indices)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'two-truths-challenge',
           country: 'DK',
@@ -1328,13 +1331,13 @@ const scenarios: Scenario[] = [
     id: 'trend-sparkline-gallery',
     label: 'Trend sparklines (shape gallery)',
     component: TrendGallery,
-    build: () => mockGame('group-scores', []),
+    build: () => mockGame('scores', []),
   },
   {
     id: 'trend-sparkline-chart',
     label: 'Trend charts (axes + scrub)',
     component: TrendChartGallery,
-    build: () => mockGame('group-scores', []),
+    build: () => mockGame('scores', []),
   },
   {
     id: 'pyramid-scheme',
@@ -1346,7 +1349,7 @@ const scenarios: Scenario[] = [
       { id: 'hard', label: 'Hard — five subjects' },
     ],
     build: variant =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'pyramid-scheme-challenge',
           // The four extremes, so every axis the round reads on is on screen:
@@ -1365,7 +1368,7 @@ const scenarios: Scenario[] = [
     label: 'Pyramid scheme — reveal (two right, two wrong)',
     build: () => {
       const countries: ISOCountryCode[] = ['DE', 'NE', 'QA', 'JP']
-      const game = mockGame('group-scores', [
+      const game = mockGame('scores', [
         groupRound({
           _type: 'pyramid-scheme-challenge',
           countries,
@@ -1393,7 +1396,7 @@ const scenarios: Scenario[] = [
     id: 'trend-race',
     label: 'Trend race (pick → reveal on click)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'trend-race-challenge',
           metric: 'childMortality',
@@ -1410,7 +1413,7 @@ const scenarios: Scenario[] = [
     id: 'trend-race-scaled',
     label: 'Trend race (bounded index, inverted)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'trend-race-challenge',
           metric: 'politicalCorruption',
@@ -1427,7 +1430,7 @@ const scenarios: Scenario[] = [
     id: 'timeline',
     label: 'Timeline (your turn, mid-line)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'timeline-challenge',
           turnSeconds: 22,
@@ -1502,7 +1505,7 @@ const scenarios: Scenario[] = [
     id: 'timeline-story',
     label: 'Timeline (story beat after a miss)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'timeline-challenge',
           turnSeconds: 22,
@@ -1542,7 +1545,7 @@ const scenarios: Scenario[] = [
     id: 'empire',
     label: 'Ghosts of Empires (options + flag)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'empire-challenge',
           empireId: 'gran-colombia',
@@ -1561,7 +1564,7 @@ const scenarios: Scenario[] = [
     id: 'empire-plc',
     label: 'Ghosts of Empires (Polish–Lithuanian)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'empire-challenge',
           empireId: 'polish-lithuanian-commonwealth',
@@ -1579,7 +1582,7 @@ const scenarios: Scenario[] = [
     id: 'empire-majapahit',
     label: 'Ghosts of Empires (island archipelago)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'empire-challenge',
           empireId: 'majapahit',
@@ -1597,7 +1600,7 @@ const scenarios: Scenario[] = [
     id: 'empire-hard',
     label: 'Ghosts of Empires (free pick, no flag)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'empire-challenge',
           empireId: 'soviet-union',
@@ -1615,7 +1618,7 @@ const scenarios: Scenario[] = [
     id: 'empire-taps',
     label: 'Ghosts of Empires (beat 2 fast-forward)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'empire-challenge',
           empireId: 'abbasid-caliphate',
@@ -1634,7 +1637,7 @@ const scenarios: Scenario[] = [
     id: 'timeline-reveal',
     label: 'Timeline (finished, scorecard)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'timeline-challenge',
           turnSeconds: 22,
@@ -1742,7 +1745,7 @@ const scenarios: Scenario[] = [
     id: 'composition',
     label: 'Composition (foreign-born origins)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'composition-challenge',
           country: 'TR',
@@ -1792,7 +1795,7 @@ const scenarios: Scenario[] = [
     id: 'capital-guess',
     label: 'Capital guess (options)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'capital-guess-challenge',
           country: 'FR',
@@ -1808,7 +1811,7 @@ const scenarios: Scenario[] = [
     id: 'capital-guess-hard',
     label: 'Capital guess (typed, keyboard)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'capital-guess-challenge',
           country: 'JP',
@@ -1825,7 +1828,7 @@ const scenarios: Scenario[] = [
     id: 'star-chart',
     label: 'Star chart (nocturne, initials aid)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'star-chart-challenge',
           stars: ['ES', 'PL', 'AT', 'FI', 'BA'],
@@ -1873,7 +1876,7 @@ const scenarios: Scenario[] = [
     id: 'star-chart-hard',
     label: 'Star chart (hard, no aid)',
     build: () => {
-      const game = mockGame('group-challenge', [
+      const game = mockGame('round', [
         groupRound({
           _type: 'star-chart-challenge',
           stars: ['MN', 'UZ', 'LA', 'PY', 'NA'],
@@ -1932,7 +1935,7 @@ const scenarios: Scenario[] = [
       if (variant?.id === 'revealed') {
         round.groupAnswers[ME] = { submitted: ['AL', 'MD', 'FR'], correct: vanishings }
       }
-      const game = mockGame('group-challenge', [round])
+      const game = mockGame('round', [round])
       game.difficulty = difficulty
       return game
     },
@@ -1941,7 +1944,7 @@ const scenarios: Scenario[] = [
     id: 'flashpoint',
     label: 'Flashpoint (options)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flashpoint-challenge',
           country: 'CO',
@@ -1968,7 +1971,7 @@ const scenarios: Scenario[] = [
     id: 'flashpoint-hard',
     label: 'Flashpoint (typed, keyboard)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flashpoint-challenge',
           country: 'UA',
@@ -2002,7 +2005,7 @@ const scenarios: Scenario[] = [
     id: 'flashpoint-russia',
     label: 'Flashpoint (Russia, all four eras)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flashpoint-challenge',
           country: 'RU',
@@ -2029,7 +2032,7 @@ const scenarios: Scenario[] = [
     id: 'flashpoint-afghanistan',
     label: 'Flashpoint (Afghanistan — where US wars land)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flashpoint-challenge',
           country: 'AF',
@@ -2058,7 +2061,7 @@ const scenarios: Scenario[] = [
     id: 'flashpoint-us',
     label: 'Flashpoint (US, below dealer floor)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flashpoint-challenge',
           country: 'US',
@@ -2083,7 +2086,7 @@ const scenarios: Scenario[] = [
     id: 'ranking-years-at-war',
     label: 'Ranking (years at war, scale bar)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'group-challenge',
           id: 'government.yearsAtWar',
@@ -2095,7 +2098,7 @@ const scenarios: Scenario[] = [
     id: 'stat-detective',
     label: 'Stat detective (clue cards)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'stat-detective-challenge',
           country: 'IT',
@@ -2122,7 +2125,7 @@ const scenarios: Scenario[] = [
     id: 'pin-landmark',
     label: 'Pin the landmark (photo dock)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'pin-landmark-challenge',
           slug: 'eiffel-tower',
@@ -2138,7 +2141,7 @@ const scenarios: Scenario[] = [
     id: 'no-mans-land',
     label: "No man's land (magnifier)",
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'no-mans-land-challenge',
           territoryId: 'hans-island',
@@ -2152,7 +2155,7 @@ const scenarios: Scenario[] = [
     id: 'water-blitz',
     label: 'Water blitz (shared shores, typed)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'water-blitz-challenge',
           featureId: 'adriatic-sea',
@@ -2168,7 +2171,7 @@ const scenarios: Scenario[] = [
     id: 'mother-tongue',
     label: 'Mother tongue (typed, collect set)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'mother-tongue-challenge',
           language: 'Portuguese',
@@ -2182,7 +2185,7 @@ const scenarios: Scenario[] = [
     id: 'mother-tongue-regional',
     label: 'Mother tongue (Europe board — off-board speakers bounce)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'mother-tongue-challenge',
           language: 'French',
@@ -2200,7 +2203,7 @@ const scenarios: Scenario[] = [
     label: 'Mother tongue — Europe board scorecard (scoped "spoken" label)',
     build: () => {
       const countries: ISOCountryCode[] = ['FR', 'BE', 'LU', 'MC', 'CH']
-      const game = mockGame('group-scores', [
+      const game = mockGame('scores', [
         groupRound({
           _type: 'mother-tongue-challenge',
           language: 'French',
@@ -2229,7 +2232,7 @@ const scenarios: Scenario[] = [
     id: 'neighbour-blitz',
     label: 'Neighbour blitz (typed)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'neighbour-blitz-challenge',
           // Italy on a normal board: San Marino and the Holy See really border
@@ -2245,7 +2248,7 @@ const scenarios: Scenario[] = [
     id: 'name-that-water',
     label: 'Name that water (typed, hints)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'name-water-challenge',
           featureId: 'adriatic-sea',
@@ -2262,7 +2265,7 @@ const scenarios: Scenario[] = [
     id: 'traversal',
     label: 'Traversal (typed route)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'traversal-challenge',
           start: 'PT',
@@ -2288,7 +2291,7 @@ const scenarios: Scenario[] = [
     ],
     anyCountry: true,
     build: variant =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'hot-cold-challenge',
           country: variant?.country ?? 'MN',
@@ -2301,7 +2304,7 @@ const scenarios: Scenario[] = [
     id: 'flag-palette',
     label: 'Flag palette (swatches)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flag-palette-challenge',
           // BT: the Druk dragon — the sketch effect's hardest render test.
@@ -2319,7 +2322,7 @@ const scenarios: Scenario[] = [
     id: 'flag-palette-hard',
     label: 'Flag palette (hard: no region, sketch still draws)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'flag-palette-challenge',
           country: 'BT',
@@ -2333,7 +2336,7 @@ const scenarios: Scenario[] = [
     id: 'silhouette',
     label: 'Silhouette (typed)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'silhouette-challenge',
           country: 'IT',
@@ -2370,7 +2373,7 @@ const scenarios: Scenario[] = [
       const isoCode = variant?.country ?? 'SE'
       const broken = variant?.id === 'broken-clip'
       const clipCode = broken ? 'missing' : isoCode
-      return mockGame('group-challenge', [
+      return mockGame('round', [
         groupRound({
           _type: 'anthem-buzz-challenge',
           country: isoCode,
@@ -2401,7 +2404,7 @@ const scenarios: Scenario[] = [
     ],
     build: variant => {
       const rung = TONGUE_RUNGS[variant?.id ?? 'swahili'] ?? TONGUE_RUNGS.swahili!
-      return mockGame('group-challenge', [
+      return mockGame('round', [
         groupRound({
           _type: 'tongue-buzz-challenge',
           language: rung.language,
@@ -2427,7 +2430,7 @@ const scenarios: Scenario[] = [
     id: 'sketch',
     label: 'Sketch (canvas)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({ _type: 'sketch-challenge', country: 'FR', maximumPoints: MAXIMUM_POINTS }),
       ]),
   },
@@ -2440,7 +2443,7 @@ const scenarios: Scenario[] = [
         id: 'live',
         label: 'Your turn — strait hops',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2467,7 +2470,7 @@ const scenarios: Scenario[] = [
         id: 'briefing',
         label: 'Briefing — rules card, one rival ready',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2494,7 +2497,7 @@ const scenarios: Scenario[] = [
         id: 'easy',
         label: 'Easy — 20s clock, ISO chips on open moves',
         build: () => {
-          const game = mockGame('group-challenge', [
+          const game = mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 20,
@@ -2523,7 +2526,7 @@ const scenarios: Scenario[] = [
         id: 'europe',
         label: 'Europe board, world dimmed',
         build: () => {
-          const game = mockGame('group-challenge', [
+          const game = mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2551,7 +2554,7 @@ const scenarios: Scenario[] = [
         id: 'spectate',
         label: 'Eliminated, spectating',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2576,7 +2579,7 @@ const scenarios: Scenario[] = [
         id: 'trap',
         label: 'Dead-end hold — someone else trapped',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2612,7 +2615,7 @@ const scenarios: Scenario[] = [
         build: () => {
           // Europe: Morocco borders Spain but is off this board — the mixed
           // walked/off-board proof, and the local player is the victim.
-          const game = mockGame('group-challenge', [
+          const game = mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2653,7 +2656,7 @@ const scenarios: Scenario[] = [
         id: 'trap-reveal',
         label: 'Reveal — trapped by a rival',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2685,7 +2688,7 @@ const scenarios: Scenario[] = [
         id: 'reveal',
         label: 'Reveal — finished, replay',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'border-chain-challenge',
               turnSeconds: 12,
@@ -2713,13 +2716,13 @@ const scenarios: Scenario[] = [
       },
     ],
     // Never dealt: a variant always wins, and 'live' is the default rung.
-    build: () => mockGame('group-challenge', []),
+    build: () => mockGame('round', []),
   },
   {
     id: 'manhunt-detective',
     label: 'The Despot (detective, hunt beat, candidates painted)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'manhunt-challenge',
           turnCount: 7,
@@ -2782,7 +2785,7 @@ const scenarios: Scenario[] = [
     id: 'manhunt-briefing',
     label: 'The Despot (briefing — detective case file)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'manhunt-challenge',
           turnCount: 7,
@@ -2816,7 +2819,7 @@ const scenarios: Scenario[] = [
     id: 'manhunt-briefing-despot',
     label: 'The Despot (briefing — Glorious Leader card)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'manhunt-challenge',
           turnCount: 7,
@@ -2853,7 +2856,7 @@ const scenarios: Scenario[] = [
       // The trail arrives over the targeted position channel in real play —
       // the harness plants it directly.
       gameStore.manhunt = { trail: ['CZ', 'AT', 'IT'], turn: 4 }
-      return mockGame('group-challenge', [
+      return mockGame('round', [
         groupRound({
           _type: 'manhunt-challenge',
           turnCount: 7,
@@ -2896,7 +2899,7 @@ const scenarios: Scenario[] = [
     id: 'manhunt-reveal',
     label: 'The Despot (captured, trail replay + reveal)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'manhunt-challenge',
           turnCount: 7,
@@ -2959,7 +2962,7 @@ const scenarios: Scenario[] = [
     id: 'unique-briefing',
     label: 'Unique or Bust (briefing — tutorial card)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'unique-or-bust-challenge',
           letter: 'M',
@@ -2980,7 +2983,7 @@ const scenarios: Scenario[] = [
     id: 'unique-board',
     label: 'Unique or Bust (live board, rivals locking)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'unique-or-bust-challenge',
           letter: 'M',
@@ -3000,7 +3003,7 @@ const scenarios: Scenario[] = [
     id: 'unique-reveal',
     label: 'Unique or Bust (collision grid reveal)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'unique-or-bust-challenge',
           letter: 'M',
@@ -3054,7 +3057,7 @@ const scenarios: Scenario[] = [
     id: 'sweep-briefing',
     label: 'Clean Sweep (briefing — rules card)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           ...sweepChallenge(),
           state: { ...sweepState(), briefing: true, ready: [THIRD], deadline: 0, claims: [] },
@@ -3065,7 +3068,7 @@ const scenarios: Scenario[] = [
     id: 'sweep-board',
     label: 'Clean Sweep (live board, the pool draining)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           ...sweepChallenge(),
           state: {
@@ -3092,7 +3095,7 @@ const scenarios: Scenario[] = [
     id: 'sweep-benched',
     label: 'Clean Sweep (benched — a wrong name costs tempo)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           ...sweepChallenge(),
           state: {
@@ -3116,7 +3119,7 @@ const scenarios: Scenario[] = [
     id: 'sweep-last-call',
     label: 'Clean Sweep (last call — three slots standing)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           ...sweepChallenge(),
           state: {
@@ -3136,7 +3139,7 @@ const scenarios: Scenario[] = [
     id: 'sweep-reveal',
     label: 'Clean Sweep (reveal — who took what, and what nobody found)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           ...sweepChallenge(),
           state: {
@@ -3162,7 +3165,7 @@ const scenarios: Scenario[] = [
     id: 'heritage-hunt',
     label: 'Heritage hunt (live beat)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'heritage-hunt-challenge',
           slugs: heritageSlugs.slice(0, 3),
@@ -3183,7 +3186,7 @@ const scenarios: Scenario[] = [
     id: 'heritage-hunt-reveal',
     label: 'Heritage hunt (beat reveal)',
     build: () =>
-      mockGame('group-challenge', [
+      mockGame('round', [
         groupRound({
           _type: 'heritage-hunt-challenge',
           slugs: heritageSlugs.slice(0, 3),
@@ -3814,7 +3817,7 @@ const scenarios: Scenario[] = [
         id: 'live',
         label: 'Your turn — letter ties',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
               turnSeconds: 14,
@@ -3841,7 +3844,7 @@ const scenarios: Scenario[] = [
         id: 'easy',
         label: 'Easy — 20s turns, ringed answers, suggestions',
         build: () => {
-          const game = mockGame('group-challenge', [
+          const game = mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
               turnSeconds: 20,
@@ -3871,7 +3874,7 @@ const scenarios: Scenario[] = [
         id: 'hard',
         label: 'Hard — overlap rule, deep tie badge',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
               turnSeconds: 10,
@@ -3898,7 +3901,7 @@ const scenarios: Scenario[] = [
         id: 'briefing',
         label: 'Briefing — rules card, one rival ready',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
               turnSeconds: 14,
@@ -3926,7 +3929,7 @@ const scenarios: Scenario[] = [
         id: 'trap',
         label: 'Trap — the letter Q is spent',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
               turnSeconds: 14,
@@ -3966,7 +3969,7 @@ const scenarios: Scenario[] = [
         id: 'reveal',
         label: 'Reveal — placements and missed outs',
         build: () =>
-          mockGame('group-challenge', [
+          mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
               turnSeconds: 14,
@@ -3992,7 +3995,7 @@ const scenarios: Scenario[] = [
       },
     ],
     // Never dealt: a variant always wins, and 'live' is the default rung.
-    build: () => mockGame('group-challenge', []),
+    build: () => mockGame('round', []),
   },
   {
     id: 'final-gauntlet-easy',
@@ -4319,7 +4322,7 @@ const scenarios: Scenario[] = [
     label: 'Lobby (waiting room, solo)',
     component: ViewPlayerConfiguration,
     build: () => {
-      const game = mockGame('waiting-for-game', [])
+      const game = mockGame('lobby', [])
       game.started = false
       // The lonely single-player lobby, where the config card is tallest.
       game.players = { [ME]: game.players[ME]! }
@@ -4362,7 +4365,7 @@ const sunsetFixture = (difficulty: GameDifficulty, seed?: ISOCountryCode): Final
 }
 
 const finalGame = (challenges: FinalChallengeItem[], difficulty: GameDifficulty = 'hard'): Game => {
-  const game = mockGame('final-challenge', [settledRound()])
+  const game = mockGame('final', [settledRound()])
   game.difficulty = difficulty
   game.players[ME]!.moves = [
     {
@@ -4417,7 +4420,7 @@ const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
 }
 
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
-  const game = mockGame('individual-challenge', [settledRound()])
+  const game = mockGame('gate', [settledRound()])
   const me = game.players[ME]!
   me.moves = [
     {
@@ -4437,7 +4440,7 @@ const activeScenario = computed(() => scenarios.find(s => s.id === scenarioId.va
 
 /**
  * The view the pinned seat is looking at — resolved through the SAME
- * `resolveChallengeView` the room page renders, so the harness follows a phase
+ * `resolveSeatView` the room page renders, so the harness follows a cursor
  * change instead of being frozen on one component. That is what lets a round
  * play through its own settle onto the scorecard; a scenario only pins
  * `component` when it routes outside the resolver entirely.
@@ -4446,8 +4449,8 @@ const activeComponent = computed(() => {
   const scenario = activeScenario.value
   if (scenario?.component) return scenario.component
   const game = gameStore.game
-  const phase = game?.players[ME]?.phase
-  const resolved = phase && game ? resolveChallengeView(phase, latestRound(game)) : undefined
+  const cursor = game?.players[ME]?.cursor
+  const resolved = cursor && game ? resolveSeatView(cursor, latestRound(game)) : undefined
   return resolved?.component ?? ViewGroupChallenge
 })
 
@@ -4762,7 +4765,7 @@ onMounted(() => {
   if (reveal) {
     window.setTimeout(() => {
       gameStore.map.reveal = reveal as ISOCountryCode
-      gameStore.map.status = 'correct'
+      gameStore.map.status = { subject: gameStore.seatCursor?.subject ?? '', value: 'correct' }
       gameStore.map.focus = [reveal as ISOCountryCode]
     }, REVEAL_PREVIEW_DELAY_MS)
   }

@@ -12,7 +12,7 @@
 import { useClientEvents } from '~~/lib/events/client-side'
 
 // The ONE long-lived home of the 3D board: mounted by the layout when the
-// game starts and alive until the room is left, so entering a board phase is
+// game starts and alive until the room is left, so entering a board step is
 // a cross-fade (the `stage-active` layout class), never a WebGL cold start.
 // Owns the stage lifecycle — WebGL probe, deferred chunk mount, chunk-failure
 // capture, context-loss remount — while BoardOverlay (the dispatched view)
@@ -75,7 +75,7 @@ onMounted(() => stageEl.value?.addEventListener('webglcontextlost', onContextLos
 onBeforeUnmount(() => {
   stageEl.value?.removeEventListener('webglcontextlost', onContextLost, true)
   // Leaving the room retires the stage — the next game starts cold. The
-  // intro memory resets too: playerId persists across games while walkSeq
+  // intro memory resets too: playerId persists across games while walk subjects
   // restarts, so a stale key silently ate the next game's first
   // "On the move!". The follow target is per-game state as well.
   gameStore.board.stageReady = false

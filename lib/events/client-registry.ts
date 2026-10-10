@@ -1,9 +1,8 @@
 import { autopilotSummaryEvent } from '~~/lib/events/client/autopilot-summary.event'
 import { joinRefusedEvent } from '~~/lib/events/client/join-refused.event'
 import { tableNoticeEvent } from '~~/lib/events/client/table-notice.event'
-import { finalBeatEvent } from '~~/lib/events/client/final-beat.event'
 import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
-import { groupChallengeScoredEvent } from '~~/lib/events/client/group-challenge-scored.event'
+import { seatAdvancedEvent } from '~~/lib/events/client/seat-advanced.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.event'
 import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
@@ -38,11 +37,11 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
      * `authoritative`: NEVER dropped — a join full-sync is the recovery
      * moment by definition, and it is the one emit that can carry a
      * RECREATED game (same room id, rev restarted at 1); gating it would
-     * wedge every rejoining client forever. `seat-slice`: never dropped
-     * either — the applier copies one seat out of a full-breadth payload,
-     * and dropping an older slice for a DIFFERENT seat after adopting a
-     * newer rev could discard that seat's only phase flip (slices are FIFO
-     * per seat on the socket, so applying is always at least as fresh).
+     * wedge every rejoining client forever. `seat-slice`: not rev-gated —
+     * the applier copies one seat out of a full-breadth payload, and
+     * dropping an older slice for a DIFFERENT seat after adopting a newer
+     * rev could discard that seat's only cursor move. Its own gate is the
+     * seat's `cursor.seq`, which a slice may never move backwards.
      * Absent: a full replace, dropped when strictly older than the store.
      */
     snapshotScope?: 'authoritative' | 'seat-slice'
@@ -87,8 +86,10 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   'configuration-updated': {
     handler: genericUpdateEvent,
   },
-  'group-challenge-scored': {
-    handler: groupChallengeScoredEvent,
+  // One seat's cursor moved: the seat plus its slice of the live round (a
+  // forfeit's `playerTurns[].blocked` rides it).
+  'seat-advanced': {
+    handler: seatAdvancedEvent,
     snapshotScope: 'seat-slice',
   },
   // Whole-table state (turn cursor, eliminations, final scoring) — full replace
@@ -121,21 +122,8 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   'manhunt-taunt': {
     handler: manhuntTauntEvent,
   },
-  // Seat + round slice: a gate verdict also writes the seat's
-  // `playerTurns[].blocked` record, which the bare seat slice drops.
-  'individual-challenge-checked': {
-    handler: groupChallengeScoredEvent,
-    snapshotScope: 'seat-slice',
-  },
   'index-update': {
     handler: indexUpdateEvent,
-  },
-  // Seat + round slice, the gate verdict's posture: a gauntlet KNOCKOUT also
-  // stamps `playerTurns[].blocked` (the descent's license) — a bare seat
-  // slice dropped it and the pawn never played its fall off the mountain.
-  'final-challenge-checked': {
-    handler: groupChallengeScoredEvent,
-    snapshotScope: 'seat-slice',
   },
   'player-guessing': {
     handler: playerGuessingEvent,
@@ -146,11 +134,6 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // Ephemeral table announcement — no game payload
   'table-notice': {
     handler: tableNoticeEvent,
-  },
-  // The gauntlet's verdict — no game payload; the snapshot deliberately
-  // withholds post-answer lives until the reveal ends.
-  'final-beat': {
-    handler: finalBeatEvent,
   },
   // The returning player's catch-up numbers — no game payload
   'autopilot-summary': {

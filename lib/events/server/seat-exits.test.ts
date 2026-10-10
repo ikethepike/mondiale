@@ -1,333 +1,173 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { armFinalQuestionCap, armGroupScoresCap, armIndividualGateCap } from './seat-exits'
 import {
-  WALK_LEAD_MS,
   FINAL_QUESTION_CAP_MS,
   FINAL_REVEAL_HOLD_MS,
-  GROUP_SCORES_CAP_MS,
-  INDIVIDUAL_GATE_CAP_MS,
+  GATE_RESULT_HOLD_MS,
+  SEAT_DEADLINE_GRACE_MS,
 } from '~~/lib/round-beats'
+import { SEAT_STEP_SPECS, seatFireAt, seatSubject } from '~~/lib/seat-transitions'
+import type { FinalChallenge, FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { Game } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
-import type { EngineContext } from './round-engine'
-// Pre-warm the gauntlet's deferred module: applyFinalMiss imports it
-// dynamically, and under fake timers a cold module load never resolves
-// before the assertions run.
-import '~~/lib/challenges/final-challenge'
+import type { Player } from '~~/types/player.type'
+import { SEAT_STEPS } from '~~/types/seat.types'
+import { setDealReplay } from './moves'
+import { armedTimersFor, dropArmedTimersForTests, rearmSeats } from './seat-cursor'
+import { createTestTable, uniqueGameId, type TestTable } from './test-table'
+import { testCursor, testSeat } from './test-seat'
 
 /**
- * The parked-seat caps: each fires through a fresh fetch and must die on its
- * staleness token — a cap that walks a seat a client is already driving is
- * the double-stepper bug, and one that fires across a consumed question
- * burns a miss the player never owed.
+ * Every timer a seat can be waiting on comes from its cursor alone — armed
+ * once, re-armed identically after a restart, and dead the moment the seat
+ * moves on. A seat only a click could move is a frozen room waiting to happen.
  */
 
-const seat = (id: string, phase: PlayerPhase, extra: Partial<Player> = {}): Player =>
-  ({
-    id,
-    name: id,
-    phase,
-    moves: [],
-    currentPosition: 0,
-    walkSeq: 1,
-    ...extra,
-  }) as unknown as Player
+const question = (country: string): FinalChallengeItem =>
+  ({ _type: 'region-challenge', country, region: 'europe' }) as unknown as FinalChallengeItem
 
-// Unique per test: the per-game task queue (server-side.ts) is module state
-// keyed by gameId and outlives each test — a leftover chain from one test
-// firing into the next test's same-id store is nondeterministic pollution.
-// Against a unique id, a straggler's fresh fetch finds nothing and dies.
-let gameSeq = 0
+const gauntlet = (lives: number, countries = ['FR', 'DE']): FinalChallenge => ({
+  _type: 'final-challenge',
+  difficulty: 'normal',
+  challenges: countries.map(question),
+  lives,
+  totalCount: countries.length,
+  answeredCorrect: 0,
+})
+
+const onFinal = (lives: number) =>
+  testSeat('a', 'final', {
+    currentPosition: 9,
+    moves: [{ endTile: { position: 10, type: 'final' }, challenge: gauntlet(lives) }],
+    cursor: testCursor('final', {
+      subject: seatSubject.final(1, 0),
+      deadline: Date.now() + FINAL_QUESTION_CAP_MS,
+    }),
+  })
 
 const buildGame = (players: Player[]): Game =>
   ({
-    id: `test-game-${++gameSeq}`,
-    host: players[0]?.id,
-    tiles: [],
+    id: uniqueGameId('exits'),
+    host: 'a',
+    started: true,
     variant: 'world',
     difficulty: 'normal',
-    started: true,
-    players: Object.fromEntries(players.map(entry => [entry.id, entry])),
+    tiles: Array.from({ length: 11 }, (_, position) => ({
+      position,
+      type: position === 10 ? 'final' : 'normal',
+    })),
+    players: Object.fromEntries(players.map(player => [player.id, player])),
     rounds: [
       {
-        groupChallenge: {},
+        groupChallenge: { _type: 'group-challenge' },
         groupAnswers: {},
-        playerTurns: { a: { points: { scored: 0, maximum: 1 } } },
+        playerTurns: { a: { points: { scored: 3, maximum: 10 } } },
       },
     ],
   }) as unknown as Game
 
-const store = new Map<string, Game>()
-// Keyed by game id, NOT one shared list: a settle chain from an earlier test
-// can be parked on a real dynamic import that fake timers cannot flush (the
-// gauntlet pre-warm above narrows but cannot close this), and on a slow
-// runner it completes DURING a later test — its late emits must land in its
-// own game's list, never the running test's assertion.
-const emittedByGame = new Map<string, string[]>()
-const emittedFor = (gameId: string): string[] => {
-  const list = emittedByGame.get(gameId) ?? []
-  emittedByGame.set(gameId, list)
-  return list
+let tables: TestTable[] = []
+const open = async (players: Player[]) => {
+  const game = buildGame(players)
+  const table = await createTestTable(game)
+  tables.push(table)
+  rearmSeats(table.ctx('a'), game)
+  return table
 }
+const seatA = async (table: TestTable) => (await table.read()).players.a!
 
-const context = (game: Game): EngineContext => {
-  store.set(game.id, game)
-  return {
-    io: { in: () => ({ emit: (event: string) => emittedFor(game.id).push(event) }) },
-    redis: {
-      get: async (key: string) => store.get(key),
-      set: async (key: string, value: Game) => void store.set(key, value),
-      expire: async () => 1,
-    },
-    socket: {},
-    eventTarget: { gameId: game.id, playerId: 'a' },
-  } as unknown as EngineContext
-}
-
-beforeEach(() => {
+beforeEach(async () => {
+  await import('~~/lib/challenges/final-challenge')
   vi.useFakeTimers()
-  store.clear()
-  emittedByGame.clear()
-})
-
-afterEach(() => vi.useRealTimers())
-
-describe('armGroupScoresCap', () => {
-  it('walks a seat still parked on its scorecard', async () => {
-    const parked = seat('a', 'group-scores')
-    const game = buildGame([parked])
-    armGroupScoresCap(context(game), parked)
-
-    // The cap announces the walk first — 'moving' rides a snapshot so the
-    // board mounts — and the steps only start after the mount grace.
-    await vi.advanceTimersByTimeAsync(GROUP_SCORES_CAP_MS + 100)
-    await vi.runAllTicks()
-    expect(store.get(game.id)!.players.a.phase).toBe('moving')
-
-    await vi.advanceTimersByTimeAsync(WALK_LEAD_MS + 100)
-    await vi.runAllTicks()
-    // Nothing left to walk → the movement re-entry settles the seat.
-    expect(store.get(game.id)!.players.a.phase).toBe('movement-summary')
-  })
-
-  it('dies when the walk generation moved on', async () => {
-    const parked = seat('a', 'group-scores')
-    const game = buildGame([parked])
-    armGroupScoresCap(context(game), parked)
-
-    // The client closed scores and a NEW walk started before the cap fired.
-    store.get(game.id)!.players.a.walkSeq = 2
-    await vi.advanceTimersByTimeAsync(GROUP_SCORES_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    expect(store.get(game.id)!.players.a.phase).toBe('group-scores')
-  })
-
-  it('never touches a seat that already walked', async () => {
-    const parked = seat('a', 'group-scores')
-    const game = buildGame([parked])
-    armGroupScoresCap(context(game), parked)
-
-    store.get(game.id)!.players.a.phase = 'movement-summary'
-    store.get(game.id)!.players.a.moves = []
-    await vi.advanceTimersByTimeAsync(GROUP_SCORES_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    expect(emittedFor(game.id)).toEqual([])
+  setDealReplay({
+    moves: () => undefined,
+    round: () => undefined,
+    finalReplacement: () => question('PL'),
   })
 })
+afterEach(() => {
+  setDealReplay(undefined)
+  dropArmedTimersForTests()
+  for (const table of tables) table.dispose()
+  tables = []
+  vi.useRealTimers()
+})
 
-describe('armIndividualGateCap', () => {
-  const gateMove = () =>
-    ({
-      endTile: { position: 5 },
-      challenge: { _type: 'individual-challenge', variant: 'flag' },
-    }) as unknown as Player['moves'][number]
-
-  it('forfeits an unanswered gate through the blocked record', async () => {
-    const blocked = seat('a', 'individual-challenge', { moves: [gateMove()], walkSeq: 3 })
-    const game = buildGame([blocked])
-    armIndividualGateCap(context(game), blocked)
-
-    await vi.advanceTimersByTimeAsync(INDIVIDUAL_GATE_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    const fresh = store.get(game.id)!
-    expect(fresh.players.a.moves).toEqual([])
-    expect(fresh.rounds[0].playerTurns.a.blocked).toEqual({ atTile: 5, forfeitedSteps: 5 })
-    expect(emittedFor(game.id)).toContain('individual-challenge-checked')
-  })
-
-  it('leaves a gate whose answer is mid-flight alone', async () => {
-    const answering = seat('a', 'individual-challenge', {
-      moves: [gateMove()],
-      resolving: true,
+describe('the final question cap', () => {
+  it('burns a miss for an unanswered question, then deals the next once the verdict holds', async () => {
+    const table = await open([onFinal(1), testSeat('b', 'round')])
+    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + SEAT_DEADLINE_GRACE_MS + 10)
+    const burned = await seatA(table)
+    expect(burned.cursor.step).toBe('final-verdict')
+    expect(burned.cursor.verdict).toMatchObject({
+      timedOut: true,
+      correct: false,
+      knockedOut: false,
     })
-    const game = buildGame([answering])
-    armIndividualGateCap(context(game), answering)
+    expect((burned.moves[0]!.challenge as FinalChallenge).lives).toBe(0)
 
-    await vi.advanceTimersByTimeAsync(INDIVIDUAL_GATE_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    expect(store.get(game.id)!.players.a.moves).toHaveLength(1)
-  })
-
-  it('dies when a later walk brought the seat back to the same gate', async () => {
-    // Blocked in one round, back on the very same gate the next: phase, latch
-    // and tile all match, and only the walk generation tells the gates apart.
-    const blocked = seat('a', 'individual-challenge', { moves: [gateMove()], walkSeq: 3 })
-    const game = buildGame([blocked])
-    armIndividualGateCap(context(game), blocked)
-
-    store.get(game.id)!.players.a.walkSeq = 4
-    await vi.advanceTimersByTimeAsync(INDIVIDUAL_GATE_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    const fresh = store.get(game.id)!
-    expect(fresh.players.a.moves).toHaveLength(1)
-    expect(fresh.rounds[0].playerTurns.a.blocked).toBeUndefined()
-  })
-})
-
-describe('armFinalQuestionCap', () => {
-  const gauntletMove = (turn: number) =>
-    ({
-      endTile: { position: 9 },
-      challenge: {
-        _type: 'final-challenge',
-        turn,
-        lives: 1,
-        totalCount: 3,
-        answeredCorrect: 1,
-        challenges: [{ _type: 'region-challenge' }, { _type: 'max-challenge' }],
-      },
-    }) as unknown as Player['moves'][number]
-
-  it('burns a miss for an unanswered question', async () => {
-    const stalled = seat('a', 'final-challenge', { moves: [gauntletMove(2)] })
-    const game = buildGame([stalled])
-    armFinalQuestionCap(context(game), stalled)
-
-    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    const gauntlet = store.get(game.id)!.players.a.moves[0]!.challenge
-    expect(gauntlet).toMatchObject({ turn: 3, lives: 0 })
-    expect((gauntlet as { challenges: unknown[] }).challenges).toHaveLength(1)
-    // The burned question's verdict goes first; the next question only after
-    // the reveal hold, the answered path's shape — never ahead of the beat.
-    expect(emittedFor(game.id)).toEqual(['final-beat'])
-    expect(store.get(game.id)!.players.a.resolving).toBe(true)
-
-    await vi.advanceTimersByTimeAsync(FINAL_REVEAL_HOLD_MS + 100)
-    await vi.runAllTicks()
-    expect(emittedFor(game.id)).toContain('final-challenge-checked')
-    expect(store.get(game.id)!.players.a.resolving).toBe(false)
-  })
-
-  it('dies on the turn token once the question was answered', async () => {
-    const live = seat('a', 'final-challenge', { moves: [gauntletMove(2)] })
-    const game = buildGame([live])
-    armFinalQuestionCap(context(game), live)
-
-    // The player answered: the handler bumped the turn before the cap fired.
-    const gauntlet = store.get(game.id)!.players.a.moves[0]!.challenge as { turn: number }
-    gauntlet.turn = 3
-
-    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    expect((store.get(game.id)!.players.a.moves[0]!.challenge as { lives: number }).lives).toBe(1)
-  })
-
-  it('dies when a later walk dealt a fresh gauntlet on the same turn', async () => {
-    const live = seat('a', 'final-challenge', { moves: [gauntletMove(0)], walkSeq: 1 })
-    const game = buildGame([live])
-    armFinalQuestionCap(context(game), live)
-
-    // Knocked out, then back at the final tile: a new gauntlet restarts at turn 0.
-    const fresh = store.get(game.id)!.players.a
-    fresh.walkSeq = 2
-    fresh.moves = [gauntletMove(0)]
-
-    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + 100)
-    await vi.runAllTicks()
-
-    expect((store.get(game.id)!.players.a.moves[0]!.challenge as { lives: number }).lives).toBe(1)
-  })
-})
-
-/**
- * The restart-recovery sweep: every parked shape a dead timer can leave
- * behind must be revivable by ANY player's rejoin — the audit found three
- * that weren't (a mid-walk seat, the gate-forfeit hold, the knockout hold).
- */
-describe('rearmSeatExits', () => {
-  const walkMove = (to: number) =>
-    ({ endTile: { position: to } }) as unknown as Player['moves'][number]
-
-  it('revives a dead mid-walk seat without the walker rejoining', async () => {
-    const walker = seat('a', 'moving', { moves: [walkMove(2)], walkSeq: 4 })
-    const bystander = seat('b', 'group-challenge')
-    const game = buildGame([walker, bystander])
-    const { rearmSeatExits } = await import('./seat-exits')
-    rearmSeatExits(context(game), game)
-
-    // Resume lead, two steps, arrival.
-    await vi.advanceTimersByTimeAsync(10_000)
-    await vi.runAllTicks()
-
-    const fresh = store.get(game.id)!
-    expect(fresh.players.a.currentPosition).toBe(2)
-    expect(fresh.players.a.phase).toBe('movement-summary')
-  })
-
-  it('walks a gate-cap forfeit whose result hold died (moves empty, no latch)', async () => {
-    const forfeited = seat('a', 'individual-challenge', { moves: [], walkSeq: 2 })
-    const bystander = seat('b', 'group-challenge')
-    const game = buildGame([forfeited, bystander])
-    const { rearmSeatExits } = await import('./seat-exits')
-    rearmSeatExits(context(game), game)
-
-    await vi.advanceTimersByTimeAsync(10_000)
-    await vi.runAllTicks()
-
-    expect(store.get(game.id)!.players.a.phase).toBe('movement-summary')
-  })
-
-  it('settles a gauntlet knockout whose verdict hold died', async () => {
-    const knocked = seat('a', 'final-challenge', { moves: [], resolving: true, walkSeq: 2 })
-    const bystander = seat('b', 'group-challenge')
-    const game = buildGame([knocked, bystander])
-    const { rearmSeatExits } = await import('./seat-exits')
-    rearmSeatExits(context(game), game)
-
-    await vi.advanceTimersByTimeAsync(10_000)
-    await vi.runAllTicks()
-
-    const fresh = store.get(game.id)!
-    expect(fresh.players.a.phase).toBe('movement-summary')
-    expect(fresh.players.a.resolving).toBe(false)
-  })
-
-  it('never ejects a live gauntlet: an intact seat only re-arms its cap', async () => {
-    const climbing = seat('a', 'final-challenge', {
-      moves: [
-        {
-          endTile: { position: 9 },
-          challenge: { _type: 'final-challenge', challenges: [{}], lives: 1 },
-        } as unknown as Player['moves'][number],
-      ],
+    await vi.advanceTimersByTimeAsync(FINAL_REVEAL_HOLD_MS + 10)
+    expect((await seatA(table)).cursor).toMatchObject({
+      step: 'final',
+      subject: seatSubject.final(1, 1),
     })
-    const bystander = seat('b', 'group-challenge')
-    const game = buildGame([climbing, bystander])
-    const { rearmSeatExits } = await import('./seat-exits')
-    rearmSeatExits(context(game), game)
+  })
 
-    // Well past every hold, but short of the 90s question cap.
-    await vi.advanceTimersByTimeAsync(30_000)
-    await vi.runAllTicks()
+  it('knocks out a seat with no lives left, holding the shorter verdict', async () => {
+    const table = await open([onFinal(0), testSeat('b', 'round')])
+    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + SEAT_DEADLINE_GRACE_MS + 10)
+    expect((await seatA(table)).cursor.verdict).toMatchObject({ knockedOut: true })
+    await vi.advanceTimersByTimeAsync(GATE_RESULT_HOLD_MS + 10)
+    expect((await seatA(table)).cursor.step).toBe('settled')
+  })
 
-    expect(store.get(game.id)!.players.a.phase).toBe('final-challenge')
+  it('dies once the question was answered', async () => {
+    const table = await open([onFinal(1), testSeat('b', 'round')])
+    const { subject, seq } = (await seatA(table)).cursor
+    await table.send('a', {
+      event: 'submit-final-challenge-answer',
+      submittedAnswer: { _type: 'region-challenge', region: 'europe' },
+      subject,
+      seq,
+    })
+    await vi.advanceTimersByTimeAsync(FINAL_REVEAL_HOLD_MS + 10)
+    const next = await seatA(table)
+    expect(next.cursor.subject).toBe(seatSubject.final(1, 1))
+    // The first question's cap moment passes over the second question untouched.
+    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS - FINAL_REVEAL_HOLD_MS)
+    expect((await seatA(table)).cursor.seq).toBe(next.cursor.seq)
+  })
+})
+
+describe('uniform rearm', () => {
+  const shapes = SEAT_STEPS.map(step => {
+    const stamps = {
+      ...(SEAT_STEP_SPECS[step].requires.holdUntil ? { holdUntil: Date.now() + 5000 } : {}),
+      ...(SEAT_STEP_SPECS[step].requires.deadline ? { deadline: Date.now() + 5000 } : {}),
+    }
+    return { step, cursor: testCursor(step, stamps) }
+  })
+
+  it('arms exactly one timer for every step with a timer exit, and none otherwise', async () => {
+    for (const { step, cursor } of shapes) {
+      dropArmedTimersForTests()
+      const game = buildGame([testSeat('a', step, { cursor })])
+      const ctx = (await createTestTable(game)).ctx('a')
+      rearmSeats(ctx, game)
+      rearmSeats(ctx, game)
+      const armed = armedTimersFor(game.id).filter(timer => timer.seat === 'a')
+      if (seatFireAt(cursor) === undefined) {
+        expect(armed, step).toEqual([])
+      } else {
+        expect(armed, step).toHaveLength(1)
+        expect(armed[0]).toMatchObject({ seq: cursor.seq, kind: SEAT_STEP_SPECS[step].timer })
+      }
+    }
+  })
+
+  it('arms the table reveal from a stamped next round, and never twice', async () => {
+    const game = { ...buildGame([testSeat('a', 'settled')]), nextRoundAt: Date.now() + 2000 }
+    const ctx = (await createTestTable(game)).ctx('a')
+    rearmSeats(ctx, game)
+    rearmSeats(ctx, game)
+    expect(armedTimersFor(game.id).filter(timer => timer.kind === 'next-round')).toHaveLength(1)
   })
 })

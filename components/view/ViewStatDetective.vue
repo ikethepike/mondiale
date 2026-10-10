@@ -108,6 +108,7 @@ import { countryName } from '~~/lib/country'
 import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useServerWindow } from '~~/lib/use-server-window'
 import { LOCKOUT_SECONDS, useLockoutBeat } from '~~/lib/use-lockout-beat'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -128,7 +129,7 @@ const {
   announce,
   entries,
   submitOnce,
-  registerCleanup,
+  currentRound,
   gameStore,
 } = useGroupChallenge('stat-detective-challenge')
 
@@ -138,8 +139,6 @@ const clueStage = ref<HTMLElement>()
 const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => clueStage.value)
 
 const resolved = ref(false)
-const revealedCount = ref(0)
-const secondsLeft = ref(0)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const clueLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
@@ -186,6 +185,21 @@ const photoRevealed = computed(
 // The ONE derivation (photo clue included) — the server's settle backstop
 // budgets with the same number, so the window can never run a clue short.
 const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
+// The round's server clock drives the countdown AND the clue pacing, so the
+// drained bar, the seconds caption and the clue count can never drift apart.
+const playWindow = useServerWindow(() => currentRound.value?.round.playStartsAt, totalSeconds)
+const { secondsLeft } = playWindow
+const revealedCount = computed(() => {
+  const active = challenge.value
+  if (!active || !started.value) return 0
+  if (resolved.value) return Math.max(1, frozenCount.value)
+  return Math.min(
+    totalClues.value,
+    1 + Math.floor(playWindow.elapsedMs.value / 1000 / active.secondsPerClue)
+  )
+})
+/** The clue count the round resolved on — a resolved round stops dripping. */
+const frozenCount = ref(0)
 
 // Phones read newest-first — a new clue lands on top of the pile and old
 // ones are a calm scroll below, never a forced one (the old auto-scroll
@@ -200,12 +214,6 @@ const displayClues = computed(() => {
   return isPhone.value ? clues.reverse() : clues
 })
 
-// Paced by `secondsPerClue`, not a round countdown — the clue interval is local
-let clueTimer: ReturnType<typeof setInterval> | undefined
-registerCleanup(() => {
-  if (clueTimer) clearInterval(clueTimer)
-})
-
 const { lockedOut, lockOut } = useLockoutBeat({ onEnd: () => guessInput.value?.focus() })
 
 const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
@@ -216,8 +224,9 @@ const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => 
 const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
   const active = challenge.value
   if (!active || resolved.value) return
+  frozenCount.value = revealedCount.value
   resolved.value = true
-  if (clueTimer) clearInterval(clueTimer)
+  playWindow.stop()
 
   gameStore.map.solo = false
   gameStore.map.labels = true
@@ -237,29 +246,12 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 
 const begin = () => {
   beginRound()
-  revealedCount.value = 1
-  secondsLeft.value = totalSeconds.value
   nextTick(() => guessInput.value?.focus({ auto: true }))
-
-  const active = challenge.value
-  if (!active) return
-
-  // One 1s ticker drives the countdown AND the clue pacing, so the drained
-  // bar, the seconds caption and the clue count can never drift apart.
-  clueTimer = setInterval(() => {
-    secondsLeft.value = Math.max(0, secondsLeft.value - 1)
-    const elapsed = totalSeconds.value - secondsLeft.value
-    revealedCount.value = Math.min(
-      totalClues.value,
-      1 + Math.floor(elapsed / active.secondsPerClue)
-    )
-
-    if (secondsLeft.value > 0) return
-    if (clueTimer) clearInterval(clueTimer)
-    clueTimer = undefined
-    resolve(undefined, 0)
-  }, 1000)
 }
+
+watch(playWindow.expired, ran => {
+  if (ran && started.value) resolve(undefined, 0)
+})
 
 const onGuess = (country: Country) => {
   const active = challenge.value

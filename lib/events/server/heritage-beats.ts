@@ -7,7 +7,6 @@ import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
 import { scheduleDeadlineTask, scheduleRevealTask, settleRoundScores } from './round-engine'
-import { armGroupScoresCaps } from './seat-exits'
 import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from '~~/lib/round-beats'
 
 /**
@@ -183,7 +182,7 @@ const settleHeritageRound = async (
       ]
     })
   )
-  const advanced = await settleRoundScores({
+  await settleRoundScores({
     game,
     round,
     order: state.order,
@@ -193,9 +192,6 @@ const settleHeritageRound = async (
 
   await server.updateGameState(game)
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)
-  // The advanced seats now owe the table a movement request only a click
-  // sends — one cohort cap so a dead tab can't freeze the room here.
-  armGroupScoresCaps(ctx, game, advanced)
 }
 
 /** Re-arm the settle for a finished-but-unsettled round (the save threw once

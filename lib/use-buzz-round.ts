@@ -1,4 +1,5 @@
 import { buzzScore } from './scoring'
+import { seatWindowMsFor } from './round-beats'
 import { roundSettled } from './spectate'
 import { useLockoutBeat } from './use-lockout-beat'
 import { useGroupChallenge, type TypedRoundChallenge } from './useGroupChallenge'
@@ -121,13 +122,17 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   }
 
   /**
-   * Start the clock. Called only once the clip is genuinely playing, so nobody
-   * loses buzz time to a download or to Safari withholding autoplay — on a
-   * phone the round waits, silent and stopped, until the player taps Play.
+   * Start the round. On a play-gated kind this is the play tap, once the clip
+   * is genuinely playing, so nobody loses buzz time to a download or to
+   * Safari withholding autoplay: the tap goes to the server, which stamps the
+   * seat's own deadline, and the clock counts that stamp down.
    */
   const begin = (afterStart?: () => void) => {
     if (started.value) return
     beginRound({ onTick: options.onTick, onTimeout: () => resolve(undefined, 0) })
+    if (seatWindowMsFor(challenge.value) && !round.gameStore.watching) {
+      void round.update({ event: 'round-play', ...round.seatEcho(round.subject) })
+    }
     afterStart?.()
   }
 
@@ -144,7 +149,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
       if (!answer) return undefined
       if (!round2.spectateHideSpoilers) return answer
       const players = Object.values(round2.game?.players ?? {})
-      return roundSettled(players, liveRound?.groupAnswers ?? {}) ? answer : undefined
+      return roundSettled(players) ? answer : undefined
     })
     watch(
       revealableAnswer,

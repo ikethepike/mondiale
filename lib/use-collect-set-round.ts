@@ -6,7 +6,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 type GroupRound = Pick<
   ReturnType<typeof useGroupChallenge>,
-  'submitted' | 'started' | 'announce' | 'submitOnce' | 'begin' | 'gameStore'
+  'submitted' | 'started' | 'announce' | 'submitOnce' | 'begin' | 'gameStore' | 'previewVerdict'
 >
 
 /**
@@ -17,7 +17,7 @@ type GroupRound = Pick<
  * copy and any extra map dressing.
  */
 export const useCollectSetRound = (
-  { submitted, started, announce, submitOnce, begin, gameStore }: GroupRound,
+  { submitted, started, announce, submitOnce, begin, gameStore, previewVerdict }: GroupRound,
   options: {
     /** The full answer set for this round. */
     answers: MaybeRefOrGetter<readonly ISOCountryCode[]>
@@ -94,8 +94,9 @@ export const useCollectSetRound = (
 
   const submitRound = () => {
     if (submitted.value) return
-    gameStore.map.status =
+    previewVerdict(
       found.value.length >= (toValue(options.answers).length || Infinity) ? 'correct' : undefined
+    )
     // Submit what each guess CLAIMED. The server grades the same aliasing from
     // the challenge, so sending the resolved answer keeps the two ends reading
     // one list — and a stray still travels as itself and still costs.
@@ -139,7 +140,7 @@ export const useCollectSetRound = (
     // Everything found — no reason to run out the clock
     const complete = options.complete ?? (list => list.length === toValue(options.answers).length)
     if (complete(found.value)) {
-      gameStore.map.status = 'correct'
+      previewVerdict('correct')
       submitRound()
     }
   }

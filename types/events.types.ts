@@ -1,8 +1,9 @@
 import type { LatLng } from '~~/lib/geo'
-import type { FinalChallengeAnswer, FinalChallengeItem } from './challenges/final-challenge.type'
+import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
 import type { UniqueCategoryId } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
+import type { SeatStep } from './seat.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
  *  verdict — only that the player answered. `taken` is a contested-pool
@@ -33,6 +34,16 @@ export type CheerEmoji = (typeof CHEER_EMOJIS)[number]
  *  is the real guard. One token, two strips (board panel, spectate bar). */
 export const CHEER_COOLDOWN_MS = 1000
 
+/**
+ * Every event that acts on a seat's cursor echoes the cursor it was sent
+ * against. The server accepts it only on that subject; anything else is a
+ * spent screen and gets a resync instead.
+ */
+export interface SeatEcho {
+  subject: string
+  seq: number
+}
+
 export type ClientEventData =
   | {
       event: 'join'
@@ -53,14 +64,10 @@ export type ClientEventData =
   | {
       event: 'start-game'
     }
-  | {
+  | (SeatEcho & {
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
-      /** Staleness echo: the round this answer belongs to. A socket-buffered
-       *  submit flushing after the settle auto-advanced the table must not be
-       *  graded against the NEXT round's challenge. */
-      roundIndex?: number
       /**
        * Client-computed points for modes the server can't reproduce (sketch
        * similarity, silhouette buzz timing). The server clamps it; correctness
@@ -91,22 +98,15 @@ export type ClientEventData =
        *  the server re-derives the score from these against the dealt benches
        *  and never trusts a claimed one. */
       parliament?: { placed: string[] }
-    }
-  | {
+    })
+  | (SeatEcho & {
       event: 'submit-individual-challenge-answer'
       isoCode: ISOCountryCode
-      /** Timed gates (border-detective): fraction of the clock left at submit.
-       *  Scales the leap via the buzz curve; the server clamps it. */
-      remainingFraction?: number
       /** Timed gates: how many hints were bought (outline, ISO code) — each
-       *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. */
+       *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. The clock
+       *  share is the server's own, read off the gate's deadline. */
       hintsUsed?: number
-      /** The gate being answered (`endTile.position` of the head move) — the
-       *  same echo-token posture as `submit-chain-move`'s `turn`: an ack
-       *  redelivery that lands after the walk reached the NEXT gate can't be
-       *  judged against it. */
-      gateTile?: number
-    }
+    })
   | {
       /** Turn-chain rounds (Border Chain, Atlas): the active player extends
        *  the chain. `turn` echoes the
@@ -221,12 +221,11 @@ export type ClientEventData =
        *  `finished` is terminal, and `revealDone` makes retries idempotent. */
       event: 'timeline-reveal-done'
     }
-  | {
-      /** A browsable gate reveal's explicit exit (Chronicle): resume the walk
-       *  now instead of waiting out the browse cap. Only meaningful while the
-       *  seat's `resolving` latch is up — the result beat's server token. */
+  | (SeatEcho & {
+      /** A browsable gate reveal's explicit exit (Chronicle): end the verdict
+       *  hold now instead of waiting out the browse cap. */
       event: 'gate-reveal-done'
-    }
+    })
   | {
       /** Clean Sweep: claim a slot off the shared board. Unlike its blind
        *  siblings the pick is PUBLIC — it lands on the snapshot and paints the
@@ -235,37 +234,47 @@ export type ClientEventData =
       event: 'submit-sweep-claim'
       isoCode: ISOCountryCode
     }
-  | {
+  | (SeatEcho & {
       event: 'close-tutorial'
+    })
+  | (SeatEcho & {
+      /** The scorecard's Continue — the one client-driven way onto the board. */
+      event: 'enter-movement-phase'
+    })
+  | (SeatEcho & {
+      /** A seat opened its own timed window (an audio play tap, Empire's
+       *  buzz): the server stamps the seat's deadline from this moment. */
+      event: 'round-play'
+    })
+  | (SeatEcho & {
+      /** A browsable round reveal's explicit exit (Trend Race): end the
+       *  verdict hold now instead of waiting out the browse cap. */
+      event: 'round-reveal-done'
+    })
+  | {
+      /** A viewer finished rendering a seat's cursor: the view mounted and its
+       *  transition ended. Feeds the journal and the stale-render audit;
+       *  never touches the game snapshot. */
+      event: 'seat-rendered'
+      seatId: string
+      seq: number
+      step: SeatStep
+      subject: string
+      view: string
     }
   | {
-      event: 'enter-movement-phase'
-      /** Server-only: marks a walk's own rescheduled step so the duplicate
-       *  guard lets it through. Never sent by clients (they bypass no guard by
-       *  setting it — Fix #1 binds the socket to its own playerId). */
-      continuation?: boolean
-      /** Server-only: how many round-advance watchdog re-checks have fired for
-       *  this settle. Bounds the self-sustaining poll so a seat that never
-       *  returns cannot spin a timer for the life of the room. */
-      watchdogTick?: number
-      /** Server-only: the player's walk generation this continuation was armed
-       *  under. A mismatch on arrival means the moveset changed since — the
-       *  timer is stale and must not step the pawn. */
-      walkSeq?: number
+      /** A clock-offset probe: the ack carries the server's time. */
+      event: 'time-sync'
     }
   | {
       event: 'update-by-index'
       value: string | number | boolean
       accessorPattern: string
     }
-  | {
+  | (SeatEcho & {
       event: 'submit-final-challenge-answer'
       submittedAnswer: FinalChallengeAnswer
-      /** Staleness echo, the gates' `gateTile` posture: the gauntlet turn
-       *  this answer was given on. An answer that lost the race with the
-       *  question cap must not consume the replacement question. */
-      turn?: number
-    }
+    })
   | {
       event: 'update-configuration'
       configuration: GameConfiguration
@@ -334,6 +343,8 @@ export const CRITICAL_CLIENT_EVENTS = [
   'start-game',
   'close-tutorial',
   'enter-movement-phase',
+  'round-play',
+  'round-reveal-done',
   'submit-group-challenge-answers',
   'submit-individual-challenge-answer',
   'submit-final-challenge-answer',
@@ -358,15 +369,13 @@ export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 export const isCriticalClientEvent = (event: ClientEvent): event is CriticalClientEvent =>
   (CRITICAL_CLIENT_EVENTS as readonly ClientEvent[]).includes(event)
 
-/** Server → client receipt for critical events. */
+/** Server → client receipt for critical events, stamped with the server's clock. */
 export type ClientEventAck =
-  | { ok: true }
+  | { ok: true; serverNow?: number }
   /** 'unbound': the socket lost its player binding (reconnect before re-join)
    *  — the client should re-join, then retry. 'error': the handler threw
-   *  (fail fast, a retry fails identically). 'resolving': a RetryableReject —
-   *  the seat's result-beat latch is up; the same payload lands once the
-   *  hold clears, so KEEP retrying. */
-  | { ok: false; reason: 'unbound' | 'error' | 'resolving' }
+   *  (fail fast, a retry fails identically). */
+  | { ok: false; reason: 'unbound' | 'error'; serverNow?: number }
 
 export interface ClientEventTarget {
   gameId: string
@@ -389,7 +398,6 @@ export type ServerEventData =
   | { event: 'name-set'; game: Game }
   | { event: 'color-set'; game: Game }
   | { event: 'new-round'; game: Game }
-  | { event: 'group-challenge-scored'; game: Game }
   | { event: 'game-started'; game: Game }
   /** Join refused — deliberately carries no `game`, so `hasGame()` stays false
    *  and the generic store-write can never strand the client mid-join. */
@@ -411,7 +419,8 @@ export type ServerEventData =
    *  full snapshot replace client-side. */
   | { event: 'table-updated'; game: Game }
   | { event: 'configuration-updated'; game: Game }
-  | { event: 'individual-challenge-checked'; game: Game }
+  /** One seat's cursor moved: the seat plus its slice of the live round. */
+  | { event: 'seat-advanced'; game: Game }
   /** Turn-chain rounds (Border Chain, Atlas): a turn advanced (move, strike, elimination, fresh chain,
    *  or finish) — the whole room re-renders the chain from the snapshot. */
   | { event: 'chain-updated'; game: Game }
@@ -444,7 +453,6 @@ export type ServerEventData =
       at: number
     }
   | { event: 'index-update'; accessorPattern: string; value: string | number | boolean }
-  | { event: 'final-challenge-checked'; game: Game }
   | {
       event: 'player-guessing'
       /** The socket's authenticated id — never taken from the payload body. */
@@ -483,42 +491,6 @@ export type ServerEventData =
       entryId: string
       at: number
     }
-  /**
-   * A gauntlet question resolved for one racer — the verdict at the instant
-   * the server graded it.
-   *
-   * The snapshot cannot carry this: it deliberately holds PRE-answer lives
-   * through `FINAL_REVEAL_HOLD_MS` so the answering player's own optimistic
-   * heart-break isn't undone mid-reveal. That leaves a watcher with no way to
-   * learn the verdict until the next question arrives. This is that missing
-   * fact, and it is emitted from the server's single grading point so bot and
-   * autopilot runs beat identically to human ones.
-   *
-   * `challenge` and `submittedAnswer` ride whole rather than pre-rendered:
-   * every label a client wants is derivable from the pair through the pure
-   * helpers it already imports, so a richer renderer needs no new fields.
-   */
-  | {
-      event: 'final-beat'
-      playerId: string
-      /** The gauntlet turn this resolves — the same staleness token the submit
-       *  handler grades against. Beats are idempotent on `playerId:turn`. */
-      turn: number
-      correct: boolean
-      /** The question cap burned it; nothing was submitted. */
-      timedOut: boolean
-      challenge: FinalChallengeItem
-      /** Absent on a timeout — there is no answer to show. */
-      submittedAnswer?: FinalChallengeAnswer
-      /** POST-verdict lives, the number the snapshot withholds until the
-       *  reveal ends. */
-      lives: number
-      answeredCorrect: number
-      totalCount: number
-      knockedOut: boolean
-      entryId: string
-      at: number
-    }
   /** The returning player's catch-up: what the autopilot did with their seat.
    *  Broadcast like everything else, but only the named player renders it —
    *  the numbers are already public on the round history. */
@@ -530,6 +502,9 @@ export type ServerEventData =
       /** Points it banked over that span. */
       scored: number
     }
+
+/** Every server emit carries the server's clock at send time. */
+export type ServerEnvelope = ServerEventData & { serverNow?: number }
 
 /** The server events that carry a full game snapshot. */
 export type GameServerEvent = Extract<ServerEventData, { game: Game }>

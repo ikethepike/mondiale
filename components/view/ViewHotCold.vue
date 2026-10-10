@@ -90,6 +90,7 @@ const {
   submitOnce,
   registerCleanup,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('hot-cold-challenge', { solo: false })
 
 const probes = ref<HotColdProbe[]>([])
@@ -157,7 +158,7 @@ const onMapClick = (event: Event) => {
 
   if (isoCode === active.country) {
     probes.value.push({ isoCode, origin, distanceKm: 0, warmth: 'hot', replays: 0 })
-    gameStore.map.status = 'correct'
+    previewVerdict('correct')
     gameStore.map.reveal = active.country
     feedback.value = { text: `${countryName(isoCode)} — found it!`, warmth: 'hot' }
     return submitRound()
@@ -197,7 +198,7 @@ const onMapClick = (event: Event) => {
   feedback.value = { text: clueFor(probe), warmth: probe.warmth, trend }
 
   if (probes.value.length >= active.maximumGuesses) {
-    gameStore.map.status = 'incorrect'
+    previewVerdict('incorrect')
     feedback.value = { text: 'Out of probes!', warmth: 'cold' }
     // Submit at once — the server's flip (the kind's reveal hold in
     // ROUND_BEATS) gives the verdict its beat before the scorecard.

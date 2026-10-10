@@ -25,7 +25,6 @@ import {
   type ServerSide,
   settleRoundScores,
 } from './round-engine'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * Timeline's turn engine — chain-turns' rotation crossed with heritage-beats'
@@ -202,7 +201,7 @@ const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: Serve
   // The reveal follow-up fires exactly once: scoring marks the round.
   if (!round || Object.keys(round.groupAnswers).length) return
 
-  const advanced = await settleRoundScores({
+  await settleRoundScores({
     game: fresh,
     round,
     order: current.state.order,
@@ -227,9 +226,6 @@ const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: Serve
   // Not 'group-challenge-scored': its client handler applies only the
   // target player's slice, and this scoring lands for the whole table.
   freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
-  // The advanced seats now owe the table a movement request only a click
-  // sends — one cohort cap so a dead tab can't freeze the room here.
-  armGroupScoresCaps(ctx, fresh, advanced)
 }
 
 /** Arm the browse cap's settle backstop against the PERSISTED deadline —

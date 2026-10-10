@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { EVENTS } from '~~/data/events.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
+import { testSeat } from '~~/lib/events/server/test-seat'
 import {
   correctSlotRange,
   dealTimelineDeck,
@@ -415,9 +416,9 @@ const game = (difficulty: GameDifficulty, overrides?: object): Game =>
     difficulty,
     rounds: [{}],
     players: {
-      a: { phase: 'group-challenge' },
-      b: { phase: 'group-challenge' },
-      c: { phase: 'group-challenge' },
+      a: testSeat('a'),
+      b: testSeat('b'),
+      c: testSeat('c'),
     },
     ...(overrides ? { challengeOverrides: overrides } : {}),
   }) as unknown as Game

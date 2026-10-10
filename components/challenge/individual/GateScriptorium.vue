@@ -90,7 +90,7 @@ import {
 import { anthemTongueSample, seededTongueSample, tongueSampleSource } from '~~/lib/tongue-samples'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
-import { SCRIPTORIUM_SECONDS } from './timing'
+import { SCRIPTORIUM_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
@@ -119,10 +119,9 @@ const RUNG_LABELS: { [rung in ScriptoriumRung]: string } = {
   country: 'Name one country',
 }
 
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(
-  SCRIPTORIUM_SECONDS,
-  { onExpire: () => giveUp(hintsUsed.value) }
-)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+  onExpire: () => giveUp(),
+})
 
 const language = computed(() => props.challenge.scriptorium?.language)
 
@@ -207,7 +206,6 @@ const onGuess = (country: Country) => {
   if (status.value) return
   stop()
   submitAnswer(country.isoCode, {
-    remainingFraction: remainingFraction.value,
     hintsUsed: hintsUsed.value,
   })
   // Fills = knowledge: light every accepted speaker for the reveal frame,

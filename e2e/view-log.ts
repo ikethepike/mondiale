@@ -1,10 +1,10 @@
 import { BOARD_TO_CHALLENGE_HOLD_MS } from '~~/lib/round-beats'
 import type { ViewLogEntry } from '~~/lib/playtest-probe'
 
-const isChallengeKey = (key: string) =>
-  (key.startsWith('group-') && key !== 'group-scores') ||
-  key === 'individual-challenge' ||
-  key === 'final-challenge'
+/** The view family a `seatViewKey` names (`gate:gate:w1:t5` → `gate`). */
+const familyOf = (key: string) => key.split(':')[0]!
+
+const isChallengeKey = (key: string) => ['round', 'gate', 'final'].includes(familyOf(key))
 
 export interface ViewLogViolation {
   at: number
@@ -30,17 +30,14 @@ export const viewLogViolations = (log: ViewLogEntry[]): ViewLogViolation[] => {
       }
     }
     // The walk protocol on screen: a scorecard only ever closes onto the board.
-    if (previous.key === 'group-scores' && entry.key !== 'board' && entry.key !== 'victory') {
-      flag(entry.at, `group-scores must hand over to the board, not ${entry.key}`)
+    if (familyOf(previous.key) === 'scores' && entry.key !== 'board' && entry.key !== 'victory') {
+      flag(entry.at, `the scorecard must hand over to the board, not ${entry.key}`)
     }
     if (isChallengeKey(previous.key) && isChallengeKey(entry.key)) {
       flag(entry.at, `challenge→challenge adjacency: ${previous.key}→${entry.key}`)
     }
-    // The arrival beat: a board → gate swap is held so the final hop plays out.
-    if (
-      previous.key === 'board' &&
-      (entry.key === 'individual-challenge' || entry.key === 'final-challenge')
-    ) {
+    // The server's landing beat: a board → gate swap always waits out the arrival.
+    if (previous.key === 'board' && ['gate', 'final'].includes(familyOf(entry.key))) {
       const dwell = entry.at - previous.at
       if (dwell < BOARD_TO_CHALLENGE_HOLD_MS - 250) {
         flag(entry.at, `the board→${entry.key} swap cut the arrival hold (${dwell}ms)`)

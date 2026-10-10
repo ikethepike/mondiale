@@ -5,9 +5,9 @@ import {
   BOARD_TO_CHALLENGE_HOLD_MS,
   BRIEFING_CAP_MS,
   CLASSIC_SETTLE_SLACK_MS,
-  GATE_RESULT_FALLBACK_MS,
+  GATE_BROWSE_CAP_MS,
   GATE_RESULT_HOLD_MS,
-  GATE_RESULT_WIRE_GRACE_MS,
+  gateResultHoldMsFor,
   LANDING_SETTLE_MS,
   MOVE_INTERSTITIAL_HOLD_MS,
   FIRST_TURN_GRACE_MS,
@@ -18,7 +18,6 @@ import {
   PAWN_HOP_MS,
   STEP_INTERVAL_MS,
   GATE_PUNCH_MS,
-  WALK_ANNOUNCE_WIRE_GRACE_MS,
   WALK_FRAME_MS,
   WALK_LEAD_HEADROOM_MS,
   WALK_LEAD_MS,
@@ -35,17 +34,25 @@ import {
   FINAL_REVEAL_HOLD_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
+  isBrowsableRound,
   clockRidesRoundDeadline,
   isClassicGroupRound,
   briefingHolds,
   PLAY_GATE_CAP_MS,
   playGateMsFor,
   remainingFractionOn,
+  revealBudgetMsFor,
   revealHoldMsFor,
+  REVEAL_BEAT_MS,
+  SEAT_DEADLINE_GRACE_MS,
+  seatWindowMsFor,
+  TIMEOUT_SLACK_MS,
+  TIMELINE_BROWSE_CAP_MS,
   ROUND_BEATS,
   TUTORIAL_CAP_MS,
   UNTIMED_CLASSIC_CAP_SECONDS,
 } from '~~/lib/round-beats'
+import { gateVerdictLeadMs } from '~~/lib/gate-timing'
 import { ROUND_WEIGHTS } from '~~/lib/round-mix'
 import type {
   AnthemBuzzChallenge,
@@ -55,7 +62,11 @@ import type {
   StatDetectiveChallenge,
   TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
-import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
+import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
+import type {
+  RoundChallenge,
+  RoundChallengeKind,
+} from '~~/types/challenges/traversal-challenge.type'
 
 /**
  * ROUND_BEATS is a Record over RoundChallengeKind, so a NEW kind without a
@@ -263,15 +274,11 @@ describe('round beats', () => {
   it('fits the move interstitial inside the walk lead by construction', () => {
     // The announcement beat must END before the first step can land — a
     // hold retune that outgrows the lead fails here, not on screen.
-    expect(MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS).toBeLessThanOrEqual(
-      WALK_LEAD_MS
-    )
+    expect(MOVE_INTERSTITIAL_TOTAL_MS).toBeLessThanOrEqual(WALK_LEAD_MS)
     // ...and with room to spare. The lead used to sit EXACTLY on the total,
     // so the fit passed while any retune of the card pushed the first hop
     // behind it. Slack is the invariant, not mere non-overlap.
-    expect(
-      WALK_LEAD_MS - (MOVE_INTERSTITIAL_TOTAL_MS + WALK_ANNOUNCE_WIRE_GRACE_MS)
-    ).toBeGreaterThanOrEqual(WALK_LEAD_HEADROOM_MS)
+    expect(WALK_LEAD_MS - MOVE_INTERSTITIAL_TOTAL_MS).toBeGreaterThanOrEqual(WALK_LEAD_HEADROOM_MS)
     expect(MOVE_INTERSTITIAL_TOTAL_MS).toBe(
       MOVE_INTERSTITIAL_HOLD_MS + MOVE_INTERSTITIAL_OVERHEAD_MS
     )
@@ -291,11 +298,20 @@ describe('round beats', () => {
     expect(WALK_RESUME_FRAME_MS).toBeLessThan(WALK_FRAME_MS)
   })
 
-  it('composes the arrival hold and gate fallback from their parts', () => {
+  it('composes the arrival hold and the gate result hold from their parts', () => {
     expect(BOARD_TO_CHALLENGE_HOLD_MS).toBe(
       PAWN_HOP_MS + LANDING_SETTLE_MS + ARRIVAL_RIPPLE_MS + ARRIVAL_PAD_MS
     )
-    expect(GATE_RESULT_FALLBACK_MS).toBe(GATE_RESULT_HOLD_MS + GATE_RESULT_WIRE_GRACE_MS)
+    expect(gateResultHoldMsFor(undefined)).toBe(GATE_RESULT_HOLD_MS)
+    expect(gateResultHoldMsFor('find')).toBe(GATE_RESULT_HOLD_MS)
+    expect(gateResultHoldMsFor('chronicle')).toBe(GATE_BROWSE_CAP_MS)
+    // A variant's verdict lead plays INSIDE the server's hold: a lead that
+    // outgrew it would end the beat before the result card ever swapped in.
+    for (const variant of ['logo-politics', 'trend-duel'] as IndividualChallengeVariant[]) {
+      expect(gateVerdictLeadMs(variant), variant).toBeGreaterThan(0)
+      expect(gateVerdictLeadMs(variant), variant).toBeLessThan(gateResultHoldMsFor(variant))
+    }
+    expect(REVEAL_BEAT_MS).toBeLessThan(GATE_RESULT_HOLD_MS)
     // The gate punch-in plays INSIDE the arrival hold: the hold is what keeps
     // the stage up, so a hold trimmed under the punch would cut the camera
     // move off mid-flight and swap to the question over a moving shot. The
@@ -319,10 +335,47 @@ describe('round beats', () => {
       INDIVIDUAL_GATE_CAP_MS,
       FINAL_QUESTION_CAP_MS,
       CLASSIC_SETTLE_SLACK_MS,
+      SEAT_DEADLINE_GRACE_MS,
     ]) {
       expect(cap).toBeGreaterThan(0)
       expect(Number.isFinite(cap)).toBe(true)
     }
+  })
+
+  it('lets an answer sent AT the clock’s zero land before the seat times out', () => {
+    expect(SEAT_DEADLINE_GRACE_MS).toBeGreaterThan(TIMEOUT_SLACK_MS)
+  })
+
+  it('opens a seat window only where the seat makes the gesture', () => {
+    const anthem = {
+      _type: 'anthem-buzz-challenge',
+      durationSeconds: 30,
+    } as AnthemBuzzChallenge
+    expect(seatWindowMsFor(anthem)).toBe(30_000)
+    const empire = {
+      _type: 'empire-challenge',
+      durationSeconds: 12,
+      tapSeconds: 30,
+    } as unknown as EmpireChallenge
+    expect(seatWindowMsFor(empire)).toBe(EMPIRE_INTERBEAT_HOLD_MS + 30_000)
+    const twoTruths = { _type: 'two-truths-challenge', durationSeconds: 25 } as TwoTruthsChallenge
+    expect(seatWindowMsFor(twoTruths)).toBeUndefined()
+    expect(seatWindowMsFor(undefined)).toBeUndefined()
+  })
+
+  it('browses only the classic reveals with a browse cap, and budgets the cap into the hold', () => {
+    const trendRace = { _type: 'trend-race-challenge' } as RoundChallenge
+    expect(isBrowsableRound(trendRace)).toBe(true)
+    expect(revealBudgetMsFor(trendRace)).toBe(60000)
+    // The timeline's chronicle is browsable too, but its engine owns the exit.
+    const timeline = { _type: 'timeline-challenge' } as RoundChallenge
+    expect(isBrowsableRound(timeline)).toBe(false)
+    expect(revealBudgetMsFor(timeline)).toBe(
+      ROUND_BEATS.timeline.revealHoldMs + TIMELINE_BROWSE_CAP_MS
+    )
+    const twoTruths = { _type: 'two-truths-challenge', durationSeconds: 25 } as TwoTruthsChallenge
+    expect(isBrowsableRound(twoTruths)).toBe(false)
+    expect(revealBudgetMsFor(twoTruths)).toBe(revealHoldMsFor(twoTruths))
   })
 
   it('grants the reading states their grace (Aug 2026 doubling)', () => {
@@ -338,8 +391,9 @@ describe('round beats', () => {
 
 describe('remainingFractionOn', () => {
   it('reads full only when there is no window to be early in', () => {
-    expect(remainingFractionOn(Date.now() + 10_000, undefined)).toBe(1)
-    expect(remainingFractionOn(Date.now() + 10_000, 0)).toBe(1)
+    const now = 1_000_000
+    expect(remainingFractionOn(now + 10_000, undefined, now)).toBe(1)
+    expect(remainingFractionOn(now + 10_000, 0, now)).toBe(1)
   })
 
   it('reads EMPTY on an unstamped deadline, never full', () => {
@@ -347,17 +401,23 @@ describe('remainingFractionOn', () => {
     // brimming clock. `secondsOnDeadline` answers 0 for the same input, and a
     // composable that says "no seconds left" and "all of the clock left" at
     // once is how a progress bar ends up inverted.
-    expect(remainingFractionOn(undefined, 30)).toBe(0)
-    expect(remainingFractionOn(0, 30)).toBe(0)
+    expect(remainingFractionOn(undefined, 30, 1_000_000)).toBe(0)
+    expect(remainingFractionOn(0, 30, 1_000_000)).toBe(0)
   })
 
   it('clamps to the window at both ends', () => {
-    const now = Date.now()
-    expect(remainingFractionOn(now + 30_000, 30)).toBeCloseTo(1, 1)
-    expect(remainingFractionOn(now + 15_000, 30)).toBeCloseTo(0.5, 1)
+    const now = 1_000_000
+    expect(remainingFractionOn(now + 30_000, 30, now)).toBe(1)
+    expect(remainingFractionOn(now + 15_000, 30, now)).toBe(0.5)
     // Past the deadline is empty, not negative — it feeds a score curve.
-    expect(remainingFractionOn(now - 5_000, 30)).toBe(0)
+    expect(remainingFractionOn(now - 5_000, 30, now)).toBe(0)
     // A deadline beyond its own window cannot pay more than the whole pot.
-    expect(remainingFractionOn(now + 90_000, 30)).toBe(1)
+    expect(remainingFractionOn(now + 90_000, 30, now)).toBe(1)
+  })
+
+  it('prices off the caller’s clock, never the local one', () => {
+    const deadline = 1_000_000
+    expect(remainingFractionOn(deadline, 30, deadline - 15_000)).toBe(0.5)
+    expect(remainingFractionOn(deadline, 30, deadline)).toBe(0)
   })
 })

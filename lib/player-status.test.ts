@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { getPlayerStatus, placeLabel } from './player-status'
+import { testSeat } from '~~/lib/events/server/test-seat'
 import type { Player } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
 
-const seat = (e: Partial<Player>): Player =>
-  ({ id: 'p', name: 'P', moves: [], currentPosition: 0, ...e }) as unknown as Player
+const seat = (step: SeatStep, e: Partial<Player> = {}): Player => testSeat('p', step, e)
 
 describe('player status labels', () => {
   it('ordinals', () => {
@@ -13,9 +14,9 @@ describe('player status labels', () => {
   })
   it('names the finishing place', () => {
     const table = [
-      seat({ id: 'a', phase: 'victory', completedAtRound: 3 }),
-      seat({ id: 'b', phase: 'victory', completedAtRound: 5 }),
-      seat({ id: 'c', phase: 'victory', completedAtRound: 7 }),
+      seat('victory', { id: 'a', completedAtRound: 3 }),
+      seat('victory', { id: 'b', completedAtRound: 5 }),
+      seat('victory', { id: 'c', completedAtRound: 7 }),
     ]
     expect(table.map(p => getPlayerStatus(p, table).label)).toEqual([
       'Finished 1st',
@@ -24,14 +25,11 @@ describe('player status labels', () => {
     ])
   })
   it('falls back with no table (other call sites)', () => {
-    expect(getPlayerStatus(seat({ phase: 'victory', completedAtRound: 2 })).label).toBe(
-      'Finished 1st'
-    )
-    expect(getPlayerStatus(seat({ phase: 'victory' })).label).toBe('Finished the race!')
+    expect(getPlayerStatus(seat('victory', { completedAtRound: 2 })).label).toBe('Finished 1st')
+    expect(getPlayerStatus(seat('victory')).label).toBe('Finished the race!')
   })
   it('shows gauntlet progress', () => {
-    const p = seat({
-      phase: 'final-challenge',
+    const p = seat('final', {
       moves: [
         {
           challenge: {

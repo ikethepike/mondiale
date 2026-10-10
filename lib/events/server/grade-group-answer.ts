@@ -19,7 +19,7 @@ import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp01 } from '~~/lib/number'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
-import type { ClientEventData } from '~~/types/events.types'
+import type { ClientEventData, SeatEcho } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -27,7 +27,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  *  available here the moment the event declares it (the SubmitExtras trick). */
 export type GroupSubmission = Omit<
   Extract<ClientEventData, { event: 'submit-group-challenge-answers' }>,
-  'event'
+  'event' | keyof SeatEcho
 >
 
 /** An empty submission, for grading a seat that never answered. */

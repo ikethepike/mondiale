@@ -21,7 +21,6 @@ import {
   type EngineContext,
   type RearmOptions,
 } from './round-engine'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * The Government round's beat engine: three questions about one chamber, run
@@ -311,7 +310,7 @@ export const finishGovernment = async (
   )
 
   const server = useServerSideEvents(ctx)
-  const advanced = await settleRoundScores({
+  await settleRoundScores({
     game,
     round,
     order,
@@ -341,7 +340,6 @@ export const finishGovernment = async (
 
   await server.updateGameState(game)
   server.emit({ event: 'government-updated', game }, ctx.eventTarget)
-  armGroupScoresCaps(ctx, game, advanced)
 }
 
 /**

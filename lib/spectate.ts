@@ -5,7 +5,9 @@ import {
   type RoundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
+import type { Player } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
+import { seatViewFamily } from '~~/lib/seat-view'
 
 /**
  * The spectator booth's centre stage: what the followed player is doing,
@@ -13,18 +15,17 @@ import type { Player, PlayerPhase } from '~~/types/player.type'
  */
 export type SpectateStageKind = 'question' | 'scores' | 'board' | 'gate' | 'final' | 'idle'
 
-export const stageForPhase = (phase: PlayerPhase): SpectateStageKind => {
-  switch (phase) {
-    case 'group-challenge':
+export const stageForStep = (step: SeatStep): SpectateStageKind => {
+  switch (seatViewFamily({ step })) {
+    case 'round':
       return 'question'
-    case 'group-scores':
+    case 'scores':
       return 'scores'
-    case 'moving':
-    case 'movement-summary':
+    case 'board':
       return 'board'
-    case 'individual-challenge':
+    case 'gate':
       return 'gate'
-    case 'final-challenge':
+    case 'final':
       return 'final'
     default:
       return 'idle'
@@ -37,40 +38,40 @@ export const stageForPhase = (phase: PlayerPhase): SpectateStageKind => {
  * quieter, and post-race states trail. Ties go to whoever is furthest along
  * the board — the race leader is the story.
  */
-const DIRECTOR_PRIORITY: PlayerPhase[] = [
-  'moving',
-  'final-challenge',
-  'individual-challenge',
-  'group-challenge',
-  'group-scores',
-  'movement-summary',
-  'tutorial',
-  'victory',
+const DIRECTOR_PRIORITY: SeatStep[][] = [
+  ['walk', 'arrive'],
+  ['final', 'final-verdict'],
+  ['gate', 'gate-verdict'],
+  ['round', 'round-verdict'],
+  ['scores'],
+  ['settled'],
+  ['tutorial'],
+  ['victory'],
 ]
 
 export const pickDirectorTarget = (players: Player[]): Player | undefined => {
   const rank = (player: Player) => {
-    const index = DIRECTOR_PRIORITY.indexOf(player.phase)
+    const index = DIRECTOR_PRIORITY.findIndex(steps => steps.includes(player.cursor.step))
     return index === -1 ? DIRECTOR_PRIORITY.length : index
   }
 
   return players
-    .filter(player => player.phase !== 'kicked')
+    .filter(player => player.cursor.step !== 'kicked')
     .sort((a, b) => rank(a) - rank(b) || b.currentPosition - a.currentPosition)[0]
 }
 
 /**
- * Shot classes for the director's cut decisions: phases in one class are the
- * SAME shot (a walk and its movement summary are one continuous board beat),
- * so the camera never re-cuts inside a class. Order is watchability, mirroring
- * DIRECTOR_PRIORITY's story logic.
+ * Shot classes for the director's cut decisions: steps in one class are the
+ * SAME shot (a walk, its landing and its settle are one continuous board
+ * beat), so the camera never re-cuts inside a class. Order is watchability,
+ * mirroring DIRECTOR_PRIORITY's story logic.
  */
-export const SHOT_CLASSES: PlayerPhase[][] = [
-  ['moving', 'movement-summary'],
-  ['final-challenge'],
-  ['individual-challenge'],
-  ['group-challenge'],
-  ['group-scores'],
+export const SHOT_CLASSES: SeatStep[][] = [
+  ['walk', 'arrive', 'settled'],
+  ['final', 'final-verdict'],
+  ['gate', 'gate-verdict'],
+  ['round', 'round-verdict'],
+  ['scores'],
 ]
 
 /** The dwell floor: even a better story waits this long before a cut. */
@@ -83,12 +84,12 @@ export const GRAB_HOLD_MS = 8000
 export interface DirectorShot {
   targetId: string
   classIndex: number
-  /** When the camera cut to this subject — NOT when their phase changed. */
+  /** When the camera cut to this subject — NOT when their step changed. */
   at: number
 }
 
-const shotClassIndex = (phase: PlayerPhase): number => {
-  const index = SHOT_CLASSES.findIndex(shotClass => shotClass.includes(phase))
+const shotClassIndex = (step: SeatStep): number => {
+  const index = SHOT_CLASSES.findIndex(shotClass => shotClass.includes(step))
   return index === -1 ? SHOT_CLASSES.length : index
 }
 
@@ -96,7 +97,7 @@ const shotClassIndex = (phase: PlayerPhase): number => {
  * The shot-memory layer over pickDirectorTarget. Pure so the cut rules are
  * testable: snapshots land every ~500ms during walks, and a memoryless
  * re-sort re-cut the camera on every one — the booth's flicker. Rules:
- * a vanished subject cuts immediately; the same subject never cuts (phase
+ * a vanished subject cuts immediately; the same subject never cuts (step
  * changes swap the stage under a held camera); a candidate in the SAME class
  * never steals the shot; a strictly better class waits out the dwell floor;
  * an idle subject is abandoned after a short grace.
@@ -108,14 +109,18 @@ export const nextDirectorShot = (
 ): DirectorShot | undefined => {
   const best = pickDirectorTarget(players)
   if (!best) return undefined
-  const cut: DirectorShot = { targetId: best.id, classIndex: shotClassIndex(best.phase), at: now }
+  const cut: DirectorShot = {
+    targetId: best.id,
+    classIndex: shotClassIndex(best.cursor.step),
+    at: now,
+  }
 
   const current = previous
-    ? players.find(player => player.id === previous.targetId && player.phase !== 'kicked')
+    ? players.find(player => player.id === previous.targetId && player.cursor.step !== 'kicked')
     : undefined
   if (!previous || !current) return cut
 
-  const currentClass = shotClassIndex(current.phase)
+  const currentClass = shotClassIndex(current.cursor.step)
   const held: DirectorShot = { targetId: current.id, classIndex: currentClass, at: previous.at }
 
   if (best.id === current.id) return held
@@ -190,13 +195,10 @@ export const MOUNTABLE_KINDS: RoundChallengeKind[] = (
  * public. The SpoilerVeil drops once this is true: before it, a followed
  * racer's early reveal would spoil the table for a glanced-at screen.
  */
-export const roundSettled = (
-  players: Player[],
-  groupAnswers: Partial<Record<string, unknown>>
-): boolean =>
+export const roundSettled = (players: Player[]): boolean =>
   players
-    .filter(player => player.phase !== 'kicked' && !player.completedAtRound)
-    .every(player => player.phase !== 'group-challenge' || !!groupAnswers[player.id])
+    .filter(player => player.cursor.step !== 'kicked' && !player.completedAtRound)
+    .every(player => player.cursor.step !== 'round')
 
 /**
  * A stage card's copy. `secret` is the spectator's dramatic irony — the

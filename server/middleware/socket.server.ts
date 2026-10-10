@@ -4,7 +4,6 @@ import {
   enqueueGameTask,
   fetchSecrets,
   isDraining,
-  RetryableReject,
   useServerSideEvents,
   type GameServer,
   type GameSocket,
@@ -13,47 +12,18 @@ import { startOwnershipHeartbeat } from '~~/lib/events/server/game-ownership'
 import { registerGameRouting } from '~~/lib/events/server/game-routing'
 import { registerGracefulShutdown } from '~~/lib/events/server/graceful-shutdown'
 import { verifyPlayerSecret } from '~~/lib/player-secret'
-import { closeTutorialHandler } from '~~/lib/events/server/close-tutorial.handler'
-import { enterMovementPhaseHandler } from '~~/lib/events/server/enter-movement-phase.handler'
-import { joinEventHandler } from '~~/lib/events/server/join.event'
-import { setColorHandler } from '~~/lib/events/server/set-color.handler'
-import { setNameHandler } from '~~/lib/events/server/set-name.handler'
-import { startGameHandler } from '~~/lib/events/server/start-game.handler'
-import { submitFinalChallengeAnswerHandler } from '~~/lib/events/server/submit-final-challenge-answer.handler'
-import { submitChainMoveHandler } from '~~/lib/events/server/submit-chain-move.handler'
-import { submitManhuntMoveHandler } from '~~/lib/events/server/submit-manhunt-move.handler'
-import { submitGovernmentPickHandler } from '~~/lib/events/server/submit-government-pick.handler'
-import { submitManhuntMarkerHandler } from '~~/lib/events/server/submit-manhunt-marker.handler'
-import { submitManhuntSubpoenaHandler } from '~~/lib/events/server/submit-manhunt-subpoena.handler'
-import { fetchManhuntPositionHandler } from '~~/lib/events/server/fetch-manhunt-position.handler'
-import { manhuntReadyHandler } from '~~/lib/events/server/manhunt-ready.handler'
-import { uniqueReadyHandler } from '~~/lib/events/server/unique-ready.handler'
-import { chainReadyHandler } from '~~/lib/events/server/chain-ready.handler'
-import { submitUniqueAnswerHandler } from '~~/lib/events/server/submit-unique-answer.handler'
-import { sweepReadyHandler } from '~~/lib/events/server/sweep-ready.handler'
-import { terraReadyHandler } from '~~/lib/events/server/terra-ready.handler'
-import { timelineRevealDoneHandler } from '~~/lib/events/server/timeline-reveal-done.handler'
-import { gateRevealDoneHandler } from '~~/lib/events/server/gate-reveal-done.handler'
-import { submitSweepClaimHandler } from '~~/lib/events/server/submit-sweep-claim.handler'
-import { forgetTauntBucket, manhuntTauntHandler } from '~~/lib/events/server/manhunt-taunt.handler'
-import { submitHeritagePinHandler } from '~~/lib/events/server/submit-heritage-pin.handler'
-import { submitTimelinePlacementHandler } from '~~/lib/events/server/submit-timeline-placement.handler'
-import { submitGroupChallengeAnswersHandler } from '~~/lib/events/server/submit-group-challenge-answers.handler'
-import { submitIndividualChallengeAnswersHandler } from '~~/lib/events/server/submit-individual-challenge-answer.handler'
-import { updateByIndexHandler } from '~~/lib/events/server/update-by-index.handler'
-import {
-  forgetCheerBucket,
-  playerCheeringHandler,
-} from '~~/lib/events/server/player-cheering.handler'
-import {
-  forgetGuessBucket,
-  playerGuessingHandler,
-} from '~~/lib/events/server/player-guessing.handler'
-import { kickPlayerHandler } from '~~/lib/events/server/kick-player.handler'
-import { addBotHandler, removeBotHandler } from '~~/lib/events/server/add-bot.handler'
 import { armAfkTakeover } from '~~/lib/events/server/bot-brain'
-import { setSpectatorAccessHandler } from '~~/lib/events/server/set-spectator-access.handler'
-import { updateConfigurationHandler } from '~~/lib/events/server/update-configuration.handler'
+import { forgetCheerBucket } from '~~/lib/events/server/player-cheering.handler'
+import { forgetGuessBucket } from '~~/lib/events/server/player-guessing.handler'
+import { forgetTauntBucket } from '~~/lib/events/server/manhunt-taunt.handler'
+import {
+  SERVER_SIDE_EVENT_HANDLERS,
+  UNQUEUED_CLIENT_EVENTS,
+  UNRECORDED_CLIENT_EVENTS,
+} from '~~/lib/events/server/registry'
+import { recordSeatEvent, recordSeatRender } from '~~/lib/events/server/seat-journal'
+import { startSeatAuditor } from '~~/lib/events/server/seat-auditor'
+import '~~/lib/events/server/seat-cursor'
 
 import type {
   ClientEvent,
@@ -74,123 +44,6 @@ export type EventHandler = (configuration: {
 /** Per-socket cap on 'error' log lines: the event is client-emittable, so a
  *  socket's share of the log has to be bounded. */
 const SOCKET_ERROR_LOG_CAP = 3
-
-const SERVER_SIDE_EVENT_HANDLERS: {
-  [clientEvent in ClientEvent]: {
-    handler: EventHandler
-  }
-} = {
-  join: {
-    handler: joinEventHandler,
-  },
-  'set-name': {
-    handler: setNameHandler,
-  },
-  'set-color': {
-    handler: setColorHandler,
-  },
-  'start-game': {
-    handler: startGameHandler,
-  },
-  'submit-individual-challenge-answer': {
-    handler: submitIndividualChallengeAnswersHandler,
-  },
-  'submit-group-challenge-answers': {
-    handler: submitGroupChallengeAnswersHandler,
-  },
-  'submit-chain-move': {
-    handler: submitChainMoveHandler,
-  },
-  'submit-heritage-pin': {
-    handler: submitHeritagePinHandler,
-  },
-  'submit-government-pick': {
-    handler: submitGovernmentPickHandler,
-  },
-  'submit-manhunt-move': {
-    handler: submitManhuntMoveHandler,
-  },
-  'submit-manhunt-marker': {
-    handler: submitManhuntMarkerHandler,
-  },
-  'submit-manhunt-subpoena': {
-    handler: submitManhuntSubpoenaHandler,
-  },
-  'manhunt-ready': {
-    handler: manhuntReadyHandler,
-  },
-  'unique-ready': {
-    handler: uniqueReadyHandler,
-  },
-  'chain-ready': {
-    handler: chainReadyHandler,
-  },
-  'submit-unique-answer': {
-    handler: submitUniqueAnswerHandler,
-  },
-  'sweep-ready': {
-    handler: sweepReadyHandler,
-  },
-  'terra-ready': {
-    handler: terraReadyHandler,
-  },
-  'timeline-reveal-done': {
-    handler: timelineRevealDoneHandler,
-  },
-  'gate-reveal-done': {
-    handler: gateRevealDoneHandler,
-  },
-  'submit-sweep-claim': {
-    handler: submitSweepClaimHandler,
-  },
-  // Ephemeral taunt relay — no permanent state written
-  'manhunt-taunt': {
-    handler: manhuntTauntHandler,
-  },
-  // Reads only the requesting despot's own secret; answers on their socket
-  'fetch-manhunt-position': {
-    handler: fetchManhuntPositionHandler,
-  },
-  'submit-timeline-placement': {
-    handler: submitTimelinePlacementHandler,
-  },
-  'close-tutorial': {
-    handler: closeTutorialHandler,
-  },
-  'enter-movement-phase': {
-    handler: enterMovementPhaseHandler,
-  },
-  // Does not write to permanent game state
-  'update-by-index': {
-    handler: updateByIndexHandler,
-  },
-  // Ephemeral live guess relay (group rounds) — no permanent state written
-  'player-guessing': {
-    handler: playerGuessingHandler,
-  },
-  // Ephemeral emoji cheer relay — no permanent state written
-  'player-cheering': {
-    handler: playerCheeringHandler,
-  },
-  'submit-final-challenge-answer': {
-    handler: submitFinalChallengeAnswerHandler,
-  },
-  'update-configuration': {
-    handler: updateConfigurationHandler,
-  },
-  'set-spectator-access': {
-    handler: setSpectatorAccessHandler,
-  },
-  'kick-player': {
-    handler: kickPlayerHandler,
-  },
-  'add-bot': {
-    handler: addBotHandler,
-  },
-  'remove-bot': {
-    handler: removeBotHandler,
-  },
-}
 
 /**
  * A watcher's socket dropped — remove them from the spectator set so the "N
@@ -274,6 +127,7 @@ export default defineEventHandler(({ node }) => {
     // frozen board.
     if (httpServer) registerGameRouting({ io, redis, httpServer })
     startOwnershipHeartbeat({ io, redis })
+    startSeatAuditor({ io, redis })
     registerGracefulShutdown({ io, redis })
     // Optimistic bind for RECONNECTS: once a client has joined a room its
     // handshake carries { playerId, secret, gameId }, so verifying here
@@ -328,6 +182,7 @@ export default defineEventHandler(({ node }) => {
             eventTarget: ClientEventTarget,
             ack?: (receipt: ClientEventAck) => void
           ) => {
+            if (eventKey === 'time-sync') return ack?.({ ok: true, serverNow: Date.now() })
             console.log(`Received client event: ${eventKey} for ${eventTarget?.gameId}`)
             if (!eventTarget?.gameId) return
 
@@ -353,8 +208,32 @@ export default defineEventHandler(({ node }) => {
               console.warn(
                 `Rejected ${eventKey}: socket ${socket.data.playerId ?? '(unbound)'} tried to act as ${eventTarget.playerId}`
               )
-              ack?.({ ok: false, reason: 'unbound' })
+              ack?.({ ok: false, reason: 'unbound', serverNow: Date.now() })
               return
+            }
+
+            const event = eventKey as ClientEvent
+            if (eventData.event === 'seat-rendered') {
+              recordSeatRender(redis, eventTarget.gameId, {
+                viewer: eventTarget.playerId,
+                seat: eventData.seatId,
+                seq: eventData.seq,
+                step: eventData.step,
+                subject: eventData.subject,
+                view: eventData.view,
+                at: Date.now(),
+              }).catch(error => console.error(`seat-rendered write failed`, error))
+              return
+            }
+            if (UNQUEUED_CLIENT_EVENTS.includes(event)) return
+            if (!UNRECORDED_CLIENT_EVENTS.includes(event)) {
+              void recordSeatEvent(redis, eventTarget.gameId, {
+                kind: 'event',
+                at: Date.now(),
+                actor: eventTarget.playerId,
+                event,
+                data: eventData,
+              })
             }
 
             // Both branches consume the task promise — an unacked handler
@@ -366,21 +245,13 @@ export default defineEventHandler(({ node }) => {
                 redis,
                 eventData,
                 eventTarget,
-                eventKey: eventKey as ClientEvent,
+                eventKey: event,
               })
             ).then(
-              () => ack?.({ ok: true }),
+              () => ack?.({ ok: true, serverNow: Date.now() }),
               error => {
-                // A transient rejection (a `resolving` latch mid-hold) is the
-                // client's cue to RETRY the same payload — never ack it ok,
-                // or the answer dies with a success receipt.
-                if (error instanceof RetryableReject) {
-                  console.warn(`${eventKey} deferred (${error.message}) in ${eventTarget.gameId}`)
-                  ack?.({ ok: false, reason: 'resolving' })
-                  return
-                }
                 console.error(`Handler failed for ${eventKey} in ${eventTarget.gameId}`, error)
-                ack?.({ ok: false, reason: 'error' })
+                ack?.({ ok: false, reason: 'error', serverNow: Date.now() })
               }
             )
           }

@@ -84,7 +84,7 @@ import { HOLD_DRAG_LIST_OPTIONS } from '~~/lib/drag-list'
 import { GATE_HINT_BITE_STEPS, HINT_UNLOCK_FIRST_ELAPSED } from '~~/lib/scoring'
 import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
-import { CHRONICLE_SECONDS } from './timing'
+import { CHRONICLE_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
@@ -119,8 +119,8 @@ const buyAnchor = () => {
   anchorSlug.value = chronicleSolution(dealt.value)[0]
 }
 
-const { secondsLeft, remainingFraction, stop, elapsedFraction } = useGateClock(CHRONICLE_SECONDS, {
-  onExpire: () => resolve(true),
+const { secondsLeft, remainingFraction, stop, elapsedFraction } = useGateClock({
+  onExpire: () => resolve(),
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
@@ -130,11 +130,11 @@ const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_E
  * `country`; a wrong order submits the can't-match token. The submitted order
  * rides the shared ledger so the reveal can ghost each card's placement.
  *
- * Expiry grades the order AS ARRANGED at `remainingFraction: 0` — the buzzer
- * pays the floor, same as locking in at the last second, so idling past a
- * correct arrangement earns exactly what a buzzer submit would have.
+ * Expiry grades the order AS ARRANGED — the server prices it off its own
+ * deadline, so the buzzer pays the floor, same as locking in at the last
+ * second, and idling past a correct arrangement earns exactly that.
  */
-const resolve = (expired = false) => {
+const resolve = () => {
   if (status.value) return
   stop()
   chronicleOrder.value = [...order.value]
@@ -142,7 +142,6 @@ const resolve = (expired = false) => {
   // reveal: false — the record card IS the reveal; the map's terse country
   // card under it doubled the answer and collided with the record on phones.
   submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
-    remainingFraction: expired ? 0 : remainingFraction.value,
     hintsUsed: hintsUsed.value,
     reveal: false,
   })

@@ -11,14 +11,14 @@
       ref="promptHost"
       :attributions="promptSources"
       :attribution-credit="promptCredit"
-      :compact="!status && GATE_VIEWS[variant].compactPrompt"
+      :compact="!verdictShown && GATE_VIEWS[variant].compactPrompt"
     >
       <Transition name="caption" mode="out-in">
-        <div v-if="!status" key="question" class="question">
+        <div v-if="!verdictShown" key="question" class="question">
           <!-- One component per variant (components/challenge/individual).
-               Keyed on gateSeq: a back-to-back gate REMOUNTS it, so its
-               clocks, hints and counters reset by construction. -->
-          <component :is="GATE_VIEWS[variant].component" :key="gateSeq" :challenge="challenge" />
+               The shell is keyed on the gate's subject, so a new gate is a
+               new mount and its clocks, hints and counters start fresh. -->
+          <component :is="GATE_VIEWS[variant].component" :challenge="challenge" />
         </div>
         <ChallengeResult
           v-else-if="status"
@@ -50,14 +50,14 @@
          mounts (the gate teleports from its own onMounted). A dealt `options`
          table means the variant answers on cards this difficulty, so the
          typed footer (and its berth) isn't paid for (far-flung below hard). -->
-    <div v-if="GATE_VIEWS[variant].sideStage" v-show="!status" id="gate-aside" />
+    <div v-if="GATE_VIEWS[variant].sideStage" v-show="!verdictShown" id="gate-aside" />
     <!-- A dealt `options` table means the variant answers on CARDS in this
          footer instead of typing (far-flung below hard) — same berth, so the
          camera still frames the subject in the band above, but no
          suggest-berth: cards never open a downward list. -->
     <footer
       v-if="GATE_VIEWS[variant].typedConsole"
-      v-show="!status"
+      v-show="!verdictShown"
       id="gate-footer"
       ref="gateFooter"
       :class="{
@@ -99,18 +99,18 @@ import { useIsPhone } from '~~/lib/use-viewport'
 import { processReplacements } from '~~/lib/values'
 import { REGION_LABELS } from '~~/lib/variant'
 
-const { currentMove, gameStore, clearBoard } = useClientEvents()
+const { gameStore, clearBoard } = useClientEvents()
 
 const {
   challenge,
   variant,
   country,
   status,
+  verdictShown,
   isHard,
   isEasy,
   submittedISOCode,
   submittedCountry,
-  gateSeq,
   showInterstitial,
   missNote,
   timedOut,
@@ -119,13 +119,12 @@ const {
   atlasChain,
   chronicleOrder,
   browseReveal,
-  beatDeadline,
+  holdUntil,
   finishBeat,
-  relatch,
 } = provideGateChallenge()
 
-// The browsable reveal's countdown: the backstop the Continue button beats.
-const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(() => beatDeadline.value)
+// The browsable reveal's countdown: the server's hold, which Continue beats.
+const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(() => holdUntil.value)
 
 const details = computed(() =>
   challenge.value ? getChallengeDetails(challenge.value.id) : undefined
@@ -173,8 +172,6 @@ const placeMapBerth = () => {
 watch([variant, () => challenge.value?.id, isPhone, showInterstitial], placeMapBerth, {
   immediate: true,
 })
-
-watch(currentMove, relatch)
 
 /**
  * The credit for the ONE image a gate puts on screen, beside the dataset line.

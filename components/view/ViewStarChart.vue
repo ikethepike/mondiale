@@ -106,6 +106,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('star-chart-challenge', { solo: false })
 
 const field = ref<HTMLInputElement>()
@@ -138,7 +139,7 @@ const {
   start: begin,
   onGuess,
 } = useCollectSetRound(
-  { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
+  { submitted, started, announce, submitOnce, begin: beginRound, gameStore, previewVerdict },
   {
     answers,
     // Both copies speak in CITIES: the player typed a city, and being told

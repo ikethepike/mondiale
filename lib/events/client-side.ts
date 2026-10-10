@@ -1,8 +1,10 @@
 import { releaseAllMapBerths } from '~~/lib/map-berth'
 import { resolveAccessorPath } from '~~/lib/values'
-import { useGameStore } from '~~/store/game.store'
+import { clientSendTime, noteAckClock } from '~~/lib/use-server-now'
+import { useGameStore, type PreviewVerdict } from '~~/store/game.store'
 import {
   type ClientEventAck,
+  type SeatEcho,
   type ClientEventData,
   isCriticalClientEvent,
   isValidClientEventTarget,
@@ -26,9 +28,8 @@ export const REDELIVER_MAX_BATCHES = 15
  * THE redeliver loop: keep a critical payload alive past update()'s own ack
  * batch, re-sending in paced batches until delivered, disposed, or the cap.
  * One home — a composable or view must never grow a private timer chain
- * (two of them had, and they'd already drifted). Retryable server rejects
- * (a `resolving` latch mid-hold) resolve here too: the batch pacing outlasts
- * every result hold, so the answer lands once the beat clears.
+ * (two of them had, and they'd already drifted). A redelivered submit carries
+ * the subject it answered, so a late one lands as a no-op on a spent screen.
  */
 export const createRedeliver = (label: string) => {
   let disposed = false
@@ -71,7 +72,12 @@ export const createRedeliver = (label: string) => {
  *  verdicts for views built on them; a view on neither composable —
  *  ViewIndividualChallenge is the standing example — owns every verdict
  *  itself, including the invisible ones (its interstitial ref, its timers). */
-export const WATCH_SAFE_EVENTS: ClientEventData['event'][] = ['join', 'player-cheering']
+export const WATCH_SAFE_EVENTS: ClientEventData['event'][] = [
+  'join',
+  'player-cheering',
+  'seat-rendered',
+  'time-sync',
+]
 
 export const useClientEvents = () => {
   const router = useRouter()
@@ -119,6 +125,23 @@ export const useClientEvents = () => {
     if (!self.value) return false
     return self.value.id === game.value?.host
   })
+
+  const seatCursor = computed(() => player.value?.cursor)
+
+  /** The echo a seat event carries: the subject the caller rendered, plus the
+   *  cursor's seq for the journal. A view captures its subject when it
+   *  mounts (views are keyed on subject), so a late send can only ever name
+   *  a spent subject — never the next one. */
+  const seatEcho = (subject: string): SeatEcho => ({
+    subject,
+    seq: seatCursor.value?.seq ?? 0,
+  })
+
+  /** A view's own optimistic grade, tagged with the subject on screen. */
+  const previewVerdict = (value: PreviewVerdict['value'] | undefined) => {
+    const subject = seatCursor.value?.subject
+    gameStore.map.status = value && subject ? { subject, value } : undefined
+  }
 
   const currentFinalChallenge = computed(() => {
     if (currentMove.value?.challenge?._type !== 'final-challenge') return undefined
@@ -188,6 +211,9 @@ export const useClientEvents = () => {
     isPlayerHost,
     currentRound,
     currentFinalChallenge,
+    seatCursor,
+    seatEcho,
+    previewVerdict,
     async update(eventData: ClientEventData): Promise<boolean> {
       // The booth's central write gate: mounted views run their full logic
       // read-only, so any submit/heal/movement emit they attempt dies HERE,
@@ -242,9 +268,11 @@ export const useClientEvents = () => {
       // retries safe.
       for (let attempt = 1; attempt <= ACK_ATTEMPTS; attempt++) {
         try {
+          const sentAt = clientSendTime()
           const receipt: ClientEventAck = await socket.value
             .timeout(ACK_TIMEOUT_MS)
             .emitWithAck(eventData.event, eventData, eventTarget)
+          noteAckClock(sentAt, receipt.serverNow)
           if (receipt.ok) return true
 
           // The socket lost its player binding (a reconnect raced the

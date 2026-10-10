@@ -1,13 +1,19 @@
 import { io } from 'socket.io-client'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
-import { isStaleSnapshot } from '~~/lib/events/client/snapshot-revision'
+import { dropsSnapshot } from '~~/lib/events/client/snapshot-revision'
 import { useGameStore } from '~~/store/game.store'
-import { hasGame, type ServerEventData } from '~~/types/events.types'
+import { clientSendTime, noteAckClock, noteSnapshotClock } from '~~/lib/use-server-now'
+import type { ClientEventAck, ServerEnvelope } from '~~/types/events.types'
 
 export type { ClientSideEventHandler } from '~~/lib/events/client-registry'
 
 const PLAYER_ID_STORAGE_KEY = `GL_PLAYER_ID`
 const PLAYER_SECRET_STORAGE_KEY = `GL_PLAYER_SECRET`
+/** How often the clock offset is re-probed — drift between probes is negligible. */
+const CLOCK_SYNC_MS = 60_000
+const CLOCK_SYNC_TIMEOUT_MS = 5000
+/** Round trips taken on each connect, so the tightest one sets the offset. */
+const CLOCK_SYNC_BURST = 3
 
 export default defineNuxtPlugin(() => {
   const playerId = ref(localStorage.getItem(PLAYER_ID_STORAGE_KEY) || crypto.randomUUID())
@@ -45,9 +51,28 @@ export default defineNuxtPlugin(() => {
 
   gameStore.playerId = playerId.value
 
-  socket.on('connect', () => {
+  const syncClock = async () => {
+    if (!socket.connected) return
+    const sentAt = clientSendTime()
+    try {
+      const receipt: ClientEventAck = await socket
+        .timeout(CLOCK_SYNC_TIMEOUT_MS)
+        .emitWithAck(
+          'time-sync',
+          { event: 'time-sync' },
+          { gameId: gameStore.game?.id ?? '', playerId: playerId.value }
+        )
+      noteAckClock(sentAt, receipt.serverNow)
+    } catch {
+      console.warn('Clock sync timed out')
+    }
+  }
+
+  socket.on('connect', async () => {
     gameStore.disconnected = false
+    for (let probe = 0; probe < CLOCK_SYNC_BURST; probe++) await syncClock()
   })
+  setInterval(syncClock, CLOCK_SYNC_MS)
 
   socket.on('connect_error', err => {
     console.warn(`connect_error due to ${err.message}`)
@@ -69,27 +94,17 @@ export default defineNuxtPlugin(() => {
 
   for (const [eventKey, configuration] of Object.entries(CLIENT_SIDE_EVENT_HANDLERS)) {
     console.log(`Setting up client listener for: ${eventKey}`)
-    socket.on(eventKey, (payload, eventTarget) => {
+    socket.on(eventKey, (payload: ServerEnvelope, eventTarget) => {
       console.info(`Received client event: ${eventKey}`)
+      noteSnapshotClock(payload.serverNow)
 
-      // The ordering gate: a FULL-REPLACE snapshot older than the one on
-      // screen is a deferred task's stale fetch, and applying it would walk
-      // pawns backward or resurface a staged round. The registry's
-      // snapshotScope exempts the two shapes that must never be dropped —
-      // the join full-sync (the recovery moment, and the one emit that can
-      // carry a recreated room whose rev restarted) and seat slices (FIFO
-      // per seat; dropping one can discard a seat's only phase flip).
-      if (
-        configuration.snapshotScope === undefined &&
-        hasGame(payload) &&
-        isStaleSnapshot(gameStore.game, payload.game)
-      ) {
-        console.info(`Dropped stale ${eventKey} (rev ${payload.game.rev})`)
+      if (dropsSnapshot(configuration.snapshotScope, gameStore.game, payload)) {
+        console.info(`Dropped stale ${eventKey}`)
         return
       }
 
       return configuration.handler({
-        eventKey: eventKey as ServerEventData['event'],
+        eventKey: eventKey as ServerEnvelope['event'],
         payload,
         gameStore,
         eventTarget,

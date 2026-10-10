@@ -4,6 +4,7 @@ import {
   type RoundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
 import type { Game } from '~~/types/game.types'
+import { testSeat } from '~~/lib/events/server/test-seat'
 
 // The mix is mocked so a staging can be driven down an exact sequence of
 // kinds; the dealers underneath stay real, so a "miss" is a real thin-table
@@ -30,10 +31,7 @@ const game = (players: number, rounds = 3, difficulty: Game['difficulty'] = 'nor
     difficulty,
     rounds: Array.from({ length: rounds }, () => ({})),
     players: Object.fromEntries(
-      Array.from({ length: players }, (_, index) => [
-        `p${index}`,
-        { phase: 'group-challenge', currentPosition: 0 },
-      ])
+      Array.from({ length: players }, (_, index) => [`p${index}`, testSeat(`p${index}`)])
     ),
   }) as unknown as Game
 

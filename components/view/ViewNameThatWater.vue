@@ -112,15 +112,13 @@ const {
   announce,
   entries,
   submitOnce,
-  registerCleanup,
+  secondsLeft,
+  begin: beginRound,
+  stopCountdown,
   gameStore,
   isDisposed,
 } = useGroupChallenge('name-water-challenge', { solo: false })
 
-// This mode runs its own clock, because the reveal holds after the countdown
-// stops. `begin` below shadows the composable's, which is never destructured —
-// calling it as well would arm a second countdown off the same durationSeconds.
-const secondsLeft = ref(0)
 const resolved = ref(false)
 const resolvedCorrectly = ref(false)
 const attempts = ref(0)
@@ -209,18 +207,14 @@ const shoreLine = computed(() => {
   return `Touching ${names.join(', ')}${overflow > 0 ? ` and ${overflow} more` : ''}`
 })
 
-let countdown: ReturnType<typeof setInterval> | undefined
-registerCleanup(() => {
-  if (countdown) clearInterval(countdown)
-})
-
 /** Earlier and fewer guesses score higher; the reveal beat lands either way. */
 const resolve = (correct: boolean, guess?: SuggestOption) => {
   const active = challenge.value
   if (!active || resolved.value) return
   resolved.value = true
   resolvedCorrectly.value = correct
-  if (countdown) clearInterval(countdown)
+  // The reveal holds on the clock it stopped at.
+  stopCountdown()
 
   const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
   for (const isoCode of active.countries) tints[isoCode] = correct ? 'optimal' : 'inefficient'
@@ -245,15 +239,8 @@ const resolve = (correct: boolean, guess?: SuggestOption) => {
 }
 
 const begin = () => {
-  showInterstitial.value = false
-  started.value = true
-  secondsLeft.value = challenge.value?.durationSeconds ?? 0
+  beginRound({ onTimeout: () => resolve(false) })
   nextTick(() => input.value?.focus({ auto: true }))
-
-  countdown = setInterval(() => {
-    secondsLeft.value--
-    if (secondsLeft.value <= 0) resolve(false)
-  }, 1000)
 }
 
 const pick = (option: SuggestOption) => {

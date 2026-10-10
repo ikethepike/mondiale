@@ -96,6 +96,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('traversal-challenge', { solo: false })
 
 const guesses = ref<ISOCountryCode[]>([])
@@ -235,12 +236,12 @@ const submitGuess = (country: Country) => {
 
   // Resolve the moment the guessed countries bridge the endpoints
   if (isRouteComplete(active.start, active.target, guesses.value, within.value)) {
-    gameStore.map.status = 'correct'
+    previewVerdict('correct')
     return submitRound()
   }
 
   if (guesses.value.length >= active.maximumClicks) {
-    gameStore.map.status = 'incorrect'
+    previewVerdict('incorrect')
     announce({ hint: 'Out of guesses!', tone: 'alert' })
     // Submit at once — the server's flip (the kind's reveal hold in
     // ROUND_BEATS) gives the verdict its beat before the scorecard.

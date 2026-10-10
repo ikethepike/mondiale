@@ -47,7 +47,6 @@ export const createBot = (taken: readonly Pick<Player, 'name' | 'color'>[]): Pla
   ),
   name: nextBotName(taken.flatMap(seat => seat.name ?? [])),
   ready: true,
-  phase: 'waiting-for-game',
   bot: true,
 })
 

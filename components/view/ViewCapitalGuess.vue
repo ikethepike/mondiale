@@ -101,6 +101,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('capital-guess-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -120,7 +121,7 @@ const stakes = computed(() =>
 
 const submitRound = (score: number) => {
   if (submitted.value) return
-  gameStore.map.status = score > 0 ? 'correct' : undefined
+  previewVerdict(score > 0 ? 'correct' : undefined)
   submitOnce(score > 0 && challenge.value ? [challenge.value.country] : [], score)
 }
 

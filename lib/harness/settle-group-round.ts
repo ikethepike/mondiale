@@ -3,7 +3,8 @@ import {
   gradeGroupAnswer,
   type GroupSubmission,
 } from '~~/lib/events/server/grade-group-answer'
-import { revealHoldMsFor } from '~~/lib/round-beats'
+import { GROUP_SCORES_CAP_MS, revealBudgetMsFor, SERVER_CONTROLLED_CAPS } from '~~/lib/round-beats'
+import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -14,13 +15,13 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * scorecard needed its own hand-built scenario. This mirrors
  * `submit-group-challenge-answers.handler.ts` deliberately and minimally:
  * grade the table through the REAL scorer, bank answers and points onto the
- * round, hold for the kind's reveal beat, then flip the seats to
- * 'group-scores' so the harness's dispatcher lands on the scorecard.
+ * round, hold the player on their verdict for the kind's reveal beat, then
+ * move every seat to its scorecard through the same transition table the
+ * server validates against.
  *
  * It is a stand-in, not a second engine: nothing here decides scoring, which
- * comes entirely from `gradeGroupAnswer`. It deliberately does NOT stamp moves
- * (`startWalk`): the harness runs no board, and the scorecard reads only the
- * round.
+ * comes entirely from `gradeGroupAnswer`. It deliberately deals no moves: the
+ * harness runs no board, and the scorecard reads only the round.
  */
 
 /** How many of the answer set a rival finds, so the scorecard is not a wall of
@@ -52,7 +53,7 @@ export const settleGroupRound = async ({
   /** What the player actually answered, straight off the wire event. */
   submission: GroupSubmission
   meId: string
-  /** Runs after the phases flip, so the harness can re-render. */
+  /** Runs after the seats reach their scorecards, so the harness can re-render. */
   onSettled?: () => void
 }): Promise<void> => {
   // Once only: a redelivered submit must not re-score a settled round.
@@ -96,17 +97,53 @@ export const settleGroupRound = async ({
     round.playerTurns[playerId] = { points: graded.scoring }
   }
 
-  // Kinds with a reveal beat keep the seat in the challenge while the view
-  // plays its display-only reveal; the flip is what ends the beat.
-  const flip = () => {
-    for (const playerId of seats) {
-      const player = game.players[playerId]
-      if (player) player.phase = 'group-scores'
-    }
-    onSettled?.()
+  const roundIndex = game.rounds.indexOf(round)
+  const toScores = (playerId: string, cause: string) => {
+    const player = game.players[playerId]
+    if (!player || !ROUND_SETTLE_STEPS.includes(player.cursor.step)) return
+    applySeatMove(
+      player,
+      {
+        step: 'scores',
+        subject: seatSubject.scores(roundIndex),
+        deadline: SERVER_CONTROLLED_CAPS ? Date.now() + GROUP_SCORES_CAP_MS : undefined,
+        walk: player.cursor.walk + 1,
+        leg: 0,
+      },
+      cause
+    )
+  }
+  for (const playerId of seats) {
+    if (playerId !== meId) toScores(playerId, 'table:settle')
   }
 
-  const hold = revealHoldMsFor(round.groupChallenge)
-  if (hold) setTimeout(flip, hold)
-  else flip()
+  // Kinds with a reveal beat hold the player on their verdict while the view
+  // plays its reveal; the hold's end is what moves them on.
+  const hold = revealBudgetMsFor(round.groupChallenge)
+  const me = game.players[meId]
+  if (!hold || me?.cursor.step !== 'round') {
+    toScores(meId, 'event:submit-group-challenge-answers')
+    onSettled?.()
+    return
+  }
+  const subject = me.cursor.subject
+  applySeatMove(
+    me,
+    {
+      step: 'round-verdict',
+      subject,
+      holdUntil: Date.now() + hold,
+      verdict: {
+        kind: 'round',
+        subject,
+        scored: mine.scoring.scored,
+        maximum: mine.scoring.maximum,
+      },
+    },
+    'event:submit-group-challenge-answers'
+  )
+  setTimeout(() => {
+    toScores(meId, 'timer:verdict-hold')
+    onSettled?.()
+  }, hold)
 }

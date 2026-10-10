@@ -146,6 +146,7 @@ const {
   registerCleanup,
   gameStore,
   currentRound,
+  previewVerdict,
 } = useGroupChallenge('terra-incognita-challenge', { solo: false })
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -205,7 +206,7 @@ const {
   start: begin,
   onGuess,
 } = useCollectSetRound(
-  { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
+  { submitted, started, announce, submitOnce, begin: beginRound, gameStore, previewVerdict },
   {
     answers: gone,
     // True of every country still drawn, whether or not it is in the deck —

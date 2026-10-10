@@ -30,7 +30,7 @@
         </span>
       </template>
       <Transition name="caption" mode="out-in">
-        <div :key="currentChallengeCount" class="prompt" :class="{ dimmed: status }">
+        <div :key="questionSubject" class="prompt" :class="{ dimmed: status }">
           <span class="counter map-caption"
             >{{ currentChallengeCount }}/{{ totalChallengeCount }}</span
           >
@@ -107,7 +107,7 @@
          in over the attempt before the next question sweeps both away -->
     <FinalBoundary
       v-if="currentFinalChallenge?._type === 'boundary-challenge' && !showInterstitial"
-      :key="`boundary-${currentChallengeCount}`"
+      :key="questionSubject"
       :challenge="currentFinalChallenge"
       :revealed="!!status"
       @finished="onBoundaryFinished"
@@ -117,7 +117,7 @@
     <Transition name="sunset-fade">
       <FinalSunsetBlitz
         v-if="currentFinalChallenge?._type === 'sunset-blitz-challenge'"
-        :key="currentChallengeCount"
+        :key="questionSubject"
         :challenge="currentFinalChallenge"
         :paused="showInterstitial"
         @finished="onSunsetFinished"
@@ -128,7 +128,7 @@
     <Transition name="sunset-fade">
       <FinalCityNocturne
         v-if="currentFinalChallenge?._type === 'city-nocturne-challenge'"
-        :key="`nocturne-${currentChallengeCount}`"
+        :key="questionSubject"
         :challenge="currentFinalChallenge"
         :paused="showInterstitial"
         @finished="onNocturneFinished"
@@ -138,14 +138,14 @@
          and unfolds each headline's story, then swaps with the mode -->
     <FinalYearbook
       v-if="currentFinalChallenge?._type === 'yearbook-challenge'"
-      :key="`yearbook-${currentChallengeCount}`"
+      :key="questionSubject"
       :challenge="currentFinalChallenge"
       :paused="showInterstitial"
       @finished="onYearbookFinished"
     />
     <FinalChangeStage
       v-if="currentFinalChallenge?._type === 'change-challenge'"
-      :key="`change-${currentChallengeCount}`"
+      :key="questionSubject"
       :challenge="currentFinalChallenge"
       :paused="showInterstitial"
       @finished="onChangeFinished"
@@ -163,9 +163,9 @@
       :entries="endonymLabelEntries"
     />
     <ChallengeResult
-      v-if="status || knockedOut"
-      :key="currentChallengeCount"
-      :status="status || 'incorrect'"
+      v-if="status"
+      :key="questionSubject"
+      :status="status"
       :correct-message="
         currentFinalChallenge?._type === 'city-nocturne-challenge' ? 'Success!' : undefined
       "
@@ -241,7 +241,6 @@ import {
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
 import { formatEventYear } from '~~/lib/timeline'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
-import { beatDisplayedLives, beatPickedCountry, beatStatus, latestBeatFor } from '~~/lib/final-beat'
 import { playableCountries } from '~~/lib/game-rules'
 import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
 import { listJoin } from '~~/lib/strings'
@@ -256,93 +255,61 @@ import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
 
 const {
-  currentFinalChallenge: liveFinalChallenge,
+  currentFinalChallenge,
   clearBoard,
   update,
   gameStore,
   currentMove,
   game,
+  seatCursor,
+  seatEcho,
+  previewVerdict,
 } = useClientEvents()
 
-const localStatus = toRef(gameStore.map, 'status')
-
 /**
- * The verdict, from whichever authority this seat has.
- *
- * The answering player grades locally the instant they tap — `map.status`,
- * written by each mode's own submit path — and that stays the fast path. A
- * WATCHER never submits (the guard in `submitFinalAnswer`), so `map.status`
- * is never written for them and every downstream reveal used to stay dark.
- * The server's beat fills exactly that gap, so this one line lights the
- * verdict card, the dimmed prompt and every chip reveal for the booth
- * without touching a single submit handler.
+ * The question on screen. The shell lives for the whole gauntlet run (it is
+ * keyed on the walk), and every question is its own subject: the server only
+ * deals the next one when the previous verdict's hold ends, so the head of
+ * the gauntlet IS the question this subject names — through its verdict too.
  */
-const status = computed(() => localStatus.value ?? beatStatus(liveBeat.value))
+const questionSubject = computed(() => seatCursor.value?.subject ?? '')
 
-// Held through the result beat: a knockout clears `moves` server-side while
-// the phase stays 'final-challenge' for the 5s verdict pause — computing
-// straight off currentMove would blank the whole shell for that beat. The
-// latch keeps the last live gauntlet on screen until the phase flip unmounts
-// us.
-const lastGauntlet = shallowRef<FinalChallenge>()
-watch(
-  currentMove,
-  move => {
-    if (move?.challenge?._type === 'final-challenge') lastGauntlet.value = move.challenge
-  },
-  { immediate: true }
-)
+/** The server's verdict on the question on screen. */
+const verdict = computed(() => {
+  const cursor = seatCursor.value
+  return cursor?.verdict?.kind === 'final' && cursor.verdict.subject === cursor.subject
+    ? cursor.verdict
+    : undefined
+})
+
+/** The verdict: the server's, or this seat's own preview until it lands. */
+const status = computed<'correct' | 'incorrect' | undefined>(() => {
+  if (verdict.value) return verdict.value.correct ? 'correct' : 'incorrect'
+  return gameStore.previewStatus
+})
+
 const gauntlet = computed(() =>
   currentMove.value?.challenge?._type === 'final-challenge'
     ? currentMove.value.challenge
-    : lastGauntlet.value
+    : undefined
 )
 
-/**
- * The server's verdict for the seat this view renders as.
- *
- * `seatId`, never `playerId`: the store getter already resolves it to the
- * booth's followed racer, so the same component serves a player and a watcher
- * with no branching — the whole read-only fidelity rides that line.
- *
- * Scoped to the live turn so a beat can never outlive its question and
- * relight the reveal on the next one (pinned in lib/final-beat.test.ts).
- */
-const liveBeat = computed(() =>
-  latestBeatFor(gameStore.board.finalBeats, gameStore.seatId, {
-    turn: gauntlet.value?.turn ?? 0,
-    challenge: currentFinalChallenge.value,
-  })
-)
+const knockedOut = computed(() => !!verdict.value?.knockedOut)
 
-// The knockout as the WIRE tells it: the miss that ends the gauntlet (a
-// wrong answer, or the question cap burning an unanswered one) empties
-// `moves` while the phase holds for the verdict pause. A cap-resolved miss
-// never set a local status, so without this the shell stood bare — progress
-// pill, no prompt, no verdict — for the whole beat.
-const knockedOut = computed(() => !!lastGauntlet.value && !currentMove.value)
-
-// The QUESTION survives the knockout hold too: the same wipe strips the live
-// item, and every prompt piece (question caption, logos, the reveal cards)
-// keys off it — without the latch the verdict played over a bare counter and
-// an empty caption. The live value always wins; the latch only ever fills
-// the knockout beat.
-const lastFinalItem = shallowRef<NonNullable<typeof liveFinalChallenge.value>>()
+// The verdict paints the map wash for everyone watching this seat, the booth
+// included, whether or not this tab answered.
 watch(
-  liveFinalChallenge,
-  item => {
-    if (item) lastFinalItem.value = item
+  verdict,
+  landed => {
+    if (landed) previewVerdict(landed.correct ? 'correct' : 'incorrect')
   },
   { immediate: true }
 )
-const currentFinalChallenge = computed(
-  () => liveFinalChallenge.value ?? (knockedOut.value ? lastFinalItem.value : undefined)
-)
 
 // ONE exit for every answer: the redeliver loop keeps it alive past socket
-// blips AND the server's `resolving` hold (a retryable reject), and the turn
-// echo — captured at answer time — pins it to the question it was given on,
-// so a delivery that loses the race with the question cap dies cleanly.
+// blips, and the subject echo — captured at answer time — pins it to the
+// question it was given on, so a delivery that loses the race with the
+// question cap lands on a spent subject.
 const finalRedeliver = createRedeliver('final answer')
 onBeforeUnmount(() => finalRedeliver.dispose())
 const submitFinalAnswer = (submittedAnswer: FinalChallengeAnswer) => {
@@ -351,9 +318,9 @@ const submitFinalAnswer = (submittedAnswer: FinalChallengeAnswer) => {
   // doomed redelivery against the write gate (same guard as submitOnce and
   // the gate shell).
   if (gameStore.watching) return
-  const turn = gauntlet.value?.turn ?? 0
+  const echo = seatEcho(questionSubject.value)
   return finalRedeliver.deliver(() =>
-    update({ event: 'submit-final-challenge-answer', submittedAnswer, turn })
+    update({ event: 'submit-final-challenge-answer', submittedAnswer, ...echo })
   )
 }
 
@@ -382,24 +349,9 @@ const currentChallengeCount = computed(() => {
   )
 })
 
-/**
- * What the hearts show. The wire holds pre-answer lives through the whole
- * reveal beat, so a miss spends its heart optimistically at the same moment
- * the verdict card narrates it — by the time the payload confirms (with the
- * next question), the display already agrees and nothing moves.
- *
- * A watcher has no local verdict to be optimistic FROM, which is why their
- * hearts used to drop a full reveal-hold late. The beat carries the
- * post-verdict count, so both roles now break the heart on the same frame.
- */
-const displayedLives = computed(() =>
-  beatDisplayedLives({
-    beat: liveBeat.value,
-    status: status.value,
-    livesRemaining: livesRemaining.value,
-    knockedOut: knockedOut.value,
-  })
-)
+/** What the hearts show: the server spends the life in the verdict's own
+ *  save, so the player and every watcher break it on the same frame. */
+const displayedLives = computed(() => (knockedOut.value ? 0 : livesRemaining.value))
 
 /**
  * The teachable moment. Wrong answers get the fact they missed AND the fact
@@ -593,12 +545,11 @@ const lesson = computed(() => {
   }
 })
 
-// Optimistic: the payload still holds pre-answer lives during the reveal
 const livesLine = computed(() => {
-  if (status.value !== 'incorrect' && !knockedOut.value) return undefined
-  return livesRemaining.value > 0 && !knockedOut.value
-    ? `A life is spent — ${livesRemaining.value - 1} left.`
-    : 'Out of lives — back to the board race.'
+  if (!verdict.value || verdict.value.correct) return undefined
+  return knockedOut.value
+    ? 'Out of lives — back to the board race.'
+    : `A life is spent — ${livesRemaining.value} left.`
 })
 
 /** Where the current gate's question comes from, by challenge kind. The
@@ -615,14 +566,16 @@ const promptSources = computed<Attribution[] | undefined>(() =>
  */
 /**
  * The country this seat picked. A player's own tap sets `lastGuess`; a
- * watcher never taps, so the beat's answer stands in — which is what lets the
- * single-subject reveal cards (min/max, leadership, membership, region…)
+ * watcher never taps, so the verdict's answer stands in — which is what lets
+ * the single-subject reveal cards (min/max, leadership, membership, region…)
  * render in the booth exactly as they do for the runner. Multi-pick modes
  * carry no single subject and fall through to the lesson line, as designed.
  */
-const pickedCountry = computed(
-  () => lastGuess.value ?? (beatPickedCountry(liveBeat.value) as ISOCountryCode | undefined)
-)
+const pickedCountry = computed(() => {
+  if (lastGuess.value) return lastGuess.value
+  const answer = verdict.value?.submittedAnswer
+  return answer && 'isoCode' in answer ? answer.isoCode : undefined
+})
 
 const finalReveal = computed(() => {
   const challenge = currentFinalChallenge.value
@@ -715,17 +668,11 @@ const triggerMembershipChallenge = () => {
   gameStore.map.solo = challenge?._type === 'boundary-challenge'
 }
 
-watch(currentFinalChallenge, (challenge, previous) => {
-  // Every server snapshot rebuilds the game object, so the SAME unchanged
-  // challenge routinely arrives with a fresh identity (another player's event,
-  // a spectator joining). Resetting on identity alone blanked map.focus
-  // mid-round — the camera watcher then world-fit the globe in the middle of
-  // a running sunset blitz. Only an actual challenge change may reset.
-  if (JSON.stringify(challenge) === JSON.stringify(previous)) return
-
+// A new question is a new subject — the one moment question-local state resets.
+watch(questionSubject, () => {
   gameStore.map.reveal = undefined
   gameStore.map.revealStat = undefined
-  gameStore.map.status = undefined
+  previewVerdict(undefined)
   // World of Change drops the subject's pin at its reveal
   gameStore.map.pinAnswer = undefined
   gameStore.map.highlighted.clear()
@@ -763,7 +710,11 @@ watch(displayedLives, (now, before) => {
   if (now < before) lostHeart.value = before
 })
 
-const showInterstitial = ref(true)
+// The run's opening card plays once, on its first question; a remount later in
+// the run (a refresh) and the booth go straight to the question.
+const showInterstitial = ref(
+  !gameStore.watching && seatCursor.value?.step === 'final' && (gauntlet.value?.turn ?? 0) === 0
+)
 
 const clearScalesPicks = () => {
   for (const isoCode of scalesPicks.value) gameStore.map.highlighted.delete(isoCode)
@@ -783,7 +734,7 @@ const clearScalesPicks = () => {
  */
 const submitMembership = (isoCode: ISOCountryCode) => {
   const challenge = currentFinalChallenge.value
-  if (gameStore.map.status) return
+  if (status.value) return
   if (!membershipCountries.value.includes(isoCode)) return
 
   const answered =
@@ -814,7 +765,7 @@ const submitMembership = (isoCode: ISOCountryCode) => {
   // stands apart, so the dossier adds only a capital and a population — and
   // on a phone it sits over the card that did the teaching.
   gameStore.map.highlighted.add(answered.reveal)
-  gameStore.map.status = checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(answered.submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(answered.submittedAnswer)
 }
@@ -841,7 +792,7 @@ const submitScales = () => {
   }
   // No map.reveal here — the beam card carries the verdict; the country
   // dossier would just shout the target's population over it
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -852,7 +803,7 @@ const onNocturneFinished = (namedCities: string[]) => {
 
   nocturneResult.value = namedCities
   const submittedAnswer = { _type: 'city-nocturne-challenge', namedCities } as const
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -862,7 +813,7 @@ const onBoundaryFinished = (drawn: [number, number][]) => {
   if (challenge?._type !== 'boundary-challenge') return
 
   const submittedAnswer = { _type: 'boundary-challenge', drawn } as const
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -875,7 +826,7 @@ const onChangeFinished = ({ isoCode, decade }: { isoCode: ISOCountryCode; decade
 
   const submittedAnswer = { _type: 'change-challenge', isoCode, decade } as const
   revealChange(challenge, isoCode)
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
   submitFinalAnswer(submittedAnswer)
 }
 
@@ -893,7 +844,7 @@ const onYearbookFinished = (year: number) => {
 
   yearbookDialed.value = year
   const submittedAnswer = { _type: 'yearbook-challenge', year } as const
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -904,7 +855,7 @@ const onSunsetFinished = (named: ISOCountryCode[]) => {
 
   sunsetResult.value = named
   const submittedAnswer = { _type: 'sunset-blitz-challenge', namedCountries: named } as const
-  gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+  previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
   submitFinalAnswer(submittedAnswer)
 }
@@ -935,7 +886,7 @@ const onMapClick = (event: Event) => {
         const submittedAnswer = { _type: 'region-challenge', region: selectedRegion } as const
 
         gameStore.map.reveal = currentFinalChallenge.value.country
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
         submitFinalAnswer(submittedAnswer)
       }
@@ -959,7 +910,7 @@ const onMapClick = (event: Event) => {
       // to; the highlight does its tint.
       gameStore.map.focus = [revealIso]
       gameStore.map.highlighted.add(revealIso)
-      gameStore.map.status = correct ? 'correct' : 'incorrect'
+      previewVerdict(correct ? 'correct' : 'incorrect')
 
       submitFinalAnswer(submittedAnswer)
       break
@@ -976,7 +927,7 @@ const onMapClick = (event: Event) => {
         }
 
         const submittedAnswer = { _type: 'language-challenge', isoCode } as const
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
         submitFinalAnswer(submittedAnswer)
       }
@@ -1006,7 +957,7 @@ const onMapClick = (event: Event) => {
           _type: 'born-challenge',
           isoCodes: [...bornPicks.value],
         }
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         submitFinalAnswer(submittedAnswer)
       }
       break
@@ -1044,7 +995,7 @@ const onMapClick = (event: Event) => {
           _type: 'diaspora-challenge',
           isoCodes: [...diasporaPicks.value],
         }
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         submitFinalAnswer(submittedAnswer)
       }
       break
@@ -1078,7 +1029,7 @@ const onMapClick = (event: Event) => {
           _type: 'endonym-challenge',
           isoCodes: [...endonymPicks.value],
         }
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         submitFinalAnswer(submittedAnswer)
       }
       break
@@ -1092,7 +1043,7 @@ const onMapClick = (event: Event) => {
         }
         const submittedAnswer = { _type: 'change-challenge', isoCode } as const
         revealChange(currentFinalChallenge.value, isoCode)
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
 
         submitFinalAnswer(submittedAnswer)
       }
@@ -1109,7 +1060,7 @@ const onMapClick = (event: Event) => {
         }
 
         const submittedAnswer = { _type: 'made-challenge', isoCode } as const
-        gameStore.map.status = checkAnswer(submittedAnswer) ? 'correct' : 'incorrect'
+        previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect')
         madeRevealTimeout = setTimeout(() => (madeRevealReady.value = true), 1200)
 
         submitFinalAnswer(submittedAnswer)

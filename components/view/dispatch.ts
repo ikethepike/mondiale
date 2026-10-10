@@ -42,13 +42,14 @@ import type { ViewKind } from '~~/lib/phase-transitions'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { RoundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { Round } from '~~/types/game.types'
-import type { PlayerPhase } from '~~/types/player.type'
+import type { SeatCursor } from '~~/types/seat.types'
+import { seatViewFamily, seatViewKey } from '~~/lib/seat-view'
 
 export interface ResolvedView {
   component: Component
   kind: ViewKind
   /** Transition identity: views sharing a key never re-transition between
-   *  each other — 'moving' and 'movement-summary' both map to the board. */
+   *  each other — every board step shares one, every subject has its own. */
   key: string
 }
 
@@ -99,37 +100,31 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
 }
 
 /**
- * Phase → view for a seat inside a running game with a live round. The one
- * resolution the room page renders and the booth will mount read-only — a
- * new round kind lands in both surfaces by construction. Pre-game, refusal,
+ * Cursor → view for a seat inside a running game. The one resolution the
+ * room page renders and the booth mounts read-only — a new round kind lands
+ * in both surfaces by construction. The component is keyed on
+ * `seatViewKey`, so every subject is a fresh view. Pre-game, refusal,
  * spectating and tutorial routing stay with the page: they hang off store
  * state a pure resolver shouldn't reach into.
  */
-export const resolveChallengeView = (
-  phase: PlayerPhase,
-  round?: Round
-): ResolvedView | undefined => {
-  switch (phase) {
-    case 'group-challenge': {
+export const resolveSeatView = (cursor: SeatCursor, round?: Round): ResolvedView | undefined => {
+  const key = seatViewKey(cursor)
+  switch (seatViewFamily(cursor)) {
+    case 'round': {
       if (!round) return undefined
       const roundKind = roundChallengeKind(round.groupChallenge)
-      return {
-        component: GROUP_VIEWS[roundKind] ?? ViewGroupChallenge,
-        kind: 'challenge',
-        key: `group-${roundKind}`,
-      }
+      return { component: GROUP_VIEWS[roundKind] ?? ViewGroupChallenge, kind: 'challenge', key }
     }
-    case 'group-scores':
-      return { component: ViewGroupScores, kind: 'score', key: 'group-scores' }
-    case 'moving':
-    case 'movement-summary':
-      return { component: BoardOverlay, kind: 'board', key: 'board' }
-    case 'individual-challenge':
-      return { component: ViewIndividualChallenge, kind: 'challenge', key: 'individual-challenge' }
-    case 'final-challenge':
-      return { component: ViewFinalChallenge, kind: 'challenge', key: 'final-challenge' }
+    case 'scores':
+      return { component: ViewGroupScores, kind: 'score', key }
+    case 'board':
+      return { component: BoardOverlay, kind: 'board', key }
+    case 'gate':
+      return { component: ViewIndividualChallenge, kind: 'challenge', key }
+    case 'final':
+      return { component: ViewFinalChallenge, kind: 'challenge', key }
     case 'victory':
-      return { component: ViewVictory, kind: 'victory', key: 'victory' }
+      return { component: ViewVictory, kind: 'victory', key }
     default:
       return undefined
   }

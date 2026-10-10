@@ -111,13 +111,16 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { trendAttribution } from '~~/lib/attribution'
-import { ROUND_BEATS } from '~~/lib/round-beats'
 import { countryName, getCountry } from '~~/lib/country'
-import { prefersReducedMotion, REVEAL_BEAT_MS } from '~~/lib/motion'
+import { prefersReducedMotion } from '~~/lib/motion'
+import { REVEAL_BEAT_MS } from '~~/lib/round-beats'
 import { TREND_METRICS } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
 import { centreScrollTop, useIsPhone } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { useAckOnce } from '~~/lib/use-ack-once'
+import { useDeadlineClock } from '~~/lib/use-deadline-clock'
+import { useClientEvents } from '~~/lib/events/client-side'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const {
@@ -130,15 +133,16 @@ const {
   submitOnce,
   stopCountdown,
   registerCleanup,
+  subject,
+  seatEcho,
   gameStore,
 } = useGroupChallenge('trend-race-challenge')
+const { seatCursor } = useClientEvents()
 
 const picked = ref<ISOCountryCode>()
 const revealed = ref(false)
 const sorted = ref(false)
-let browseTimer: ReturnType<typeof setInterval> | undefined
 let sortTimer: ReturnType<typeof setTimeout> | undefined
-registerCleanup(() => browseTimer && clearInterval(browseTimer))
 // Continue can land before the beat fires — an orphaned timer would write to
 // a torn-down component.
 registerCleanup(() => sortTimer && clearTimeout(sortTimer))
@@ -218,21 +222,15 @@ const scrollToOutcome = () => {
   })
 }
 
-// The reveal is browsable: the player leaves via Continue (the submit IS the
-// exit and flips inline), and the cap — the kind's browseCapMs in
-// ROUND_BEATS, which the server's settle backstop budgets with — only exists
-// so an AFK player can't hold up the room's next-round barrier.
-const BROWSE_CAP_S = (ROUND_BEATS['trend-race'].browseCapMs ?? 60000) / 1000
-const browseSecondsLeft = ref(BROWSE_CAP_S)
-
-/** Leave the reveal — the pick (or the empty timeout answer) is submitted. */
-const finish = () => {
-  if (browseTimer) clearInterval(browseTimer)
-  browseTimer = undefined
-  if (sortTimer) clearTimeout(sortTimer)
-  sortTimer = undefined
-  submitOnce(picked.value ? [picked.value] : [])
-}
+// The reveal is browsable: the pick is submitted at once and the server holds
+// the seat on its verdict for the kind's browse cap; Continue ends the hold
+// early. The countdown is that hold, read off the server's stamp.
+const { secondsOnClock: browseSecondsLeft } = useDeadlineClock(() =>
+  seatCursor.value?.subject === subject && seatCursor.value.step === 'round-verdict'
+    ? seatCursor.value.holdUntil
+    : undefined
+)
+const { send: finish } = useAckOnce(() => ({ event: 'round-reveal-done', ...seatEcho(subject) }))
 
 /** One resolution path for both the tap and the timeout. */
 const resolve = (isoCode?: ISOCountryCode) => {
@@ -243,16 +241,13 @@ const resolve = (isoCode?: ISOCountryCode) => {
   picked.value = isoCode
   // Every card is on screen — naming the pick would hand out the answer.
   if (isoCode) announce({ kind: 'presence' })
+  submitOnce(isoCode ? [isoCode] : [])
   // A beat, then the cards rank themselves and the stage finds the pick.
   sortTimer = setTimeout(() => {
     sortTimer = undefined
     sorted.value = true
     scrollToOutcome()
   }, REVEAL_BEAT_MS)
-  browseTimer = setInterval(() => {
-    browseSecondsLeft.value--
-    if (browseSecondsLeft.value <= 0) finish()
-  }, 1000)
 }
 
 const pick = (isoCode: ISOCountryCode) => {

@@ -34,7 +34,7 @@ import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
-import { FAR_FLUNG_SECONDS } from './timing'
+import { FAR_FLUNG_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
@@ -53,7 +53,7 @@ onMounted(() => {
   footerReady.value = true
 })
 
-const { secondsLeft, remainingFraction, stop } = useGateClock(FAR_FLUNG_SECONDS, {
+const { secondsLeft, remainingFraction, stop } = useGateClock({
   // Clear the pull-out BEFORE the miss lands: the clock and the camera tween
   // end in the same beat, and a still-armed zoomOut holds the camera lock the
   // result fly-to needs (the release order the zoomOut watcher documents).
@@ -88,7 +88,7 @@ const resolve = (isoCode: ISOCountryCode) => {
   if (status.value) return
   stop()
   gameStore.map.zoomOut = undefined
-  submitAnswer(isoCode, { remainingFraction: remainingFraction.value })
+  submitAnswer(isoCode)
 }
 const onGuess = (country: Country) => resolve(country.isoCode)
 const onPick = (isoCode: ISOCountryCode) => resolve(isoCode)

@@ -1,9 +1,9 @@
 <template>
-  <div class="layout" :class="[phaseClass, { 'stage-active': gameStore.board.stageActive }]">
+  <div class="layout" :class="[stepClass, { 'stage-active': gameStore.board.stageActive }]">
     <header v-if="diagnostics" id="diagnostic-bar">
       <div>
         <h3>Player</h3>
-        <p>{{ player?.phase }}</p>
+        <p>{{ player?.cursor.step }} · {{ player?.cursor.subject }}</p>
       </div>
       <div class="round">
         <h3>Round</h3>
@@ -19,7 +19,7 @@
       class="game-map"
       :highlighted="highlighted"
       :highlight-country="reveal"
-      :status="status"
+      :status="gameStore.previewStatus"
       :solo="gameStore.map.solo"
       :landmass="gameStore.map.landmass"
       :labels="gameStore.map.labels"
@@ -56,7 +56,7 @@
     />
 
     <!-- The persistent 3D stage: mounted once the game starts and alive until
-         the room is left. Board phases cross-fade it in over the parked map
+         the room is left. Board steps cross-fade it in over the parked map
          (`stage-active`) instead of cold-starting a WebGL context per walk.
          DOM order is the stacking: over the map, under the view layer. -->
     <BoardStage v-if="game?.started" />
@@ -82,7 +82,7 @@
 
     <div v-if="revealCountry && !gameStore.map.atlasMode" ref="revealCard" class="reveal-wrapper">
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
-      <article class="pane tr decorator-bottom" :class="[gameStore.map.status]">
+      <article class="pane tr decorator-bottom" :class="[gameStore.previewStatus]">
         <div class="pane-content">
           <!-- Phones take the 3:1 wide tile: it buys ~76px of card height,
                which is the difference between the card clearing the revealed
@@ -124,7 +124,8 @@ import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { useIsPhone, useKeyboardInset } from '~~/lib/use-viewport'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { BOARD_PHASES } from '~~/types/player.type'
+import { BOARD_STEPS } from '~~/lib/seat-transitions'
+import { seatViewFamily } from '~~/lib/seat-view'
 const { player, game, currentRound, gameStore, currentFinalChallenge } = useClientEvents()
 
 // Keeps --keyboard-inset live for every bottom-anchored console (night
@@ -137,13 +138,12 @@ useKeyboardInset()
 useHead({ meta: [{ name: 'theme-color', content: useChromeTint() }] })
 
 const reveal = toRef(gameStore.map, 'reveal')
-const status = toRef(gameStore.map, 'status')
 
 // Spectators (latecomers with no player record, or finishers watching the
-// race) get their own phase class: `phase-undefined` would hide the map.
-const phaseClass = computed(() => {
-  if (gameStore.isSpectator || gameStore.spectating) return 'phase-spectating'
-  return `phase-${player.value?.phase}`
+// race) get their own class: `step-none` would hide the map.
+const stepClass = computed(() => {
+  if (gameStore.isSpectator || gameStore.spectating) return 'step-spectating'
+  return player.value ? `step-${seatViewFamily(player.value.cursor)}` : 'step-none'
 })
 
 const revealCountry = computed(() => (reveal.value ? getCountry(reveal.value) : undefined))
@@ -200,7 +200,7 @@ const highlighted = computed<ISOCountryCode[]>(() => {
   if (!game.value) return output
   if (!player.value) return output
   if (game.value.difficulty !== 'easy') return output
-  if (player.value.phase !== 'group-challenge') return output
+  if (player.value.cursor.step !== 'round') return output
 
   const countries = gameStore.currentGroupChallengeForPlayer
   if (!countries) return output
@@ -212,12 +212,11 @@ const allPlayers = computed(() => Object.values(game.value?.players ?? {}))
 // The contour backdrop covers the pre-join wait and the lobby; the world map
 // takes over once the game starts. One instance spans both so the draw-in
 // sweep plays exactly once. Spectators have no player record — without the
-// explicit check, `!player?.phase` would mount the lobby contours over their
+// explicit check, a missing seat would mount the lobby contours over their
 // live map for the whole match.
-const CONTOUR_PHASES = ['naming', 'waiting-for-game']
 const showContours = computed(() => {
   if (gameStore.isSpectator || gameStore.spectating) return false
-  return !player.value?.phase || CONTOUR_PHASES.includes(player.value.phase)
+  return !player.value || player.value.cursor.step === 'lobby'
 })
 
 // Show the "what's everyone doing" panel only while parked on the board
@@ -226,7 +225,8 @@ const showContours = computed(() => {
 // their own player lists, so the panel stays out of their way. Only with
 // company (2+ players).
 const showStatusPanel = computed(
-  () => allPlayers.value.length > 1 && !!player.value && BOARD_PHASES.includes(player.value.phase)
+  () =>
+    allPlayers.value.length > 1 && !!player.value && BOARD_STEPS.includes(player.value.cursor.step)
 )
 
 const router = useRouter()
@@ -306,28 +306,27 @@ onMounted(() => {
 // Pre-join + lobby own the contour backdrop (see showContours). The world map
 // still mounts and resolves its geometry so it's ready the instant the game
 // starts — but it stays hidden until then so the two backdrops don't fight.
-.phase-undefined .game-map,
-.phase-naming .game-map,
-.phase-waiting-for-game .game-map {
+.step-none .game-map,
+.step-lobby .game-map {
   opacity: 0;
 }
 
-.phase-group-scores .game-map,
-.phase-group-challenge .game-map,
-.phase-individual-challenge .game-map,
-.phase-final-challenge .game-map,
-.phase-victory .game-map,
-.phase-spectating .game-map {
+.step-scores .game-map,
+.step-round .game-map,
+.step-gate .game-map,
+.step-final .game-map,
+.step-victory .game-map,
+.step-spectating .game-map {
   transform: scale(1);
 }
 
-.phase-group-scores .game-map {
+.step-scores .game-map {
   overflow: hidden;
 }
 
 // The stage rides hidden under every non-board view (visibility keeps the
 // canvas from resize churn — never display:none) and cross-fades in over the
-// map for board phases. The map fully yields: without the opacity drop it
+// map for board steps. The map fully yields: without the opacity drop it
 // lingers, visibly shrinking, under the stage's own fade.
 .board-stage {
   opacity: 0;

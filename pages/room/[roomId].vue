@@ -9,7 +9,7 @@
       @leave="onLeave"
       @enter-cancelled="onEnterCancelled"
     >
-      <component :is="presentedView.component" v-if="presentedView" :key="presentedView.key" />
+      <component :is="activeView.component" v-if="activeView" :key="activeView.key" />
       <LoadingRoom v-else key="loading" />
     </Transition>
 
@@ -26,7 +26,7 @@
 
     <!-- The returning player's catch-up beat: the autopilot just released
          their seat. Same overlay home as every announcement; mounted here so
-         it plays whatever view the reclaimed phase resolves to. -->
+         it plays whatever view the reclaimed seat resolves to. -->
     <Interstitial
       v-else-if="gameStore.reclaim"
       kicker="Welcome back"
@@ -41,7 +41,7 @@
 <script lang="ts" setup>
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LoadingRoom from '~/components/feedback/LoadingRoom.vue'
-import { resolveChallengeView, type ResolvedView } from '~/components/view/dispatch'
+import { resolveSeatView, type ResolvedView } from '~/components/view/dispatch'
 import ViewGameAlreadyStarted from '~/components/view/ViewGameAlreadyStarted.vue'
 import ViewPlayerConfiguration from '~/components/view/ViewPlayerConfiguration.vue'
 import ViewSpectate from '~/components/view/ViewSpectate.vue'
@@ -55,20 +55,17 @@ import { usePhaseTransition } from '~~/lib/phase-transitions'
 import {
   observeLongTasks,
   playtestScope,
-  questionKeyOf,
   readScreen,
   traceTransitionHooks,
   type TransitionTrace,
 } from '~~/lib/playtest-probe'
-import {
-  AUTOPILOT_RECLAIM_HOLD_MS,
-  BOARD_TO_CHALLENGE_HOLD_MS,
-  CHALLENGE_SWAP_VERIFY_MS,
-} from '~~/lib/round-beats'
+import { AUTOPILOT_RECLAIM_HOLD_MS } from '~~/lib/round-beats'
+import { useSeatRenderAck } from '~~/lib/use-seat-render-ack'
+import { readServerNow, useServerNow } from '~~/lib/use-server-now'
 
 // ROUTING READS `self`, NEVER `player`: `player` resolves to the booth's
 // followed seat, so a latecomer watcher HAS a `player` while following — a
-// routing branch on it would drop them into the raw phase switch instead of
+// routing branch on it would drop them into the raw cursor switch instead of
 // the booth. `self` is the raw own record.
 const { game, self, currentRound, gameStore } = useClientEvents()
 
@@ -78,7 +75,7 @@ const { game, self, currentRound, gameStore } = useClientEvents()
 if (import.meta.client) void loadFlags()
 
 // Mounted here, above the view switch: inside a view it would remount on every
-// phase change, lose the previous-phase map, and announce the same moment again.
+// view change, lose the previous map, and announce the same moment again.
 const { announcement, dismiss } = useGameAnnouncements()
 
 const reclaimStakes = computed(() => {
@@ -125,7 +122,8 @@ const activeView = computed<ActiveView | undefined>(() => {
     return { component: ViewPlayerConfiguration, kind: 'lobby', key: 'lobby' }
   }
 
-  if (self.value.phase === 'tutorial') {
+  const { cursor } = self.value
+  if (cursor.step === 'tutorial') {
     return { component: ViewTutorial, kind: 'card', key: 'tutorial' }
   }
 
@@ -133,7 +131,7 @@ const activeView = computed<ActiveView | undefined>(() => {
   // purely client-side, they already receive every broadcast. Checked BEFORE
   // the round guard: the booth must survive the between-rounds window where
   // `currentRound` is briefly empty (it used to blank the finisher's screen).
-  if (self.value.phase === 'victory' && gameStore.spectating) {
+  if (cursor.step === 'victory' && gameStore.spectating) {
     return { component: ViewSpectate, kind: 'score', key: 'spectate' }
   }
 
@@ -143,74 +141,28 @@ const activeView = computed<ActiveView | undefined>(() => {
   // Same reason the booth is checked above — neither ending depends on a
   // live round. The mapping stays in the dispatch table; this only exempts
   // victory from the round guard.
-  if (self.value.phase === 'victory') {
-    return resolveChallengeView(self.value.phase)
-  }
+  if (cursor.step === 'victory') return resolveSeatView(cursor)
 
   if (!currentRound.value?.round) return undefined
 
-  return resolveChallengeView(self.value.phase, currentRound.value.round)
+  return resolveSeatView(cursor, currentRound.value.round)
 })
 
-/**
- * What's actually rendered. Usually tracks activeView instantly, but a
- * board → challenge flip is held briefly so the final hop, the knock and the
- * alert ripple finish on the board before the challenge takes over.
- */
-const presentedView = shallowRef<ActiveView | undefined>(activeView.value)
-let holdTimer: ReturnType<typeof setTimeout> | undefined
+/** The view key whose enter transition has finished — what is really on screen. */
+const mountedKey = ref<string>()
 
-watch(activeView, next => {
-  // What's ON SCREEN is the stable truth; `previous` flips to the challenge
-  // on the first snapshot of a burst even though the board is still shown.
-  const fromBoard = presentedView.value?.key === 'board'
-  const toChallenge = next?.key === 'individual-challenge' || next?.key === 'final-challenge'
-  // No legitimate phase sequence swaps one challenge DIRECTLY into another —
-  // a board or scores beat always intervenes. Such a resolution is a
-  // transient (a snapshot burst caught mid-flight between phase and round
-  // updates), and applying it flashes the NEXT round's prompt before the
-  // walk. It parks on a short verify timer: reading the LIVE activeView when
-  // it fires self-heals a transient and still lands a real change.
-  const challengeToChallenge =
-    presentedView.value?.kind === 'challenge' &&
-    next?.kind === 'challenge' &&
-    presentedView.value.key !== next.key
+const { rendered } = useSeatRenderAck(
+  () => self.value,
+  () => mountedKey.value
+)
 
-  // The timer reads the LIVE activeView when it fires, so both parked shapes
-  // let a hold in flight own the swap — mid-hold snapshots change nothing.
-  // Only a different destination re-decides; clearing on every snapshot let
-  // routine broadcast bursts starve the hold (the arrival beat cut short,
-  // or a verify window restarted per emission and never elapsing).
-  const park = (ms: number) => {
-    holdTimer = setTimeout(() => {
-      holdTimer = undefined
-      presentedView.value = activeView.value
-    }, ms)
-  }
-
-  if (holdTimer) {
-    if ((fromBoard && toChallenge) || challengeToChallenge) return
-    clearTimeout(holdTimer)
-    holdTimer = undefined
-  }
-
-  if (fromBoard && toChallenge) return park(BOARD_TO_CHALLENGE_HOLD_MS)
-  if (challengeToChallenge) return park(CHALLENGE_SWAP_VERIFY_MS)
-
-  presentedView.value = next
-})
-
-onUnmounted(() => {
-  if (holdTimer) clearTimeout(holdTimer)
-})
-
-// The persistent stage lives in the layout; the presented view only aims it.
+// The persistent stage lives in the layout; the active view only aims it.
 // Keyed on the KEY (snapshots rebuild the view object every evaluation), so
 // the booth — whose own key never changes while it drives the stage — is
-// never stomped by broadcast bursts. The board→challenge hold above is what
-// keeps the stage up through the arrival beat: the key flips only after it.
+// never stomped by broadcast bursts. The server's landing beat (`arrive`) is
+// a board step, so the stage stays up through the arrival flourish.
 watch(
-  () => presentedView.value?.key,
+  () => activeView.value?.key,
   key => {
     // The booth writes the stage itself (ViewSpectate); every other key
     // means the board is on exactly when the presented view is the board.
@@ -227,42 +179,57 @@ watch(
 const viewLogArmed = import.meta.client && 'viewlog' in useRoute().query
 const transitionTrace: TransitionTrace = {}
 if (viewLogArmed) {
+  const { now, offset } = useServerNow()
   watch(
-    presentedView,
+    activeView,
     view => {
       const log = (playtestScope().__viewLog ??= [])
       const key = view?.key ?? 'none'
       // Snapshots rebuild the resolved-view object every evaluation; only a
       // KEY change is a real swap (the Transition is keyed the same way).
       if (log[log.length - 1]?.key === key) return
-      log.push({ key, at: Date.now() })
+      log.push({ key, at: readServerNow() })
     },
     { immediate: true }
   )
-  playtestScope().__gameProbe = () => ({
-    at: Date.now(),
-    playerId: self.value?.id,
-    rev: game.value?.rev,
-    phase: self.value?.phase,
-    active: activeView.value?.key,
-    presented: presentedView.value?.key,
-    rounds: game.value?.rounds.length,
-    position: self.value?.currentPosition,
-    moveChallenge: self.value?.moves[0]?.challenge?._type,
-    questionKey: questionKeyOf(self.value?.moves[0], self.value?.walkSeq),
-    localVerdict: !!gameStore.map.status,
-    resolving: self.value?.resolving,
-    connected: gameStore.socket?.connected,
-    transition: { ...transitionTrace },
-    screen: readScreen(),
-  })
+  playtestScope().__gameProbe = () => {
+    const cursor = self.value?.cursor
+    return {
+      at: now.value,
+      clockOffset: offset.value,
+      playerId: self.value?.id,
+      rev: game.value?.rev,
+      cursor: cursor && { seq: cursor.seq, step: cursor.step, subject: cursor.subject },
+      view: mountedKey.value,
+      rendered: rendered.value && {
+        seq: rendered.value.seq,
+        step: rendered.value.step,
+        subject: rendered.value.subject,
+      },
+      rounds: game.value?.rounds.length,
+      position: self.value?.currentPosition,
+      connected: gameStore.socket?.connected,
+      transition: { ...transitionTrace },
+      screen: readScreen(),
+    }
+  }
   observeLongTasks()
 }
 
-const phaseHooks = usePhaseTransition(() => presentedView.value?.kind ?? 'card')
-const { onBeforeEnter, onEnter, onLeave, onEnterCancelled } = viewLogArmed
-  ? traceTransitionHooks(phaseHooks, transitionTrace)
-  : phaseHooks
+const phaseHooks = usePhaseTransition(() => activeView.value?.kind ?? 'card')
+const tracedHooks = viewLogArmed ? traceTransitionHooks(phaseHooks, transitionTrace) : phaseHooks
+const { onBeforeEnter, onLeave, onEnterCancelled } = tracedHooks
+const onEnter = (el: Element, done: () => void) =>
+  tracedHooks.onEnter(el, () => {
+    done()
+    mountedKey.value = activeView.value?.key
+  })
+watch(
+  () => activeView.value?.key,
+  () => {
+    mountedKey.value = undefined
+  }
+)
 
 const joinRoom = useJoinRoom()
 

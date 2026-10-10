@@ -7,7 +7,7 @@ import { rearmClassicRound } from './classic-rounds'
 import { rearmHeritageHunt } from './heritage-beats'
 import { rearmManhunt } from './manhunt-beats'
 import { rearmGovernment } from './government-beats'
-import { rearmSeatExits } from './seat-exits'
+import { rearmSeats } from './seat-cursor'
 import { rearmTimeline } from './timeline-turns'
 import { rearmCleanSweep } from './sweep-beats'
 import { rearmTerraIncognita } from './terra-beats'
@@ -26,8 +26,7 @@ const lastRearmedAt = new Map<string, number>()
  * clock at 0:00, a reveal hold that never lifts, a briefing cap that never
  * fires. Redis outlives all of it.
  *
- * A rejoin is the recovery moment (the same principle as the wedge heals in
- * join.event.ts): whoever refreshes first re-arms whatever follow-up the live
+ * A rejoin is the recovery moment: whoever refreshes first re-arms whatever follow-up the live
  * round is waiting on. Every engine's tasks re-read fresh state and die on
  * their staleness tokens (turn/beat counters, briefing/finished flags, the
  * settle latch), so calling this while the real timers are still alive arms
@@ -60,9 +59,8 @@ export const rearmLiveRound = (
   rearmCleanSweep(ctx, game, options)
   rearmTerraIncognita(ctx, game, options)
   rearmClassicRound(ctx, game)
-  // Not a round engine: the parked-seat exits (scorecards, tutorials, gates,
-  // the gauntlet) and the resolving-latch recovery.
-  rearmSeatExits(ctx, game)
+  // Not a round engine: every seat's cursor timer and the table's reveal.
+  rearmSeats(ctx, game)
   // Bot seats ride an in-memory pump like every other timer — a rejoin is
   // its recovery moment too (idempotent while a live pump runs). Ditto the
   // AFK takeovers a deploy's drain deliberately never armed.

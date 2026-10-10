@@ -5,7 +5,7 @@
       tone="info"
       kind="no-mans-land"
       title="A rock, and everyone who wants it"
-      :stakes="`Tap every country that claims it. Some of these nobody claims at all — and there, naming nobody is the right answer. ${DURATION_SECONDS} seconds.`"
+      :stakes="`Tap every country that claims it. Some of these nobody claims at all — and there, naming nobody is the right answer. ${challenge?.durationSeconds ?? ''} seconds.`"
       @done="start"
     />
     <template v-else>
@@ -99,9 +99,8 @@ const {
   submitOnce,
   registerCleanup,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('no-mans-land-challenge', { solo: false })
-
-const DURATION_SECONDS = 30
 
 const territory = ref<RecognitionTerritory>()
 const picks = ref<ISOCountryCode[]>([])
@@ -224,7 +223,7 @@ const submitRound = () => {
   gameStore.map.focus = active.claimants
   // Green wash on a perfect answer, nothing otherwise — as ViewCapitalGuess and
   // ViewFlagPalette do. `'incorrect'` floods every country orange.
-  gameStore.map.status = perfect ? 'correct' : undefined
+  previewVerdict(perfect ? 'correct' : undefined)
 
   submitOnce(picks.value)
 }

@@ -50,6 +50,10 @@ export interface Game {
    *  pause hasn't elapsed yet. Guards the staging + reveal so each fires once
    *  even though the movement handler re-enters itself across the pause. */
   pendingRoundStart?: boolean
+  /** Epoch ms the next round is dealt and revealed, stamped in the save that
+   *  settles the last seat. Nothing is dealt before then, so no saved round
+   *  is ever withheld from the wire. */
+  nextRoundAt?: number
 }
 
 export interface Spectator {
@@ -91,10 +95,15 @@ export interface Round {
     [playerId: string]: PlayerTurn
   }
   /** Epoch ms the classic play window closes — stamped at the reveal by
-   *  `startClassicClock`, read by the client's shared countdown and the
-   *  server's settle backstop alike. The turn engines keep their own
-   *  `state.deadline` and leave this undefined; absent = not yet revealed. */
+   *  `startClassicClock` and read by the server's settle backstop. The turn
+   *  engines keep their own `state.deadline` and leave this undefined;
+   *  absent = not yet revealed. */
   deadline?: number
+  /** Epoch ms the classic round's play starts — the reveal plus the
+   *  interstitial's grace, stamped beside `deadline`. Every countdown and
+   *  sub-beat a view shows is this plus its own schedule, read against the
+   *  server clock. */
+  playStartsAt?: number
 }
 
 export interface GroupChallengeAnswer {

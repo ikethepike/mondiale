@@ -60,7 +60,7 @@ import { TREND_METRICS } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { ringSlot } from './ring'
-import { TRAJECTORY_MATCH_SECONDS } from './timing'
+import { TRAJECTORY_MATCH_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -72,10 +72,9 @@ const VALUES_REVEAL_ELAPSED = 2 / 3
 const { status, isHard, submitAnswer, giveUp } = useGateChallenge()
 
 const struck = ref(new Set<ISOCountryCode>())
-const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock(
-  TRAJECTORY_MATCH_SECONDS,
-  { onExpire: () => giveUp() }
-)
+const { secondsLeft, remainingFraction, elapsedFraction, stop } = useGateClock({
+  onExpire: () => giveUp(),
+})
 const strikeHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 const metricLabel = computed(() =>
   props.challenge.trajectory ? TREND_METRICS[props.challenge.trajectory.metric].label : ''
@@ -106,7 +105,6 @@ const onPick = (isoCode: ISOCountryCode) => {
   if (status.value || struck.value.has(isoCode)) return
   stop()
   submitAnswer(isoCode, {
-    remainingFraction: remainingFraction.value,
     hintsUsed: struck.value.size ? 1 : 0,
   })
 }

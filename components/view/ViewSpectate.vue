@@ -52,15 +52,16 @@ import SpectateBar from '~/components/spectate/SpectateBar.vue'
 import SpectateHud from '~/components/board3d/SpectateHud.vue'
 import SpectateMount from '~/components/spectate/SpectateMount.vue'
 import SpectateStage from '~/components/spectate/SpectateStage.vue'
-import { resolveChallengeView } from '~/components/view/dispatch'
+import { resolveSeatView } from '~/components/view/dispatch'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { getPlayerStatus } from '~~/lib/player-status'
+import { useSeatRenderAck } from '~~/lib/use-seat-render-ack'
 import {
   MOUNTABLE_KINDS,
   nextDirectorShot,
   roundSettled,
   roundStory,
-  stageForPhase,
+  stageForStep,
   type DirectorShot,
   type SpectateStory,
 } from '~~/lib/spectate'
@@ -69,7 +70,7 @@ import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type
 
 const { game, gameStore, clearBoard } = useClientEvents()
 
-const racers = computed(() => gameStore.standings.filter(player => player.phase !== 'kicked'))
+const racers = computed(() => gameStore.standings.filter(player => player.cursor.step !== 'kicked'))
 const raceOver = computed(
   () => racers.value.length > 0 && racers.value.every(player => !!player.completedAtRound)
 )
@@ -96,13 +97,13 @@ watch(
 const followed = computed(() => {
   const pinnedId = gameStore.spectateFollowId
   const pinned = pinnedId ? game.value?.players[pinnedId] : undefined
-  if (pinned && pinned.phase !== 'kicked') return pinned
+  if (pinned && pinned.cursor.step !== 'kicked') return pinned
   return shot.value ? game.value?.players[shot.value.targetId] : undefined
 })
 
 const stage = computed(() => {
   if (raceOver.value) return 'scores'
-  return followed.value ? stageForPhase(followed.value.phase) : 'idle'
+  return followed.value ? stageForStep(followed.value.cursor.step) : 'idle'
 })
 
 // The booth is spectateSeatId's ONE writer: mounted views resolve their seat
@@ -118,7 +119,7 @@ watch(
 // While the booth is up it drives the persistent stage: the followed seat
 // plays the "own pawn" role (spectateTargetId is TopoScene's camera line),
 // and the stage lights only for the director's board shots. The room page's
-// presented-view watch skips the 'spectate' key, so these writes hold.
+// active-view watch skips the 'spectate' key, so these writes hold.
 watch(
   [() => followed.value?.id, stage],
   ([id, liveStage]) => {
@@ -149,7 +150,7 @@ const mountedView = computed(() => {
   ) {
     return undefined
   }
-  return resolveChallengeView(followed.value.phase, round)
+  return resolveSeatView(followed.value.cursor, round)
 })
 
 // Spoiler policy over mounted views: pre-reveal they show only what the racer
@@ -176,11 +177,18 @@ const veiled = computed(() => {
     !!(challenge.state as { finished?: boolean }).finished
   const seatRevealed =
     !!followed.value &&
-    (!!round.groupAnswers[followed.value.id] || stage.value === 'scores' || modeFinished)
-  return seatRevealed && !roundSettled(racers.value, round.groupAnswers)
+    (followed.value.cursor.step === 'round-verdict' || stage.value === 'scores' || modeFinished)
+  return seatRevealed && !roundSettled(racers.value)
 })
 
 const currentRound = toRef(gameStore, 'currentRound')
+
+// The booth acks what IT shows, per viewer: the followed seat's mounted view,
+// or the stage when the director is on the board.
+useSeatRenderAck(
+  () => followed.value,
+  () => (stage.value === 'board' ? 'board' : mountedView.value?.key)
+)
 
 /** The centre card's copy — the fallback stages only (unmountable question
  *  kinds and idle beats); gates, finals and scores always mount real views. */
@@ -192,13 +200,13 @@ const story = computed<SpectateStory>(() => {
     default:
       // The idle stages that used to read as a broken card: the whole table
       // reading the rules at game open, or a finisher the director lingers on.
-      if (target?.phase === 'tutorial') {
+      if (target?.cursor.step === 'tutorial') {
         return {
           kicker: 'Warming up',
           prompt: 'The racers are reading the rules — the first round is moments away.',
         }
       }
-      if (target?.phase === 'victory') {
+      if (target?.cursor.step === 'victory') {
         return {
           kicker: `${target.name || 'A racer'} has finished`,
           prompt: 'Across the line — waiting on the rest of the field.',

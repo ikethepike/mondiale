@@ -21,8 +21,8 @@ export const scheduleGameTask = (
   { redis, gameId }: { redis: Redis; gameId: string },
   delayMs: number,
   task: () => void | Promise<void>
-) => {
-  setTimeout(() => {
+): ReturnType<typeof setTimeout> => {
+  return setTimeout(() => {
     enqueueGameTask(gameId, async () => {
       if (!(await machineOwnsGame(redis, gameId))) return
       await task()

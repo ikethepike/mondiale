@@ -213,7 +213,7 @@ import {
 } from '~~/types/challenges/traversal-challenge.type'
 import { routeHops, routeThrough, shortestRoute, traversalWithin } from '~~/lib/traversal'
 
-const { currentRound, gameStore } = useClientEvents()
+const { currentRound, gameStore, seatCursor, seatEcho } = useClientEvents()
 
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
@@ -653,11 +653,13 @@ const isPersonalScorecard = computed(() => {
   return gameStore.seatId === selectedScorecard.value.player.id
 })
 
-// No optimistic phase flip: a snapshot already in flight still carries
-// 'group-scores', so a local 'moving' flashed board→scores→board. The server's
+// No optimistic flip: a snapshot already in flight still carries the
+// scorecard, so a local walk flashed board→scores→board. The server's
 // announce snapshot swaps the view; a fully lost request falls to its cap.
+const scoresSubject = seatCursor.value?.subject ?? ''
 const { send: closeScores, sent: closingScores } = useAckOnce(() => ({
   event: 'enter-movement-phase',
+  ...seatEcho(scoresSubject),
 }))
 </script>
 <style lang="scss" scoped>

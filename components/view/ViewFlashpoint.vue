@@ -157,6 +157,7 @@ const {
   submitOnce,
   gameStore,
   isDisposed,
+  previewVerdict,
 } = useGroupChallenge('flashpoint-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -298,7 +299,7 @@ const submitRound = (score: number) => {
   gameStore.map.focus = [active.country]
   // Green wash on success, nothing on failure — flooding the world orange
   // reads as "the whole world is wrong" rather than "you missed".
-  gameStore.map.status = correct ? 'correct' : undefined
+  previewVerdict(correct ? 'correct' : undefined)
 
   submitOnce(correct ? [active.country] : [], score)
 }

@@ -73,6 +73,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('neighbour-blitz-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -88,7 +89,7 @@ const {
   start: begin,
   onGuess,
 } = useCollectSetRound(
-  { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
+  { submitted, started, announce, submitOnce, begin: beginRound, gameStore, previewVerdict },
   {
     answers: () => challenge.value?.neighbours ?? [],
     wrongHint: country =>

@@ -1,29 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
-import { gateRevealDoneHandler } from './gate-reveal-done.handler'
 import { handleTimelineRevealDone, rearmTimeline } from './timeline-turns'
-import { TIMELINE_BROWSE_CAP_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { GATE_BROWSE_CAP_MS, TIMELINE_BROWSE_CAP_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { seatSubject } from '~~/lib/seat-transitions'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
+import type { Player } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
 import type { ChainContext } from './chain-turns'
+import { dropArmedTimersForTests } from './seat-cursor'
+import { createTestTable, type TestTable } from './test-table'
+import { testCursor, testSeat } from './test-seat'
 
 /**
  * The player-paced reveal exits: timeline's table settle (all-acked or the
- * browse cap) and the browsable gate's early resume. Both die on existing
- * latches — `groupAnswers` marks the settle, `resolving` marks the beat.
+ * browse cap), and the browsable verdicts' early Continue — a gate's and a
+ * round's — which only ever end the browsable verdict on the echoed subject.
  */
 
-const seat = (id: string, phase: PlayerPhase, extra: Partial<Player> = {}): Player =>
-  ({
-    id,
-    name: id,
-    phase,
-    moves: [],
-    currentPosition: 0,
-    walkSeq: 1,
-    ...extra,
-  }) as unknown as Player
+const seat = (id: string, step: SeatStep, extra: Partial<Player> = {}): Player =>
+  testSeat(id, step, extra)
 
 let gameSeq = 0
 
@@ -95,10 +90,7 @@ afterEach(() => vi.useRealTimers())
 
 describe('handleTimelineRevealDone', () => {
   it('collects acks idempotently and ignores non-participants', async () => {
-    const game = buildGame(
-      [seat('a', 'group-challenge'), seat('b', 'group-challenge')],
-      timelineChallenge([])
-    )
+    const game = buildGame([seat('a', 'round'), seat('b', 'round')], timelineChallenge([]))
     const ctx = context(game)
 
     await handleTimelineRevealDone(ctx, game, 'a')
@@ -112,10 +104,7 @@ describe('handleTimelineRevealDone', () => {
   })
 
   it('settles the table the moment every seat has read on', async () => {
-    const game = buildGame(
-      [seat('a', 'group-challenge'), seat('b', 'group-challenge')],
-      timelineChallenge([])
-    )
+    const game = buildGame([seat('a', 'round'), seat('b', 'round')], timelineChallenge([]))
     const ctx = context(game)
 
     await handleTimelineRevealDone(ctx, game, 'a')
@@ -126,7 +115,7 @@ describe('handleTimelineRevealDone', () => {
   })
 
   it('tolerates a round dealt before revealDone existed', async () => {
-    const game = buildGame([seat('a', 'group-challenge')], timelineChallenge(undefined, ['a']))
+    const game = buildGame([seat('a', 'round')], timelineChallenge(undefined, ['a']))
     const ctx = context(game)
 
     await handleTimelineRevealDone(ctx, game, 'a')
@@ -137,10 +126,7 @@ describe('handleTimelineRevealDone', () => {
   })
 
   it('drops an ack that lands after the settle marked the round', async () => {
-    const game = buildGame(
-      [seat('a', 'group-challenge'), seat('b', 'group-challenge')],
-      timelineChallenge(['a', 'b'])
-    )
+    const game = buildGame([seat('a', 'round'), seat('b', 'round')], timelineChallenge(['a', 'b']))
     game.rounds[0].groupAnswers = { a: {} } as never
     const ctx = context(game)
 
@@ -153,10 +139,7 @@ describe('handleTimelineRevealDone', () => {
   })
 
   it('settles a partially-read table when the browse cap fires', async () => {
-    const game = buildGame(
-      [seat('a', 'group-challenge'), seat('b', 'group-challenge')],
-      timelineChallenge(['a'])
-    )
+    const game = buildGame([seat('a', 'round'), seat('b', 'round')], timelineChallenge(['a']))
     const ctx = context(game)
 
     // The rearm path arms the cap against the persisted deadline.
@@ -168,126 +151,103 @@ describe('handleTimelineRevealDone', () => {
   })
 })
 
+const browsableVerdict = (browsable: boolean) =>
+  testSeat('a', 'gate-verdict', {
+    currentPosition: 4,
+    moves: [
+      {
+        endTile: { position: 5, type: 'flag' },
+        challenge: {
+          _type: 'individual-challenge',
+          id: 'flag',
+          country: 'FI',
+          variant: 'chronicle',
+        },
+      } as Player['moves'][number],
+      { endTile: { position: 9, type: 'normal' } },
+    ],
+    cursor: testCursor('gate-verdict', {
+      subject: seatSubject.gate(1, 5),
+      holdUntil: Date.now() + GATE_BROWSE_CAP_MS,
+      verdict: {
+        kind: 'gate',
+        subject: seatSubject.gate(1, 5),
+        correct: true,
+        timedOut: false,
+        steps: 2,
+        browsable,
+      },
+    }),
+  })
+
+const tableOf = async (players: Player[], challenge: unknown = { _type: 'round' }) => {
+  const table = await createTestTable(buildGame(players, challenge))
+  tables.push(table)
+  return table
+}
+let tables: TestTable[] = []
+afterEach(() => {
+  dropArmedTimersForTests()
+  for (const table of tables) table.dispose()
+  tables = []
+})
+
 describe('gateRevealDoneHandler', () => {
-  const invoke = (ctx: ChainContext, gameId: string, playerId: string) =>
-    gateRevealDoneHandler({
-      io: (ctx as never as { io: unknown }).io,
-      redis: (ctx as never as { redis: unknown }).redis,
-      socket: {},
-      eventKey: 'gate-reveal-done',
-      eventTarget: { gameId, playerId },
-      eventData: { event: 'gate-reveal-done' },
-    } as never)
+  const done = async (table: TestTable, subject = seatSubject.gate(1, 5)) =>
+    table.send('a', { event: 'gate-reveal-done', subject, seq: 2 })
 
-  it('refuses a send outside a result beat (no resolving latch)', async () => {
-    const player = seat('a', 'individual-challenge', { resolving: false })
-    const game = buildGame([player], undefined)
-    const ctx = context(game)
-
-    await invoke(ctx, game.id, 'a')
-    await vi.runAllTicks()
-
-    expect(store.get(game.id)!.players.a.phase).toBe('individual-challenge')
-    expect(store.get(game.id)!.players.a.resolving).toBe(false)
+  it('ends a browsable verdict early and walks on', async () => {
+    const table = await tableOf([browsableVerdict(true), testSeat('b', 'round')])
+    await done(table)
+    const fresh = (await table.read()).players.a!
+    expect(fresh.cursor).toMatchObject({ step: 'walk', cause: 'event:gate-reveal-done' })
+    expect(fresh.currentPosition).toBe(6)
   })
 
-  it('resumes the walk early while the latch and beat stamp are up', async () => {
-    const player = seat('a', 'individual-challenge', {
-      resolving: true,
-      resultBeatUntil: Date.now() + 40000,
-    })
-    const game = buildGame([player], undefined)
-    const ctx = context(game)
+  it('refuses a verdict that is not browsable', async () => {
+    const table = await tableOf([browsableVerdict(false), testSeat('b', 'round')])
+    await done(table)
+    expect((await table.read()).players.a!.cursor.step).toBe('gate-verdict')
+  })
 
-    await invoke(ctx, game.id, 'a')
-    await vi.advanceTimersByTimeAsync(100)
-    await vi.runAllTicks()
+  it('refuses a Continue echoing another subject', async () => {
+    const table = await tableOf([browsableVerdict(true), testSeat('b', 'round')])
+    await done(table, seatSubject.gate(1, 8))
+    expect((await table.read()).players.a!.cursor.step).toBe('gate-verdict')
+  })
 
-    // The movement continuation cleared the beat latch — the reveal is over.
-    expect(store.get(game.id)!.players.a.resolving).toBe(false)
+  it('refuses every step but a gate verdict — the gauntlet and a live question included', async () => {
+    for (const step of ['gate', 'final-verdict', 'final', 'walk'] as const) {
+      const table = await tableOf([testSeat('a', step), testSeat('b', 'round')])
+      const before = (await table.read()).players.a!.cursor
+      await done(table, before.subject)
+      expect((await table.read()).players.a!.cursor, step).toEqual(before)
+    }
   })
 })
 
-describe('gateRevealDoneHandler stays out of the final gauntlet', () => {
-  const invoke = (ctx: ChainContext, gameId: string, playerId: string) =>
-    gateRevealDoneHandler({
-      io: (ctx as never as { io: unknown }).io,
-      redis: (ctx as never as { redis: unknown }).redis,
-      socket: {},
-      eventKey: 'gate-reveal-done',
-      eventTarget: { gameId, playerId },
-      eventData: { event: 'gate-reveal-done' },
-    } as never)
-
-  it('refuses a gauntlet seat even with the resolving latch up', async () => {
-    // `resolving` is ALSO the gauntlet's duplicate-submit latch: a
-    // late-flushed Continue must never clear it mid-hold.
-    const player = seat('a', 'final-challenge', { resolving: true })
-    const game = buildGame([player], undefined)
-    const ctx = context(game)
-
-    await invoke(ctx, game.id, 'a')
-    await vi.runAllTicks()
-
-    expect(store.get(game.id)!.players.a.resolving).toBe(true)
-    expect(store.get(game.id)!.players.a.phase).toBe('final-challenge')
-  })
-
-  it('refuses a resolving seat without the beat stamp', async () => {
-    // Only individual submits stamp resultBeatUntil — its absence marks a
-    // beat this exit does not own.
-    const player = seat('a', 'individual-challenge', { resolving: true })
-    const game = buildGame([player], undefined)
-    const ctx = context(game)
-
-    await invoke(ctx, game.id, 'a')
-    await vi.runAllTicks()
-
-    expect(store.get(game.id)!.players.a.resolving).toBe(true)
-  })
-
-  it('clears the stamp and resumes when the beat is genuinely browsable', async () => {
-    const player = seat('a', 'individual-challenge', {
-      resolving: true,
-      resultBeatUntil: Date.now() + 40000,
+describe('roundRevealDoneHandler', () => {
+  const TREND_RACE = { _type: 'trend-race-challenge', maximumPoints: 10 }
+  const onReveal = () =>
+    testSeat('a', 'round-verdict', {
+      cursor: testCursor('round-verdict', {
+        holdUntil: Date.now() + 60_000,
+        verdict: { kind: 'round', subject: seatSubject.round(0), scored: 3, maximum: 10 },
+      }),
     })
-    const game = buildGame([player], undefined)
-    const ctx = context(game)
 
-    await invoke(ctx, game.id, 'a')
-    await vi.advanceTimersByTimeAsync(100)
-    await vi.runAllTicks()
-
-    const fresh = store.get(game.id)!.players.a
-    expect(fresh.resultBeatUntil).toBeUndefined()
-    expect(fresh.resolving).toBe(false)
-  })
-})
-
-describe('the result beat’s stale-tick guard', () => {
-  it('drops a prior beat’s hold tick while a newer beat is live', async () => {
-    // walkSeq bumps only per walk: a browse hold's tick can outlive its beat
-    // and land during the NEXT gate's beat on the same walk. The live stamp
-    // kills the straggler; the beat's own ender fires past its stamp.
-    const player = seat('a', 'individual-challenge', {
-      resolving: true,
-      resultBeatUntil: Date.now() + 40000,
+  it('ends a browsable round reveal early onto the scorecard', async () => {
+    const table = await tableOf([onReveal(), testSeat('b', 'round')], TREND_RACE)
+    await table.send('a', { event: 'round-reveal-done', subject: seatSubject.round(0), seq: 2 })
+    expect((await table.read()).players.a!.cursor).toMatchObject({
+      step: 'scores',
+      cause: 'event:round-reveal-done',
     })
-    const game = buildGame([player], undefined)
-    const ctx = context(game)
+  })
 
-    await enterMovementPhaseHandler({
-      io: (ctx as never as { io: unknown }).io,
-      redis: (ctx as never as { redis: unknown }).redis,
-      socket: {},
-      eventKey: 'enter-movement-phase',
-      eventTarget: { gameId: game.id, playerId: 'a' },
-      eventData: { event: 'enter-movement-phase', continuation: true, walkSeq: 1 },
-    } as never)
-    await vi.runAllTicks()
-
-    const fresh = store.get(game.id)!.players.a
-    expect(fresh.resolving).toBe(true)
-    expect(fresh.phase).toBe('individual-challenge')
+  it('refuses a kind whose reveal is not browsable', async () => {
+    const table = await tableOf([onReveal(), testSeat('b', 'round')])
+    await table.send('a', { event: 'round-reveal-done', subject: seatSubject.round(0), seq: 2 })
+    expect((await table.read()).players.a!.cursor.step).toBe('round-verdict')
   })
 })

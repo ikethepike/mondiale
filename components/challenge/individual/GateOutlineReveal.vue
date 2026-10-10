@@ -14,10 +14,9 @@
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { wait } from '~~/lib/time'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { useOutlineReveal } from '~~/lib/useOutlineReveal'
-import { OUTLINE_REVEAL_SECONDS } from './timing'
+import { OUTLINE_REVEAL_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
@@ -37,10 +36,9 @@ const {
   resetOutlineReveal,
 } = useOutlineReveal()
 
-// Manual start: the clock waits for the preview to be armed (below), not just
-// for the interstitial — the geometry chunk must not burn answer time.
-const { secondsLeft, start, stop } = useGateClock(OUTLINE_REVEAL_SECONDS, {
-  manualStart: true,
+// The server's window already holds the clock behind the interstitial and the
+// preview's lead, so the geometry chunk never burns answer time.
+const { secondsLeft, stop } = useGateClock({
   onTick: left => tickOutlineReveal(left),
   onExpire: () => {
     gameStore.map.solo = false
@@ -48,10 +46,6 @@ const { secondsLeft, start, stop } = useGateClock(OUTLINE_REVEAL_SECONDS, {
   },
 })
 const footerReady = ref(false)
-/** Flipped on unmount so a held clock-start can't arm a dead round. */
-let alive = true
-/** Cap on holding the clock for the geometry chunk — bounded dead air. */
-const CLOCK_HOLD_MS = 3000
 
 // The world map is a giveaway for a shape mystery.
 onMounted(() => {
@@ -59,8 +53,8 @@ onMounted(() => {
   footerReady.value = true
 })
 
-// The preview is armed once per gate; `start` is idempotent but preparing the
-// outline twice is not.
+// The preview is armed once per gate. completeAt 1: in this race the closing
+// line IS the deadline.
 let armed = false
 watch(
   showInterstitial,
@@ -68,20 +62,12 @@ watch(
     if (value || armed) return
     armed = true
     prepareOutline(props.challenge.country)
-
-    // Hold the clock until the preview is armed — the geometry chunk mustn't
-    // burn answer time — but never past the cap: the gate must not hang
-    // without its timeout just because the geometry was slow or missing.
-    // completeAt 1: in this race the closing line IS the deadline.
-    Promise.race([beginOutlineDraw(OUTLINE_REVEAL_SECONDS, 1), wait(CLOCK_HOLD_MS)]).then(() => {
-      if (alive) start()
-    })
+    void beginOutlineDraw(OUTLINE_REVEAL_SECONDS, 1)
   },
   { immediate: true }
 )
 
 onBeforeUnmount(() => {
-  alive = false
   resetOutlineReveal()
 })
 
