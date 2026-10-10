@@ -58,16 +58,6 @@ export const offsetKm = (origin: LatLng, km: number, bearingDeg: number): LatLng
   return { lat: toDegrees(lat2), lng: ((toDegrees(lng2) + 540) % 360) - 180 }
 }
 
-/** Initial bearing from a to b, degrees clockwise from north. */
-export const bearingDegrees = (a: LatLng, b: LatLng): number => {
-  const dLng = toRadians(b.lng - a.lng)
-  const y = Math.sin(dLng) * Math.cos(toRadians(b.lat))
-  const x =
-    Math.cos(toRadians(a.lat)) * Math.sin(toRadians(b.lat)) -
-    Math.sin(toRadians(a.lat)) * Math.cos(toRadians(b.lat)) * Math.cos(dLng)
-  return (toDegrees(Math.atan2(y, x)) + 360) % 360
-}
-
 const COMPASS_POINTS = [
   'north',
   'north-east',
@@ -104,6 +94,11 @@ export const WORLD_BOX: { x: number; y: number; width: number; height: number } 
   width: 2000,
   height: 1001,
 }
+
+export const pointInBox = (
+  { x, y }: { x: number; y: number },
+  [left, top, width, height]: MapBox
+) => x >= left && x <= left + width && y >= top && y <= top + height
 
 /** Do two map-space boxes overlap (touching edges do not count)? */
 export const boxesIntersect = ([ax, ay, aw, ah]: MapBox, [bx, by, bw, bh]: MapBox): boolean =>

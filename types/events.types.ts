@@ -303,6 +303,9 @@ export type ClientEventData =
       kind: GuessKind
       isoCode?: ISOCountryCode
       label?: string
+      /** Hot & Cold: the clicked point the probe is measured from. Like the
+       *  probe's isoCode it feeds the server's radius and is never echoed. */
+      latLng?: LatLng
       /** Pyramid Scheme: how many subjects this player has now seated, and out
        *  of how many. A count carries the race without naming a placement —
        *  with four subjects there are only 24 arrangements, so a named one
