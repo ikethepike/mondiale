@@ -148,7 +148,7 @@
               >
             </div>
           </div>
-          <ButtonFilled @click="closeScores">
+          <ButtonFilled :disabled="closingScores" @click="closeScores">
             <span>Close Scores</span>
           </ButtonFilled>
         </nav>
@@ -203,6 +203,7 @@ import {
   WRONG_COSTS_A_POINT,
 } from '~~/types/challenges/challenge-groups.type'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { EASE, prefersReducedMotion } from '~~/lib/motion'
 import { isChallengeOfType, rankingAccessorId } from '~~/lib/rounds'
 import { useCountUp } from '~~/lib/use-count-up'
@@ -212,7 +213,7 @@ import {
 } from '~~/types/challenges/traversal-challenge.type'
 import { routeHops, routeThrough, shortestRoute, traversalWithin } from '~~/lib/traversal'
 
-const { currentRound, gameStore, update } = useClientEvents()
+const { currentRound, gameStore } = useClientEvents()
 
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
@@ -652,17 +653,12 @@ const isPersonalScorecard = computed(() => {
   return gameStore.seatId === selectedScorecard.value.player.id
 })
 
-const closeScores = () => {
-  // The booth never closes a racer's scorecard.
-  if (gameStore.watching) return
-
-  // No optimistic phase flip: a snapshot already in flight still carries
-  // 'group-scores', so a local 'moving' flashed board→scores→board. The
-  // server's announce snapshot is one round trip away and swaps the view.
-  // Delivery is update()'s job (ack + retry — this is a critical event); a
-  // fully lost request falls to the server's group-scores cap.
-  update({ event: 'enter-movement-phase' })
-}
+// No optimistic phase flip: a snapshot already in flight still carries
+// 'group-scores', so a local 'moving' flashed board→scores→board. The server's
+// announce snapshot swaps the view; a fully lost request falls to its cap.
+const { send: closeScores, sent: closingScores } = useAckOnce(() => ({
+  event: 'enter-movement-phase',
+}))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

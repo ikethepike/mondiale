@@ -136,7 +136,7 @@
             </div>
           </TransitionGroup>
 
-          <ButtonFilled class="start-button">Let's go</ButtonFilled>
+          <ButtonFilled class="start-button" :disabled="closingTutorial">Let's go</ButtonFilled>
         </nav>
       </form>
     </article>
@@ -144,8 +144,9 @@
 </template>
 <script lang="ts" setup>
 import { useClientEvents } from '~~/lib/events/client-side'
+import { useAckOnce } from '~~/lib/use-ack-once'
 
-const { gameStore, update, playerId } = useClientEvents()
+const { gameStore, playerId } = useClientEvents()
 
 // Every player in the game, you first so your pawn (with the pointer) leads
 const allPlayers = computed(() => {
@@ -165,7 +166,9 @@ const phases = [
 
 // The server's phase flip swaps the view — a local one is overwritten by any
 // snapshot already in flight and flashes the card back.
-const closeTutorial = () => update({ event: 'close-tutorial' })
+const { send: closeTutorial, sent: closingTutorial } = useAckOnce(() => ({
+  event: 'close-tutorial',
+}))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
