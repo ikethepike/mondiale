@@ -500,7 +500,11 @@ for (let room = 0; room < ROOMS; room += 1) {
       // same round at the same tile it was already played on.
       const presented = probe.presented
       if (presented !== seat.lastPresented) {
-        const before = previous?.screen
+        // The outgoing view's own screen — never just the previous probe, which
+        // can already show the new view when a tick was skipped (chaos offline).
+        const before = seat.history.findLast(
+          entry => entry !== probe && entry.presented === seat.lastPresented
+        )?.screen
         seat.swap = {
           at: probe.at,
           from: seat.lastPresented,
