@@ -23,7 +23,7 @@ ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 # Bundling the generated country/water data needs more heap than the container
 # default, and the ceiling has moved BOTH ways as the tree changed: 1536, then
-# 3584, then 5120, then back down to 3072 — and now up again to 3584.
+# 3584, then 5120, then back down to 3072, up again to 3584 — and now 4608.
 #
 # The history matters, because the two failures look alike and want opposite
 # fixes:
@@ -46,7 +46,7 @@ ENV GIT_SHA=$GIT_SHA
 # cap passed straight to `nuxt build` (see the note on package.json below):
 #   3072 → OOM at 4611 MB   ← the old value; fails outright
 #   3328 → 4739 MB, exit 0  ← passes, but only 256 MB clear of the cliff
-#   3584 → 4943 MB, exit 0  ← chosen
+#   3584 → 4943 MB, exit 0  ← chosen then (2026-08)
 #   4096 → 4843 MB, exit 0
 #   5120 → 5180 MB, exit 0
 #
