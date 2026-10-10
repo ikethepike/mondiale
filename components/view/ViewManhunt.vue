@@ -242,6 +242,7 @@ import {
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
 import { useAckOnce } from '~~/lib/use-ack-once'
+import { REPLAY_REDRAW_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sample } from '~~/lib/arrays'
 import { playableCountries, unplayableCountries } from '~~/lib/game-rules'
@@ -764,7 +765,7 @@ watch(
       gameStore.map.seaLinks = revealSeaLinks(walk)
       gameStore.map.landRoutes = revealLandRoutes(walk)
       gameStore.map.focus = [...walk]
-    }, 400)
+    }, REPLAY_REDRAW_MS)
   },
   { immediate: true }
 )

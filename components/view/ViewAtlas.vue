@@ -191,6 +191,7 @@ import { playerDisplayName, seatLabel } from '~~/lib/player'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useAckOnce } from '~~/lib/use-ack-once'
+import { REPLAY_REDRAW_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
@@ -541,7 +542,7 @@ watch(
       paintChain(true)
       const outs = state.value?.missedOuts[gameStore.seatId] ?? []
       gameStore.map.tints = Object.fromEntries(outs.map(isoCode => [isoCode, 'optimal']))
-    }, 400)
+    }, REPLAY_REDRAW_MS)
   },
   { immediate: true }
 )

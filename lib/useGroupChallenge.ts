@@ -321,8 +321,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
   /** A view timeout that dies with the view; arming it again replaces the
-   *  pending one. A bare setTimeout outlived its view and painted the old
-   *  round's map over the next screen. */
+   *  pending one. */
   const createViewTimer = () => {
     let handle: ReturnType<typeof setTimeout> | undefined
     registerCleanup(() => clearTimeout(handle))
