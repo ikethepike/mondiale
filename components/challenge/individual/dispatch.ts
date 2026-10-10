@@ -55,7 +55,7 @@ export interface GateRevealContext {
 }
 
 export interface GateView {
-  /** The question. Mounted under `gateSeq` so a fresh gate remounts it and
+  /** The question. Keyed on the gate's subject, so a fresh gate remounts it and
    *  every clock, hint and counter inside resets by construction. */
   component: Component
   /** Rendered inside ChallengeResult. A variant with no bespoke card falls

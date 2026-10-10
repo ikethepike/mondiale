@@ -46,10 +46,6 @@ export interface Game {
   /** Watchers, not competitors — never in `players`, never own a pawn.
    *  Populated only while `allowSpectators` is on. */
   spectators?: { [spectatorId: string]: Spectator }
-  /** Set while a new round has been staged (pushed to `rounds`) but its settle
-   *  pause hasn't elapsed yet. Guards the staging + reveal so each fires once
-   *  even though the movement handler re-enters itself across the pause. */
-  pendingRoundStart?: boolean
   /** Epoch ms the next round is dealt and revealed, stamped in the save that
    *  settles the last seat. Nothing is dealt before then, so no saved round
    *  is ever withheld from the wire. */

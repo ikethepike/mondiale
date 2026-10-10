@@ -223,7 +223,7 @@ const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: Serve
   })
 
   await freshServer.updateGameState(fresh)
-  // Not 'group-challenge-scored': its client handler applies only the
+  // Not 'seat-advanced': its client handler applies only the
   // target player's slice, and this scoring lands for the whole table.
   freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
 }

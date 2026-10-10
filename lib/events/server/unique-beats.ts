@@ -208,7 +208,7 @@ const scheduleUniqueSettle = (ctx: ChainContext) => {
     })
 
     await freshServer.updateGameState(fresh)
-    // Not 'group-challenge-scored': its client handler applies only the
+    // Not 'seat-advanced': its client handler applies only the
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'unique-updated', game: fresh }, ctx.eventTarget)
     // The sheet has served its round; the words live on in `state.results`.

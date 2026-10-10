@@ -24,9 +24,9 @@ export type ClientSideEventHandler = (data: {
  * THE event->applier registry: which client-side applier consumes each server
  * event. One home, exported, so the emit-breadth convergence harness derives
  * its mirror from THIS object (by handler identity) instead of a hand-kept
- * copy — the copy had already drifted on 'final-challenge-checked', silently
- * voiding the harness for the gauntlet family. The socket plugin subscribes
- * from here; adding an event without an applier is a compile error.
+ * copy, which drifts silently and voids the harness for a whole event family.
+ * The socket plugin subscribes from here; adding an event without an applier
+ * is a compile error.
  */
 export const CLIENT_SIDE_EVENT_HANDLERS: {
   [key in ServerEventData['event']]: {
