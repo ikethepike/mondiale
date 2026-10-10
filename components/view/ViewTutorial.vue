@@ -163,13 +163,9 @@ const phases = [
   { key: 'gate', title: 'The Gauntlet', hook: 'Beat the gates to break through' },
 ] as const
 
-const closeTutorial = () => {
-  if (gameStore.game?.players[playerId.value]) {
-    gameStore.game.players[playerId.value].phase = 'group-challenge'
-  }
-
-  update({ event: 'close-tutorial' })
-}
+// The server's phase flip swaps the view — a local one is overwritten by any
+// snapshot already in flight and flashes the card back.
+const closeTutorial = () => update({ event: 'close-tutorial' })
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;

@@ -212,7 +212,7 @@ import {
 } from '~~/types/challenges/traversal-challenge.type'
 import { routeHops, routeThrough, shortestRoute, traversalWithin } from '~~/lib/traversal'
 
-const { currentRound, playerId, gameStore, update } = useClientEvents()
+const { currentRound, gameStore, update } = useClientEvents()
 
 const roundChallenge = computed(() => currentRound.value?.round.groupChallenge)
 const kind = computed(() => roundChallengeKind(roundChallenge.value))
@@ -653,19 +653,12 @@ const isPersonalScorecard = computed(() => {
 })
 
 const closeScores = () => {
-  // The booth guard comes FIRST: `playerId` is the raw OWN id, so a
-  // finisher-watcher reaching this body would flip their own local
-  // 'victory' record to 'moving' and eject themselves from the booth
-  // (today only SpectateMount's `inert` stands between that click and
-  // this body).
+  // The booth never closes a racer's scorecard.
   if (gameStore.watching) return
 
-  // Optimistic flip for the instant view transition; the server's announce
-  // snapshot confirms it and the walk lead covers the board coming up.
-  if (gameStore.game?.players[playerId.value]) {
-    gameStore.game.players[playerId.value].phase = 'moving'
-  }
-
+  // No optimistic phase flip: a snapshot already in flight still carries
+  // 'group-scores', so a local 'moving' flashed board→scores→board. The
+  // server's announce snapshot is one round trip away and swaps the view.
   // Delivery is update()'s job (ack + retry — this is a critical event); a
   // fully lost request falls to the server's group-scores cap.
   update({ event: 'enter-movement-phase' })
