@@ -82,14 +82,21 @@ const { viewBox, toScreenPercent } = useMapViewBox()
 const root = ref<HTMLElement>()
 const { frameStyle } = useMapPanTrack(root)
 
+const anchored = computed(() =>
+  props.probes.flatMap(probe => {
+    if (!probe.origin) return []
+    const label = probe.degrees === undefined ? 'Found!' : formatKm(probe.distanceKm)
+    return [
+      { ...probe, key: probe.isoCode, label, point: projectRobinson(probe.origin, MAP_PROJECTION) },
+    ]
+  })
+)
+
 const placed = computed(() => {
   if (!viewBox.value?.w) return []
-  return props.probes.flatMap(probe => {
-    const point = projectRobinson(probe.origin, MAP_PROJECTION)
-    const screen = toScreenPercent(point.x, point.y)
-    if (!screen) return []
-    const label = probe.degrees === undefined ? 'Found!' : formatKm(probe.distanceKm)
-    return [{ ...probe, ...screen, key: probe.isoCode, label }]
+  return anchored.value.flatMap(compass => {
+    const screen = toScreenPercent(compass.point.x, compass.point.y)
+    return screen ? [{ ...compass, ...screen }] : []
   })
 })
 </script>
@@ -107,6 +114,13 @@ const placed = computed(() => {
   --dial-size: 3.2rem;
   --warmth: #{flame()};
   --warmth-wash: #{flame(0.35)};
+  --land: 0.45s;
+  --land-delay: 0.05s;
+  --needle-delay: 0.12s;
+  --needle-spin: 0.85s;
+  --settled: calc(var(--needle-delay) + var(--needle-spin) * 0.85);
+  --reveal: 0.3s;
+  --burst: 0.9s;
 
   position: absolute;
   width: var(--dial-size);
@@ -158,7 +172,7 @@ const placed = computed(() => {
   position: absolute;
   border-radius: 50%;
   background: radial-gradient(circle, flame(0.5), flame(0) 70%);
-  animation: probe-flare 0.9s var(--ease-out-expressive) 0.05s forwards;
+  animation: probe-flare var(--burst) var(--ease-out-expressive) var(--land-delay) forwards;
 }
 
 .shadow {
@@ -168,7 +182,7 @@ const placed = computed(() => {
   height: 0.7rem;
   border-radius: 50%;
   background: radial-gradient(ellipse, ink(0.35), ink(0) 70%);
-  animation: probe-shadow 0.45s var(--ease-out-expressive) 0.05s both;
+  animation: probe-shadow var(--land) var(--ease-out-expressive) var(--land-delay) both;
 }
 
 .dial {
@@ -179,7 +193,7 @@ const placed = computed(() => {
   background: milk(0.92);
   border: 0.18rem solid var(--warmth);
   box-shadow: 0 0.1rem 0.4rem ink(0.18);
-  animation: probe-drop 0.45s var(--ease-out-expressive) 0.05s both;
+  animation: probe-drop var(--land) var(--ease-out-expressive) var(--land-delay) both;
 
   svg {
     inset: 0;
@@ -192,7 +206,7 @@ const placed = computed(() => {
 
 .wedge {
   rotate: var(--heading);
-  animation: probe-wedge 0.3s var(--ease-out-expressive) 0.85s both;
+  animation: probe-wedge var(--reveal) var(--ease-out-expressive) var(--settled) both;
 
   path {
     fill: var(--warmth-wash);
@@ -212,10 +226,10 @@ const placed = computed(() => {
 
 .needle {
   rotate: var(--heading);
-  animation: needle-find 0.85s cubic-bezier(0.2, 0.6, 0.35, 1) 0.12s both;
+  animation: needle-find var(--needle-spin) cubic-bezier(0.2, 0.6, 0.35, 1) var(--needle-delay) both;
 
   &.nudge {
-    animation: needle-nudge 0.45s var(--ease-smooth) both;
+    animation: needle-nudge var(--land) var(--ease-smooth) both;
   }
 
   .tip {
@@ -242,7 +256,7 @@ const placed = computed(() => {
   white-space: nowrap;
   color: var(--warmth);
   @include caption-surface(0.6rem);
-  animation: probe-label 0.3s var(--ease-out-expressive) 0.9s both;
+  animation: row-land var(--reveal) var(--ease-out-expressive) var(--settled) both;
 }
 
 .compass.found {
@@ -252,7 +266,7 @@ const placed = computed(() => {
   .dial {
     background: milk();
     border-width: 0.22rem;
-    animation: probe-found 0.6s var(--ease-out-expressive) 0.05s both;
+    animation: probe-found var(--motion-slow) var(--ease-out-expressive) var(--land-delay) both;
   }
 
   .target-ring {
@@ -270,7 +284,7 @@ const placed = computed(() => {
     position: absolute;
     border-radius: 50%;
     border: 0.2rem solid flame();
-    animation: probe-burst 0.9s var(--ease-out-expressive) forwards;
+    animation: probe-burst var(--burst) var(--ease-out-expressive) forwards;
     animation-delay: calc(0.15s + var(--ring) * 90ms);
   }
 
@@ -285,7 +299,7 @@ const placed = computed(() => {
 
   .km {
     color: flame(1, 45%);
-    animation-delay: 0.55s;
+    animation-delay: var(--motion-slow);
   }
 }
 
@@ -381,17 +395,6 @@ const placed = computed(() => {
   100% {
     opacity: 1;
     scale: 1;
-  }
-}
-
-@keyframes probe-label {
-  0% {
-    opacity: 0;
-    transform: translateY(0.4rem);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 

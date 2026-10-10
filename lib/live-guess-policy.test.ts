@@ -134,6 +134,12 @@ describe('probeDistance', () => {
     expect(probeDistance(hotCold, { isoCode: 'RU', latLng: 'junk' as never })).toEqual(fromCentroid)
   })
 
+  it('will not let a forged point borrow a radius from outside the probed country', () => {
+    const hotCold = challenge({ _type: 'hot-cold-challenge', country: 'DE' })
+    const forged = probeDistance(hotCold, { isoCode: 'FR', latLng: { lat: 51, lng: 10 } })
+    expect(forged).toEqual(probeDistance(hotCold, { isoCode: 'FR' }))
+  })
+
   it('stays empty for other modes and junk codes', () => {
     expect(probeDistance(challenge({ _type: 'ghost-state-challenge' }), { isoCode: 'FR' })).toEqual(
       {}

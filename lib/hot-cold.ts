@@ -1,5 +1,5 @@
-import { MAP_PROJECTION } from '~~/data/map.gen'
-import { countryLatLng, haversineKm, projectRobinson, type LatLng } from '~~/lib/geo'
+import { MAP_PROJECTION, MAP_REGIONS } from '~~/data/map.gen'
+import { countryLatLng, haversineKm, pointInBox, projectRobinson, type LatLng } from '~~/lib/geo'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 export const HOT_COLD_WARMTH = { hotKm: 800, warmKm: 2500, freezingKm: 6000 } as const
@@ -21,20 +21,22 @@ export const temperatureFor = (distanceKm: number): string => {
   return distanceKm > HOT_COLD_WARMTH.freezingKm ? 'freezing' : 'cold'
 }
 
-const isUsablePoint = (point: LatLng | undefined): point is LatLng =>
-  !!point &&
-  Number.isFinite(point.lat) &&
-  Number.isFinite(point.lng) &&
-  Math.abs(point.lat) <= 90 &&
-  Math.abs(point.lng) <= 180
+const pointInCountry = (isoCode: ISOCountryCode, point: LatLng | undefined): point is LatLng => {
+  if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return false
+  if (Math.abs(point.lat) > 90 || Math.abs(point.lng) > 180) return false
+  const projected = projectRobinson(point, MAP_PROJECTION)
+  return MAP_REGIONS[isoCode]?.some(ring => pointInBox(projected, ring)) ?? false
+}
 
 /**
- * Where a probe is measured from: the clicked point when the map supplied one,
- * else the country's centroid. A centroid alone makes a probe of Russia or
- * Canada near useless — it can sit thousands of km from where the player clicked.
+ * Where a probe is measured from: the clicked point when it lies in one of the
+ * country's ring boxes, else its centroid. A centroid alone makes a probe of
+ * Russia near useless. The ring check snaps a micro-state's tap halo out of the
+ * sea and stops a forged point borrowing another country's radius — per ring,
+ * because France's whole bbox crosses the Atlantic and holds Germany.
  */
 export const probeOrigin = (isoCode: ISOCountryCode, clicked?: LatLng): LatLng | undefined =>
-  isUsablePoint(clicked) ? { lat: clicked.lat, lng: clicked.lng } : countryLatLng(isoCode)
+  pointInCountry(isoCode, clicked) ? { lat: clicked.lat, lng: clicked.lng } : countryLatLng(isoCode)
 
 export const probeDistanceKm = (origin: LatLng, target: ISOCountryCode): number | undefined => {
   const destination = countryLatLng(target)
@@ -79,7 +81,8 @@ export const probeTrend = (
 
 export interface HotColdProbe {
   isoCode: ISOCountryCode
-  origin: LatLng
+  /** Absent only when neither the click nor the Factbook can place the country. */
+  origin?: LatLng
   distanceKm: number
   warmth: Warmth
   /** Map heading to the target — absent on the probe that found it. */

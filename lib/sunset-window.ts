@@ -1,6 +1,6 @@
 import { MAP_REGIONS } from '~~/data/map.gen'
 import { sample } from '~~/lib/arrays'
-import { mainlandBox, unionBox, type MapBox } from '~~/lib/geo'
+import { mainlandBox, pointInBox, unionBox, type MapBox } from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -65,12 +65,9 @@ export const sunsetDuskCoordinate = (isoCode: ISOCountryCode): number => {
   return x - y * Math.tan(SUNSET_TILT)
 }
 
-const inBox = ({ x, y }: { x: number; y: number }, [left, top, width, height]: MapBox) =>
-  x >= left && x <= left + width && y >= top && y <= top + height
-
 /** The field a frame deals: every pool country whose mainland centre it holds. */
 export const windowCountries = (pool: ISOCountryCode[], frame: MapBox): ISOCountryCode[] =>
-  pool.filter(isoCode => inBox(mapRegionCentre(isoCode), frame))
+  pool.filter(isoCode => pointInBox(mapRegionCentre(isoCode), frame))
 
 /** The pass mark for a field — the dealt window, or the wider set a screen
  *  put in play — as the difficulty's share of it. */

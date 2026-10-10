@@ -154,7 +154,6 @@ const onMapClick = (event: Event) => {
   }
 
   const origin = probeOrigin(isoCode, event.detail.latLng)
-  if (!origin) return
 
   if (isoCode === active.country) {
     probes.value.push({ isoCode, origin, distanceKm: 0, warmth: 'hot', replays: 0 })
@@ -164,6 +163,7 @@ const onMapClick = (event: Event) => {
     return submitRound()
   }
 
+  if (!origin) return
   const distanceKm = probeDistanceKm(origin, active.country)
   const heading = probeHeading(origin, active.country)
   if (distanceKm === undefined || !heading) return

@@ -66,6 +66,11 @@ describe('probeOrigin', () => {
     expect(probeOrigin('RU', { lat: 95, lng: 10 })).toEqual(centroid('RU'))
     expect(probeOrigin('RU', { lat: 10, lng: 200 })).toEqual(centroid('RU'))
   })
+
+  it('refuses a point outside the country, snapping a halo tap or a forged point', () => {
+    expect(probeOrigin('MT', { lat: 35.2, lng: 13.6 })).toEqual(centroid('MT'))
+    expect(probeOrigin('FR', centroid('MN'))).toEqual(centroid('FR'))
+  })
 })
 
 describe('warmth', () => {
