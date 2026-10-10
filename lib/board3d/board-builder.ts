@@ -1225,7 +1225,7 @@ const bakeParts = (
     if (geometry !== part.geometry) part.geometry.dispose()
 
     if (part.outline !== false) {
-      const outline = outlineOf(geometry, outlineWidth)
+      const outline = outlineOf(geometry, outlineWidth, part.flatBase)
       outline.applyMatrix4(matrix)
       outlines.push(outline)
     }

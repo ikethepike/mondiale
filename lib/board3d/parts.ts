@@ -7,6 +7,9 @@ export interface MarkerPart {
    *  angle, the inflated shell surfaces through the neighbour as black
    *  gashes — flush hardware (the lectern's mic mount) skips it. */
   outline?: boolean
+  /** Stop the ink hull at the part's underside — for parts standing on
+   *  another surface, where the hull below would poke out as teeth. */
+  flatBase?: boolean
 }
 
 /**
