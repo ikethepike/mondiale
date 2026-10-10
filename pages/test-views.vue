@@ -2172,11 +2172,21 @@ const scenarios: Scenario[] = [
   {
     id: 'hot-cold',
     label: 'Hot & cold (probe trail)',
-    build: () =>
+    variants: [
+      { id: 'mongolia', label: 'Mongolia — the reference hunt', country: 'MN' },
+      // Probe from Japan: the short way crosses the date line, so the needle
+      // must aim off the right-hand edge rather than back across the map.
+      { id: 'united-states', label: 'United States — date-line headings', country: 'US' },
+      // Probe Russia from different ends: a probe measures from the clicked
+      // point, so Moscow and Siberia must read very differently.
+      { id: 'ukraine', label: 'Ukraine — probing a giant neighbour', country: 'UA' },
+    ],
+    anyCountry: true,
+    build: variant =>
       mockGame('group-challenge', [
         groupRound({
           _type: 'hot-cold-challenge',
-          country: 'MN',
+          country: variant?.country ?? 'MN',
           maximumGuesses: 12,
           maximumPoints: MAXIMUM_POINTS,
         }),

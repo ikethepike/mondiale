@@ -1,4 +1,5 @@
-import { countryLatLng, haversineKm } from '~~/lib/geo'
+import type { LatLng } from '~~/lib/geo'
+import { probeDistanceKm, probeOrigin } from '~~/lib/hot-cold'
 import { guessPolicyFor, placedTotalFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import { isValidISOCode } from '~~/types/geography.types'
@@ -98,15 +99,15 @@ export const placedCount = (
  */
 export const probeDistance = (
   challenge: RoundChallenge | undefined,
-  eventData: { isoCode?: string }
+  eventData: { isoCode?: string; latLng?: LatLng }
 ): { distanceKm?: number } => {
   if (!probeCarriesIso(challenge)) return {}
   if (challenge?._type !== 'hot-cold-challenge') return {}
   if (!isValidISOCode(eventData.isoCode)) return {}
 
-  const from = countryLatLng(eventData.isoCode)
-  const target = countryLatLng(challenge.country)
-  if (!from || !target) return {}
+  const origin = probeOrigin(eventData.isoCode, eventData.latLng)
+  const distanceKm = origin ? probeDistanceKm(origin, challenge.country) : undefined
+  if (distanceKm === undefined) return {}
 
-  return { distanceKm: Math.round(haversineKm(from, target) / 100) * 100 }
+  return { distanceKm: Math.round(distanceKm / 100) * 100 }
 }

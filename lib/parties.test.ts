@@ -478,7 +478,7 @@ describe('shortPartyName', () => {
   const named = (name: string, abbreviation?: string) => ({ name, abbreviation }) as Party
 
   it('prefers the abbreviation, then a trailing "or" acronym', () => {
-    expect(shortPartyName(named('Christian Democratic People\'s Party', 'KDNP'))).toBe('KDNP')
+    expect(shortPartyName(named("Christian Democratic People's Party", 'KDNP'))).toBe('KDNP')
     expect(shortPartyName(named('Union of Democratic Forces or SDS'))).toBe('SDS')
   })
 

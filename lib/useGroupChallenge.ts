@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 import { guessPolicyFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
+import type { LatLng } from '~~/lib/geo'
 import { clamp01 } from '~~/lib/number'
 import { clockRidesRoundDeadline } from '~~/lib/round-beats'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
@@ -186,6 +187,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     tone,
     kind,
     isoCode,
+    latLng,
     label,
     placed,
   }: {
@@ -195,6 +197,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     tone?: HintTone
     kind?: GuessKind
     isoCode?: ISOCountryCode
+    latLng?: LatLng
     label?: string
     /** A progress count that survives `presence` — see the field on the wire
      *  event. Modes that name nothing can still show the room a race. */
@@ -222,7 +225,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     // server computes with, so the two ends cannot drift.
     const wire =
       policy !== 'label' && kind === 'probe' && probeCarriesIso(roundChallenge)
-        ? { isoCode }
+        ? { isoCode, ...(latLng ? { latLng } : {}) }
         : named
     update({ event: 'player-guessing', kind, ...wire, ...(placed ? { placed } : {}) })
   }
