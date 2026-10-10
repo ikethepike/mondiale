@@ -124,7 +124,10 @@ const sweep = shallowRef<{
 // The field is sorted east→west and the schedule is too, so this one integer
 // is the whole dark set
 const darkCount = ref(0)
-const isDark = (isoCode: ISOCountryCode) => field.value.indexOf(isoCode) < darkCount.value
+const isDark = (isoCode: ISOCountryCode) => {
+  const index = field.value.indexOf(isoCode)
+  return index >= 0 && index < darkCount.value
+}
 const standing = computed(() =>
   field.value.slice(darkCount.value).filter(isoCode => !named.value.has(isoCode))
 )
