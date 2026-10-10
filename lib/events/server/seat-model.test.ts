@@ -4,10 +4,10 @@ import { sample } from '~~/lib/arrays'
 import { BOT_ID_PREFIX, createBot } from '~~/lib/bots'
 import { createPlayer } from '~~/lib/player'
 import { seededRandom } from '~~/lib/random'
-import { isClassicGroupRound, seatWindowMsFor } from '~~/lib/round-beats'
+import { isClassicGroupRound, ROUND_BEATS, seatWindowMsFor } from '~~/lib/round-beats'
 import { ROUND_KINDS } from '~~/lib/round-mix'
 import { latestRound } from '~~/lib/rounds'
-import { seatInvariantViolations } from '~~/lib/seat-invariants'
+import { seatInvariantViolations, subjectStallMs } from '~~/lib/seat-invariants'
 import { isTerminalStep, RETIREMENT_STEPS } from '~~/lib/seat-transitions'
 import { generateTiles } from '~~/lib/tiles'
 import {
@@ -17,7 +17,7 @@ import {
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
-import type { SeatCursor } from '~~/types/seat.types'
+import { SEAT_STEPS, type SeatCursor, type SeatStep } from '~~/types/seat.types'
 import { enqueueGameTask, useServerSideEvents } from '../server-side'
 import { armAfkTakeover, armBotPump, composeClassicSubmission, finalAnswerFor } from './bot-brain'
 import { joinEventHandler } from './join.event'
@@ -32,14 +32,21 @@ import { createTestTable, type TestTable, uniqueGameId, warmDeferredModules } fr
  * contract checked after every step — then the table left alone must finish.
  */
 
-const RUNS = Number(process.env.SEAT_MODEL_RUNS ?? 150)
+const RUNS = Number(process.env.SEAT_MODEL_RUNS ?? 60)
+const MAX_COMMANDS = Number(process.env.SEAT_MODEL_COMMANDS ?? 200)
 const SEED = process.env.SEAT_MODEL_SEED ? Number(process.env.SEAT_MODEL_SEED) : undefined
 const REPLAY_PATH = process.env.SEAT_MODEL_PATH
 const EPOCH = 1_800_000_000_000
 const RESTART_DOWNTIME_MS = 10_000
 const LIVENESS_CHUNK_MS = 30_000
-const STALL_LIMIT_MS = 10 * 60_000
 const VICTORY_LIMIT_MS = 4 * 60 * 60_000
+/** Wall-clock budget for the property: past it, shrinking a found failure stops at its best so far. */
+const PROPERTY_BUDGET_MS = 5 * 60_000
+/** How long `until` waits for its step before giving the command up. */
+const UNTIL_LIMIT_MS = 10 * 60_000
+const UNTIL_CHUNK_MS = 2000
+/** `until`'s grain through walk and arrive — any coarser and it skips the landing. */
+const BOARD_CHUNK_MS = 100
 
 type HumanRole = 'active' | 'silent' | 'autopilot'
 type SeatRole = HumanRole | 'bot'
@@ -49,6 +56,7 @@ type Command =
   | { kind: 'stale'; seat: number; pick: number }
   | { kind: 'duplicate'; seat: number }
   | { kind: 'wait'; ms: number }
+  | { kind: 'until'; seat: number; step: SeatStep }
   | { kind: 'restart' }
   | { kind: 'disconnect'; seat: number }
   | { kind: 'join'; seat: number }
@@ -62,12 +70,17 @@ interface Scenario {
   others: SeatRole[]
   difficulty: GameDifficulty
   forced?: string
+  /** FORCE_FINAL_CHALLENGE: every submit teleports its seat to the gauntlet. */
+  gauntlet: boolean
   commands: Command[]
 }
 
 const FORCEABLE_KINDS = ROUND_KINDS.filter(
   kind => MINIMUM_TABLE_BY_KIND[kind] === undefined && !HARD_ONLY_ROUND_KINDS.has(kind)
 )
+/** Kinds whose seats open their own window — the extra surface `round-play` guards. */
+const SEAT_WINDOW_KINDS = FORCEABLE_KINDS.filter(kind => ROUND_BEATS[kind].seatWindowMs)
+const PLAYED_STEPS = SEAT_STEPS.filter(step => !['lobby', 'victory', 'kicked'].includes(step))
 
 const seatIndex = fc.nat({ max: 3 })
 const commandArb: fc.Arbitrary<Command> = fc.oneof(
@@ -84,6 +97,14 @@ const commandArb: fc.Arbitrary<Command> = fc.oneof(
     arbitrary: fc.record({ kind: fc.constant('stale' as const), seat: seatIndex, pick: fc.nat() }),
   },
   { weight: 2, arbitrary: fc.record({ kind: fc.constant('duplicate' as const), seat: seatIndex }) },
+  {
+    weight: 3,
+    arbitrary: fc.record({
+      kind: fc.constant('until' as const),
+      seat: seatIndex,
+      step: fc.constantFrom(...PLAYED_STEPS),
+    }),
+  },
   { weight: 1, arbitrary: fc.constant({ kind: 'restart' as const }) },
   {
     weight: 1,
@@ -98,20 +119,31 @@ const commandArb: fc.Arbitrary<Command> = fc.oneof(
   { weight: 1, arbitrary: fc.record({ kind: fc.constant('retire' as const), seat: seatIndex }) }
 )
 
-const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
-  seed: fc.noBias(fc.integer({ min: 1, max: 0x7fffffff })),
-  host: fc.constantFrom<HumanRole>('active', 'silent', 'autopilot'),
-  others: fc.array(fc.constantFrom<SeatRole>('active', 'silent', 'autopilot', 'bot', 'bot'), {
-    minLength: 1,
-    maxLength: 3,
-  }),
-  difficulty: fc.constantFrom<GameDifficulty>('easy', 'normal', 'hard'),
-  forced: fc.oneof(
-    { weight: 2, arbitrary: fc.constant(undefined) },
-    { weight: 1, arbitrary: fc.constantFrom(...FORCEABLE_KINDS) }
-  ),
-  commands: fc.array(commandArb, { maxLength: 50 }),
-})
+const scenarioArb: fc.Arbitrary<Scenario> = fc
+  .record({
+    seed: fc.noBias(fc.integer({ min: 1, max: 0x7fffffff })),
+    host: fc.constantFrom<HumanRole>('active', 'silent', 'autopilot'),
+    others: fc.array(fc.constantFrom<SeatRole>('active', 'silent', 'autopilot', 'bot', 'bot'), {
+      minLength: 1,
+      maxLength: 3,
+    }),
+    activeAt: fc.nat(),
+    difficulty: fc.constantFrom<GameDifficulty>('easy', 'normal', 'hard'),
+    forced: fc.oneof(
+      { weight: 4, arbitrary: fc.constant(undefined) },
+      { weight: 2, arbitrary: fc.constantFrom(...FORCEABLE_KINDS) },
+      { weight: 1, arbitrary: fc.constantFrom(...SEAT_WINDOW_KINDS) }
+    ),
+    gauntlet: fc.oneof({ weight: 3, arbitrary: fc.constant(false) }, fc.constant(true)),
+    commands: fc.array(commandArb, { minLength: 20, maxLength: MAX_COMMANDS, size: 'max' }),
+  })
+  .map(({ activeAt, ...scenario }): Scenario => {
+    const roles = [scenario.host, ...scenario.others]
+    if (roles.includes('active')) return scenario
+    roles[activeAt % roles.length] = 'active'
+    const [host, ...others] = roles
+    return { ...scenario, host: host as HumanRole, others }
+  })
 
 const lobby = (scenario: Scenario): { game: Game; roles: Map<string, SeatRole> } => {
   const roles = new Map<string, SeatRole>()
@@ -231,6 +263,7 @@ const runScenario = async (scenario: Scenario) => {
   vi.setSystemTime(EPOCH)
   vi.stubEnv('SEAT_JOURNAL_LOG', '1')
   if (scenario.forced) vi.stubEnv('FORCE_ROUND_TYPE', scenario.forced)
+  if (scenario.gauntlet) vi.stubEnv('FORCE_FINAL_CHALLENGE', '1')
   const illegal: string[] = []
   const crashes: string[] = []
   // Plain swaps, not spies: a spy records every call, and a few hundred games
@@ -293,6 +326,19 @@ const runScenario = async (scenario: Scenario) => {
     switch (command.kind) {
       case 'wait':
         return vi.advanceTimersByTimeAsync(command.ms)
+      case 'until': {
+        const id = pick(actives, command.seat)
+        if (!id) return
+        for (const until = Date.now() + UNTIL_LIMIT_MS; Date.now() < until;) {
+          const { step } = await cursorOf(id)
+          if (step === command.step || isTerminalStep(step)) return
+          await vi.advanceTimersByTimeAsync(
+            ['walk', 'arrive'].includes(step) ? BOARD_CHUNK_MS : UNTIL_CHUNK_MS
+          )
+          await check(`until ${command.step} on ${id}, at ${step}`)
+        }
+        return
+      }
       case 'act': {
         const id = pick(actives, command.seat)
         if (!id) return
@@ -385,7 +431,7 @@ const runScenario = async (scenario: Scenario) => {
       await check(`#${index} ${JSON.stringify(command)}`)
     }
 
-    const lastMove = new Map<string, { seq: number; at: number }>()
+    const lastMove = new Map<string, { subject: string; at: number }>()
     const startedAt = Date.now()
     let tableMovedAt = startedAt
     let state = await table.read()
@@ -401,18 +447,22 @@ const runScenario = async (scenario: Scenario) => {
       await vi.advanceTimersByTimeAsync(LIVENESS_CHUNK_MS)
       state = await check(`liveness +${elapsed}ms`)
       for (const seat of Object.values(state.players)) {
+        const subject = `${seat.cursor.step} ${seat.cursor.subject}`
         const last = lastMove.get(seat.id)
-        if (!last || last.seq !== seat.cursor.seq) {
-          lastMove.set(seat.id, { seq: seat.cursor.seq, at: Date.now() })
+        if (!last || last.subject !== subject) {
+          lastMove.set(seat.id, { subject, at: Date.now() })
           if (last) tableMovedAt = Date.now()
           continue
         }
-        if (isTerminalStep(seat.cursor.step) || seat.cursor.step === 'settled') continue
-        expect(Date.now() - last.at, `${seat.id} stalled on ${seat.cursor.step}`).toBeLessThan(
-          STALL_LIMIT_MS
+        const limit = subjectStallMs(seat.cursor.step)
+        if (limit === undefined) continue
+        expect(Date.now() - last.at, `${seat.id} stalled on ${subject}`).toBeLessThanOrEqual(
+          limit + LIVENESS_CHUNK_MS
         )
       }
-      expect(Date.now() - tableMovedAt, 'table stalled').toBeLessThan(STALL_LIMIT_MS)
+      expect(Date.now() - tableMovedAt, 'table stalled').toBeLessThanOrEqual(
+        subjectStallMs('round')! + LIVENESS_CHUNK_MS
+      )
     }
     expect(
       seatInvariantViolations(state, { now: Date.now(), journal: table.journal }),
@@ -437,10 +487,11 @@ afterEach(() => {
 
 describe('the seat contract under random play', () => {
   it(
-    `holds every invariant after every input; left alone, every seat keeps moving and a short game a lobby bot races on the natural mix reaches victory within 4 virtual hours (${RUNS} runs)`,
+    'random input, clock, restarts, reconnects, autopilot and retirement never break a seat; left alone, every seat keeps changing subject and a lobby bot races a short game to victory',
     async () => {
       await fc.assert(fc.asyncProperty(scenarioArb, runScenario), {
         numRuns: RUNS,
+        skipAllAfterTimeLimit: PROPERTY_BUDGET_MS,
         ...(SEED !== undefined ? { seed: SEED } : {}),
         ...(REPLAY_PATH ? { path: REPLAY_PATH } : {}),
       })

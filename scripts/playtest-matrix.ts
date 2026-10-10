@@ -3,8 +3,9 @@
  * built server on its own port, PLAYTEST_ROOMS rooms in parallel), and the
  * report rolls every room's summary.json into one verdict — room-hours,
  * incidents by kind, render lags, invariant violations, the server's
- * seat-audit / seat-illegal / seat-unsent lines, and games that never
- * reached victory.
+ * seat-audit / seat-illegal / seat-unsent lines, and whether every human seat
+ * actually played: moved through its subjects, never stalled, and reached the
+ * gauntlet where it was forced.
  *
  *   bun run build
  *   bun run scripts/playtest-matrix.ts --rooms 2 --minutes 40 --concurrency 3 --min-hours 10
@@ -16,6 +17,34 @@
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { MIN_ROOM_READ_SHARE, type PlaytestSummary } from '../e2e/playtest-summary'
+
+/** Every acceptance line the report carries; the #174 audit requires each one. */
+export const MATRIX_CHECKS = [
+  'room-hours',
+  'zero render-lag',
+  'zero invariant violations',
+  'zero seat-audit / seat-illegal / seat-unsent lines',
+  'every server log was read',
+  'every room answered /debug/rooms',
+  'every human seat made progress',
+  'zero subject stalls',
+  'every forced gauntlet was reached',
+  'zero frozen seats',
+  'zero view-grammar violations',
+  'every cell exited clean',
+] as const
+export type MatrixCheck = (typeof MATRIX_CHECKS)[number]
+
+export interface MatrixReport {
+  roomHours: number
+  minHours: number
+  rooms: number
+  byKind: Record<string, number>
+  unfinished: string[]
+  checks: { name: MatrixCheck; ok: boolean; value: string }[]
+  exits: Record<string, number | undefined>
+}
 
 interface Cell {
   name: string
@@ -49,16 +78,6 @@ const OUT = path.resolve(arg('out', 'test-results/playtest-matrix')!)
 const only = arg('only')?.split(',')
 const cells = only ? CELLS.filter(cell => only.includes(cell.name)) : CELLS
 
-interface Summary {
-  gameId: string
-  finished: boolean
-  minutes: number
-  serverLogChecked: boolean
-  incidents: { kind: string; seat: string; detail: string; selfHealedMs?: number }[]
-  serverLines: string[]
-  grammar: string[]
-}
-
 const runCell = (cell: Cell, port: number) =>
   new Promise<number>(resolve => {
     const out = path.join(OUT, cell.name)
@@ -88,14 +107,14 @@ const runCell = (cell: Cell, port: number) =>
     })
   })
 
-const summariesIn = (dir: string): Summary[] =>
+const summariesIn = (dir: string): PlaytestSummary[] =>
   fs.existsSync(dir)
     ? fs
         .readdirSync(dir, { withFileTypes: true })
         .filter(entry => entry.isDirectory())
         .map(entry => path.join(dir, entry.name, 'summary.json'))
         .filter(file => fs.existsSync(file))
-        .map(file => JSON.parse(fs.readFileSync(file, 'utf8')) as Summary)
+        .map(file => JSON.parse(fs.readFileSync(file, 'utf8')) as PlaytestSummary)
     : []
 
 const report = (exits: Record<string, number | undefined>) => {
@@ -115,28 +134,53 @@ const report = (exits: Record<string, number | undefined>) => {
   const invariants = incidents.filter(incident => incident.kind.startsWith('invariant:')).length
   const serverLines = rooms.reduce((sum, room) => sum + room.serverLines.length, 0)
   const unfinished = rooms.filter(room => !room.finished).map(room => room.gameId)
-  const cut = rooms.filter(room => !room.finished && room.minutes < Number(MINUTES) - 1)
   const grammar = rooms.reduce((sum, room) => sum + room.grammar.length, 0)
   const frozen = incidents.filter(
     incident => incident.kind !== 'long-task' && incident.selfHealedMs === undefined
   ).length
-  const unlogged = rooms.filter(room => !room.serverLogChecked).length
+  const unlogged = rooms
+    .filter(room => !room.serverLogChecked)
+    .map(room => `${room.gameId}: ${room.serverLogNote ?? 'unlogged'}`)
+  const unread = rooms
+    .filter(
+      room => !room.roomReads || room.roomReads.read < room.roomReads.ticks * MIN_ROOM_READ_SHARE
+    )
+    .map(room => `${room.gameId}: ${room.roomReads?.read ?? 0}/${room.roomReads?.ticks ?? 0}`)
+  const idle = rooms.flatMap(room =>
+    !room.progress?.length
+      ? [`${room.gameId}: no human seat`]
+      : room.progress
+          .filter(seat => !seat.victory && seat.subjects < seat.floor)
+          .map(seat => `${room.gameId} ${seat.name ?? seat.seat}: ${seat.subjects}/${seat.floor}`)
+  )
+  const stalls = incidents.filter(incident => incident.kind === 'stall').length
+  const finalMissed = rooms
+    .filter(room => room.forcedFinal && !room.reachedFinal)
+    .map(room => room.gameId)
 
+  const check = (name: MatrixCheck, ok: boolean, value: unknown) => ({
+    name,
+    ok,
+    value: typeof value === 'string' ? value : JSON.stringify(value),
+  })
   const checks = [
-    [`room-hours ≥ ${MIN_HOURS}`, roomHours >= MIN_HOURS, roomHours.toFixed(2)],
-    ['zero render-lag', renderLags === 0, renderLags],
-    ['zero invariant violations', invariants === 0, invariants],
-    ['zero seat-audit / seat-illegal / seat-unsent lines', serverLines === 0, serverLines],
-    ['every server log was read', unlogged === 0, unlogged],
-    ['every room played to victory or its full budget', cut.length === 0, cut.length],
-    ['zero frozen seats', frozen === 0, frozen],
-    ['zero view-grammar violations', grammar === 0, grammar],
-    [
+    check('room-hours', roomHours >= MIN_HOURS, `${roomHours.toFixed(2)} (≥ ${MIN_HOURS})`),
+    check('zero render-lag', renderLags === 0, renderLags),
+    check('zero invariant violations', invariants === 0, invariants),
+    check('zero seat-audit / seat-illegal / seat-unsent lines', serverLines === 0, serverLines),
+    check('every server log was read', rooms.length > 0 && !unlogged.length, unlogged),
+    check('every room answered /debug/rooms', rooms.length > 0 && !unread.length, unread),
+    check('every human seat made progress', rooms.length > 0 && !idle.length, idle),
+    check('zero subject stalls', stalls === 0, stalls),
+    check('every forced gauntlet was reached', !finalMissed.length, finalMissed),
+    check('zero frozen seats', frozen === 0, frozen),
+    check('zero view-grammar violations', grammar === 0, grammar),
+    check(
       'every cell exited clean',
       Object.values(exits).every(code => code === undefined || code === 0),
-      JSON.stringify(exits),
-    ],
-  ] as const
+      exits
+    ),
+  ]
 
   const lines = [
     `# Playtest matrix`,
@@ -152,7 +196,7 @@ const report = (exits: Record<string, number | undefined>) => {
     '',
     '| acceptance | result | value |',
     '|---|---|---|',
-    ...checks.map(([name, ok, value]) => `| ${name} | ${ok ? 'pass' : '**FAIL**'} | ${value} |`),
+    ...checks.map(({ name, ok, value }) => `| ${name} | ${ok ? 'pass' : '**FAIL**'} | ${value} |`),
     '',
     '## Incidents by kind',
     '',
@@ -165,12 +209,18 @@ const report = (exits: Record<string, number | undefined>) => {
   ]
   fs.mkdirSync(OUT, { recursive: true })
   fs.writeFileSync(path.join(OUT, 'report.md'), lines.join('\n') + '\n')
-  fs.writeFileSync(
-    path.join(OUT, 'report.json'),
-    JSON.stringify({ roomHours, rooms: rooms.length, byKind, unfinished, checks, exits }, null, 2)
-  )
+  const report: MatrixReport = {
+    roomHours,
+    minHours: MIN_HOURS,
+    rooms: rooms.length,
+    byKind,
+    unfinished,
+    checks,
+    exits,
+  }
+  fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2))
   console.log(lines.join('\n'))
-  return checks.every(([, ok]) => ok)
+  return checks.every(({ ok }) => ok)
 }
 
 const main = async () => {
@@ -191,4 +241,4 @@ const main = async () => {
   process.exit(report(exits) ? 0 : 1)
 }
 
-void main()
+if (import.meta.main) void main()

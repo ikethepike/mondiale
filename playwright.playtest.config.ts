@@ -30,9 +30,8 @@ if (!externalServer) {
   fs.mkdirSync(path.dirname(process.env.PLAYTEST_SERVER_LOG), { recursive: true })
 }
 const envFile = fs.existsSync('.env') ? '--env-file=.env ' : ''
-// Software WebGL renders the board at ~1fps, and GSAP's lag smoothing then
-// stretches a 0.35s fade to ~10s: a genuinely stale screen the auditor reports.
-// Play on the Mac's GPU; where there is none (CI), take the 2D board fallback.
+// Software WebGL starves the frame loop until GSAP's lag smoothing leaves the
+// screen genuinely stale: play on the Mac's GPU, and on CI take the 2D board.
 const chromiumGraphics =
   process.platform === 'darwin'
     ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist']
@@ -48,8 +47,7 @@ export default defineConfig({
   workers: Number(process.env.PLAYTEST_ROOMS ?? 1),
   use: {
     baseURL: externalServer ?? `http://127.0.0.1:${PORT}`,
-    // A 40-minute game records ~20GB of trace screenshots per cell; the spec
-    // writes its own incident evidence.
+    // A whole game's trace fills the disk; the spec writes its own incident evidence.
     trace: 'off',
     actionTimeout: 10_000,
   },

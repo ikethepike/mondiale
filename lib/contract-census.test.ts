@@ -3,13 +3,16 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
+import type { SeatCursor } from '~~/types/seat.types'
+import { stripComments, stripScriptComments } from '~~/scripts/source-scrape'
 
 /**
- * The seat-cursor contract (#174), pinned as source scrapes: one writer, no
- * legacy staleness tokens, every server wait owned by a named home, every
- * client timer reviewed, and every seat event echoing the cursor it answers.
- * A count drifting here is a review, not a typo — update the census only
- * after reading the new code against the contract.
+ * The seat-cursor contract (#174), pinned as source scrapes over code with its
+ * comments blanked: one writer, no legacy staleness tokens, every server wait
+ * owned by a named home, every client timer reviewed, and every seat event
+ * echoing the cursor it answers. A count drifting here is a review, not a
+ * typo — update the census only after reading the new code against the
+ * contract.
  */
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -34,7 +37,7 @@ const walk = (dir: string): string[] =>
   })
 
 const runtimeFiles = SOURCE_DIRS.flatMap(walk).filter(file => !isScaffolding(file))
-const read = (file: string) => fs.readFileSync(path.join(ROOT, file), 'utf8')
+const read = (file: string) => stripComments(file, fs.readFileSync(path.join(ROOT, file), 'utf8'))
 const sources = new Map(runtimeFiles.map(file => [file, read(file)]))
 
 const hits = (pattern: RegExp, files: Iterable<string> = sources.keys()) => {
@@ -51,13 +54,73 @@ const isServerFile = (file: string) =>
   file.startsWith('server/') ||
   file === 'lib/events/server-side.ts'
 
+/** Reading the local wall clock, however the call is spaced or wrapped. */
+const LOCAL_CLOCK = /\b(Date|performance)\s*\.\s*now\s*\(\s*\)|\bnew\s+Date\s*\(\s*\)/
+
+/** Each expression on one line: a line that ends on an operator, or a line
+ *  that opens on one, is joined to its neighbour. */
+const statements = (source: string) =>
+  source
+    .replace(/\s*\n\s*(?=[.?)\]+\-*/%&|,:<>=])/g, ' ')
+    .replace(/([([,=+\-*/%&|?:<>])\s*\n\s*/g, '$1 ')
+
+describe('the scraper', () => {
+  it('reads code, never comments', () => {
+    const source = [
+      '// setTimeout(() => advance())',
+      "const url = 'http://example.com' /* x.cursor = y */",
+      'const pattern = /\\/\\/[*]/g // seat.cursor.seq = 0',
+      '/**',
+      ' * if (eventData.subject !== cursor.subject) return',
+      ' */',
+      'const label = `a ${`b // ${c}`} // d`',
+    ].join('\n')
+    const code = stripScriptComments(source)
+    expect(code).not.toMatch(/setTimeout|cursor|subject/)
+    expect(code).toContain("'http://example.com'")
+    expect(code).toContain('/\\/\\/[*]/g')
+    expect(code).toContain('`a ${`b // ${c}`} // d`')
+    expect(code.split('\n')).toHaveLength(7)
+    expect(
+      stripComments('x.vue', '<!-- setTimeout(a) -->\n<script>\n// setTimeout(b)\n</script>')
+    ).not.toMatch(/setTimeout/)
+  })
+})
+
 describe('single writer', () => {
+  const CURSOR_FIELDS = Object.keys({
+    seq: true,
+    step: true,
+    subject: true,
+    enteredAt: true,
+    holdUntil: true,
+    deadline: true,
+    verdict: true,
+    cause: true,
+    walk: true,
+    leg: true,
+  } satisfies Record<keyof SeatCursor, true>).join('|')
+
   it('only the transition table, the legacy migration and the lobby seat assign a cursor', () => {
     expect(hits(/\.cursor\s*=(?!=)/)).toEqual({
       'lib/seat-transitions.ts': 1,
       'lib/events/server/seat-migrate.ts': 1,
     })
     expect(hits(/\bcursor:\s*initialSeatCursor\(/)).toEqual({ 'lib/player.ts': 1 })
+  })
+
+  it('nothing writes into a cursor in place, by field, bracket, merge or delete', () => {
+    const writes = [
+      new RegExp(
+        `\\bcursor\\??\\.(${CURSOR_FIELDS})(\\??\\.\\w+|\\[[^\\]]+\\])*\\s*(=(?!=)|\\+\\+|--|[-+*/%&|^]=|\\?\\?=)`
+      ),
+      new RegExp(`(\\+\\+|--)\\s*[\\w.?]*\\bcursor\\??\\.(${CURSOR_FIELDS})\\b`),
+      /\bcursor\s*\??\.?\[[^\]]+\]\s*(=(?!=)|\+\+|--|[-+*/]=)/,
+      /\[\s*['"`]cursor['"`]\s*\]/,
+      /\bObject\.(assign|defineProperty|defineProperties)\(\s*[\w.?[\]'"]*\bcursor\b/,
+      /\bdelete\s+[\w.?[\]'"]*\bcursor\b/,
+    ]
+    expect(Object.assign({}, ...writes.map(pattern => hits(pattern)))).toEqual({})
   })
 
   it('only server code moves a seat', () => {
@@ -127,7 +190,7 @@ describe('legacy staleness tokens are gone', () => {
 
 describe('server waits', () => {
   const TIMER =
-    /\b(setTimeout|setInterval|scheduleGameTask|scheduleEngineTask|scheduleDeadlineTask|scheduleRevealTask)\(/
+    /\b(setTimeout|setInterval|setImmediate|queueMicrotask|nextTick|scheduleGameTask|scheduleEngineTask|scheduleDeadlineTask|scheduleRevealTask)\(/
   /**
    * Every server-side timer call, by file. Seat waits live only in
    * seat-cursor.ts; engines arm TABLE waits that die on the named token;
@@ -184,7 +247,7 @@ describe('client timers', () => {
   type Category = 'cosmetic' | 'transport' | 'local-input' | 'server-clock'
   /** Every client timer, reviewed. None may submit, emit or move a phase. */
   const CLIENT_TIMERS: Record<string, { count: number; category: Category }> = {
-    'components/GameMap.vue': { count: 5, category: 'cosmetic' },
+    'components/GameMap.vue': { count: 6, category: 'cosmetic' },
     'components/challenge/ChallengeTimerRadial.vue': { count: 4, category: 'cosmetic' },
     'components/challenge/AudioFieldGl.client.vue': { count: 3, category: 'cosmetic' },
     'lib/useGroupChallenge.ts': { count: 3, category: 'cosmetic' },
@@ -203,7 +266,6 @@ describe('client timers', () => {
     'lib/use-lockout-beat.ts': { count: 1, category: 'local-input' },
     'lib/use-intro-beat.ts': { count: 1, category: 'cosmetic' },
     'lib/use-ephemeral-ticker.ts': { count: 1, category: 'cosmetic' },
-    'lib/use-drag-sheet.ts': { count: 1, category: 'local-input' },
     'lib/use-bottom-sheet.ts': { count: 1, category: 'local-input' },
     'lib/time.ts': { count: 1, category: 'transport' },
     'lib/board3d/use-pawn-movement.ts': { count: 1, category: 'cosmetic' },
@@ -212,7 +274,9 @@ describe('client timers', () => {
     'components/view/ViewTrendRace.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewTerraIncognita.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewPlayerConfiguration.vue': { count: 1, category: 'cosmetic' },
-    'components/view/ViewManhunt.vue': { count: 1, category: 'local-input' },
+    'components/view/ViewManhunt.vue': { count: 2, category: 'local-input' },
+    'components/view/ViewBorderChain.vue': { count: 1, category: 'cosmetic' },
+    'components/view/ViewAtlas.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewFinalChallenge.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewAnthemBuzz.vue': { count: 1, category: 'cosmetic' },
     'components/spectate/SpectateBar.vue': { count: 1, category: 'local-input' },
@@ -228,13 +292,34 @@ describe('client timers', () => {
     'components/challenge/FinalScales.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/DragDial.vue': { count: 1, category: 'local-input' },
     'components/board3d/TopoScene.vue': { count: 1, category: 'cosmetic' },
-    'components/board3d/BoardStage.client.vue': { count: 1, category: 'cosmetic' },
+    'components/board3d/BoardStage.client.vue': { count: 2, category: 'cosmetic' },
   }
-  const TIMER = /\b(setTimeout|setInterval|requestAnimationFrame)\(/
+  const PLATFORM_TIMERS = [
+    'setTimeout',
+    'setInterval',
+    'requestAnimationFrame',
+    'requestIdleCallback',
+    'queueMicrotask',
+  ]
   const clientFiles = runtimeFiles.filter(file => !isServerFile(file))
 
+  /** The platform timers plus every scheduler `createViewTimer()` handed this file. */
+  const timerPattern = (source: string) => {
+    const schedulers = [
+      ...source.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*createViewTimer\(\s*\)/g),
+    ].map(match => match[1]!)
+    return new RegExp(`\\b(${[...PLATFORM_TIMERS, ...schedulers].join('|')})\\(`, 'g')
+  }
+
   it('every client timer is reviewed and counted', () => {
-    expect(hits(TIMER, clientFiles)).toEqual(
+    const counted = Object.fromEntries(
+      clientFiles.flatMap(file => {
+        const source = sources.get(file)!
+        const count = source.match(timerPattern(source))?.length ?? 0
+        return count ? [[file, count]] : []
+      })
+    )
+    expect(counted).toEqual(
       Object.fromEntries(Object.entries(CLIENT_TIMERS).map(([file, { count }]) => [file, count]))
     )
   })
@@ -242,7 +327,7 @@ describe('client timers', () => {
   /** The callback text of every timer call — the balanced argument list. */
   const timerArguments = (source: string) => {
     const calls: string[] = []
-    for (const match of source.matchAll(new RegExp(TIMER, 'g'))) {
+    for (const match of source.matchAll(timerPattern(source))) {
       let depth = 0
       let at = match.index! + match[0].length - 1
       const start = at
@@ -255,21 +340,61 @@ describe('client timers', () => {
     return calls
   }
 
-  it('no timer submits, emits or advances anything', () => {
-    const acting =
-      /\b(update|submitOnce|submit[A-Z]\w*|submitAnswer|advance\w*|enterMovement\w*|closeTutorial)\(|socket\.emit\(|\bemit\('(submit|answer|continue|done)/
-    const offenders = clientFiles.flatMap(file =>
-      timerArguments(sources.get(file)!)
-        .filter(call => acting.test(call))
-        .map(call => `${file}: ${call.slice(0, 120)}`)
+  /** The text of the function this file defines as `name`, through its closing line. */
+  const definitionOf = (source: string, name: string): string | undefined => {
+    const start = source.search(
+      new RegExp(`\\b((const|let|var)\\s+${name}\\s*=|function\\s*\\*?\\s*${name}\\s*\\()`)
     )
+    if (start === -1) return undefined
+    let depth = 0
+    for (let at = start; at < source.length; at++) {
+      const char = source[at]!
+      if ('([{'.includes(char)) depth++
+      else if (')]}'.includes(char)) depth--
+      else if (char === '\n' && depth <= 0) {
+        const line = source.slice(start, at)
+        if (!/(=>|[=,(?:]|&&|\|\|)\s*$/.test(line)) return line
+      }
+    }
+    return source.slice(start)
+  }
+
+  /** A timer call plus every same-file function it names — passed bare or called. */
+  const reachedFrom = (source: string, call: string) => {
+    const texts = [call]
+    const seen = new Set<string>()
+    for (let index = 0; index < texts.length; index++) {
+      const named = [
+        ...texts[index]!.matchAll(/(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(/g),
+        ...texts[index]!.matchAll(/[(,]\s*([A-Za-z_$][\w$]*)\s*(?=[,)])/g),
+      ].map(match => match[1]!)
+      for (const name of named) {
+        if (seen.has(name)) continue
+        seen.add(name)
+        const definition = definitionOf(source, name)
+        if (definition) texts.push(definition)
+      }
+    }
+    return texts.join('\n')
+  }
+
+  const ACTING =
+    /\bupdate\((?!\s*\))|\b(submitOnce|submit[A-Z]\w*|submitAnswer|advance\w*|enterMovement\w*|closeTutorial)\(|socket\.emit\(|\bemit\('(submit|answer|continue|done)/
+
+  it('no timer submits, emits or advances anything', () => {
+    const offenders = clientFiles.flatMap(file => {
+      const source = sources.get(file)!
+      return timerArguments(source)
+        .filter(call => ACTING.test(reachedFrom(source, call)))
+        .map(call => `${file}: ${call.slice(0, 120)}`)
+    })
     expect(offenders).toEqual([])
   })
 
   it('client deadlines read the server clock, never the local one', () => {
     const CLOCK_READERS: Record<string, number> = {
       'lib/use-server-now.ts': 6,
-      'lib/use-drag-sheet.ts': 6,
+      'lib/use-drag-sheet.ts': 5,
       'lib/playtest-probe.ts': 5,
       'lib/board3d/use-board-camera.ts': 4,
       'components/challenge/ZoomableImage.vue': 3,
@@ -280,28 +405,32 @@ describe('client timers', () => {
       'lib/events/client/table-notice.event.ts': 2,
       'lib/debug-rooms.ts': 2,
       'components/view/ViewPyramidScheme.vue': 2,
-      'components/challenge/FinalSunsetBlitz.vue': 2,
       'components/challenge/DragDial.vue': 2,
       'components/challenge/ChallengeTimerRadial.vue': 2,
       'lib/useGroupChallenge.ts': 1,
       'lib/events/client/player-cheering.event.ts': 1,
       'components/view/ViewSpectate.vue': 1,
+      'components/challenge/FinalSunsetBlitz.vue': 1,
+      'components/feedback/LeaderReveal.vue': 1,
+      'components/atlas/AtlasCard.vue': 1,
+      'pages/index.vue': 1,
       'components/challenge/SunsetVeil.vue': 1,
       'components/board3d/TopoScene.vue': 1,
     }
-    expect(hits(/\b(Date|performance)\.now\(\)/, clientFiles)).toEqual(CLOCK_READERS)
+    expect(hits(LOCAL_CLOCK, clientFiles)).toEqual(CLOCK_READERS)
   })
 
   it('no view arithmetic on a deadline against the local clock', () => {
     const seatStamp = '(\\.deadline|holdUntil|enteredAt|playStartsAt|nextRoundAt)'
+    const clock = LOCAL_CLOCK.source
     const localDeadline = new RegExp(
-      `${seatStamp}[^\\n;]*\\b(Date|performance)\\.now\\(\\)|\\b(Date|performance)\\.now\\(\\)[^\\n;]*${seatStamp}`
+      `${seatStamp}[^\\n;]*(${clock})|(${clock})[^\\n;]*${seatStamp}`
     )
-    expect(
-      Object.keys(hits(localDeadline, clientFiles)).filter(
-        file => file !== 'lib/seat-transitions.ts'
-      )
-    ).toEqual([])
+    const offenders = clientFiles.filter(
+      file =>
+        file !== 'lib/seat-transitions.ts' && localDeadline.test(statements(sources.get(file)!))
+    )
+    expect(offenders).toEqual([])
   })
 })
 
@@ -362,7 +491,17 @@ describe('the wire', () => {
   })
 
   it('the room is reached only through the stamping emit', () => {
+    expect(
+      hits(/\b(io|socket|sockets)\.(in|to|except)\([^)]*\)(?!\.(fetchSockets|disconnectSockets)\()/)
+    ).toEqual({
+      'lib/events/server-side.ts': 1,
+    })
     expect(hits(/\bio\.(in|to)\([^)]*\)\.emit\(/)).toEqual({ 'lib/events/server-side.ts': 1 })
+    expect(
+      hits(
+        /\.broadcast\b|\bio\.(emit|local|sockets\.emit|serverSideEmit)\(|\.of\([^)]*\)\.(emit|in|to|except)\(/
+      )
+    ).toEqual({})
     expect(sources.get('lib/events/server-side.ts')).toMatch(
       /\{ \.\.\.eventData, serverNow: Date\.now\(\) \}/
     )

@@ -69,9 +69,9 @@ const buildGame = (seats: Player[], extra: Partial<Game> = {}): Game =>
     ...extra,
   }) as unknown as Game
 
-const journalLine = (game: string, seq: number, rev?: number): SeatJournalEntry => ({
+const journalLine = (game: string, seq: number, rev?: number, seat = 'p1'): SeatJournalEntry => ({
   game,
-  seat: 'p1',
+  seat,
   seq,
   from: 'walk',
   to: 'walk',
@@ -174,7 +174,9 @@ describe('describeRoom', () => {
     })
     await recordSeatJournal(
       redis,
-      Array.from({ length: DEBUG_JOURNAL_TAIL + 10 }, (_, index) => journalLine(game.id, index + 1))
+      Array.from({ length: DEBUG_JOURNAL_TAIL + 10 }, (_, index) =>
+        journalLine(game.id, index + 1, undefined, 'left-the-table')
+      )
     )
 
     const armed: ArmedSeatTimer[] = [
@@ -200,7 +202,13 @@ describe('describeRoom', () => {
         seq: 7,
         ageMs: 1500,
         holdUntil: NOW + 500,
-        rendered: { seq: 6, step: 'walk', subject: walking.cursor.subject, ageMs: 1200 },
+        rendered: {
+          seq: 6,
+          step: 'walk',
+          subject: walking.cursor.subject,
+          view: 'board',
+          ageMs: 1200,
+        },
         armed: { kind: 'walk-step', seq: 7, inMs: 500 },
       },
       {
@@ -224,12 +232,83 @@ describe('describeRoom', () => {
       },
     ])
 
+    expect(room.spectators).toEqual([])
+    expect(room.viewers).toEqual([
+      {
+        viewer: 'watcher',
+        seat: 'p2',
+        seq: 4,
+        step: 'scores',
+        subject: stuck.cursor.subject,
+        view: 'scores',
+        ageMs: 100,
+      },
+    ])
+
     expect(room.journal).toHaveLength(DEBUG_JOURNAL_TAIL)
     expect(room.journal[0]!.seq).toBe(11)
     expect(room.journal.at(-1)!.seq).toBe(DEBUG_JOURNAL_TAIL + 10)
 
     const faults = room.violations.map(violation => `${violation.kind}:${violation.seat ?? ''}`)
     expect(faults.sort()).toEqual(['overdue:p2', 'settled-unturned:p3', 'unarmed:p2'])
+  })
+
+  it('runs the journal invariants over the tail it reads, and stale-render for connected seats', async () => {
+    const redis = fakeRedis()
+    const ahead = testSeat('p1', 'walk', {
+      cursor: testCursor('walk', { seq: 3, enteredAt: NOW - 20_000, holdUntil: NOW + 500 }),
+    })
+    const regressed = testSeat('p2', 'settled', {
+      cursor: testCursor('settled', { seq: 9, enteredAt: NOW - 20_000 }),
+    })
+    const watcher = 'booth'
+    const game = buildGame([ahead, regressed], {
+      allowSpectators: true,
+      spectators: { [watcher]: { id: watcher, joinedAtRound: 0 } },
+      rounds: [
+        {
+          groupChallenge: { _type: 'two-truths-challenge' },
+          groupAnswers: {},
+          playerTurns: { p2: { points: 0 } },
+        },
+      ] as unknown as Game['rounds'],
+    })
+    await redis.set(game.id, game)
+    await recordSeatJournal(redis, [
+      journalLine(game.id, 4, undefined, 'p1'),
+      journalLine(game.id, 8, undefined, 'p2'),
+      journalLine(game.id, 7, undefined, 'p2'),
+    ])
+    await recordSeatRender(redis, game.id, {
+      viewer: watcher,
+      seat: 'p1',
+      seq: 3,
+      step: 'walk',
+      subject: ahead.cursor.subject,
+      view: 'board',
+      at: NOW - 100,
+    })
+    const armed: ArmedSeatTimer[] = [{ seat: 'p1', seq: 3, kind: 'walk-step', fireAt: NOW + 500 }]
+
+    const offline = (await describeRoom({ redis, gameId: game.id, armed, now: NOW }))!
+    expect(offline.spectators).toEqual([watcher])
+    expect(offline.viewers.map(render => `${render.viewer}>${render.seat}`)).toEqual(['booth>p1'])
+    expect(
+      offline.violations.map(violation => `${violation.kind}:${violation.seat}`).sort()
+    ).toEqual(['journal-ahead:p1', 'seq-regressed:p2'])
+
+    const live = (await describeRoom({
+      redis,
+      gameId: game.id,
+      armed,
+      connectedSeats: ['p1'],
+      now: NOW,
+    }))!
+    expect(live.violations.map(violation => `${violation.kind}:${violation.seat}`).sort()).toEqual([
+      'journal-ahead:p1',
+      'seq-regressed:p2',
+      'stale-render:p1',
+    ])
   })
 
   it('reports no table timer when none is armed', async () => {

@@ -1,23 +1,35 @@
 /**
  * The #174 completion audit: every bullet of the issue, mapped to the proof
- * that it is done — a named test that must exist (and, with --run, pass), a
- * file that must say something, a census rule, or a line of the playtest
- * matrix report. A bullet without evidence, or whose evidence is missing,
- * fails the audit. The markdown it prints is the PR's checklist.
+ * that it is done — a test that must exist under exactly that title (and, with
+ * --run, pass), code that must say something (comments never count), a census
+ * rule, a clean typecheck, or a line of the playtest matrix report. A bullet
+ * without evidence, or whose evidence is missing, fails the audit. The
+ * markdown it prints is the PR's checklist.
  *
  *   bun run scripts/contract-audit.ts              # evidence exists
- *   bun run scripts/contract-audit.ts --run        # …and every cited suite passes
+ *   bun run scripts/contract-audit.ts --run        # …every cited test passes, and the typecheck
  *   bun run scripts/contract-audit.ts --run --matrix test-results/playtest-matrix/report.json
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { MATRIX_CHECKS, type MatrixCheck, type MatrixReport } from './playtest-matrix'
+import { stripComments } from './source-scrape'
 
+/** A test is cited by its exact title (or `describe > title`); `%s` stands for an `it.each` value. */
 type Evidence =
   | { test: string; name: string }
   | { file: string; contains?: string | RegExp; absent?: boolean }
-  | { matrix: string }
+  | { matrix: MatrixCheck }
+  | { typecheck: string }
   | { waived: string }
   | { deviation: string }
+
+const ACCEPTANCE_ROOM_HOURS = 10
+const TYPE_LEVEL_ECHOES = {
+  typecheck: "the census's type-level echo tables compile",
+} as const
 
 interface Bullet {
   section: string
@@ -41,6 +53,10 @@ const VIEW = 'lib/seat-view.test.ts'
 const CLOCK = 'lib/server-clock.test.ts'
 const SNAPSHOT = 'lib/events/client/snapshot-revision.test.ts'
 const GATE_SHELL = 'lib/use-gate-challenge.test.ts'
+const MODEL_TITLE =
+  'random input, clock, restarts, reconnects, autopilot and retirement never break a seat; left alone, every seat keeps changing subject and a lobby bot races a short game to victory'
+const REPLAY_TITLE =
+  'plays a recorded game back through the real handlers, transition for transition'
 
 const BULLETS: Bullet[] = [
   // Server rules
@@ -55,7 +71,7 @@ const BULLETS: Bullet[] = [
       },
       { test: CENSUS, name: 'only server code moves a seat' },
       { test: TABLE, name: 'refuses every pair the table does not list' },
-      { test: CURSOR, name: 'an illegal move is refused whole' },
+      { test: CURSOR, name: 'an illegal move is refused whole — nothing saved, nothing emitted' },
       { test: CENSUS, name: 'only the cursor module arms a seat' },
     ],
   },
@@ -83,6 +99,7 @@ const BULLETS: Bullet[] = [
       },
       { test: BREADTH, name: 'a stale answer moves nothing but the resync' },
       { test: CENSUS, name: 'no seat event carries a gateTile, turn or roundIndex echo' },
+      TYPE_LEVEL_ECHOES,
     ],
   },
   {
@@ -111,7 +128,7 @@ const BULLETS: Bullet[] = [
       { test: CURSOR, name: 'a restart that forgets every timer resumes from the cursor alone' },
       { test: CENSUS, name: 'rearmSeatExits' },
       { test: CENSUS, name: 'strandedSubmitter' },
-      { test: MODEL, name: 'restart' },
+      { test: MODEL, name: MODEL_TITLE },
     ],
   },
   // Client rules
@@ -119,9 +136,12 @@ const BULLETS: Bullet[] = [
     section: 'Client rules',
     claim: '1. The view is a pure function of (cursor, serverNow); components key on subject',
     evidence: [
-      { test: VIEW, name: 'subject' },
+      { test: VIEW, name: 'changes exactly when a round or gate subject changes' },
       { file: 'components/view/dispatch.ts', contains: 'resolveSeatView' },
-      { test: GATE_SHELL, name: 'latches the head gate at mount; the next gate is a fresh mount' },
+      {
+        test: GATE_SHELL,
+        name: 'latches the head gate at mount; the next gate is a fresh mount, interstitial and all',
+      },
     ],
   },
   {
@@ -129,9 +149,12 @@ const BULLETS: Bullet[] = [
     claim:
       '2. No inference: verdicts render from cursor.verdict for the current subject; a local grade only previews the same subject',
     evidence: [
-      { test: VIEW, name: 'seatVerdictOn' },
-      { test: VIEW, name: 'previewOn' },
-      { test: GATE_SHELL, name: 'reads the verdict and its hold off the cursor' },
+      { test: VIEW, name: 'never shows a verdict on a subject the view was not mounted for' },
+      { test: VIEW, name: 'hides a preview once the cursor moves to another subject' },
+      {
+        test: GATE_SHELL,
+        name: 'reads the verdict and its hold off the cursor, then lets go when the next gate arrives',
+      },
       { test: CENSUS, name: 'finalBeats' },
       { test: CENSUS, name: 'latestBeatFor' },
     ],
@@ -145,7 +168,10 @@ const BULLETS: Bullet[] = [
       { test: CENSUS, name: 'client deadlines read the server clock, never the local one' },
       { test: CENSUS, name: 'no view arithmetic on a deadline against the local clock' },
       { test: CLOCK, name: 'stays within half the tightest round trip under asymmetric jitter' },
-      { test: GATE_SHELL, name: 'arms no local timer for the beat' },
+      {
+        test: GATE_SHELL,
+        name: 'arms no local timer for the beat — the server’s hold is the only exit',
+      },
       { test: CENSUS, name: 'armBeatFallback' },
       { test: CENSUS, name: '_WIRE_GRACE_MS' },
       { test: CENSUS, name: 'CHALLENGE_SWAP_VERIFY_MS' },
@@ -184,9 +210,12 @@ const BULLETS: Bullet[] = [
     evidence: [
       { file: 'lib/seat-transitions.ts', contains: 'SEAT_TRANSITIONS' },
       { test: TABLE, name: 'reaches every step from the lobby' },
-      { test: TABLE, name: 'lets every non-terminal step reach victory' },
+      {
+        test: TABLE,
+        name: 'lets every non-terminal step reach victory — no seat is ever stranded',
+      },
       { test: TABLE, name: 'gives every step a server-owned exit, and terminal steps none' },
-      { test: MODEL, name: 'fc.' },
+      { test: MODEL, name: MODEL_TITLE },
       { file: 'lib/events/server/round-advance.test.ts', contains: /escapab/i, absent: true },
     ],
   },
@@ -197,7 +226,10 @@ const BULLETS: Bullet[] = [
     evidence: [
       { file: 'lib/events/server/seat-journal.ts', contains: "logSeatLine('seat-journal'" },
       { file: 'lib/events/server/seat-journal.ts', contains: 'journalKey' },
-      { test: DEBUG, name: 'journal' },
+      {
+        test: DEBUG,
+        name: 'runs the journal invariants over the tail it reads, and stale-render for connected seats',
+      },
     ],
   },
   {
@@ -206,7 +238,10 @@ const BULLETS: Bullet[] = [
     evidence: [
       { file: 'lib/use-seat-render-ack.ts', contains: "event: 'seat-rendered'" },
       { file: 'lib/events/server/seat-auditor.ts', contains: "logSeatLine('seat-audit'" },
-      { test: AUDITOR, name: 'stale' },
+      {
+        test: AUDITOR,
+        name: 'reports a connected seat that rendered another subject as stale-render, once',
+      },
       {
         deviation:
           'Acks live per viewer in a `${gameId}:renders` side key, not on a seat field — a seat field would bump rev and ride every snapshot on each ack, and the booth’s acks must never touch the racer.',
@@ -233,7 +268,7 @@ const BULLETS: Bullet[] = [
     evidence: [
       {
         test: REPLAY,
-        name: 'plays a recorded game back through the real handlers, transition for transition',
+        name: REPLAY_TITLE,
       },
       { file: 'lib/events/server/draws.ts', contains: 'recordedDraw' },
       { file: 'scripts/capture-replay.ts' },
@@ -247,8 +282,11 @@ const BULLETS: Bullet[] = [
       { file: 'server/routes/debug/rooms.get.ts' },
       { file: 'server/routes/debug/rooms/[id].get.ts' },
       { file: 'server/routes/debug/rooms/[id]/export.get.ts' },
-      { test: DEBUG, name: 'debugAccess' },
-      { test: DEBUG, name: 'describeRoom' },
+      { test: DEBUG, name: 'denies a wrong token of the same length' },
+      {
+        test: DEBUG,
+        name: 'reports each seat, its render, its timer, the table timer, the journal tail and violations',
+      },
     ],
   },
   {
@@ -307,6 +345,7 @@ const BULLETS: Bullet[] = [
       { test: CENSUS, name: 'resultBeatUntil' },
       { test: CENSUS, name: 'no seat event carries a gateTile, turn or roundIndex echo' },
       { test: CENSUS, name: 'clearFinalResultBeat' },
+      TYPE_LEVEL_ECHOES,
     ],
   },
   {
@@ -389,15 +428,16 @@ const BULLETS: Bullet[] = [
     evidence: [
       { file: 'server/middleware/socket.server.ts', contains: 'startSeatAuditor' },
       { file: 'server/middleware/socket.server.ts', contains: 'recordSeatRender' },
-      { test: REPLAY, name: 'plays a recorded game back' },
-      { test: AUDITOR, name: 'once' },
+      { test: REPLAY, name: REPLAY_TITLE },
+      { test: AUDITOR, name: 'logs a standing fault once across repeated sweeps' },
     ],
   },
   {
     section: 'Acceptance',
     claim: '/debug/rooms is live behind a token, and a CI playtest job runs on labelled PRs',
     evidence: [
-      { test: DEBUG, name: 'debugAccess' },
+      { test: DEBUG, name: 'is disabled without a configured token' },
+      { test: DEBUG, name: 'denies a wrong token of the same length' },
       { file: 'nuxt.config.ts', contains: 'debugToken' },
       { file: '.github/workflows/playtest.yml', contains: 'workflow_dispatch' },
       { waived: 'Nightly — dropped by Isaac.' },
@@ -407,13 +447,7 @@ const BULLETS: Bullet[] = [
     section: 'Acceptance',
     claim:
       'Playtest matrix green with zero stale-render across ≥10 room-hours, including chaos + WebKit + forced gauntlet',
-    evidence: [
-      { matrix: 'room-hours ≥ 10' },
-      { matrix: 'zero render-lag' },
-      { matrix: 'zero invariant violations' },
-      { matrix: 'zero seat-audit / seat-illegal / seat-unsent lines' },
-      { matrix: 'every room played to victory or its full budget' },
-    ],
+    evidence: [...MATRIX_CHECKS.map(matrix => ({ matrix }))],
   },
   // Open questions
   {
@@ -443,7 +477,7 @@ const BULLETS: Bullet[] = [
     evidence: [
       { file: 'lib/events/server/bot-brain.ts', contains: 'cursor.seq' },
       { file: 'lib/events/server/bot-brain.ts', contains: 'SERVER_SIDE_EVENT_HANDLERS' },
-      { test: REPLAY, name: 'plays a recorded game back' },
+      { test: REPLAY, name: REPLAY_TITLE },
     ],
   },
   {
@@ -461,7 +495,7 @@ const BULLETS: Bullet[] = [
     claim: 'In-flight games across the deploy are migrated on load',
     evidence: [
       { file: 'lib/events/server/seat-cursor.ts', contains: 'migrateLegacySeats(game)' },
-      { test: MIGRATE, name: 'idempotent' },
+      { test: MIGRATE, name: 'is idempotent: a second migration changes nothing' },
     ],
   },
 ]
@@ -476,48 +510,119 @@ const MATRIX = arg('matrix') ?? 'test-results/playtest-matrix/report.json'
 const read = (file: string) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : undefined)
 const matrix = (() => {
   const raw = read(MATRIX)
-  return raw ? (JSON.parse(raw) as { checks: [string, boolean, unknown][] }) : undefined
+  return raw ? (JSON.parse(raw) as MatrixReport) : undefined
 })()
 
-const suites = new Set(
-  BULLETS.flatMap(bullet => bullet.evidence.flatMap(item => ('test' in item ? [item.test] : [])))
-)
-const failedSuites = new Set<string>()
-if (RUN) {
-  const run = spawnSync('bunx', ['vitest', 'run', ...suites, '--reporter=json'], {
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  })
-  const json = run.stdout.slice(run.stdout.indexOf('{'))
-  const results = JSON.parse(json) as { testResults: { name: string; status: string }[] }
-  for (const result of results.testResults) {
-    if (result.status !== 'passed') failedSuites.add(result.name.replace(`${process.cwd()}/`, ''))
-  }
-  for (const suite of suites) {
-    if (!results.testResults.some(result => result.name.endsWith(suite))) failedSuites.add(suite)
-  }
+interface TestOutcome {
+  file: string
+  title: string
+  path: string
+  status: string
 }
 
-const check = (item: Evidence): { ok: boolean | 'waived' | 'deviation'; note: string } => {
+/** Every test in the cited suites — run with --run, otherwise only collected. */
+const outcomes = ((): TestOutcome[] => {
+  const files = [
+    ...new Set(
+      BULLETS.flatMap(bullet =>
+        bullet.evidence.flatMap(item => ('test' in item ? [item.test] : []))
+      )
+    ),
+  ]
+  const relative = (file: string) => file.replace(`${process.cwd()}/`, '')
+  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'contract-audit-')), 'tests.json')
+  if (RUN) {
+    spawnSync('bunx', ['vitest', 'run', ...files, '--reporter=json', `--outputFile=${out}`], {
+      stdio: 'ignore',
+    })
+    const results = JSON.parse(read(out) ?? '{"testResults":[]}') as {
+      testResults: {
+        name: string
+        assertionResults: { ancestorTitles: string[]; title: string; status: string }[]
+      }[]
+    }
+    return results.testResults.flatMap(suite =>
+      suite.assertionResults.map(test => ({
+        file: relative(suite.name),
+        title: test.title,
+        path: [...test.ancestorTitles, test.title].join(' > '),
+        status: test.status,
+      }))
+    )
+  }
+  spawnSync('bunx', ['vitest', 'list', ...files, `--json=${out}`], { stdio: 'ignore' })
+  const listed = JSON.parse(read(out) ?? '[]') as {
+    name: string
+    file: string
+  }[]
+  return listed.map(test => ({
+    file: relative(test.file),
+    title: test.name.split(' > ').at(-1)!,
+    path: test.name,
+    status: 'collected',
+  }))
+})()
+
+const typecheck = RUN
+  ? spawnSync('bun', ['run', 'typecheck'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  : undefined
+const typeErrors = typecheck
+  ? `${typecheck.stdout}\n${typecheck.stderr}`.split('\n').filter(line => /error TS\d+/.test(line))
+  : []
+
+type Outcome = boolean | 'waived' | 'deviation' | 'unverified'
+
+const titled = (name: string) => {
+  const pattern = new RegExp(
+    `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%s/g, '.+')}$`
+  )
+  return (test: TestOutcome) => pattern.test(test.title) || pattern.test(test.path)
+}
+
+const check = (item: Evidence): { ok: Outcome; note: string } => {
   if ('waived' in item) return { ok: 'waived', note: item.waived }
   if ('deviation' in item) return { ok: 'deviation', note: item.deviation }
+  if ('typecheck' in item) {
+    if (!typecheck)
+      return { ok: 'unverified', note: `${item.typecheck} (typecheck runs with --run)` }
+    return typecheck.status === 0 && !typeErrors.length
+      ? { ok: true, note: `\`bun run typecheck\` clean: ${item.typecheck}` }
+      : {
+          ok: false,
+          note: `\`bun run typecheck\` failed (${typeErrors.length} errors): ${typeErrors.slice(0, 3).join(' | ')}`,
+        }
+  }
   if ('matrix' in item) {
-    const line = matrix?.checks.find(([name]) => name === item.matrix)
+    const line = matrix?.checks.find(entry => entry.name === item.matrix)
     if (!line) return { ok: false, note: `matrix: no "${item.matrix}" in ${MATRIX}` }
-    return { ok: line[1], note: `matrix: ${item.matrix} = ${String(line[2])}` }
+    const enough = item.matrix !== 'room-hours' || matrix!.roomHours >= ACCEPTANCE_ROOM_HOURS
+    return {
+      ok: line.ok && enough,
+      note: `matrix: ${item.matrix} = ${line.value}${enough ? '' : ` (the issue asks ≥ ${ACCEPTANCE_ROOM_HOURS})`}`,
+    }
   }
   if ('test' in item) {
-    const source = read(item.test)
-    if (!source) return { ok: false, note: `${item.test} missing` }
-    if (!source.includes(item.name)) return { ok: false, note: `${item.test}: no "${item.name}"` }
-    if (RUN && failedSuites.has(item.test)) return { ok: false, note: `${item.test} fails` }
-    return { ok: true, note: `\`${item.test}\` › ${item.name}` }
+    if (!fs.existsSync(item.test)) return { ok: false, note: `${item.test} missing` }
+    const matches = outcomes.filter(test => test.file === item.test && titled(item.name)(test))
+    if (!matches.length) return { ok: false, note: `${item.test}: no test titled "${item.name}"` }
+    const unpassed = matches.filter(test => test.status !== 'passed' && test.status !== 'collected')
+    if (unpassed.length) {
+      return {
+        ok: false,
+        note: `\`${item.test}\` › ${item.name}: ${unpassed.map(test => test.status).join(', ')}`,
+      }
+    }
+    return {
+      ok: true,
+      note: `\`${item.test}\` › ${item.name}${RUN ? ' (passed)' : ' (exists; --run proves it passes)'}`,
+    }
   }
   const source = read(item.file)
   if (source === undefined) return { ok: false, note: `${item.file} missing` }
   if (item.contains === undefined) return { ok: true, note: `\`${item.file}\`` }
+  const code = stripComments(item.file, source)
   const found =
-    typeof item.contains === 'string' ? source.includes(item.contains) : item.contains.test(source)
+    typeof item.contains === 'string' ? code.includes(item.contains) : item.contains.test(code)
   const ok = item.absent ? !found : found
   return {
     ok,
@@ -545,17 +650,19 @@ for (const bullet of BULLETS) {
     const mark =
       result.ok === true
         ? '✓'
-        : result.ok === 'waived'
-          ? 'waived:'
-          : result.ok === 'deviation'
-            ? 'deviation:'
-            : '✗'
+        : result.ok === false
+          ? '✗'
+          : result.ok === 'unverified'
+            ? '?'
+            : `${result.ok}:`
     lines.push(`  - ${mark} ${result.note}`)
   }
 }
+const typeFailed = !!typecheck && (typecheck.status !== 0 || typeErrors.length > 0)
 lines.push(
   '',
-  failed ? `**${failed} bullet(s) without evidence.**` : '**Every bullet has evidence.**'
+  failed ? `**${failed} bullet(s) without evidence.**` : '**Every bullet has evidence.**',
+  ...(typeFailed ? ['**`bun run typecheck` failed.**'] : [])
 )
 console.log(lines.join('\n'))
-process.exit(failed ? 1 : 0)
+process.exit(failed || typeFailed ? 1 : 0)

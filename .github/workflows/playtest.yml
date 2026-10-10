@@ -18,8 +18,12 @@ on:
     types: [labeled, synchronize]
   workflow_dispatch:
 
+# A label other than `contract` lands in a group of its own, so tagging the PR
+# never cancels a playtest already running.
 concurrency:
-  group: playtest-${{ github.ref }}
+  group: >-
+    playtest-${{ github.ref }}${{ github.event.action == 'labeled' &&
+    github.event.label.name != 'contract' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -35,7 +39,8 @@ jobs:
     name: Playtest (CI-built server)
     if: >
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.labels.*.name, 'contract')
+      (contains(github.event.pull_request.labels.*.name, 'contract') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'contract'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -64,6 +69,7 @@ jobs:
         run: bunx playwright install-deps chromium
 
       - name: Build
+        id: build
         run: bun run build
 
       # Every seat is teleported to the gauntlet: the whole endgame, verdict
@@ -77,7 +83,7 @@ jobs:
 
       # The natural mix for a fixed window — rounds, walks and gates.
       - name: Playtest — mixed
-        if: '!cancelled()'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
         env:
           PLAYTEST_MINUTES: '6'
@@ -96,6 +102,7 @@ jobs:
     if: >
       github.event_name == 'pull_request' &&
       contains(github.event.pull_request.labels.*.name, 'contract') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'contract') &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45

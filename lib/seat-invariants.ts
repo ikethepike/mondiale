@@ -1,18 +1,31 @@
 import {
+  BRIEFING_CAP_MS,
   briefingHolds,
   CLASSIC_SETTLE_SLACK_MS,
+  FINAL_QUESTION_CAP_MS,
+  FINAL_REVEAL_HOLD_MS,
+  GATE_BROWSE_CAP_MS,
+  GROUP_SCORES_CAP_MS,
+  INDIVIDUAL_GATE_CAP_MS,
   isClassicGroupRound,
+  PLAY_GATE_CAP_MS,
   revealBudgetMsFor,
+  ROUND_BEATS,
+  SEAT_DEADLINE_GRACE_MS,
+  TIMELINE_BROWSE_CAP_MS,
+  TUTORIAL_CAP_MS,
+  UNTIMED_CLASSIC_CAP_SECONDS,
 } from '~~/lib/round-beats'
 import { latestRound } from '~~/lib/rounds'
 import {
   ROUND_SETTLE_STEPS,
+  SEAT_STEP_SPECS,
   seatFireAt,
   stepRequirementGap,
   tableOwesNextRound,
 } from '~~/lib/seat-transitions'
 import type { Game } from '~~/types/game.types'
-import type { SeatJournalEntry, SeatRender } from '~~/types/seat.types'
+import type { SeatJournalEntry, SeatRender, SeatStep } from '~~/types/seat.types'
 
 /**
  * The seat contract's invariants, as pure predicates over a game snapshot and
@@ -207,3 +220,38 @@ const engineDeadline = (challenge: unknown): number | undefined => {
     ? state.deadline
     : undefined
 }
+
+const SEAT_CAP_STALL_MS =
+  Math.max(
+    TUTORIAL_CAP_MS,
+    GROUP_SCORES_CAP_MS,
+    INDIVIDUAL_GATE_CAP_MS,
+    FINAL_QUESTION_CAP_MS,
+    GATE_BROWSE_CAP_MS,
+    TIMELINE_BROWSE_CAP_MS,
+    FINAL_REVEAL_HOLD_MS
+  ) +
+  SEAT_DEADLINE_GRACE_MS +
+  SEAT_OVERDUE_SLACK_MS
+
+const ROUND_STALL_MS =
+  BRIEFING_CAP_MS +
+  PLAY_GATE_CAP_MS +
+  UNTIMED_CLASSIC_CAP_SECONDS * 1000 +
+  Math.max(...Object.values(ROUND_BEATS).map(beat => beat.revealHoldMs + (beat.browseCapMs ?? 0))) +
+  CLASSIC_SETTLE_SLACK_MS +
+  ENGINE_STALL_MS +
+  SEAT_OVERDUE_SLACK_MS
+
+/**
+ * The longest the server may keep a live seat on one (step, subject): the
+ * longest seat cap for a timer step, the round's whole clock for the question.
+ * Undefined where the seat waits on the table (`settled`), or before or after
+ * the game. The playtest and the model test hold the server to it.
+ */
+export const subjectStallMs = (step: SeatStep): number | undefined =>
+  SEAT_STEP_SPECS[step].exit === 'timer'
+    ? SEAT_CAP_STALL_MS
+    : step === 'round'
+      ? ROUND_STALL_MS
+      : undefined

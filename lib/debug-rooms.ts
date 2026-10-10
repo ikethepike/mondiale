@@ -1,9 +1,13 @@
 import { timingSafeEqual } from 'node:crypto'
 import type { Redis } from '@upstash/redis'
 import { SERVER_CONTROLLED_CAPS } from '~~/lib/round-beats'
-import { seatInvariantViolations, type ArmedSeatTimer } from '~~/lib/seat-invariants'
+import {
+  seatInvariantViolations,
+  type ArmedSeatTimer,
+  type SeatViolation,
+} from '~~/lib/seat-invariants'
 import type { Game } from '~~/types/game.types'
-import type { SeatJournalEntry, SeatRender } from '~~/types/seat.types'
+import type { SeatCursor, SeatJournalEntry, SeatRender } from '~~/types/seat.types'
 import {
   eventsKey,
   journalKey,
@@ -62,20 +66,21 @@ export const readJournal = async (
     await (redis as ReadRedis).lrange?.(journalKey(gameId), tail ? -tail : 0, -1)
   )
 
-export interface DebugSeat {
+type Aged<T> = T & { ageMs: number }
+
+export type DebugSeat = Pick<SeatCursor, 'step' | 'subject' | 'seq' | 'holdUntil' | 'deadline'> & {
   id: string
   name?: string
   bot?: true
   autopilot?: boolean
-  step: string
-  subject: string
-  seq: number
   ageMs: number
-  holdUntil?: number
-  deadline?: number
-  rendered?: { seq: number; step: string; subject: string; ageMs: number }
-  armed?: { kind: string; seq: number; inMs: number }
+  /** This seat's own player's last ack (`viewer === seat`). */
+  rendered?: Aged<Pick<SeatRender, 'seq' | 'step' | 'subject' | 'view'>>
+  armed?: Pick<ArmedSeatTimer, 'kind' | 'seq'> & { inMs: number }
 }
+
+/** An ack by a viewer for a seat other than their own — the booth. */
+export type DebugRender = Aged<Omit<SeatRender, 'at'>>
 
 export interface DebugRoom {
   id: string
@@ -84,21 +89,26 @@ export interface DebugRoom {
   rounds: number
   nextRoundAt?: number
   seats: DebugSeat[]
+  spectators: string[]
+  viewers: DebugRender[]
   table?: { kind: string; inMs: number }
   journal: SeatJournalEntry[]
-  violations: ReturnType<typeof seatInvariantViolations>
+  violations: SeatViolation[]
 }
 
 export const describeRoom = async ({
   redis,
   gameId,
   armed,
+  connectedSeats,
   now = Date.now(),
 }: {
   redis: unknown
   gameId: string
   /** This machine's timers for the room; absent when another machine owns it. */
   armed?: readonly ArmedSeatTimer[]
+  /** Seats whose own player has a socket here; absent, stale-render is left to the auditor. */
+  connectedSeats?: readonly string[]
   now?: number
 }): Promise<DebugRoom | undefined> => {
   const game = (await (redis as ReadRedis).get<Game>(gameId)) ?? undefined
@@ -122,7 +132,15 @@ export const describeRoom = async ({
       ...(seat.cursor?.holdUntil ? { holdUntil: seat.cursor.holdUntil } : {}),
       ...(seat.cursor?.deadline ? { deadline: seat.cursor.deadline } : {}),
       ...(own
-        ? { rendered: { seq: own.seq, step: own.step, subject: own.subject, ageMs: now - own.at } }
+        ? {
+            rendered: {
+              seq: own.seq,
+              step: own.step,
+              subject: own.subject,
+              view: own.view,
+              ageMs: now - own.at,
+            },
+          }
         : {}),
       ...(timer ? { armed: { kind: timer.kind, seq: timer.seq, inMs: timer.fireAt - now } } : {}),
     }
@@ -135,6 +153,10 @@ export const describeRoom = async ({
     rounds: game.rounds.length,
     ...(game.nextRoundAt ? { nextRoundAt: game.nextRoundAt } : {}),
     seats,
+    spectators: Object.keys(game.spectators ?? {}),
+    viewers: renders
+      .filter(render => render.viewer !== render.seat)
+      .map(({ at, ...render }): DebugRender => ({ ...render, ageMs: now - at })),
     ...(table ? { table: { kind: table.kind, inMs: table.fireAt - now } } : {}),
     journal,
     violations: seatInvariantViolations(game, {
@@ -142,6 +164,8 @@ export const describeRoom = async ({
       capsOn: SERVER_CONTROLLED_CAPS,
       armed,
       renders,
+      journal,
+      connectedSeats,
     }),
   }
 }

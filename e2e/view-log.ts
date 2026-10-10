@@ -46,3 +46,6 @@ export const viewLogViolations = (log: ViewLogEntry[]): ViewLogViolation[] => {
   }
   return violations
 }
+
+/** The room URL with the playtest instrumentation armed. */
+export const withViewLog = (url: string) => `${url}${url.includes('?') ? '&' : '?'}viewlog=1`

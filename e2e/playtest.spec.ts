@@ -10,8 +10,15 @@ import {
 } from '@playwright/test'
 import type { DebugRoom, DebugSeat } from '~~/lib/debug-rooms'
 import type { GameProbe, PlaytestScope } from '~~/lib/playtest-probe'
+import { subjectStallMs } from '~~/lib/seat-invariants'
 import { randomBetween, randomInt, sample } from '~~/lib/arrays'
-import { viewLogViolations } from './view-log'
+import {
+  MIN_ROOM_READ_SHARE,
+  type PlaytestIncident,
+  type PlaytestSummary,
+  type SeatProgress,
+} from './playtest-summary'
+import { viewLogViolations, withViewLog } from './view-log'
 
 /**
  * The playtest client as a spec checker: real browser seats play whole games
@@ -21,6 +28,8 @@ import { viewLogViolations } from './view-log'
  * included — through `/debug/rooms`, and greps the server log for the
  * auditor's `seat-audit`, `seat-illegal` and `seat-unsent` lines. A
  * spectator page rides along; its booth acks must never touch a racer's audit.
+ * A run whose room went unread, whose pages held no seat, or whose humans
+ * never moved through their subjects fails — silence is not a pass.
  *
  * Runs under playwright.playtest.config.ts. Knobs: PLAYTEST_ROOMS (parallel
  * rooms), PLAYTEST_SEATS (browser seats per room), PLAYTEST_BOTS,
@@ -30,7 +39,9 @@ import { viewLogViolations } from './view-log'
  * PLAYTEST_SPECTATOR=0 (no booth page), PLAYTEST_REQUIRE_VICTORY=1 (fail a room
  * whose humans never win — random answers rarely clear a gauntlet), PLAYTEST_SHOTS=1 (a screenshot of every
  * view once it settles), PLAYTEST_BASE_URL + PLAYTEST_DEBUG_TOKEN (a running
- * server), PLAYTEST_SERVER_LOG (that server's stdout, when reachable).
+ * server), PLAYTEST_SERVER_LOG (that server's stdout, when reachable; without
+ * one an external run is summarised as unlogged), FORCE_FINAL_CHALLENGE=1 (some
+ * seat must reach the gauntlet).
  */
 
 const ROOMS = Number(process.env.PLAYTEST_ROOMS ?? 1)
@@ -44,6 +55,8 @@ const DEVICE = process.env.PLAYTEST_DEVICE
 const CHAOS = process.env.PLAYTEST_CHAOS === '1'
 const SPECTATOR = process.env.PLAYTEST_SPECTATOR !== '0'
 const REQUIRE_VICTORY = process.env.PLAYTEST_REQUIRE_VICTORY === '1'
+const FORCED_FINAL = process.env.FORCE_FINAL_CHALLENGE === '1'
+const EXTERNAL_SERVER = !!process.env.PLAYTEST_BASE_URL
 const OUT_DIR = path.resolve(process.env.PLAYTEST_OUT ?? 'test-results/playtest')
 
 /** A stable server cursor the seat's own page has not rendered within this. */
@@ -56,6 +69,13 @@ const HEAL_WINDOW_MS = 30_000
 const SELF_HEAL_MS = 30_000
 const TICK_MS = 1000
 const PROBE_GAP_MS = 6000
+/** How long a human page may go without its probe naming a seat in the room. */
+const SEAT_MAP_GRACE_MS = 20_000
+/** How long the room gets to answer its first `/debug/rooms` read. */
+const FIRST_READ_MS = 20_000
+/** A live seat walks through at least this many distinct subjects per minute played. */
+const SUBJECTS_PER_MINUTE = 0.5
+const MIN_SUBJECTS = 3
 /** Chaos mode: per tick, the chance a seat drops offline, and for how long. */
 const CHAOS_ODDS = 1 / 90
 const CHAOS_OFFLINE_MS: [number, number] = [2000, 8000]
@@ -68,7 +88,15 @@ const SHOTS = process.env.PLAYTEST_SHOTS === '1'
 const VIEW_SETTLE_MS = 3000
 /** Kinds reported as evidence: no page recovery watch, no reload — the
  *  server-side findings among them still fail the run. */
-const EVIDENCE_ONLY = new Set(['long-task', 'page-error', 'invariant', 'subject-loop'])
+const EVIDENCE_ONLY = new Set([
+  'long-task',
+  'page-error',
+  'invariant',
+  'subject-loop',
+  'stall',
+  'unseated',
+  'booth',
+])
 /** Kinds that never fail the run on their own. */
 const NON_VERDICT = new Set(['long-task'])
 const SERVER_LINE = /\b(seat-audit|seat-illegal|seat-unsent)\b/
@@ -78,22 +106,15 @@ const ACK_BUTTON =
 const GUESSES = ['France', 'Brazil', 'Japan', 'Kenya', 'Canada', 'India', 'Egypt', 'Peru']
 const MAP_CODES = ['FR', 'DE', 'BR', 'JP', 'US', 'IN', 'EG', 'AU', 'CN', 'MX', 'NG', 'AR']
 
-interface Incident {
-  kind: string
-  seat: string
-  at: string
-  detail: string
-  selfHealedMs?: number
-  healedByRefresh?: boolean
-  healMs?: number
-  probe?: GameProbe
-  server?: DebugSeat[]
-}
+type Incident = PlaytestIncident & { probe?: ProbeRead; server?: DebugSeat[] }
+
+/** A probe plus the page's own `Date.now()` — the clock its transition trace stamps. */
+type ProbeRead = GameProbe & { clientAt: number }
 
 interface Seat {
   name: string
   page: Page
-  history: GameProbe[]
+  history: ProbeRead[]
   open: Set<string>
   longTasksSeen: number
   errors: string[]
@@ -104,6 +125,9 @@ interface Seat {
   quietUntil: number
   shots: number
   lastView?: string
+  /** The room seat this page's probe names, once it has named one. */
+  seatId?: string
+  unmappedSince?: number
 }
 
 /** Per seat id: the server's (step, subject) and when this run first saw it. */
@@ -113,8 +137,13 @@ interface CursorWatch {
   subjects: string[]
 }
 
-const readProbe = (page: Page) =>
-  page.evaluate(() => (window as unknown as PlaytestScope).__gameProbe?.()).catch(() => undefined)
+const readProbe = (page: Page): Promise<ProbeRead | undefined> =>
+  page
+    .evaluate(() => {
+      const probe = (window as unknown as PlaytestScope).__gameProbe?.()
+      return probe && { ...probe, clientAt: Date.now() }
+    })
+    .catch(() => undefined)
 
 const readLongTasks = (page: Page) =>
   page
@@ -124,22 +153,27 @@ const readLongTasks = (page: Page) =>
 const readViewLog = (page: Page) =>
   page.evaluate(() => (window as unknown as PlaytestScope).__viewLog ?? []).catch(() => [])
 
-const withViewLog = (url: string) => `${url}${url.includes('?') ? '&' : '?'}viewlog=1`
-
 /** The room as the owning machine sees it, and when this run read it. */
 type RoomRead = DebugRoom & { readAt: number }
 
 const readRoom = async (
   request: APIRequestContext,
   gameId: string
-): Promise<RoomRead | undefined> => {
-  const response = await request
-    .get(`/debug/rooms/${gameId}`, { headers: { authorization: `Bearer ${DEBUG_TOKEN}` } })
-    .catch(() => undefined)
-  return response?.ok()
-    ? { ...((await response.json()) as DebugRoom), readAt: Date.now() }
-    : undefined
+): Promise<{ room: RoomRead } | { error: string }> => {
+  try {
+    const response = await request.get(`/debug/rooms/${gameId}`, {
+      headers: { authorization: `Bearer ${DEBUG_TOKEN}` },
+      failOnStatusCode: false,
+    })
+    if (!response.ok()) return { error: `HTTP ${response.status()}` }
+    return { room: { ...((await response.json()) as DebugRoom), readAt: Date.now() } }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) }
+  }
 }
+
+const roomOf = (read: Awaited<ReturnType<typeof readRoom>>) =>
+  'room' in read ? read.room : undefined
 
 const cursorKey = (cursor: { step: string; subject: string } | undefined) =>
   cursor ? `${cursor.step} ${cursor.subject}` : 'none'
@@ -272,6 +306,16 @@ for (let room = 0; room < ROOMS; room += 1) {
     await host.getByRole('button', { name: /^Start( Game)?$/ }).click({ timeout: 15_000 })
     const booth = SPECTATOR ? await openSeat(browser, 'Booth', roomUrl) : undefined
 
+    let firstRead = await readRoom(request, gameId)
+    for (const until = Date.now() + FIRST_READ_MS; !('room' in firstRead) && Date.now() < until;) {
+      await host.waitForTimeout(1000)
+      firstRead = await readRoom(request, gameId)
+    }
+    expect(
+      'error' in firstRead ? firstRead.error : undefined,
+      `/debug/rooms/${gameId} must answer before play is checked`
+    ).toBeUndefined()
+
     const outDir = path.join(OUT_DIR, gameId)
     fs.mkdirSync(path.join(outDir, 'views'), { recursive: true })
     const incidents: Incident[] = []
@@ -280,8 +324,14 @@ for (let room = 0; room < ROOMS; room += 1) {
     const watches = new Map<string, CursorWatch>()
     const started = Date.now()
     let logOffset = SERVER_LOG && fs.existsSync(SERVER_LOG) ? fs.statSync(SERVER_LOG).size : 0
+    let gameLogLines = 0
     let finished = false
     let latest: RoomRead | undefined
+    const roomReads = { ticks: 0, read: 0 }
+    const stallsReported = new Set<string>()
+    const booths = new Set<string>()
+    const boothAcks = new Set<string>()
+    const pageFor = (seatId: string) => seats.find(seat => seat.seatId === seatId) ?? seats[0]!
 
     /** Track each seat's server cursor: when its (step, subject) last moved,
      *  and every subject it has left — a subject never comes back. */
@@ -308,14 +358,14 @@ for (let room = 0; room < ROOMS; room += 1) {
      *  and no transition is hanging. */
     const seatFollows = async (seat: Seat): Promise<boolean> => {
       const probe = await readProbe(seat.page)
-      const room = await readRoom(request, gameId)
+      const room = roomOf(await readRoom(request, gameId))
       const truth = room?.seats.find(entry => entry.id === probe?.playerId)
       if (!probe || !truth) return false
       const trace = probe.transition
       const leaving = (trace.leaveStartedAt ?? 0) > (trace.leaveDoneAt ?? 0)
       return (
         cursorKey(truth.rendered) === cursorKey(truth) &&
-        !(leaving && probe.at - trace.leaveStartedAt! > TRANSITION_STUCK_MS)
+        !(leaving && probe.clientAt - trace.leaveStartedAt! > TRANSITION_STUCK_MS)
       )
     }
 
@@ -409,6 +459,27 @@ for (let room = 0; room < ROOMS; room += 1) {
         setTimeout(() => void context.setOffline(false).catch(() => undefined), outage)
       }
       const probe = await readProbe(seat.page)
+      if (seat !== booth && room) {
+        const mapped = room.seats.some(entry => entry.id === probe?.playerId && !entry.bot)
+        if (mapped) {
+          seat.seatId ??= probe!.playerId
+          seat.unmappedSince = undefined
+        } else seat.unmappedSince ??= room.readAt
+        await once(
+          seat,
+          'unseated',
+          !mapped && room.readAt - seat.unmappedSince! > SEAT_MAP_GRACE_MS,
+          () =>
+            `probe ${probe ? `names ${probe.playerId ?? 'no player'}` : 'unreadable'}, ` +
+            `no human seat in the room for ${room.readAt - seat.unmappedSince!}ms`
+        )
+        await once(
+          seat,
+          'reseated',
+          !!seat.seatId && !!probe?.playerId && probe.playerId !== seat.seatId,
+          () => `page moved from seat ${seat.seatId} to ${probe!.playerId}`
+        )
+      }
       if (!probe) return
       const previous = seat.history.at(-1)
       if (previous && probe.at - previous.at > PROBE_GAP_MS) {
@@ -419,7 +490,6 @@ for (let room = 0; room < ROOMS; room += 1) {
       seat.history.push(probe)
       if (seat.history.length > 3000) seat.history.shift()
 
-      // The client never moves a cursor backwards, whatever the wire did.
       if (previous?.cursor && probe.cursor) {
         await once(
           seat,
@@ -432,12 +502,12 @@ for (let room = 0; room < ROOMS; room += 1) {
       const trace = probe.transition
       const leaveAge =
         (trace.leaveStartedAt ?? 0) > (trace.leaveDoneAt ?? 0)
-          ? probe.at - trace.leaveStartedAt!
+          ? probe.clientAt - trace.leaveStartedAt!
           : 0
       const enterAge =
         (trace.enterStartedAt ?? 0) > (trace.enterDoneAt ?? 0) &&
         (trace.enterStartedAt ?? 0) > (trace.leaveStartedAt ?? 0)
-          ? probe.at - trace.enterStartedAt!
+          ? probe.clientAt - trace.enterStartedAt!
           : 0
       const stuckAt =
         leaveAge > TRANSITION_STUCK_MS
@@ -509,16 +579,59 @@ for (let room = 0; room < ROOMS; room += 1) {
       if (seat !== booth) await act(seat.page)
     }
 
+    const watchBooth = async (watcher: Seat, room: RoomRead) => {
+      const seated = new Set(room.seats.map(seat => seat.id))
+      for (const id of room.spectators) booths.add(id)
+      for (const id of booths) {
+        await once(
+          watcher,
+          `booth:seated:${id}`,
+          seated.has(id),
+          () => `spectator ${id} holds a seat`
+        )
+      }
+      for (const render of room.viewers.filter(entry => booths.has(entry.viewer))) {
+        boothAcks.add(`${render.seat} ${render.step} ${render.subject}`)
+        await once(
+          watcher,
+          `booth:keyed:${render.viewer}:${render.seat}`,
+          !seated.has(render.seat) || render.seat === render.viewer,
+          () => `booth ack keyed to ${render.seat}: ${JSON.stringify(render)}`
+        )
+      }
+    }
+
+    const watchStalls = async (room: RoomRead) => {
+      for (const seat of room.seats.filter(entry => !entry.bot)) {
+        const limit = subjectStallMs(seat.step)
+        const watch = watches.get(seat.id)
+        if (!limit || !watch || room.readAt - watch.since <= limit) continue
+        const key = `${seat.id} ${watch.key}`
+        if (stallsReported.has(key)) continue
+        stallsReported.add(key)
+        await report(
+          pageFor(seat.id),
+          'stall',
+          `${seat.name ?? seat.id} held on ${watch.key} for ${room.readAt - watch.since}ms (limit ${limit}ms)`
+        )
+      }
+    }
+
     const tickRoom = async () => {
-      const room = await readRoom(request, gameId)
-      if (!room) {
-        warnings.push(`no /debug/rooms read at ${new Date().toISOString()}`)
+      roomReads.ticks += 1
+      const read = await readRoom(request, gameId)
+      if ('error' in read) {
+        warnings.push(`/debug/rooms read failed (${read.error}) at ${new Date().toISOString()}`)
         return undefined
       }
+      const { room } = read
+      roomReads.read += 1
       latest = room
       for (const { seat, subject } of watchCursors(room)) {
         await report(seats[0]!, 'subject-loop', `${seat.name ?? seat.id} re-entered ${subject}`)
       }
+      await watchStalls(room)
+      if (booth) await watchBooth(booth, room)
       for (const violation of room.violations) {
         await once(
           seats[0]!,
@@ -529,6 +642,7 @@ for (let room = 0; room < ROOMS; room += 1) {
       }
       const log = serverLines(gameId, logOffset)
       logOffset = log.to
+      gameLogLines += log.lines.length
       for (const line of log.lines.filter(line => SERVER_LINE.test(line))) {
         serverReport.push(line)
         incidents.push({
@@ -611,14 +725,46 @@ for (let room = 0; room < ROOMS; room += 1) {
       }
     }
 
-    const summary = {
+    const minutes = (Date.now() - started) / 60_000
+    const floor = Math.max(MIN_SUBJECTS, Math.floor(minutes * SUBJECTS_PER_MINUTE))
+    const progress: SeatProgress[] = (latest?.seats ?? [])
+      .filter(seat => !seat.bot)
+      .map(seat => {
+        const subjects = new Set(watches.get(seat.id)?.subjects ?? [])
+        return {
+          seat: seat.id,
+          name: seat.name,
+          subjects: subjects.size,
+          floor,
+          victory: subjects.has('victory'),
+          final: [...subjects].some(subject => subject.startsWith('final:')),
+        }
+      })
+    const reachedFinal = [...watches.values()].some(watch =>
+      watch.subjects.some(subject => subject.startsWith('final:'))
+    )
+    const serverLogChecked = !!SERVER_LOG && fs.existsSync(SERVER_LOG) && gameLogLines > 0
+    const serverLogNote = serverLogChecked
+      ? undefined
+      : !SERVER_LOG
+        ? `unlogged: ${EXTERNAL_SERVER ? 'external server, no PLAYTEST_SERVER_LOG' : 'PLAYTEST_SERVER_LOG unset'}`
+        : !fs.existsSync(SERVER_LOG)
+          ? `unlogged: ${SERVER_LOG} does not exist`
+          : `unlogged: ${SERVER_LOG} carries no line for ${gameId}`
+
+    const summary: PlaytestSummary = {
       gameId,
       finished,
-      minutes: Math.round((Date.now() - started) / 6000) / 10,
+      minutes: Math.round(minutes * 10) / 10,
       seats: seats.length,
       bots: BOTS,
       spectator: !!booth,
-      serverLogChecked: !!SERVER_LOG,
+      forcedFinal: FORCED_FINAL,
+      reachedFinal,
+      serverLogChecked,
+      ...(serverLogNote ? { serverLogNote } : {}),
+      roomReads,
+      progress,
       incidents: incidents.map(({ probe: _probe, server: _server, ...rest }) => rest),
       serverLines: serverReport,
       grammar,
@@ -639,6 +785,27 @@ for (let room = 0; room < ROOMS; room += 1) {
     )
     expect(failures.map(({ kind, seat, detail }) => `${kind} ${seat}: ${detail}`)).toEqual([])
     expect(grammar).toEqual([])
+    expect(
+      roomReads.read / roomReads.ticks,
+      `/debug/rooms answered ${roomReads.read} of ${roomReads.ticks} ticks`
+    ).toBeGreaterThanOrEqual(MIN_ROOM_READ_SHARE)
+    expect(
+      seats.filter(seat => !seat.seatId).map(seat => seat.name),
+      'every human page plays a seat in the room'
+    ).toEqual([])
+    expect(new Set(seats.map(seat => seat.seatId)).size, 'one seat per page').toBe(seats.length)
+    expect(
+      progress.filter(seat => !seat.victory && seat.subjects < seat.floor),
+      `every human seat moves through ≥${floor} subjects`
+    ).toEqual([])
+    if (booth) {
+      expect([...booths], 'the booth watches as the one spectator').toHaveLength(1)
+      expect(boothAcks.size, 'the booth acks what it renders').toBeGreaterThan(0)
+    }
+    if (FORCED_FINAL) expect(reachedFinal, 'the forced gauntlet is reached').toBe(true)
+    if (SERVER_LOG || !EXTERNAL_SERVER) {
+      expect(serverLogChecked, serverLogNote).toBe(true)
+    }
     if (REQUIRE_VICTORY) {
       expect(finished, 'every human seat reaches victory inside the budget').toBe(true)
     }

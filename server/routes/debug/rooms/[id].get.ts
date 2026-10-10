@@ -19,8 +19,12 @@ export default defineEventHandler(async event => {
   }
   // Through the game's queue, like the auditor: never between a save and the
   // arm that follows it in the same task.
+  const sockets = (await globalThis.io?.in(gameId).fetchSockets()) ?? []
+  const connectedSeats = sockets.flatMap(socket =>
+    typeof socket.data?.playerId === 'string' ? [socket.data.playerId] : []
+  )
   const room = await enqueueGameTask(gameId, () =>
-    describeRoom({ redis, gameId, armed: armedTimersFor(gameId) })
+    describeRoom({ redis, gameId, armed: armedTimersFor(gameId), connectedSeats })
   ).catch(() => {
     throw createError({ statusCode: 503 })
   })

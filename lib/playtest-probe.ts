@@ -1,3 +1,5 @@
+import type { SeatCursor } from '~~/types/seat.types'
+
 /**
  * Test instrumentation for the e2e playtest driver, armed only by the room
  * page's `?viewlog=1`. Everything here is read by `e2e/playtest.spec.ts`
@@ -24,11 +26,11 @@ export interface GameProbe {
   playerId?: string
   rev?: number
   /** The seat's cursor as this client holds it. */
-  cursor?: { seq: number; step: string; subject: string }
+  cursor?: Pick<SeatCursor, 'seq' | 'step' | 'subject'>
   /** The view key on screen. */
   view?: string
   /** The last cursor this client acked as rendered. */
-  rendered?: { seq: number; step: string; subject: string }
+  rendered?: Pick<SeatCursor, 'seq' | 'step' | 'subject'>
   rounds?: number
   position?: number
   connected?: boolean
