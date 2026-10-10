@@ -58,7 +58,8 @@ const onSubmit = (event: Event) => {
   for (const [key, value] of new FormData(event.target as HTMLFormElement).entries()) {
     params.append(key, value.toString())
   }
-  const search = params.size ? `?${params}` : ''
+  const query = params.toString()
+  const search = query ? `?${query}` : ''
   router.push(`/room/${newRoomName()}${search}`)
 }
 </script>

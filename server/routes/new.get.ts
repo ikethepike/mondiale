@@ -7,6 +7,7 @@ export default defineEventHandler(event => {
   for (const [key, value] of Object.entries(getQuery(event))) {
     if (typeof value === 'string') params.append(key, value)
   }
-  const search = params.size ? `?${params}` : ''
+  const query = params.toString()
+  const search = query ? `?${query}` : ''
   return sendRedirect(event, `/room/${newRoomName()}${search}`, 302)
 })
