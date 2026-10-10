@@ -1,10 +1,16 @@
 <template>
   <div ref="root" class="sunset-veil" :class="{ settled }" aria-hidden="true">
-    <div class="plane" :style="planeStyle">
+    <div v-if="pool && litStyle" class="dusk">
+      <svg class="outside" :viewBox="viewBoxAttr" preserveAspectRatio="none" :style="litStyle">
+        <path v-for="code in outsideCodes" :key="code" :d="pathFor(code)" />
+      </svg>
+      <div class="twilight" :style="twilightStyle" />
+    </div>
+    <div ref="plane" class="plane" :style="planeStyle">
       <div class="night-land" :style="{ '--feather': `${featherPx}px` }">
-        <div class="inverse" :style="inverseStyle">
+        <div ref="inverse" class="inverse">
           <svg
-            v-if="landStyle && dusk !== undefined"
+            v-if="landStyle && sweep"
             class="land"
             :viewBox="viewBoxAttr"
             preserveAspectRatio="none"
@@ -16,6 +22,16 @@
       </div>
       <div class="band" />
     </div>
+    <svg
+      v-if="litStyle && next.length && !settled"
+      :key="next.join()"
+      class="next"
+      :viewBox="viewBoxAttr"
+      preserveAspectRatio="none"
+      :style="litStyle"
+    >
+      <path v-for="code in next" :key="code" :d="pathFor(code)" />
+    </svg>
     <svg
       v-if="litStyle && lit.length"
       class="lit"
@@ -31,13 +47,17 @@
 </template>
 <script lang="ts" setup>
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
+import type { MapBox } from '~~/lib/geo'
 import {
   SEA_OPAQUE_VW,
   settledMidPx,
-  SUNSET_VEIL_BOW,
+  SUNSET_POOL_CLEAR,
   SUNSET_SETTLE_MS,
+  SUNSET_VEIL_BOW,
   SUNSET_VEIL_FEATHER,
+  twilightPool,
   veilCodes,
+  veilKeyframes,
   veilMidPx,
   veilPlaneSize,
   veilTransforms,
@@ -46,23 +66,27 @@ import { mapPaintedRect, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * Sunset Blitz's night: ONE moving plane (the sea's gradient, the darkened
- * land, the terminator's glow) driven by a single compositor transform. The
- * land is a static svg of the map's own outlines, counter-transformed inside
- * the plane so it stays pinned to the map while the plane's mask reveals it
- * behind the line — the base map is never touched, so it rasters once.
- *
- * Lit countries paint on their own layer above everything; their glow is a
- * filter on that layer, which only re-rasters when a guess lands.
+ * Sunset Blitz's night: the world past the window already in dusk, then ONE
+ * moving plane (the sea's gradient, the darkened land, the terminator's glow)
+ * played as compositor animations. The land is a static svg of the map's own
+ * outlines, counter-animated inside the plane so it stays pinned to the map
+ * while the plane's mask reveals it behind the line — the base map is never
+ * touched, so it rasters once.
  */
 const props = defineProps<{
-  /** The terminator in map-space dusk coordinates; undefined parks the night off-screen east. */
-  dusk?: number
+  field: readonly ISOCountryCode[]
+  frame: MapBox
+  /** The terminator over time; undefined parks the night off-screen east. */
+  sweep?: { duskAt: (elapsedSeconds: number) => number; startTime: number; duration: number }
   lit: readonly ISOCountryCode[]
+  /** The countries the night takes next — they breathe until named or gone. */
+  next: readonly ISOCountryCode[]
   settled: boolean
 }>()
 
 const root = ref<HTMLElement>()
+const plane = ref<HTMLElement>()
+const inverse = ref<HTMLElement>()
 const { viewBox } = useMapViewBox()
 
 const rootRect = ref({ x: 0, y: 0, width: 0, height: 0 })
@@ -92,6 +116,7 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(measure)
   if (root.value) resizeObserver.observe(root.value)
   window.addEventListener('resize', measure)
+  place()
   const layer = document.querySelector('#map-world-layer')
   if (!layer) return
   observer = new MutationObserver(() => {
@@ -107,10 +132,11 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   window.removeEventListener('resize', measure)
   if (pending) cancelAnimationFrame(pending)
+  stopSweep()
 })
 
 const viewport = computed(() => ({ width: rootRect.value.width, height: rootRect.value.height }))
-const plane = computed(() => veilPlaneSize(viewport.value))
+const planeSize = computed(() => veilPlaneSize(viewport.value))
 const featherPx = computed(() => viewport.value.width * SUNSET_VEIL_FEATHER)
 
 // The plane's origin sits on the map's vertical centre — the line's midpoint
@@ -118,26 +144,87 @@ const originY = computed(() => {
   const rect = mapPaintedRect.value
   return rect ? rect.y + rect.height / 2 - rootRect.value.y : viewport.value.height / 2
 })
-const planeTop = computed(() => originY.value - plane.value.height / 2)
+const planeTop = computed(() => originY.value - planeSize.value.height / 2)
 
-const midPx = computed(() => {
-  const vb = viewBox.value
-  const rect = mapPaintedRect.value
-  if (props.settled) return settledMidPx(viewport.value)
-  if (props.dusk === undefined || !vb?.w || !rect) return viewport.value.width * 2
-  return veilMidPx(vb, props.dusk, rect) - rootRect.value.x
-})
-const transforms = computed(() => veilTransforms(midPx.value))
 const planeStyle = computed(() => ({
   top: `${planeTop.value}px`,
-  width: `${plane.value.width}px`,
-  height: `${plane.value.height}px`,
-  transform: transforms.value.plane,
+  width: `${planeSize.value.width}px`,
+  height: `${planeSize.value.height}px`,
   '--settle': `${SUNSET_SETTLE_MS}ms`,
   '--bow': `${SUNSET_VEIL_BOW * 100}vw`,
   '--sea-night': `${SEA_OPAQUE_VW * 100}vw`,
 }))
-const inverseStyle = computed(() => ({ transform: transforms.value.inverse }))
+
+const parkedMidPx = () => viewport.value.width * 2
+const midPxFor = (dusk: number) => {
+  const vb = viewBox.value
+  const rect = mapPaintedRect.value
+  if (!vb?.w || !rect) return parkedMidPx()
+  return veilMidPx(vb, dusk, rect) - rootRect.value.x
+}
+const sweepElapsed = (sweep: NonNullable<typeof props.sweep>) =>
+  Math.min(sweep.duration, Math.max(0, (performance.now() - sweep.startTime) / 1000))
+
+// The transform is written here and by the animations only — never bound in
+// the template, where every patch would reset it under a running animation
+const place = () => {
+  if (!plane.value || !inverse.value) return
+  const midPx = props.settled
+    ? settledMidPx(viewport.value)
+    : props.sweep
+      ? midPxFor(props.sweep.duskAt(sweepElapsed(props.sweep)))
+      : parkedMidPx()
+  const { plane: planeTransform, inverse: inverseTransform } = veilTransforms(midPx)
+  plane.value.style.transform = planeTransform
+  inverse.value.style.transform = inverseTransform
+}
+
+let animations: Animation[] = []
+const stopSweep = () => {
+  for (const animation of animations) animation.cancel()
+  animations = []
+}
+
+const playSweep = () => {
+  stopSweep()
+  const sweep = props.sweep
+  if (!sweep || props.settled || !plane.value || !inverse.value) return
+  const frames = veilKeyframes(elapsed => midPxFor(sweep.duskAt(elapsed)), sweep.duration)
+  const timing: KeyframeAnimationOptions = { duration: sweep.duration * 1000, fill: 'forwards' }
+  animations = [
+    plane.value.animate(frames.plane, timing),
+    inverse.value.animate(frames.inverse, timing),
+  ]
+  // One start time on the document timeline — the clock the view grades by
+  for (const animation of animations) animation.startTime = sweep.startTime
+}
+
+watch(
+  [() => props.sweep, viewport, mapPaintedRect, viewBox],
+  () => {
+    if (props.settled) return place()
+    if (props.sweep) return playSweep()
+    place()
+  },
+  { flush: 'post' }
+)
+
+watch(
+  () => props.settled,
+  settled => {
+    if (!settled || !plane.value) return
+    // Hold the night where it stands, then let the transition carry it home
+    const from = veilTransforms(
+      props.sweep ? midPxFor(props.sweep.duskAt(sweepElapsed(props.sweep))) : parkedMidPx()
+    )
+    stopSweep()
+    plane.value.style.transform = from.plane
+    inverse.value!.style.transform = from.inverse
+    void getComputedStyle(plane.value).transform
+    place()
+  },
+  { flush: 'post' }
+)
 
 const viewBoxAttr = computed(() => {
   const vb = viewBox.value
@@ -162,9 +249,26 @@ const litStyle = computed(() => {
 // Every shape the camera can see, lit ones included: the lit layer paints
 // over them opaquely, and dropping one would re-raster this whole layer on
 // every guess — the cost this overlay exists to avoid. The svg itself waits
-// for the sweep (`dusk`), so the camera's opening flight, which commits every
-// frame, never re-lays-out a plane parked off-screen.
+// for the sweep, so the camera's opening flight, which commits every frame,
+// never re-lays-out a plane parked off-screen.
 const landCodes = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : []))
+
+const fieldSet = computed(() => new Set<string>(props.field))
+const outsideCodes = computed(() => landCodes.value.filter(code => !fieldSet.value.has(code)))
+
+// The world past the window is dusk from the moment the sweep is set — the
+// camera is still by then, so the layer rasters once
+const pool = computed(() => {
+  const vb = viewBox.value
+  const rect = mapPaintedRect.value
+  return props.sweep && vb?.w && rect ? twilightPool(vb, props.frame, rect) : undefined
+})
+const twilightStyle = computed(() => {
+  if (!pool.value) return undefined
+  const { cx, cy, rx, ry } = pool.value
+  const mask = `radial-gradient(${rx}px ${ry}px at ${cx - rootRect.value.x}px ${cy - rootRect.value.y}px, transparent ${SUNSET_POOL_CLEAR * 100}%, #000 100%)`
+  return { maskImage: mask, WebkitMaskImage: mask }
+})
 </script>
 <style lang="scss" scoped>
 .sunset-veil {
@@ -172,6 +276,26 @@ const landCodes = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : 
   overflow: hidden;
   position: absolute;
   pointer-events: none;
+}
+
+.dusk {
+  inset: 0;
+  position: absolute;
+  animation: fade-in 1.2s var(--ease-smooth) both;
+  will-change: opacity;
+}
+
+.twilight {
+  inset: 0;
+  position: absolute;
+  background: hsla(216, 50%, 7%, 0.82);
+}
+
+.outside path {
+  fill: var(--night-land);
+  stroke: var(--night-stroke);
+  stroke-width: 1.1px;
+  vector-effect: non-scaling-stroke;
 }
 
 // The night's plane: left edge on the terminator, origin at the line's
@@ -192,7 +316,6 @@ const landCodes = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : 
     hsla(216, 50%, 7%, 0.85) 20vw,
     var(--night-page) var(--sea-night)
   );
-  transition: transform 0.12s linear;
   will-change: transform;
 }
 
@@ -208,7 +331,6 @@ const landCodes = computed(() => (viewBox.value?.w ? veilCodes(viewBox.value) : 
   inset: 0;
   position: absolute;
   transform-origin: left center;
-  transition: transform 0.12s linear;
   will-change: transform;
 }
 
@@ -254,6 +376,30 @@ svg {
   vector-effect: non-scaling-stroke;
 }
 
+// Breathes on opacity alone, on its own layer: the outline rasters once per
+// turn of the night, never per frame
+.next {
+  will-change: opacity;
+  animation: next-breath 1.4s ease-in-out infinite alternate;
+
+  path {
+    fill: hsla(45, 96%, 72%, 0.22);
+    stroke: var(--night-amber);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+@keyframes next-breath {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 // A named country holds the light above the night, flaring once as it
 // ignites. The glow is a filter on the lit group: this layer only re-rasters
 // when a guess lands, so the blur is paid per guess, never per frame.
@@ -276,7 +422,9 @@ svg {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lit g {
+  .lit g,
+  .next,
+  .dusk {
     animation: none;
   }
 }

@@ -1371,15 +1371,11 @@ export const isCorrectFinalAnswer = ({
     }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
-      // Client-trust like higher-lower gates. The field is what the screen
-      // showed, never less than the dealt window — a client reporting a
-      // narrower field would be shrinking its own quota.
-      const inPlay = new Set(submittedAnswer.inPlay.filter(isValidISOCode))
-      if (!challenge.countries.every(isoCode => inPlay.has(isoCode))) return false
-      const named = [...new Set(submittedAnswer.namedCountries)].filter(isoCode =>
-        inPlay.has(isoCode)
+      // Client-trust like higher-lower gates: only the dealt field counts
+      const named = new Set(
+        submittedAnswer.namedCountries.filter(isoCode => challenge.countries.includes(isoCode))
       )
-      return named.length >= sunsetQuota([...inPlay], challenge.quotaRatio)
+      return named.size >= sunsetQuota(challenge)
     }
   }
   return throwTypeMismatch()
@@ -1445,7 +1441,7 @@ export const getFinalChallengeDetails = ({
     }
     case 'sunset-blitz-challenge':
       return {
-        question: `Night is falling — name each country before the dark takes it`,
+        question: `Night is falling — name ${sunsetQuota(challenge)} of these ${challenge.countries.length} countries before the dark takes them`,
       }
     case 'born-challenge':
       return {

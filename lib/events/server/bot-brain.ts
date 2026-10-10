@@ -1216,12 +1216,7 @@ export const finalAnswerFor = async (
     case 'sunset-blitz-challenge': {
       return {
         _type: question._type,
-        namedCountries: quotaPicks(
-          question.countries,
-          sunsetQuota(question.countries, question.quotaRatio),
-          wantCorrect
-        ),
-        inPlay: question.countries,
+        namedCountries: quotaPicks(question.countries, sunsetQuota(question), wantCorrect),
       }
     }
     case 'city-nocturne-challenge': {

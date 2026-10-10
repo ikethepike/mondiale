@@ -50,6 +50,7 @@ import {
   exportsCommodity,
   GAUNTLET_LIVES,
   hasObviousDestination,
+  getFinalChallengeDetails,
   getFinalChallenges,
   isBoundaryDrawnWithin,
   isCorrectFinalAnswer,
@@ -352,31 +353,35 @@ describe('sunset blitz challenge', () => {
     expect(regions.size).toBeGreaterThanOrEqual(4)
   })
 
-  it('grades the field the screen put in play, never less than the window', () => {
+  it('grades the dealt field and nothing else', () => {
     const challenge = getFinalChallenges({ game: gameFor('world', 'hard') }).challenges.find(
       (item): item is SunsetBlitzChallenge => item._type === 'sunset-blitz-challenge'
     )
     if (!challenge) return
     const pool = playableCountries(gameFor('world', 'hard'))
     const outside = pool.filter(isoCode => !challenge.countries.includes(isoCode))
-    const grade = (namedCountries: ISOCountryCode[], inPlay: ISOCountryCode[]) =>
+    const grade = (namedCountries: ISOCountryCode[]) =>
       isCorrectFinalAnswer({
         challenge,
-        submittedAnswer: { _type: 'sunset-blitz-challenge', namedCountries, inPlay },
+        submittedAnswer: { _type: 'sunset-blitz-challenge', namedCountries },
       })
-    const window = challenge.countries
-    const quota = sunsetQuota(window, challenge.quotaRatio)
-    expect(grade(window.slice(0, quota), window)).toBe(true)
-    // Names outside the field never count
-    expect(grade([...window.slice(0, quota - 1), ...outside.slice(0, 5)], window)).toBe(false)
-    // A wider screen widens the field, and the quota scales with it
-    const wide = [...window, ...outside.slice(0, 10)]
-    const wideQuota = sunsetQuota(wide, challenge.quotaRatio)
-    expect(wideQuota).toBeGreaterThan(quota)
-    expect(grade(wide.slice(0, wideQuota), wide)).toBe(true)
-    expect(grade(wide.slice(0, wideQuota - 1), wide)).toBe(false)
-    // The window is the floor: a field that drops a dealt country is refused
-    expect(grade(window.slice(0, quota), window.slice(1))).toBe(false)
+    const field = challenge.countries
+    const quota = sunsetQuota(challenge)
+    expect(grade(field.slice(0, quota))).toBe(true)
+    expect(grade(field.slice(0, quota - 1))).toBe(false)
+    // Names outside the field never count, and neither do repeats
+    expect(grade([...field.slice(0, quota - 1), ...outside.slice(0, 5)])).toBe(false)
+    expect(grade([...field.slice(0, quota - 1), field[0]!])).toBe(false)
+  })
+
+  it('states the pass mark in the prompt', () => {
+    const challenge = getFinalChallenges({ game: gameFor('world', 'normal') }).challenges.find(
+      (item): item is SunsetBlitzChallenge => item._type === 'sunset-blitz-challenge'
+    )
+    if (!challenge) return
+    expect(getFinalChallengeDetails({ challenge }).question).toContain(
+      `name ${sunsetQuota(challenge)} of these ${challenge.countries.length}`
+    )
   })
 })
 

@@ -13,6 +13,7 @@
       <div class="console-input"><slot /></div>
       <ChallengeTimerRadial :value="secondsLeft" :total="durationSeconds" />
     </div>
+    <slot name="actions" />
     <p v-if="feedback !== undefined" class="feedback" :class="{ visible: feedback }">
       {{ feedback }}
     </p>
@@ -21,12 +22,12 @@
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 
-export type LanternState = 'pending' | 'lit' | 'dark'
+export type LanternState = 'pending' | 'next' | 'lit' | 'dark'
 
 /**
  * The night modes' shared bottom card: dark glass, the lit/quota tally, an
  * optional lantern row (one bead per subject in play, in the order the night
- * takes them), a slotted input (bare or CountryGuessInput) with the round
+ * takes them; `next` breathes), a slotted input (bare or CountryGuessInput) with the round
  * clock docked at the row's end — the radial dial dressed for the dark, its
  * arc in the same amber as the lit tally.
  */
@@ -133,6 +134,23 @@ const low = computed(
   &.dark {
     border-color: hsla(216, 30%, 40%, 0.4);
     background: var(--night-page);
+  }
+
+  &.next {
+    border-color: var(--night-amber);
+    animation: lantern-breath 1.4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes lantern-breath {
+  to {
+    transform: scale(1.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lantern.next {
+    animation: none;
   }
 }
 

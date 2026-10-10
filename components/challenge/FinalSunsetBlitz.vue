@@ -1,9 +1,26 @@
 <template>
   <div class="final-sunset-blitz">
-    <!-- The night is one compositor plane (SunsetVeil): sea, darkened land and
-         the terminator's glow move together, and the base map is never
-         written to mid-round. Lit countries paint on the veil's top layer. -->
-    <SunsetVeil :dusk="dusk" :lit="litList" :settled="finished" />
+    <!-- The night is compositor planes (SunsetVeil): dusk past the window, then
+         sea, darkened land and the terminator's glow moving together; the base
+         map is never written to mid-round. Lit countries paint on top. -->
+    <SunsetVeil
+      :field="field"
+      :frame="challenge.frame"
+      :sweep="sweep"
+      :lit="litList"
+      :next="nextUp"
+      :settled="finished"
+    />
+    <div class="lost-names" aria-hidden="true">
+      <span
+        v-for="loss in losses"
+        :key="loss.isoCode"
+        class="lost-name"
+        :style="{ left: `${loss.left}%`, top: `${loss.top}%` }"
+        @animationend="forget(loss.isoCode)"
+        >{{ loss.name }}</span
+      >
+    </div>
     <footer ref="consoleFooter" class="shell-footer">
       <NightConsole
         v-show="!finished"
@@ -17,10 +34,15 @@
         <CountryGuessInput
           ref="guessInput"
           placeholder="Type a country before it goes dark…"
-          :disabled="paused || finished"
+          :disabled="paused || !sweep || finished"
           :excluded="excluded"
           @guess="onGuess"
         />
+        <template #actions>
+          <button type="button" class="let-fall" :disabled="!sweep || finished" @click="finish">
+            Let night fall
+          </button>
+        </template>
       </NightConsole>
     </footer>
   </div>
@@ -33,13 +55,15 @@ import { MICRO_COUNTRIES } from '~~/data/map.gen'
 import { NIGHT_CHROME, setChromeTint } from '~~/lib/chrome-tint'
 import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { playableCountries } from '~~/lib/game-rules'
-import { darkPrefixCount, sweepBounds } from '~~/lib/sunset-veil'
+import { labelAnchorFor } from '~~/lib/label-anchor'
+import { sweepBounds } from '~~/lib/sunset-veil'
 import {
-  mapRegionCentre,
+  sunsetDarkCount,
   sunsetDuskCoordinate,
+  sunsetOutcome,
   sunsetQuota,
-  sunsetSeconds,
+  sunsetSchedule,
+  sunsetSweep,
 } from '~~/lib/sunset-window'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
@@ -47,144 +71,118 @@ import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.t
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The gauntlet finale. The camera frames the dealt window; once it settles,
- * everything whose centre is on screen is the field (the window is the
- * floor) and stands lit against a receded world. Night sweeps it east→west
- * along a tilted terminator, and a correctly typed country "holds the light"
- * while unnamed ones go dark as the line passes them — once dark, they're
- * gone. Quota and clock are the difficulty's share of that field.
+ * The gauntlet finale. The camera frames the dealt window and the rest of the
+ * world falls to dusk; then night takes the window east→west, one country per
+ * turn of the schedule, and a correctly typed country "holds the light". The
+ * run ends the moment it is decided — quota lit, or out of reach.
  *
- * The sweep runs in map-space dusk coordinates and is projected onto the
- * screen through the live map viewBox, so the drawn line and the grading can
- * never disagree. Client-trust grading, like the higher-lower gates.
+ * Client-trust grading, like the higher-lower gates.
  */
 const props = defineProps<{ challenge: SunsetBlitzChallenge; paused: boolean }>()
 
 const emit = defineEmits<{
-  finished: [named: ISOCountryCode[], inPlay: ISOCountryCode[]]
+  finished: [named: ISOCountryCode[]]
 }>()
 
 const { gameStore, game } = useClientEvents()
 
-const rules = computed(
-  () => game.value ?? { variant: 'world' as const, difficulty: 'normal' as const }
-)
-// The night takes every country it crosses — the whole board darkens on
-// screen — but only the field can be named or scored
-const pool = computed(() => playableCountries(rules.value))
-// The field, east→west: the dealt window until the camera settles, then
-// everything the locked camera shows — a country you can see and can't name
-// reads as a bug, and the quota scales with it so a wide screen is no gift
-const field = ref<ISOCountryCode[]>([...props.challenge.countries])
+const field = computed(() => props.challenge.countries)
 const fieldSet = computed(() => new Set(field.value))
+const schedule = computed(() =>
+  sunsetSchedule(field.value.length, game.value?.difficulty ?? 'normal')
+)
+const durationSeconds = computed(() => Math.ceil(schedule.value.at(-1) ?? 0))
+const quota = computed(() => sunsetQuota(props.challenge))
 
 const TICK_MS = 100
 // The frame is the subject: the default pad floor would push the field into
 // the middle third of the screen
 const WINDOW_FRAME_PAD = { scale: 0.06, floor: 12 }
+const LOST_NAMES_SHOWN = 3
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const named = ref(new Set<ISOCountryCode>())
 const litList = computed(() => [...named.value])
 const finished = ref(false)
 const feedback = ref('')
-// Subscribing keeps the camera poller live; the ticker reads currentViewBox()
-// imperatively so the sweep locks against the true camera.
-useMapViewBox()
+const { toScreenPercent } = useMapViewBox()
 
 // The dealt window stays visible above the console (and the keyboard); the
 // sweep bounds lock against the berthed camera, so line and window agree
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-// The dealt clock is the floor; the locked field re-sizes it through the
-// same curve the dealer used
-const durationSeconds = computed(() =>
-  Math.max(
-    props.challenge.durationSeconds,
-    sunsetSeconds(field.value.length, rules.value.difficulty)
-  )
-)
-const durationMs = computed(() => durationSeconds.value * 1000)
 const secondsLeft = ref(durationSeconds.value)
+// Undefined until the camera settles — the night stays parked off-screen and
+// the clock holds through the camera's flight
+const sweep = shallowRef<{
+  duskAt: (elapsedSeconds: number) => number
+  startTime: number
+  duration: number
+}>()
 
-// The sweep in dusk-coordinate space: seeded from the window, then widened
-// to the locked camera's true edges so the night ENTERS from off-screen east
-// and has fully crossed the screen when time runs out
-const duskCoordinates = props.challenge.countries.map(sunsetDuskCoordinate)
-const duskMax = Math.max(...duskCoordinates)
-const duskMin = Math.min(...duskCoordinates)
-const duskMargin = Math.max(6, (duskMax - duskMin) * 0.1)
-let sweepStart = duskMax + duskMargin * 2
-let sweepEnd = duskMin - duskMargin
-
-// The terminator's position, written once per tick; undefined until the
-// bounds lock keeps the night parked off-screen through the camera's flight
-const dusk = ref<number>()
-// How many of the field the night has taken — the field is sorted east→west,
-// so this one integer is the whole dark set, and it only moves as a country
-// crosses. Everything graded or rendered off "who is dark" reads it.
+// The field is sorted east→west and the schedule is too, so this one integer
+// is the whole dark set
 const darkCount = ref(0)
 const isDark = (isoCode: ISOCountryCode) => {
   const index = field.value.indexOf(isoCode)
   return index >= 0 && index < darkCount.value
 }
+const standing = computed(() =>
+  field.value.slice(darkCount.value).filter(isoCode => !named.value.has(isoCode))
+)
+const nextUp = computed(() => (sweep.value && !finished.value ? standing.value.slice(0, 2) : []))
 
-// Pure linear motion: one constant speed from just off the east edge to just
-// past the west edge. The bounds lock ONCE after the camera settles —
-// adjusting them mid-flight remaps the clock and the line lurches. The delay
-// alone is not the settle signal: a flight stalled by the HD tier's import
-// once locked a world-wide field, so the camera must also hold still — and a
-// camera that is merely unpolled is not still.
-const SETTLE_DELAY_MS = 1500
-let boundsLocked = false
-let sweepClockStart = 0
-let lastSeenBox: string | undefined
-
-const lockSweepBounds = (elapsedMs: number) => {
-  if (boundsLocked) return
-  const vb = currentViewBox()
-  // A camera that is merely UNPOLLED must not read as settled: an undefined
-  // box (or a background tab's frozen rAF, while this interval keeps firing)
-  // would otherwise lock the world as the field.
-  const seen = vb?.w ? `${vb.x} ${vb.y} ${vb.w} ${vb.h}` : undefined
-  const still = seen !== undefined && seen === lastSeenBox
-  lastSeenBox = seen
-  if (elapsedMs < SETTLE_DELAY_MS || !still || !vb) return
-  const bounds = sweepBounds(vb)
-  sweepStart = Math.max(sweepStart, bounds.start)
-  sweepEnd = Math.min(sweepEnd, bounds.end)
-  field.value = [...new Set([...props.challenge.countries, ...pool.value.filter(isVisible)])].sort(
-    (a, b) => sunsetDuskCoordinate(b) - sunsetDuskCoordinate(a)
-  )
-  gameStore.map.spotlight = [...field.value]
-  boundsLocked = true
-  sweepClockStart = performance.now()
-}
-
-/** On screen right now — centre inside the live camera viewBox. */
-const isVisible = (isoCode: ISOCountryCode) => {
-  const vb = currentViewBox()
-  if (!vb) return false
-  const { x, y } = mapRegionCentre(isoCode)
-  return x >= vb.x && x <= vb.x + vb.w && y >= vb.y && y <= vb.y + vb.h
-}
-
-// Countries outside the field stay suggestible: a list that only ever offers
-// the window's names would hand the field over
 const excluded = computed(() => [
   ...named.value,
   ...field.value.slice(0, darkCount.value).filter(isoCode => !named.value.has(isoCode)),
 ])
 
-const quota = computed(() => sunsetQuota(field.value, props.challenge.quotaRatio))
-
-// One lantern per country in the order the night takes them
 const beads = computed<LanternState[]>(() =>
   field.value.map((isoCode, index) =>
-    named.value.has(isoCode) ? 'lit' : index < darkCount.value ? 'dark' : 'pending'
+    named.value.has(isoCode)
+      ? 'lit'
+      : index < darkCount.value
+        ? 'dark'
+        : nextUp.value.includes(isoCode)
+          ? 'next'
+          : 'pending'
   )
 )
+
+const losses = ref<{ isoCode: ISOCountryCode; name: string; left: number; top: number }[]>([])
+const lose = (isoCode: ISOCountryCode) => {
+  const anchor = labelAnchorFor(isoCode)
+  const screen = anchor && toScreenPercent(...anchor.point)
+  if (!screen) return
+  losses.value = [...losses.value, { isoCode, name: countryName(isoCode), ...screen }].slice(
+    -LOST_NAMES_SHOWN
+  )
+}
+const forget = (isoCode: ISOCountryCode) => {
+  losses.value = losses.value.filter(loss => loss.isoCode !== isoCode)
+}
+
+// The bounds lock ONCE after the camera settles — a flight stalled by the HD
+// tier's import once locked a world-wide frame, so the delay alone is not the
+// signal: the camera must also hold still, and an unpolled camera is not still.
+const SETTLE_DELAY_MS = 1500
+let lastSeenBox: string | undefined
+
+const lockSweep = (elapsedMs: number) => {
+  const vb = currentViewBox()
+  const seen = vb?.w ? `${vb.x} ${vb.y} ${vb.w} ${vb.h}` : undefined
+  const still = seen !== undefined && seen === lastSeenBox
+  lastSeenBox = seen
+  if (elapsedMs < SETTLE_DELAY_MS || !still || !vb) return
+  const start = Math.max(sweepBounds(vb).start, sunsetDuskCoordinate(field.value[0]!))
+  sweep.value = {
+    duskAt: sunsetSweep(field.value, schedule.value, start),
+    startTime: performance.now(),
+    duration: schedule.value.at(-1) ?? 0,
+  }
+  void nextTick(() => guessInput.value?.focus({ auto: true }))
+}
 
 let ticker: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
@@ -200,31 +198,35 @@ const finish = () => {
   // Only now: mid-sweep the body abutting the browser chrome is still day —
   // the rolling night is the veil's plane, never the bar
   setChromeTint(NIGHT_CHROME)
-  emit('finished', [...named.value], [...field.value])
+  emit('finished', [...named.value])
+}
+
+const settleIfDecided = () => {
+  if (sunsetOutcome(named.value.size, standing.value.length, quota.value)) finish()
 }
 
 const tick = () => {
-  const now = performance.now()
-  lockSweepBounds(now - startedAt)
-  if (!boundsLocked) return
-  const sweepElapsed = now - sweepClockStart
-  const fraction = Math.min(1, sweepElapsed / durationMs.value)
-  dusk.value = sweepStart - fraction * (sweepStart - sweepEnd)
-  const dark = darkPrefixCount(field.value, dusk.value)
-  if (dark !== darkCount.value) darkCount.value = dark
-  const left = Math.max(0, Math.ceil((durationMs.value - sweepElapsed) / 1000))
+  if (!sweep.value) return lockSweep(performance.now() - startedAt)
+  const elapsed = (performance.now() - sweep.value.startTime) / 1000
+  const dark = sunsetDarkCount(schedule.value, elapsed)
+  if (dark !== darkCount.value) {
+    for (const isoCode of field.value.slice(darkCount.value, dark)) {
+      if (!named.value.has(isoCode)) lose(isoCode)
+    }
+    darkCount.value = dark
+  }
+  const left = Math.max(0, Math.ceil(sweep.value.duration - elapsed))
   if (left !== secondsLeft.value) secondsLeft.value = left
-  if (sweepElapsed >= durationMs.value) finish()
+  settleIfDecided()
 }
 
 const start = () => {
   if (ticker || finished.value) return
   gameStore.map.frame = props.challenge.frame
   gameStore.map.framePad = WINDOW_FRAME_PAD
-  gameStore.map.spotlight = [...props.challenge.countries]
+  gameStore.map.spotlight = [...field.value]
   document.body.classList.add('sunset-blitz')
   startedAt = performance.now()
-  guessInput.value?.focus({ auto: true })
   ticker = setInterval(tick, TICK_MS)
 }
 
@@ -238,7 +240,7 @@ const flash = (message: string) => {
 const onGuess = (country: Country) => {
   const { isoCode } = country
   if (!fieldSet.value.has(isoCode)) {
-    return flash(`${countryName(country)} isn't under tonight's sky.`)
+    return flash(`${countryName(country)} isn't in the last light.`)
   }
   if (named.value.has(isoCode)) return
   if (isDark(isoCode)) {
@@ -248,7 +250,7 @@ const onGuess = (country: Country) => {
   // A micro-nation's outline is sub-pixel at window framing, so the map's own
   // halo disc is the only "this one is lit" it can show
   if (isoCode in MICRO_COUNTRIES) gameStore.map.highlighted.add(isoCode)
-  if (field.value.every(code => named.value.has(code))) finish()
+  settleIfDecided()
 }
 
 watch(
@@ -268,21 +270,11 @@ onBeforeUnmount(() => {
 })
 </script>
 <style lang="scss">
-body.sunset-blitz {
-  // The sweep holds still: no panning or zooming while the terminator runs —
-  // the dusk line, the darkened land and the framed window must stay in
-  // agreement
-  .game-map {
-    pointer-events: none;
-  }
-
-  // The world beyond the field is already in twilight: its land recedes and
-  // its borders soften, so the window reads as the stage before the night
-  // even enters
-  .game-map path[data-id].dimmed-country {
-    fill-opacity: 0.35;
-    transition: fill-opacity 1.2s var(--ease-smooth);
-  }
+// The sweep holds still: no panning or zooming while the terminator runs —
+// the dusk line, the darkened land and the framed window must stay in
+// agreement
+body.sunset-blitz .game-map {
+  pointer-events: none;
 }
 
 // The run is over: page settles on City Nocturne's night. The base map's own
@@ -313,5 +305,70 @@ body.sunset-settled {
   pointer-events: none;
   flex-flow: column nowrap;
   justify-content: flex-end;
+}
+
+// The night moves under the console every frame — a backdrop blur would
+// re-run with it, so the glass goes near-opaque instead
+.shell-footer :deep(.night-console) {
+  backdrop-filter: none;
+  background: hsla(216, 45%, 12%, 0.94);
+}
+
+.lost-names {
+  inset: 0;
+  position: absolute;
+}
+
+.lost-name {
+  position: absolute;
+  padding: 0.2rem 0.9rem;
+  font-size: 1.4rem;
+  font-weight: bold;
+  white-space: nowrap;
+  border-radius: 2rem;
+  letter-spacing: 0.04em;
+  color: hsla(216, 30%, 82%, 1);
+  border: 0.1rem solid var(--night-cold);
+  background: hsla(216, 50%, 7%, 0.85);
+  animation: lost-name 2.6s var(--ease-smooth) both;
+}
+
+@keyframes lost-name {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -30%);
+  }
+
+  20%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -70%);
+  }
+}
+
+.let-fall {
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.8rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsla(216, 30%, 70%, 0.85);
+  background: none;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    color: var(--night-amber);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
 }
 </style>
