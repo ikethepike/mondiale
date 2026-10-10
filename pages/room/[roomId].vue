@@ -55,6 +55,7 @@ import { usePhaseTransition } from '~~/lib/phase-transitions'
 import {
   observeLongTasks,
   playtestScope,
+  questionKeyOf,
   readScreen,
   traceTransitionHooks,
   type TransitionTrace,
@@ -248,6 +249,8 @@ if (viewLogArmed) {
     rounds: game.value?.rounds.length,
     position: self.value?.currentPosition,
     moveChallenge: self.value?.moves[0]?.challenge?._type,
+    questionKey: questionKeyOf(self.value?.moves[0]),
+    localVerdict: !!gameStore.map.status,
     resolving: self.value?.resolving,
     connected: gameStore.socket?.connected,
     transition: { ...transitionTrace },

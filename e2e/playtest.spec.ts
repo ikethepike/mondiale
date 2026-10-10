@@ -72,8 +72,17 @@ const SHOTS = process.env.PLAYTEST_SHOTS === '1'
 const VIEW_SETTLE_MS = 3000
 /** How long after a swap the previous view must be gone from the screen. */
 const RESIDUE_CHECK_MS = 5000
+/** The window after a question opens in which a verdict needs an answer behind it. */
+const STALE_VERDICT_FROM_MS = 1500
+const STALE_VERDICT_UNTIL_MS = 6000
 /** Kinds reported as evidence: no recovery watch, no reload. */
-const EVIDENCE_ONLY = new Set(['long-task', 'page-error', 'server-silence', 'residue'])
+const EVIDENCE_ONLY = new Set([
+  'long-task',
+  'page-error',
+  'server-silence',
+  'residue',
+  'stale-verdict',
+])
 
 const ACK_BUTTON =
   /^(let's go|continue|close scores|ready|i'm ready|pencils up|chain me in|link me in|weigh in|submit ranking|set the record|lock in.*|submit.*|play the clip)$/i
@@ -106,6 +115,8 @@ interface Seat {
   /** Until when chaos holds this seat offline — lag checks wait it out. */
   offlineUntil: number
   shots: number
+  /** The live question and when it opened — a verdict must be earned on it. */
+  question?: { key: string; at: number; checked: boolean }
   /** The last view swap, held until its residue check has run. */
   swap?: { at: number; from?: string; to?: string; prompts: string[]; verdicts: string[] }
 }
@@ -536,6 +547,32 @@ for (let room = 0; room < ROOMS; room += 1) {
           seat.seenGates.add(gate)
         }
         seat.lastPresented = presented
+      }
+
+      // A fresh gate or gauntlet question must open bare: a verdict painted on
+      // it before the seat graded anything is a previous answer's, carried
+      // over (the gauntlet beat matched by turn alone did exactly this).
+      if (probe.questionKey !== seat.question?.key) {
+        seat.question = probe.questionKey
+          ? { key: probe.questionKey, at: probe.at, checked: false }
+          : undefined
+      }
+      const question = seat.question
+      if (
+        question &&
+        !question.checked &&
+        probe.at - question.at >= STALE_VERDICT_FROM_MS &&
+        probe.at - question.at <= STALE_VERDICT_UNTIL_MS
+      ) {
+        if (probe.screen.verdicts.length && !probe.localVerdict) {
+          question.checked = true
+          await report(
+            seat,
+            'stale-verdict',
+            `${question.key} opened with verdict "${probe.screen.verdicts[0]}" before any answer`,
+            server
+          )
+        }
       }
 
       // What the swap left painted: the previous view's prompt or verdict

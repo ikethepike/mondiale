@@ -26,6 +26,10 @@ export interface GameProbe {
   rounds?: number
   position?: number
   moveChallenge?: string
+  /** Which question is live: the gate's tile, or the gauntlet's turn. */
+  questionKey?: string
+  /** The seat graded its own answer to the live question (map.status). */
+  localVerdict?: boolean
   resolving?: boolean
   connected?: boolean
   transition: TransitionTrace
@@ -72,6 +76,19 @@ export interface PlaytestScope {
   __viewLog?: ViewLogEntry[]
   __gameProbe?: () => GameProbe
   __longTasks?: { at: number; duration: number }[]
+}
+
+/** The live question's identity for the driver's stale-verdict check. */
+export const questionKeyOf = (
+  move: { endTile: { position: number }; challenge?: { _type: string } } | undefined
+): string | undefined => {
+  const challenge = move?.challenge as
+    { _type: string; turn?: number; challenges?: unknown[] } | undefined
+  if (challenge?._type === 'final-challenge') {
+    return `final:${challenge.turn ?? 0}:${challenge.challenges?.length ?? 0}`
+  }
+  if (challenge?._type === 'individual-challenge') return `gate:${move!.endTile.position}`
+  return undefined
 }
 
 export const playtestScope = (): PlaytestScope => window as unknown as PlaytestScope
