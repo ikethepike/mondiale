@@ -184,7 +184,10 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
     const eventTarget = { gameId: ctx.eventTarget.gameId, playerId }
     if (!survives) seat.moves = []
     await server.updateGameState(fresh)
-    server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
+    // A knockout's snapshot goes now (the view latches the burned question);
+    // a survivor's next question waits out the reveal hold like an answered
+    // one, or it lands before the beat and the verdict has no question to sit on.
+    if (!survives) server.emit({ event: 'final-challenge-checked', game: fresh }, eventTarget)
     // A burned question is a verdict too: without this the watcher's view
     // sits on the old question until the next one appears, with no sign a
     // life just went. No `submittedAnswer` — nothing was submitted.
@@ -207,7 +210,7 @@ export const armFinalQuestionCap = (ctx: EngineContext, player: Player) => {
       )
       return
     }
-    armFinalQuestionCap(ctx, seat)
+    await clearFinalResultBeat(ctx, seat)
   })
 }
 

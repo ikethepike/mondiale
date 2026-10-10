@@ -3,6 +3,7 @@ import { armFinalQuestionCap, armGroupScoresCap, armIndividualGateCap } from './
 import {
   WALK_LEAD_MS,
   FINAL_QUESTION_CAP_MS,
+  FINAL_REVEAL_HOLD_MS,
   GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
 } from '~~/lib/round-beats'
@@ -213,6 +214,12 @@ describe('armFinalQuestionCap', () => {
     const gauntlet = store.get(game.id)!.players.a.moves[0]!.challenge
     expect(gauntlet).toMatchObject({ turn: 3, lives: 0 })
     expect((gauntlet as { challenges: unknown[] }).challenges).toHaveLength(1)
+    // The burned question's verdict goes first; the next question only after
+    // the reveal hold, the answered path's shape — never ahead of the beat.
+    expect(emittedFor(game.id)).toEqual(['final-beat'])
+
+    await vi.advanceTimersByTimeAsync(FINAL_REVEAL_HOLD_MS + 100)
+    await vi.runAllTicks()
     expect(emittedFor(game.id)).toContain('final-challenge-checked')
   })
 
