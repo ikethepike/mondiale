@@ -20,7 +20,8 @@ import type {
   YearbookChallenge,
 } from '~~/types/challenges/final-challenge.type'
 import { oddOneOut } from '~~/types/challenges/final-challenge.type'
-import { SUNSET_TUNING, sunsetQuota, sunsetSeconds, windowCountries } from '~~/lib/sunset-window'
+import { windowCountries } from '~~/lib/sunset-window'
+import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
 import {
   familyPeersBinding,
   isMemberOf,

@@ -183,12 +183,8 @@ import {
   GAUNTLET_LIVES,
   getFinalChallenges,
 } from '~~/lib/challenges/final-challenge'
-import {
-  pickSunsetWindow,
-  SUNSET_TUNING,
-  sunsetSeconds,
-  sunsetWindowAround,
-} from '~~/lib/sunset-window'
+import { pickSunsetWindow, sunsetWindowAround } from '~~/lib/sunset-window'
+import { SUNSET_TUNING, sunsetSeconds } from '~~/lib/sunset-pace'
 import { starChartInitials, starChartSeconds } from '~~/lib/star-chart'
 import {
   terraAbsorber,

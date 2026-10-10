@@ -12,7 +12,8 @@ import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-co
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
 import { MAP_PATHS } from '~~/data/map.gen'
-import { pickSunsetWindow, SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-window'
+import { pickSunsetWindow } from '~~/lib/sunset-window'
+import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
 import type {
   BornChallenge,
   BoundaryChallenge,

@@ -3,7 +3,7 @@ import {
   INTERSTITIAL_TOTAL_MS,
   SERVER_CONTROLLED_CAPS,
 } from '~~/lib/round-beats'
-import { sunsetSeconds } from '~~/lib/sunset-window'
+import { sunsetSeconds } from '~~/lib/sunset-pace'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { GameDifficulty } from '~~/types/game.types'
 

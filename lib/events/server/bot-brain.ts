@@ -86,6 +86,7 @@ import { currentCleanSweep } from './sweep-beats'
 import { currentTerraIncognita } from './terra-beats'
 import { currentTimeline, mayPlaceTimeline } from './timeline-turns'
 import { currentUniqueOrBust } from './unique-beats'
+import { sunsetQuota } from '~~/lib/sunset-pace'
 
 /**
  * The bot brain: one self-rescheduling pump per game plays every brain seat —
@@ -1170,7 +1171,6 @@ export const finalAnswerFor = async (
     weighScalesPicks,
     yearbookYear,
   } = await import('~~/lib/challenges/final-challenge')
-  const { sunsetQuota } = await import('~~/lib/sunset-window')
   const wantCorrect = Math.random() < share
   const iso = (correctIso: ISOCountryCode | undefined, pool?: readonly ISOCountryCode[]) => {
     if (wantCorrect && correctIso) return correctIso

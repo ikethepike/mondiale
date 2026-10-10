@@ -57,14 +57,8 @@ import { countryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { labelAnchorFor } from '~~/lib/label-anchor'
 import { sweepBounds } from '~~/lib/sunset-veil'
-import {
-  sunsetDarkCount,
-  sunsetDuskCoordinate,
-  sunsetOutcome,
-  sunsetQuota,
-  sunsetSchedule,
-  sunsetSweep,
-} from '~~/lib/sunset-window'
+import { sunsetDuskCoordinate, sunsetSweep } from '~~/lib/sunset-window'
+import { sunsetDarkCount, sunsetOutcome, sunsetQuota, sunsetSchedule } from '~~/lib/sunset-pace'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
