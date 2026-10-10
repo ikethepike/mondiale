@@ -31,6 +31,13 @@ const stub = vi.hoisted(() => {
   }
 })
 
+// The shell runs in a bare effect scope, not a component: provide() has no
+// instance to attach to, and the tests never inject the context.
+vi.mock('vue', async importOriginal => ({
+  ...(await importOriginal<typeof import('vue')>()),
+  provide: vi.fn(),
+}))
+
 vi.mock('~~/lib/events/client-side', () => ({
   REDELIVER_MAX_BATCHES: 15,
   REDELIVER_PAUSE_MS: 4000,
