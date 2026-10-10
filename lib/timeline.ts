@@ -188,15 +188,73 @@ export const scoreTimeline = (
   const scores: { [playerId: string]: { scored: number; maximum: number } } = {}
 
   for (const playerId of challenge.state.order) {
-    const { achievable, earned } = handWeight(challenge, playerId)
-    scores[playerId] = {
-      scored: achievable ? clampScore((maximumPoints * earned) / achievable, maximumPoints) : 0,
-      maximum: maximumPoints,
-    }
+    scores[playerId] = { scored: seatScore(challenge, playerId), maximum: maximumPoints }
   }
 
   return scores
 }
+
+const seatScore = (challenge: TimelineChallenge, playerId: string): number => {
+  const { achievable, earned } = handWeight(challenge, playerId)
+  return achievable
+    ? clampScore((challenge.maximumPoints * earned) / achievable, challenge.maximumPoints)
+    : 0
+}
+
+/**
+ * One seat's hand, card by card in play order: each card's crowding weight,
+ * what it was worth against the hand, and the whole points it banked. Banked
+ * points are apportioned by largest remainder so they sum to exactly the
+ * seat's `scoreTimeline` figure — rounding each card alone drifts from it.
+ */
+export const timelineCardPoints = (
+  challenge: TimelineChallenge,
+  playerId: string
+): { placement: TimelinePlacement; worth: number; points: number }[] => {
+  const { achievable } = handWeight(challenge, playerId)
+
+  const cards = challenge.state.placements
+    .filter(placement => placement.playerId === playerId)
+    .map(placement => {
+      const worth = achievable
+        ? (challenge.maximumPoints * placementWeight(challenge, placement)) / achievable
+        : 0
+      const share = placement.correct ? worth : 0
+      return { placement, worth, points: Math.floor(share), remainder: share % 1 }
+    })
+
+  let left = seatScore(challenge, playerId) - cards.reduce((sum, card) => sum + card.points, 0)
+  const byRemainder = cards
+    .filter(card => card.placement.correct)
+    .sort((a, b) => b.remainder - a.remainder)
+  for (const card of byRemainder) {
+    if (left <= 0) break
+    card.points += 1
+    left -= 1
+  }
+
+  return cards.map(({ placement, worth, points }) => ({ placement, worth, points }))
+}
+
+/** The line as it stood when a card was played: the opener plus every card
+ *  placed before it, in history's order. Its slot indices are the placement's. */
+export const lineWhenPlayed = (state: TimelineState, placement: TimelinePlacement): string[] => {
+  const turn = state.placements.findIndex(entry => entry.slug === placement.slug)
+  const earlier = new Set([
+    state.deck[0],
+    ...state.placements.slice(0, turn).map(entry => entry.slug),
+  ])
+  return state.placed.filter(slug => earlier.has(slug))
+}
+
+/** The cards either side of a slot on a line. */
+export const slotNeighbours = (
+  line: string[],
+  slot: number
+): { before: string | undefined; after: string | undefined } => ({
+  before: slot > 0 ? line[slot - 1] : undefined,
+  after: line[slot],
+})
 
 /** At most this many cards may share an anchor country, for a varied line. */
 const MAXIMUM_PER_COUNTRY = 2

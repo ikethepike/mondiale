@@ -5,9 +5,12 @@ import {
   correctSlotRange,
   dealTimelineDeck,
   formatEventYear,
+  lineWhenPlayed,
   resolveSlot,
   scoreTimeline,
   slotDensityFraction,
+  slotNeighbours,
+  timelineCardPoints,
 } from '~~/lib/timeline'
 import type {
   TimelineChallenge,
@@ -249,6 +252,109 @@ describe('scoreTimeline', () => {
 
     expect(scores.a).toEqual({ scored: 0, maximum: 15 })
     expect(scores.b).toEqual({ scored: 0, maximum: 15 })
+  })
+})
+
+describe('timelineCardPoints', () => {
+  const ORDER = ['a', 'b']
+
+  /** Seat `a` plays `pattern`; seat `b` is always right. The line grows a card a turn. */
+  const hand = (pattern: boolean[]): TimelinePlacement[] =>
+    pattern.flatMap((right, round) =>
+      ORDER.map((playerId, seat) => {
+        const turn = round * ORDER.length + seat
+        return {
+          playerId,
+          slug: `card-${turn + 1}`,
+          chosenSlot: 0,
+          correctSlot: 0,
+          correct: playerId === 'a' ? right : true,
+          slotCount: turn + 2,
+          kind: 'placed' as const,
+        }
+      })
+    )
+
+  const round = (pattern: boolean[], maximumPoints: number) => {
+    const placements = hand(pattern)
+    const deck = ['card-0', ...placements.map(placement => placement.slug)]
+    return challenge({ order: ORDER, deck, placements }, maximumPoints)
+  }
+
+  it('banks exactly the seat score, card by card, across mixed hands', () => {
+    for (const maximumPoints of [12, 15, 18]) {
+      for (const pattern of [
+        [true, false, true],
+        [false, true, true, false],
+        [true, true, false, true, false],
+        [false, false, true],
+      ]) {
+        const dealt = round(pattern, maximumPoints)
+        const cards = timelineCardPoints(dealt, 'a')
+
+        expect(cards.reduce((sum, card) => sum + card.points, 0)).toBe(
+          scoreTimeline(dealt).a.scored
+        )
+        for (const card of cards) {
+          if (!card.placement.correct) expect(card.points).toBe(0)
+        }
+      }
+    }
+  })
+
+  it('pays a flawless hand the whole pot, crowded cards worth more', () => {
+    const cards = timelineCardPoints(round([true, true, true], 15), 'a')
+
+    expect(cards.reduce((sum, card) => sum + card.points, 0)).toBe(15)
+    expect(cards.reduce((sum, card) => sum + card.worth, 0)).toBeCloseTo(15)
+    expect(cards[2].worth).toBeGreaterThan(cards[0].worth)
+  })
+
+  it('banks nothing for an all-miss hand', () => {
+    expect(timelineCardPoints(round([false, false], 15), 'a').map(card => card.points)).toEqual([
+      0, 0,
+    ])
+  })
+
+  it('weighs legacy cards with no slotCount evenly', () => {
+    const legacy = challenge({ order: ['a'], deck: ['s', 'x', 'y', 'z'] }, 15)
+    legacy.state.placements = ['x', 'y', 'z'].map(slug => ({
+      playerId: 'a',
+      slug,
+      chosenSlot: 0,
+      correctSlot: 0,
+      correct: true,
+      kind: 'placed',
+    })) as unknown as TimelinePlacement[]
+
+    expect(timelineCardPoints(legacy, 'a').map(card => card.points)).toEqual([5, 5, 5])
+  })
+})
+
+describe('lineWhenPlayed', () => {
+  const placement = (slug: string, chosenSlot: number): TimelinePlacement => ({
+    playerId: 'a',
+    slug,
+    chosenSlot,
+    correctSlot: chosenSlot,
+    correct: true,
+    slotCount: 2,
+    kind: 'placed',
+  })
+
+  it('rebuilds the line each card saw, in history order', () => {
+    const placements = [placement('c', 1), placement('b', 1), placement('d', 3)]
+    const line = state({ deck: ['a', 'c', 'b', 'd'], placed: ['a', 'b', 'c', 'd'], placements })
+
+    expect(lineWhenPlayed(line, placements[0])).toEqual(['a'])
+    expect(lineWhenPlayed(line, placements[1])).toEqual(['a', 'c'])
+    expect(lineWhenPlayed(line, placements[2])).toEqual(['a', 'b', 'c'])
+  })
+
+  it('names the cards either side of a slot', () => {
+    expect(slotNeighbours(['a', 'b', 'c'], 0)).toEqual({ before: undefined, after: 'a' })
+    expect(slotNeighbours(['a', 'b', 'c'], 2)).toEqual({ before: 'b', after: 'c' })
+    expect(slotNeighbours(['a', 'b', 'c'], 3)).toEqual({ before: 'c', after: undefined })
   })
 })
 

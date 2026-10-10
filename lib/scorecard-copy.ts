@@ -189,8 +189,6 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
       }
       case 'clean-sweep':
         return { submitted: 'Your Claims', correct: 'The Whole Board' }
-      case 'timeline':
-        return { submitted: 'Where Your Cards Took You', correct: 'Placed Right First Try' }
       case 'empire':
         return { submitted: 'Lands You Traced', correct: 'Its Core Lands' }
       default:

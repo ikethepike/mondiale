@@ -9,6 +9,7 @@ import StarChartReveal from '~/components/challenge/StarChartReveal.vue'
 import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SweepRevealCard from '~/components/challenge/SweepRevealCard.vue'
 import TerraRevealCard from '~/components/challenge/TerraRevealCard.vue'
+import TimelineScorecard from '~/components/challenge/TimelineScorecard.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import { isChallengeOfType } from '~~/lib/rounds'
@@ -147,6 +148,19 @@ export const SCORECARD_REVEALS: Partial<Record<RoundChallengeKind, ScorecardReve
       props: ({ challenge, roundAnswers, players, playerId, viewerId, round }) =>
         round && isChallengeOfType(challenge, 'terra-incognita-challenge')
           ? { challenge, answers: roundAnswers, players, playerId, viewerId }
+          : undefined,
+    },
+  ],
+
+  // The settled answer flattens each card to its anchor country; the round
+  // was about events and order, which only the challenge's placements keep.
+  timeline: [
+    {
+      component: TimelineScorecard,
+      mode: 'replace',
+      props: ({ challenge, players, playerId, viewerId }) =>
+        isChallengeOfType(challenge, 'timeline-challenge')
+          ? { challenge, players, playerId, viewerId }
           : undefined,
     },
   ],
