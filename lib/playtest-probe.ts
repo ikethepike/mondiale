@@ -29,7 +29,44 @@ export interface GameProbe {
   resolving?: boolean
   connected?: boolean
   transition: TransitionTrace
+  /** What is actually painted: prompt headings, verdict cards, the layout's
+   *  reveal card, and how many view roots the swap has mounted. */
+  screen: ScreenResidue
 }
+
+export interface ScreenResidue {
+  prompts: string[]
+  verdicts: string[]
+  revealCard: boolean
+  viewRoots: number
+}
+
+const isPainted = (el: Element) => {
+  const box = el.getBoundingClientRect()
+  if (!box.width || !box.height) return false
+  for (let node: Element | null = el; node; node = node.parentElement) {
+    const style = getComputedStyle(node)
+    if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) < 0.1) {
+      return false
+    }
+  }
+  return true
+}
+
+const paintedText = (selector: string) =>
+  [...document.querySelectorAll(selector)]
+    .filter(isPainted)
+    .map(el => (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 80))
+    .filter(Boolean)
+
+export const readScreen = (): ScreenResidue => ({
+  prompts: paintedText('.challenge-prompt h1, .challenge-prompt h2'),
+  verdicts: paintedText('.challenge-result .verdict-line'),
+  revealCard: [...document.querySelectorAll('.reveal-wrapper')].some(isPainted),
+  viewRoots:
+    document.querySelector('.main-board')?.querySelectorAll(':scope > :not(.intro-overlay)')
+      .length ?? 0,
+})
 
 export interface PlaytestScope {
   __viewLog?: ViewLogEntry[]

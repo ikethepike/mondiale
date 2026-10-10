@@ -25,7 +25,8 @@ import { viewLogViolations } from './view-log'
  * PLAYTEST_MINUTES (per-game budget), PLAYTEST_LENGTH (short|medium|long),
  * PLAYTEST_SERVER_LOG (server stdout file, tailed into incident reports),
  * PLAYTEST_DEVICE (a Playwright device name, e.g. "iPhone 14"), PLAYTEST_CHAOS=1
- * (seats drop offline at random), PLAYTEST_BROWSER=webkit (in the config).
+ * (seats drop offline at random), PLAYTEST_BROWSER=webkit (in the config),
+ * PLAYTEST_SHOTS=1 (a screenshot of every view once it settles).
  */
 
 const ROOMS = Number(process.env.PLAYTEST_ROOMS ?? 1)
@@ -63,6 +64,16 @@ const PROBE_GAP_MS = 6000
 /** Chaos mode: per tick, the chance a seat drops offline, and for how long. */
 const CHAOS_ODDS = 1 / 90
 const CHAOS_OFFLINE_MS: [number, number] = [2000, 8000]
+/** How long after a disconnect a skipped beat is the reconnect's resync. */
+const RECONNECT_WINDOW_MS = 15_000
+const TICK_TIMEOUT_MS = 15_000
+/** Screenshot every presented view once it settles (PLAYTEST_SHOTS=1). */
+const SHOTS = process.env.PLAYTEST_SHOTS === '1'
+const VIEW_SETTLE_MS = 3000
+/** How long after a swap the previous view must be gone from the screen. */
+const RESIDUE_CHECK_MS = 5000
+/** Kinds reported as evidence: no recovery watch, no reload. */
+const EVIDENCE_ONLY = new Set(['long-task', 'page-error', 'server-silence', 'residue'])
 
 const ACK_BUTTON =
   /^(let's go|continue|close scores|ready|i'm ready|pencils up|chain me in|link me in|weigh in|submit ranking|set the record|lock in.*|submit.*|play the clip)$/i
@@ -94,6 +105,9 @@ interface Seat {
   console: string[]
   /** Until when chaos holds this seat offline — lag checks wait it out. */
   offlineUntil: number
+  shots: number
+  /** The last view swap, held until its residue check has run. */
+  swap?: { at: number; from?: string; to?: string; prompts: string[]; verdicts: string[] }
 }
 
 const redis = new Redis({
@@ -177,6 +191,7 @@ const openSeat = async (browser: Browser, name: string, url?: string): Promise<S
     errors: [],
     console: [],
     offlineUntil: 0,
+    shots: 0,
   }
   page.on('console', message => {
     seat.console.push(`${new Date().toISOString()} ${message.type()} ${message.text()}`)
@@ -209,10 +224,12 @@ for (let room = 0; room < ROOMS; room += 1) {
     }
     const host = seats[0]!.page
 
-    await host
+    // The host's controls enable once its own seat lands in the snapshot.
+    const length = host
       .getByRole('radiogroup', { name: 'Length' })
       .getByRole('radio', { name: new RegExp(LENGTH, 'i') })
-      .click({ timeout: 5000 })
+    await expect(length).toBeEnabled({ timeout: 15_000 })
+    if ((await length.getAttribute('aria-checked')) !== 'true') await length.click()
     for (let bot = 0; bot < BOTS; bot += 1) {
       await host.locator('.add-bot').click({ timeout: 15_000 })
       await host.waitForTimeout(400)
@@ -222,7 +239,7 @@ for (let room = 0; room < ROOMS; room += 1) {
     await host.getByRole('button', { name: /^Start( Game)?$/ }).click({ timeout: 15_000 })
 
     const outDir = path.join(OUT_DIR, gameId)
-    fs.mkdirSync(outDir, { recursive: true })
+    fs.mkdirSync(path.join(outDir, 'views'), { recursive: true })
     const incidents: Incident[] = []
     const warnings: string[] = []
     const started = Date.now()
@@ -291,7 +308,7 @@ for (let room = 0; room < ROOMS; room += 1) {
       // Slow or frozen? Watch the seat recover on its own first; only a seat
       // still lost after the window is a freeze — then the player's way out:
       // does a refresh bring it back?
-      if (kind !== 'long-task' && kind !== 'page-error' && kind !== 'server-silence') {
+      if (!EVIDENCE_ONLY.has(kind)) {
         const watchStart = Date.now()
         while (Date.now() - watchStart < SELF_HEAL_MS) {
           await seat.page.waitForTimeout(1000)
@@ -374,6 +391,13 @@ for (let room = 0; room < ROOMS; room += 1) {
     }
 
     const readServer = async () => (await redis.get<Game>(gameId)) ?? undefined
+    /** Silence is the SERVER's: any read that sees a new rev resets it, so a
+     *  driver tick that stalls can never pass for a frozen room. */
+    const noteServerRev = (server: Game | undefined) => {
+      if (server?.rev === lastServerRev) return
+      lastServerRev = server?.rev
+      lastServerRevAt = Date.now()
+    }
 
     const tickSeat = async (seat: Seat) => {
       if (CHAOS && Date.now() > seat.offlineUntil && Math.random() < CHAOS_ODDS) {
@@ -389,12 +413,6 @@ for (let room = 0; room < ROOMS; room += 1) {
       }
       const probe = await readProbe(seat.page)
       if (!probe) return
-      // A seat chaos holds offline is SUPPOSED to lag; its clocks start once
-      // the network is back.
-      if (Date.now() < seat.offlineUntil) {
-        seat.since.clear()
-        return
-      }
       const previous = seat.history[seat.history.length - 1]
       if (previous && probe.at - previous.at > PROBE_GAP_MS) {
         warnings.push(
@@ -402,10 +420,17 @@ for (let room = 0; room < ROOMS; room += 1) {
         )
       }
       seat.history.push(probe)
-      if (seat.history.length > 600) seat.history.shift()
+      if (seat.history.length > 3000) seat.history.shift()
+      // A seat chaos holds offline is SUPPOSED to lag; its clocks start once
+      // the network is back.
+      if (Date.now() < seat.offlineUntil) {
+        seat.since.clear()
+        return
+      }
       // Read AFTER the probe, so the server's record is never older than the
       // page's: a client that is ahead is only the read racing a save.
       const server = await readServer()
+      noteServerRev(server)
       const truth = probe.playerId ? server?.players[probe.playerId] : undefined
       const behind = (probe.rev ?? 0) < (server?.rev ?? 0)
       const trace = probe.transition
@@ -475,6 +500,25 @@ for (let room = 0; room < ROOMS; room += 1) {
       // same round at the same tile it was already played on.
       const presented = probe.presented
       if (presented !== seat.lastPresented) {
+        const before = previous?.screen
+        seat.swap = {
+          at: probe.at,
+          from: seat.lastPresented,
+          to: presented,
+          prompts: before?.prompts ?? [],
+          verdicts: before?.verdicts ?? [],
+        }
+        if (SHOTS && presented) {
+          const shot = path.join(
+            outDir,
+            'views',
+            `${seat.name.replace(/\s/g, '')}-${String(++seat.shots).padStart(3, '0')}-${presented}.png`
+          )
+          setTimeout(
+            () => void seat.page.screenshot({ path: shot }).catch(() => undefined),
+            VIEW_SETTLE_MS
+          )
+        }
         if (presented === 'individual-challenge') {
           const gate = `${probe.rounds}:${probe.position}`
           if (seat.seenGates.has(gate)) {
@@ -488,6 +532,35 @@ for (let room = 0; room < ROOMS; room += 1) {
           seat.seenGates.add(gate)
         }
         seat.lastPresented = presented
+      }
+
+      // What the swap left painted: the previous view's prompt or verdict
+      // still on screen under the new one, two view roots, or the layout's
+      // reveal card over the board or the scorecard.
+      const swap = seat.swap
+      if (swap && probe.at - swap.at >= RESIDUE_CHECK_MS && probe.presented === swap.to) {
+        seat.swap = undefined
+        const screen = probe.screen
+        const leftovers = [
+          ...screen.prompts
+            .filter(text => swap.prompts.includes(text))
+            .map(text => `prompt "${text}"`),
+          ...screen.verdicts
+            .filter(text => swap.verdicts.includes(text))
+            .map(text => `verdict "${text}"`),
+          ...(screen.viewRoots > 1 ? [`${screen.viewRoots} view roots mounted`] : []),
+          ...(screen.revealCard && (swap.to === 'board' || swap.to === 'group-scores')
+            ? ['layout reveal card']
+            : []),
+        ]
+        if (leftovers.length) {
+          await report(
+            seat,
+            'residue',
+            `${swap.from}→${swap.to} left ${leftovers.join(', ')}`,
+            server
+          )
+        }
       }
 
       const longTasks = await readLongTasks(seat.page)
@@ -508,12 +581,23 @@ for (let room = 0; room < ROOMS; room += 1) {
 
     while (Date.now() - started < GAME_BUDGET_MS) {
       const server = await readServer()
-      if (server?.rev !== lastServerRev) {
-        lastServerRev = server?.rev
-        lastServerRevAt = Date.now()
-      }
+      noteServerRev(server)
 
-      await Promise.all(seats.map(tickSeat))
+      await Promise.all(
+        seats.map(seat =>
+          Promise.race([
+            tickSeat(seat),
+            new Promise<void>(resolve =>
+              setTimeout(() => {
+                warnings.push(
+                  `${seat.name}: tick exceeded ${TICK_TIMEOUT_MS}ms at ${new Date().toISOString()}`
+                )
+                resolve()
+              }, TICK_TIMEOUT_MS)
+            ),
+          ])
+        )
+      )
 
       if (Date.now() - lastServerRevAt > SERVER_SILENCE_MS) {
         await report(
@@ -540,7 +624,19 @@ for (let room = 0; room < ROOMS; room += 1) {
     for (const seat of seats) {
       const log = await readViewLog(seat.page)
       views[seat.name] = log.map(entry => entry.key).join(' > ')
-      for (const violation of viewLogViolations(log)) grammar.push(`${seat.name}: ${violation}`)
+      for (const violation of viewLogViolations(log)) {
+        // A seat whose socket was down across a beat resyncs straight into the
+        // live view: the skipped board is the reconnect, not a dispatch bug.
+        const reconnect = seat.history.some(
+          probe =>
+            probe.connected === false &&
+            probe.at <= violation.at &&
+            violation.at - probe.at <= RECONNECT_WINDOW_MS
+        )
+        const line = `${seat.name} @${new Date(violation.at).toISOString()}: ${violation.message}`
+        if (reconnect) warnings.push(`${line} (after a disconnect)`)
+        else grammar.push(line)
+      }
     }
 
     const summary = {

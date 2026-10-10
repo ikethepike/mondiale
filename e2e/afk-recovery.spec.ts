@@ -76,7 +76,7 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
   // rock solid if no view ever flashed.
   const viewLog = await host.evaluate(() => (window as unknown as PlaytestScope).__viewLog ?? [])
   expect(viewLog.length).toBeGreaterThan(2)
-  expect(viewLogViolations(viewLog)).toEqual([])
+  expect(viewLogViolations(viewLog).map(violation => violation.message)).toEqual([])
 
   await hostContext.close()
 })

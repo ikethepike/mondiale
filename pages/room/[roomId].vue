@@ -55,6 +55,7 @@ import { usePhaseTransition } from '~~/lib/phase-transitions'
 import {
   observeLongTasks,
   playtestScope,
+  readScreen,
   traceTransitionHooks,
   type TransitionTrace,
 } from '~~/lib/playtest-probe'
@@ -250,6 +251,7 @@ if (viewLogArmed) {
     resolving: self.value?.resolving,
     connected: gameStore.socket?.connected,
     transition: { ...transitionTrace },
+    screen: readScreen(),
   })
   observeLongTasks()
 }
