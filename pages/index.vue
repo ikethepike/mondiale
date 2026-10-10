@@ -41,7 +41,7 @@
 </template>
 <script lang="ts" setup>
 import { forgeFlag } from '~~/lib/flags/forge'
-import { newRoomName } from '~~/lib/room-name'
+import { newRoomPath } from '~~/lib/room-name'
 const router = useRouter()
 const currentYear = new Date().getFullYear()
 const { commitHash } = useRuntimeConfig().public
@@ -54,13 +54,10 @@ definePageMeta({
 })
 
 const onSubmit = (event: Event) => {
-  const params = new URLSearchParams()
-  for (const [key, value] of new FormData(event.target as HTMLFormElement).entries()) {
-    params.append(key, value.toString())
-  }
-  const query = params.toString()
-  const search = query ? `?${query}` : ''
-  router.push(`/room/${newRoomName()}${search}`)
+  const fields = [...new FormData(event.target as HTMLFormElement).entries()].map(
+    ([key, value]) => [key, value.toString()] as [string, string]
+  )
+  router.push(newRoomPath(fields))
 }
 </script>
 <style lang="scss" scoped>
