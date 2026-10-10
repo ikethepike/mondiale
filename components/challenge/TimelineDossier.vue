@@ -18,11 +18,11 @@
         <p class="dossier-year">{{ formatEventYear(event.year) }}</p>
         <h2 class="dossier-title">{{ event.name }}</h2>
         <p class="dossier-description">{{ event.description }}</p>
-        <span v-if="placerLine" class="dossier-placer" :class="{ missed }">{{ placerLine }}</span>
-        <span class="credit-row">
-          <SourceInfo :attributions="sources" label="Sources" :item-credit="credit" />
-        </span>
       </div>
+      <footer class="dossier-foot">
+        <span v-if="placerLine" class="dossier-placer" :class="{ missed }">{{ placerLine }}</span>
+        <SourceInfo :attributions="sources" label="Sources" :item-credit="credit" />
+      </footer>
     </article>
   </ExpandDock>
 </template>
@@ -137,17 +137,26 @@ const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => b
   line-height: 1.55;
 }
 
+.dossier-foot {
+  gap: 1.2rem;
+  display: flex;
+  align-items: center;
+  padding-top: 1.2rem;
+  justify-content: space-between;
+  border-top: 0.1rem solid $hairline;
+
+  > :last-child {
+    margin-left: auto;
+  }
+}
+
 .dossier-placer {
-  opacity: 0.7;
-  margin-top: 0.4rem;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--soft-blue);
 
   &.missed {
     color: flame(0.9);
   }
-}
-
-.credit-row {
-  margin-top: 0.6rem;
 }
 </style>
