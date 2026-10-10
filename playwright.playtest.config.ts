@@ -48,7 +48,9 @@ export default defineConfig({
   workers: Number(process.env.PLAYTEST_ROOMS ?? 1),
   use: {
     baseURL: externalServer ?? `http://127.0.0.1:${PORT}`,
-    trace: 'retain-on-failure',
+    // A 40-minute game records ~20GB of trace screenshots per cell; the spec
+    // writes its own incident evidence.
+    trace: 'off',
     actionTimeout: 10_000,
   },
   // One engine per run (PLAYTEST_BROWSER=webkit for the Safari pass): every
