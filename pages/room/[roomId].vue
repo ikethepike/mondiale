@@ -249,7 +249,7 @@ if (viewLogArmed) {
     rounds: game.value?.rounds.length,
     position: self.value?.currentPosition,
     moveChallenge: self.value?.moves[0]?.challenge?._type,
-    questionKey: questionKeyOf(self.value?.moves[0]),
+    questionKey: questionKeyOf(self.value?.moves[0], self.value?.walkSeq),
     localVerdict: !!gameStore.map.status,
     resolving: self.value?.resolving,
     connected: gameStore.socket?.connected,

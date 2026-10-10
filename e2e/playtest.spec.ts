@@ -13,6 +13,7 @@ import {
 } from '~~/lib/round-beats'
 import type { GameProbe, PlaytestScope } from '~~/lib/playtest-probe'
 import type { Game } from '~~/types/game.types'
+import { randomBetween, randomInt, sample } from '~~/lib/arrays'
 import { viewLogViolations } from './view-log'
 
 /**
@@ -112,6 +113,8 @@ interface Seat {
   longTasksSeen: number
   errors: string[]
   console: string[]
+  /** A tick is in flight — the loop never overlaps two on one seat. */
+  ticking?: boolean
   /** Until when chaos holds this seat offline — lag checks wait it out. */
   offlineUntil: number
   shots: number
@@ -126,7 +129,7 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
 
-const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)]!
+const pick = <T>(list: readonly T[]): T => sample(list)!
 
 const readProbe = (page: Page) =>
   page.evaluate(() => (window as unknown as PlaytestScope).__gameProbe?.()).catch(() => undefined)
@@ -158,8 +161,7 @@ const act = async (page: Page) => {
 
     const options = page.locator('.card-option:not([disabled]):visible')
     const optionCount = await options.count()
-    if (optionCount)
-      return void (await options.nth(Math.floor(Math.random() * optionCount)).click(quick))
+    if (optionCount) return void (await options.nth(randomInt(0, optionCount - 1)).click(quick))
 
     const input = page.locator('.guess-form input:visible').first()
     if ((await input.count()) && (await input.isEnabled())) {
@@ -413,7 +415,7 @@ for (let room = 0; room < ROOMS; room += 1) {
     const tickSeat = async (seat: Seat) => {
       if (CHAOS && Date.now() > seat.offlineUntil && Math.random() < CHAOS_ODDS) {
         const [shortest, longest] = CHAOS_OFFLINE_MS
-        const outage = shortest + Math.random() * (longest - shortest)
+        const outage = randomBetween(shortest, longest)
         seat.offlineUntil = Date.now() + outage
         warnings.push(
           `${seat.name}: chaos offline ${Math.round(outage)}ms at ${new Date().toISOString()}`
@@ -509,8 +511,10 @@ for (let room = 0; room < ROOMS; room += 1) {
 
       // The loop the field report described: a gate presented again on the
       // same round at the same tile it was already played on.
+      // An unresolved view (a reload or reconnect mid-join) is no swap: counting
+      // it would re-present the same gate and read a resync as a loop.
       const presented = probe.presented
-      if (presented !== seat.lastPresented) {
+      if (presented && presented !== seat.lastPresented) {
         // The outgoing view's own screen — never just the previous probe, which
         // can already show the new view when a tick was skipped (chaos offline).
         const before = seat.history.findLast(
@@ -624,20 +628,29 @@ for (let room = 0; room < ROOMS; room += 1) {
       const server = await readServer()
       noteServerRev(server)
 
+      // A tick can hold for a whole incident (the recovery watch, a reload):
+      // the loop moves on after TICK_TIMEOUT_MS but never starts a second
+      // tick on a seat whose first is still running.
       await Promise.all(
-        seats.map(seat =>
-          Promise.race([
-            tickSeat(seat),
-            new Promise<void>(resolve =>
-              setTimeout(() => {
+        seats
+          .filter(seat => !seat.ticking)
+          .map(async seat => {
+            seat.ticking = true
+            const tick = tickSeat(seat).finally(() => {
+              seat.ticking = false
+            })
+            let timer: ReturnType<typeof setTimeout> | undefined
+            const timeout = new Promise<void>(resolve => {
+              timer = setTimeout(() => {
                 warnings.push(
                   `${seat.name}: tick exceeded ${TICK_TIMEOUT_MS}ms at ${new Date().toISOString()}`
                 )
                 resolve()
               }, TICK_TIMEOUT_MS)
-            ),
-          ])
-        )
+            })
+            await Promise.race([tick, timeout])
+            clearTimeout(timer)
+          })
       )
 
       if (Date.now() - lastServerRevAt > SERVER_SILENCE_MS) {
