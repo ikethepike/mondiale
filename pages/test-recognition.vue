@@ -44,6 +44,7 @@
  *
  *   /test-recognition
  */
+import { mockSeatCursor } from '~~/lib/harness/mock-cursor'
 import { computed, ref } from 'vue'
 import ViewGhostState from '~/components/view/ViewGhostState.vue'
 import ViewNoMansLand from '~/components/view/ViewNoMansLand.vue'
@@ -140,7 +141,7 @@ const mockGame = (groupChallenge: unknown): Game =>
         name: 'Harness',
         color: 'red',
         ready: true,
-        phase: 'group-challenge',
+        cursor: mockSeatCursor('round', { subject: 'round:0' }),
         moves: [],
         currentPosition: 0,
       },

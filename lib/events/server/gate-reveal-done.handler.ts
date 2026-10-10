@@ -8,9 +8,12 @@ import { commitSeat, resolveGateVerdict } from './seat-exits'
  */
 export const gateRevealDoneHandler = defineGameHandler(
   'gate-reveal-done',
-  async ({ game, player, server, eventData }) => {
+  async ({ game, player, server, eventData, eventTarget }) => {
     const { cursor } = player
-    if (cursor.step !== 'gate-verdict' || eventData.subject !== cursor.subject) return
+    if (eventData.subject !== cursor.subject) {
+      return server.emit({ event: 'update', game }, eventTarget)
+    }
+    if (cursor.step !== 'gate-verdict') return
     if (cursor.verdict?.kind !== 'gate' || !cursor.verdict.browsable) return
     resolveGateVerdict(game, player, 'event:gate-reveal-done')
     await commitSeat(server, game, player)

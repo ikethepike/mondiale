@@ -160,14 +160,14 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'remove-bot': {
     handler: removeBotHandler,
   },
-  // Answered at the dispatch, outside the game queue: a render ack writes a
-  // side key and a clock probe only needs its ack.
   'round-play': {
     handler: roundPlayHandler,
   },
   'round-reveal-done': {
     handler: roundRevealDoneHandler,
   },
+  // Answered at the dispatch, outside the game queue: a render ack writes a
+  // side key and a clock probe only needs its ack.
   'seat-rendered': {
     handler: () => undefined,
   },

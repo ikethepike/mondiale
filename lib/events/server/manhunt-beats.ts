@@ -117,7 +117,7 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   const seed = recordedDraw(game, drawLabel.manhuntSeed(), () => pickManhuntSeed(game))
   if (!seed) {
     // The dealer verified the pool, so only drifted data lands here — run the
-    // finish ritual (everyone scores zero, phases advance) rather than strand
+    // finish ritual (everyone scores zero, every seat moves on) rather than strand
     // the room on an unplayable hunt.
     return finishManhunt(ctx, game, challenge)
   }
@@ -196,7 +196,7 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
       const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
       // A vanished blob is unplayable — this task holds the round's only
       // timer, so bailing silently would strand the table. Run the finish
-      // ritual (everyone scores zero, phases advance) like the no-seed path.
+      // ritual (everyone scores zero, every seat moves on) like the no-seed path.
       if (!secret) {
         console.warn(`Manhunt secret missing for ${game.id} — finishing round`)
         return finishManhunt(ctx, game, current)

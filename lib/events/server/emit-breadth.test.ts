@@ -1,8 +1,10 @@
+import { seatInvariantViolations } from '~~/lib/seat-invariants'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BOARD_TO_CHALLENGE_HOLD_MS,
   CLASSIC_SETTLE_SLACK_MS,
   GATE_RESULT_HOLD_MS,
+  GROUP_SCORES_CAP_MS,
   INDIVIDUAL_GATE_CAP_MS,
   NEW_ROUND_PAUSE_MS,
   revealBudgetMsFor,
@@ -66,7 +68,15 @@ const gate: PlayerMove = {
   } as PlayerMove['challenge'],
 }
 
-const buildGame = (players: Player[], challenge: RoundChallenge): Game =>
+const SCORED_TURN = {
+  points: { scored: 1, maximum: 10 },
+} as Game['rounds'][number]['playerTurns'][string]
+
+const buildGame = (
+  players: Player[],
+  challenge: RoundChallenge,
+  round: Partial<Game['rounds'][number]> = {}
+): Game =>
   ({
     id: uniqueGameId('breadth'),
     host: players[0]!.id,
@@ -82,6 +92,7 @@ const buildGame = (players: Player[], challenge: RoundChallenge): Game =>
         playerTurns: {},
         playStartsAt: Date.now(),
         deadline: Date.now() + 25_000,
+        ...round,
       },
     ],
   }) as unknown as Game
@@ -116,6 +127,12 @@ const expectConvergence = (table: TestTable, joined: Game, viewer = 'a') => {
       divergent,
       `after emit #${index} ('${emitted.event}') the client diverges at: ${divergent.join(', ')}`
     ).toEqual([])
+    expect(
+      seatInvariantViolations(emitted.payload.game, {
+        now: emitted.payload.serverNow ?? Date.now(),
+      }),
+      `the game emitted at #${index} ('${emitted.event}') breaks an invariant`
+    ).toEqual([])
     for (const [id, seat] of Object.entries(mirror.game().players)) {
       expect(seat.cursor.seq, `${id} stepped backwards at emit #${index}`).toBeGreaterThanOrEqual(
         seqs[id] ?? 0
@@ -135,6 +152,7 @@ const expectNothingUnsent = async (table: TestTable) => {
   const last = [...table.emits].reverse().find(emitted => 'game' in emitted.payload)
   const stored = await table.read()
   if (last && 'game' in last.payload) expect(last.payload.game.rev).toBe(stored.rev)
+  expect(seatInvariantViolations(stored, { now: Date.now(), armed: table.armed() })).toEqual([])
 }
 
 const echo = async (table: TestTable, id: string) => {
@@ -206,7 +224,15 @@ describe('every emit leaves the client equal to server truth', () => {
 
   it('a stale answer moves nothing but the resync', async () => {
     const { table, joined } = await open(
-      buildGame([testSeat('a', 'scores'), testSeat('b', 'round')], TWO_TRUTHS)
+      buildGame(
+        [
+          testSeat('a', 'scores', {
+            cursor: testCursor('scores', { deadline: Date.now() + GROUP_SCORES_CAP_MS }),
+          }),
+          testSeat('b', 'round'),
+        ],
+        TWO_TRUTHS
+      )
     )
     await table.send('a', {
       event: 'submit-group-challenge-answers',
@@ -229,7 +255,9 @@ describe('every emit leaves the client equal to server truth', () => {
           }),
           testSeat('b', 'round'),
         ],
-        TWO_TRUTHS
+        TWO_TRUTHS,
+        // The bystander's round outlasts the whole walk.
+        { deadline: Date.now() + 10 * 60_000, playerTurns: { a: SCORED_TURN } }
       )
     )
     await table.send('a', { event: 'enter-movement-phase', ...(await echo(table, 'a')) })
@@ -243,7 +271,7 @@ describe('every emit leaves the client equal to server truth', () => {
 
     const client = expectConvergence(table, joined, 'b')
     expect(client.players.a!.cursor.step).toBe('settled')
-    expect(client.rounds[0]!.playerTurns.a?.blocked).toBeUndefined()
+    expect(client.rounds[0]!.playerTurns.a?.blocked).toEqual({ atTile: 6, forfeitedSteps: 4 })
     // The pawn's position only ever climbed on the watcher's screen.
     const positions = table.emits
       .filter(emitted => 'game' in emitted.payload)
@@ -264,7 +292,8 @@ describe('every emit leaves the client equal to server truth', () => {
           }),
           testSeat('b', 'settled'),
         ],
-        TWO_TRUTHS
+        TWO_TRUTHS,
+        { playerTurns: { a: SCORED_TURN, b: SCORED_TURN } }
       )
     )
     rearmSeats(table.ctx('a'), await table.read())

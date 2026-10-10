@@ -23,9 +23,9 @@ import {
  * The turn-chain engine — the shared rhythm behind the seat-by-seat
  * elimination rounds (Border Chain, Atlas). State lives on the challenge
  * payload inside the current round, every mutation runs inside the per-game
- * queue, and the per-turn shot clock follows the timer-outside-the-queue
- * pattern (enter-movement-phase): a setTimeout holds no lock, and the state's
- * `turn` counter is the token that makes a stale timeout a no-op.
+ * queue, and the per-turn shot clock is a timer outside the queue
+ * (`scheduleGameTask`): it holds no lock, and the state's `turn` counter is
+ * the token that makes a stale timeout a no-op.
  *
  * Everything mode-specific — the link rule, the dead-end proof, the fresh
  * seed, the payout — comes in through the spec, so the two modes cannot

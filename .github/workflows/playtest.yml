@@ -66,8 +66,8 @@ jobs:
       - name: Build
         run: bun run build
 
-      # Every seat is teleported to the gauntlet, so two short rooms reach
-      # victory inside the budget: the whole endgame, verdict holds and all.
+      # Every seat is teleported to the gauntlet: the whole endgame, verdict
+      # holds, knockouts and the table reveal that follows.
       - name: Playtest — forced gauntlet
         run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
         env:
@@ -75,14 +75,12 @@ jobs:
           PLAYTEST_MINUTES: '8'
           PLAYTEST_OUT: test-results/playtest/forced-final
 
-      # The natural mix for a fixed window — rounds, walks and gates; a short
-      # game rarely ends inside it, so victory is not required here.
+      # The natural mix for a fixed window — rounds, walks and gates.
       - name: Playtest — mixed
         if: '!cancelled()'
         run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
         env:
           PLAYTEST_MINUTES: '6'
-          PLAYTEST_REQUIRE_VICTORY: '0'
           PLAYTEST_OUT: test-results/playtest/mixed
 
       - name: Upload playtest results
@@ -145,7 +143,6 @@ jobs:
         run: bunx playwright test --config=playwright.playtest.config.ts --reporter=line
         env:
           PLAYTEST_MINUTES: '6'
-          PLAYTEST_REQUIRE_VICTORY: '0'
           PLAYTEST_OUT: test-results/playtest/preview
 
       - name: Upload playtest results

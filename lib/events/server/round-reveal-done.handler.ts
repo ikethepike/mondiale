@@ -10,9 +10,12 @@ import { commitSeat, enterScores } from './seat-exits'
  */
 export const roundRevealDoneHandler = defineGameHandler(
   'round-reveal-done',
-  async ({ game, player, server, eventData }) => {
+  async ({ game, player, server, eventData, eventTarget }) => {
     const { cursor } = player
-    if (cursor.step !== 'round-verdict' || eventData.subject !== cursor.subject) return
+    if (eventData.subject !== cursor.subject) {
+      return server.emit({ event: 'update', game }, eventTarget)
+    }
+    if (cursor.step !== 'round-verdict') return
     if (cursor.verdict?.kind !== 'round') return
     if (!isBrowsableRound(latestRound(game)?.groupChallenge)) return
     await enterScores(game, player, cursor.verdict.scored, 'event:round-reveal-done')

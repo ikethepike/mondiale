@@ -137,9 +137,13 @@ export const armSeat = (ctx: ArmContext, game: Game, seat: Player) => {
     }
     return
   }
-  // Same seq: already armed. An older seq (a rearm from a stale snapshot)
-  // must never displace the live seat's timer.
-  if (existing && existing.seq >= seq) return
+  // An older seq (a rearm from a stale snapshot) must never displace the live
+  // seat's timer. The same seq is already armed — unless its moment passed:
+  // a body that never ran (a failed fetch, a lapsed lease) leaves its entry
+  // behind, and a duplicate dies on `seq` if the first one did move the seat.
+  if (existing && (existing.seq > seq || (existing.seq === seq && existing.fireAt > Date.now()))) {
+    return
+  }
   if (existing) clearTimeout(existing.handle)
   const seatCtx = seatContext(ctx, game.id, seat.id)
   const handle = scheduleEngineTask(
@@ -165,7 +169,7 @@ export const armTable = (ctx: ArmContext, game: Game) => {
     armed.delete(key)
     return
   }
-  if (existing?.fireAt === fireAt) return
+  if (existing?.fireAt === fireAt && fireAt > Date.now()) return
   if (existing) clearTimeout(existing.handle)
   const tableCtx = seatContext(ctx, game.id, game.host)
   const handle = scheduleEngineTask(

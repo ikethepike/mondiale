@@ -43,7 +43,7 @@ export const closeTutorial = async ({
     cause
   )
 
-  // Round 1 never passes the enter-movement-phase reveal, so a classic
+  // Round 1 is dealt at the start, never through `revealNextRound`, so a classic
   // round's clock stamps here instead (the same seam the turn engines'
   // briefings use below) — on the close that empties the rules cards, so
   // no live reader's window starts under someone else's card. This seat's
@@ -51,7 +51,7 @@ export const closeTutorial = async ({
   const startsClassicClock = startClassicClockOnLastClose(game)
 
   // A manhunt dealt as round 1 (FORCE_ROUND_TYPE — natural round 1 is always
-  // ranking) never passes the enter-movement-phase reveal, so its secret
+  // ranking) never passes `revealNextRound`, so its secret
   // blob seeds here instead. Every close during the briefing re-enters
   // (the deadline stays 0 until the pursuit begins) — startManhunt is
   // idempotent on the secret, so only the first close seeds.
@@ -62,7 +62,7 @@ export const closeTutorial = async ({
   }
 
   // Heritage Hunt / Timeline dealt as round 1 (the same FORCE_ROUND_TYPE
-  // seam): their beat clocks stamp in the enter-movement-phase reveal,
+  // seam): their beat clocks stamp in `revealNextRound`,
   // which round 1 never passes — left at deadline 0 the round never ticks
   // and rearm refuses it (a dead round). Stamp on the close that empties
   // the rules cards, arm after the save.
@@ -70,7 +70,7 @@ export const closeTutorial = async ({
 
   // Government dealt as round 1 (the same FORCE_ROUND_TYPE seam — and the
   // harness anyone exercising this mode reaches for). `startGovernment` runs
-  // only from enter-movement-phase, which round 1 never passes, so without
+  // only from `revealNextRound`, which round 1 never passes, so without
   // this the round both leaks and stalls: the answers are never moved to the
   // side key (the full set broadcasts to every socket for the whole round)
   // and `deadline` stays 0, so the beats resolve instantly.
@@ -119,7 +119,7 @@ export const closeTutorial = async ({
   if (startsClassicClock) scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
 
   // Same round-1 FORCE_ROUND_TYPE seam for Unique or Bust: its briefing cap
-  // normally arms at the enter-movement-phase reveal, which round 1 never
+  // normally arms in `revealNextRound`, which round 1 never
   // passes. Re-arming on every close is the manhunt precedent — a stale cap
   // task bails on the briefing flag.
   const unique = currentUniqueOrBust(game)

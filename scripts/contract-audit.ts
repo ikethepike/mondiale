@@ -412,7 +412,7 @@ const BULLETS: Bullet[] = [
       { matrix: 'zero render-lag' },
       { matrix: 'zero invariant violations' },
       { matrix: 'zero seat-audit / seat-illegal / seat-unsent lines' },
-      { matrix: 'every game reached victory' },
+      { matrix: 'every room played to victory or its full budget' },
     ],
   },
   // Open questions

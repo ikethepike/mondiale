@@ -1,6 +1,16 @@
-import { briefingHolds, isClassicGroupRound } from '~~/lib/round-beats'
+import {
+  briefingHolds,
+  CLASSIC_SETTLE_SLACK_MS,
+  isClassicGroupRound,
+  revealBudgetMsFor,
+} from '~~/lib/round-beats'
 import { latestRound } from '~~/lib/rounds'
-import { seatFireAt, stepRequirementGap, tableOwesNextRound } from '~~/lib/seat-transitions'
+import {
+  ROUND_SETTLE_STEPS,
+  seatFireAt,
+  stepRequirementGap,
+  tableOwesNextRound,
+} from '~~/lib/seat-transitions'
 import type { Game } from '~~/types/game.types'
 import type { SeatJournalEntry, SeatRender } from '~~/types/seat.types'
 
@@ -20,6 +30,9 @@ export type SeatViolationKind =
   | 'banked-in-round'
   | 'settled-unturned'
   | 'table-unstamped'
+  | 'table-overdue'
+  | 'table-unarmed'
+  | 'round-overdue'
   | 'round-unclocked'
   | 'seq-regressed'
   | 'journal-ahead'
@@ -53,6 +66,8 @@ export interface SeatEvidence {
 }
 
 export const SEAT_OVERDUE_SLACK_MS = 5000
+/** Past an engine's stamped deadline, longer than any engine holds a beat after it. */
+export const ENGINE_STALL_MS = 30_000
 export const STALE_RENDER_MS = 8000
 
 export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): SeatViolation[] => {
@@ -79,7 +94,10 @@ export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): Sea
     }
 
     if (evidence.armed) {
-      const armed = evidence.armed.filter(timer => timer.seat === seat.id)
+      // An entry past its moment by more than the slack never ran its body.
+      const armed = evidence.armed.filter(
+        timer => timer.seat === seat.id && timer.fireAt + slack >= now
+      )
       if (fireAt !== undefined) {
         if (!armed.length) add('unarmed', `${cursor.step} seq ${cursor.seq} has no timer`, seat.id)
         else if (armed.length > 1 || armed[0].seq !== cursor.seq) {
@@ -134,6 +152,33 @@ export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): Sea
   if (game.started && tableOwesNextRound(steps) && game.nextRoundAt === undefined) {
     add('table-unstamped', 'every racer settled but no next round is stamped')
   }
+  if (game.nextRoundAt !== undefined) {
+    if (now > game.nextRoundAt + slack) {
+      add('table-overdue', `next round due ${now - game.nextRoundAt}ms ago`)
+    }
+    const live = evidence.armed?.some(
+      timer => timer.kind === 'next-round' && timer.fireAt + slack >= now
+    )
+    if (evidence.armed && !live) add('table-unarmed', 'a next round is stamped with no timer')
+  }
+
+  // The round's own clock is the table's exit for every seat on the question.
+  const waiting = seats.filter(seat => ROUND_SETTLE_STEPS.includes(seat.cursor?.step))
+  if (waiting.length && round && (evidence.capsOn ?? true)) {
+    const challenge = round.groupChallenge
+    const settleAt =
+      isClassicGroupRound(challenge) && round.deadline !== undefined
+        ? round.deadline + revealBudgetMsFor(challenge) + CLASSIC_SETTLE_SLACK_MS + slack
+        : engineDeadline(challenge) !== undefined
+          ? engineDeadline(challenge)! + ENGINE_STALL_MS
+          : undefined
+    if (settleAt !== undefined && now > settleAt) {
+      add(
+        'round-overdue',
+        `${waiting.length} seat(s) still on round ${game.rounds.length - 1}, ${now - settleAt}ms past its clock`
+      )
+    }
+  }
 
   // A classic round's exit is the table's settle backstop, which needs the
   // round's own clock — once the rules cards are down and no briefing holds.
@@ -152,4 +197,10 @@ export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): Sea
   }
 
   return violations
+}
+
+const engineDeadline = (challenge: unknown): number | undefined => {
+  const state = (challenge as { state?: { deadline?: unknown; finished?: unknown } } | undefined)
+    ?.state
+  return state && !state.finished && typeof state.deadline === 'number' ? state.deadline : undefined
 }

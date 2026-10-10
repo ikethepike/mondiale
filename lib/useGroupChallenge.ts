@@ -149,11 +149,11 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /**
    * `update` already acks-and-retries critical events, but a submit that
    * exhausts that batch (a disconnect straddling the buzzer) must not die:
-   * an unbanked answer strands the seat in 'group-challenge' and one such
-   * seat freezes the whole table. Keep the answer alive on a timer until the
-   * server confirms — the handler's duplicate guard and stranded-submitter
-   * heal make every re-send safe, and the `submitted` latch stays up so the
-   * view never offers a second answer.
+   * a lost answer leaves the seat to the round's settle as a zero. Keep the
+   * answer alive on a timer until the server confirms — the subject echo
+   * makes every re-send safe (a duplicate on the same subject is a no-op, a
+   * spent subject a resync), and the `submitted` latch stays up so the view
+   * never offers a second answer.
    */
   const redeliver = createRedeliver('group answer')
   const deliverAnswer = (

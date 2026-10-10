@@ -140,7 +140,7 @@ export const describeRoom = async ({
     violations: seatInvariantViolations(game, {
       now,
       capsOn: SERVER_CONTROLLED_CAPS,
-      armed: armed?.filter(entry => entry.kind !== 'next-round'),
+      armed,
       renders,
     }),
   }
@@ -187,7 +187,13 @@ export const exportRoom = async (
   const checkpoints = records.flatMap((record, index) =>
     record.kind === 'checkpoint' ? [{ record: record as CheckpointRecord, index }] : []
   )
-  const chosen = from === 'latest' ? checkpoints.at(-1) : checkpoints[0]
+  // The journal ring is shorter than the events ring: the earliest checkpoint
+  // worth replaying is the first one whose save the journal still follows.
+  const journalFrom = journal[0]?.rev ?? Infinity
+  const covered = checkpoints.filter(
+    ({ record }) => ((record.game as Game).rev ?? 0) + 1 >= journalFrom
+  )
+  const chosen = from === 'latest' ? checkpoints.at(-1) : covered[0]
   if (!chosen) return { id: gameId, journal: [], events: [] }
   const game = chosen.record.game as Game
   return {

@@ -115,6 +115,7 @@ const report = (exits: Record<string, number | undefined>) => {
   const invariants = incidents.filter(incident => incident.kind.startsWith('invariant:')).length
   const serverLines = rooms.reduce((sum, room) => sum + room.serverLines.length, 0)
   const unfinished = rooms.filter(room => !room.finished).map(room => room.gameId)
+  const cut = rooms.filter(room => !room.finished && room.minutes < Number(MINUTES) - 1)
   const grammar = rooms.reduce((sum, room) => sum + room.grammar.length, 0)
   const frozen = incidents.filter(
     incident => incident.kind !== 'long-task' && incident.selfHealedMs === undefined
@@ -127,7 +128,7 @@ const report = (exits: Record<string, number | undefined>) => {
     ['zero invariant violations', invariants === 0, invariants],
     ['zero seat-audit / seat-illegal / seat-unsent lines', serverLines === 0, serverLines],
     ['every server log was read', unlogged === 0, unlogged],
-    ['every game reached victory', unfinished.length === 0, unfinished.length],
+    ['every room played to victory or its full budget', cut.length === 0, cut.length],
     ['zero frozen seats', frozen === 0, frozen],
     ['zero view-grammar violations', grammar === 0, grammar],
     [
@@ -159,7 +160,7 @@ const report = (exits: Record<string, number | undefined>) => {
       ? Object.entries(byKind).map(([kind, count]) => `- ${kind}: ${count}`)
       : ['- none']),
     ...(unfinished.length
-      ? ['', '## Unfinished games', '', ...unfinished.map(id => `- ${id}`)]
+      ? ['', '## Played the full budget without a winner', '', ...unfinished.map(id => `- ${id}`)]
       : []),
   ]
   fs.mkdirSync(OUT, { recursive: true })

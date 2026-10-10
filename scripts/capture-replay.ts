@@ -4,14 +4,14 @@
  * becomes a regression test that replays it transition for transition.
  *
  *   PLAYTEST_DEBUG_TOKEN=… bun run scripts/capture-replay.ts https://pr-180-mondiale.fly.dev beat-nose-month
- *   bun run scripts/capture-replay.ts http://127.0.0.1:3110 <room> --from latest
+ *   bun run scripts/capture-replay.ts http://127.0.0.1:3110 <room> --from earliest
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
 const [baseUrl, room] = process.argv.slice(2).filter(value => !value.startsWith('--'))
 const fromIndex = process.argv.indexOf('--from')
-const from = fromIndex === -1 ? 'earliest' : process.argv[fromIndex + 1]
+const from = fromIndex === -1 ? 'latest' : process.argv[fromIndex + 1]
 const token = process.env.PLAYTEST_DEBUG_TOKEN ?? process.env.NUXT_DEBUG_TOKEN
 
 if (!baseUrl || !room || !token) {

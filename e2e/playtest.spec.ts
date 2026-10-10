@@ -27,8 +27,8 @@ import { viewLogViolations } from './view-log'
  * PLAYTEST_MINUTES (per-game budget), PLAYTEST_LENGTH (short|medium|long),
  * PLAYTEST_DEVICE (a Playwright device name, e.g. "iPhone 14"), PLAYTEST_CHAOS=1
  * (seats drop offline at random), PLAYTEST_BROWSER=webkit (in the config),
- * PLAYTEST_SPECTATOR=0 (no booth page), PLAYTEST_REQUIRE_VICTORY=0 (a budget
- * shorter than a game), PLAYTEST_SHOTS=1 (a screenshot of every
+ * PLAYTEST_SPECTATOR=0 (no booth page), PLAYTEST_REQUIRE_VICTORY=1 (fail a room
+ * whose humans never win — random answers rarely clear a gauntlet), PLAYTEST_SHOTS=1 (a screenshot of every
  * view once it settles), PLAYTEST_BASE_URL + PLAYTEST_DEBUG_TOKEN (a running
  * server), PLAYTEST_SERVER_LOG (that server's stdout, when reachable).
  */
@@ -43,7 +43,7 @@ const DEBUG_TOKEN = process.env.PLAYTEST_DEBUG_TOKEN
 const DEVICE = process.env.PLAYTEST_DEVICE
 const CHAOS = process.env.PLAYTEST_CHAOS === '1'
 const SPECTATOR = process.env.PLAYTEST_SPECTATOR !== '0'
-const REQUIRE_VICTORY = process.env.PLAYTEST_REQUIRE_VICTORY !== '0'
+const REQUIRE_VICTORY = process.env.PLAYTEST_REQUIRE_VICTORY === '1'
 const OUT_DIR = path.resolve(process.env.PLAYTEST_OUT ?? 'test-results/playtest')
 
 /** A stable server cursor the seat's own page has not rendered within this. */
@@ -179,15 +179,18 @@ const act = async (page: Page) => {
   }
 }
 
-/** The server log lines about this game since the last read. */
+/** The server log lines about this game since the last read (offsets in bytes). */
 const serverLines = (gameId: string, from: number) => {
   if (!SERVER_LOG || !fs.existsSync(SERVER_LOG)) return { lines: [] as string[], to: from }
-  const text = fs.readFileSync(SERVER_LOG, 'utf8')
-  const lines = text
-    .slice(from)
+  const bytes = fs.readFileSync(SERVER_LOG)
+  // Only whole lines: one still being written is read next time.
+  const to = Math.max(from, bytes.lastIndexOf(0x0a) + 1)
+  const lines = bytes
+    .subarray(from, to)
+    .toString('utf8')
     .split('\n')
     .filter(line => line.includes(gameId))
-  return { lines, to: text.length }
+  return { lines, to }
 }
 
 const openPage = async (browser: Browser) => {

@@ -1,3 +1,4 @@
+import { markLiveRoom } from '~~/lib/events/server/seat-auditor'
 import { describe, expect, it } from 'vitest'
 import {
   DEBUG_JOURNAL_TAIL,
@@ -34,6 +35,11 @@ const fakeRedis = () => {
       const set = sorted.get(key) ?? new Map<string, number>()
       set.set(entry.member, entry.score)
       sorted.set(key, set)
+      return 1
+    },
+    async zremrangebyscore(key: string, min: number, max: number) {
+      const set = sorted.get(key) ?? new Map<string, number>()
+      for (const [member, score] of set) if (score >= min && score <= max) set.delete(member)
       return 1
     },
     async zrange(key: string, min: number, max: number, options?: { byScore?: boolean }) {
@@ -248,6 +254,15 @@ describe('liveRoomIds', () => {
     expect(await liveRoomIds(redis, NOW)).toEqual(['edge', 'live'])
   })
 
+  it('marking a room drops every room past the window, so the set stays bounded', async () => {
+    const redis = fakeRedis()
+    const now = 1_800_000_000_000
+    await markLiveRoom(redis as never, 'old', now - LIVE_ROOM_WINDOW_MS - 1)
+    await markLiveRoom(redis as never, 'live', now)
+    expect(await liveRoomIds(redis, now)).toEqual(['live'])
+    expect(await redis.zrange(LIVE_ROOMS_KEY, 0, now, { byScore: true })).toEqual(['live'])
+  })
+
   it('is empty when nothing was seen', async () => {
     expect(await liveRoomIds(fakeRedis(), NOW)).toEqual([])
   })
@@ -316,6 +331,15 @@ describe('exportRoom', () => {
       ['event', 4],
     ])
     expect(bundle.journal.map(entry => entry.rev)).toEqual([4, 7, 8])
+  })
+
+  it('skips an earliest checkpoint the journal ring no longer follows', async () => {
+    const { redis, gameId } = await seedRing()
+    const journal = redis.lists.get(`${gameId}:journal`)!
+    redis.lists.set(`${gameId}:journal`, journal.slice(3))
+    const bundle = await exportRoom(redis, gameId, 'earliest')
+    expect(bundle.checkpoint).toMatchObject({ game: { id: gameId, rev: 7 } })
+    expect(bundle.events.map(record => record.at)).toEqual([4])
   })
 
   it('exports nothing without a checkpoint', async () => {

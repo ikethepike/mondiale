@@ -2,10 +2,16 @@ import type { Redis } from '@upstash/redis'
 import { SERVER_CONTROLLED_CAPS } from '~~/lib/round-beats'
 import { seatInvariantViolations, type SeatViolation } from '~~/lib/seat-invariants'
 import type { Game } from '~~/types/game.types'
-import { enqueueGameTask, isDraining, useServerSideEvents, type GameServer } from '../server-side'
+import {
+  enqueueGameTask,
+  GAME_STATE_TTL_SECONDS,
+  isDraining,
+  useServerSideEvents,
+  type GameServer,
+} from '../server-side'
 import { machineOwnsGame } from './game-ownership'
 import { armedTimersFor } from './seat-cursor'
-import { LIVE_ROOMS_KEY, readRenders } from '~~/lib/debug-rooms'
+import { LIVE_ROOM_WINDOW_MS, LIVE_ROOMS_KEY, readRenders } from '~~/lib/debug-rooms'
 import { logSeatLine } from './seat-journal'
 
 /**
@@ -26,7 +32,7 @@ export const auditGame = async (
   seatInvariantViolations(game, {
     now,
     capsOn: SERVER_CONTROLLED_CAPS,
-    armed: armedTimersFor(game.id).filter(timer => !timer.seat.startsWith('@')),
+    armed: armedTimersFor(game.id),
     renders: await readRenders(redis, game.id),
     connectedSeats,
   })
@@ -49,6 +55,17 @@ export const reportViolations = (gameId: string, violations: readonly SeatViolat
   }
 }
 
+/** Mark a room live; members past the window fall out, and the key lives no longer than a game. */
+export const markLiveRoom = async (
+  redis: Pick<Redis, 'zadd' | 'zremrangebyscore' | 'expire'>,
+  gameId: string,
+  now = Date.now()
+) => {
+  await redis.zadd(LIVE_ROOMS_KEY, { score: now, member: gameId })
+  await redis.zremrangebyscore(LIVE_ROOMS_KEY, 0, now - LIVE_ROOM_WINDOW_MS)
+  await redis.expire(LIVE_ROOMS_KEY, GAME_STATE_TTL_SECONDS)
+}
+
 let auditorStarted = false
 
 export const startSeatAuditor = ({ io, redis }: { io: GameServer; redis: Redis }) => {
@@ -68,7 +85,7 @@ export const startSeatAuditor = ({ io, redis }: { io: GameServer; redis: Redis }
     for (const [gameId, connected] of rooms) {
       void (async () => {
         if (!(await machineOwnsGame(redis, gameId))) return
-        await redis.zadd(LIVE_ROOMS_KEY, { score: Date.now(), member: gameId })
+        await markLiveRoom(redis, gameId)
         await enqueueGameTask(gameId, async () => {
           const game = await server.fetchGame(gameId)
           if (!game?.started) return
