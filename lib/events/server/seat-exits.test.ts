@@ -170,6 +170,22 @@ describe('armIndividualGateCap', () => {
 
     expect(store.get(game.id)!.players.a.moves).toHaveLength(1)
   })
+
+  it('dies when a later walk brought the seat back to the same gate', async () => {
+    // Blocked in one round, back on the very same gate the next: phase, latch
+    // and tile all match, and only the walk generation tells the gates apart.
+    const blocked = seat('a', 'individual-challenge', { moves: [gateMove()], walkSeq: 3 })
+    const game = buildGame([blocked])
+    armIndividualGateCap(context(game), blocked)
+
+    store.get(game.id)!.players.a.walkSeq = 4
+    await vi.advanceTimersByTimeAsync(INDIVIDUAL_GATE_CAP_MS + 100)
+    await vi.runAllTicks()
+
+    const fresh = store.get(game.id)!
+    expect(fresh.players.a.moves).toHaveLength(1)
+    expect(fresh.rounds[0].playerTurns.a.blocked).toBeUndefined()
+  })
 })
 
 describe('armFinalQuestionCap', () => {
@@ -208,6 +224,22 @@ describe('armFinalQuestionCap', () => {
     // The player answered: the handler bumped the turn before the cap fired.
     const gauntlet = store.get(game.id)!.players.a.moves[0]!.challenge as { turn: number }
     gauntlet.turn = 3
+
+    await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + 100)
+    await vi.runAllTicks()
+
+    expect((store.get(game.id)!.players.a.moves[0]!.challenge as { lives: number }).lives).toBe(1)
+  })
+
+  it('dies when a later walk dealt a fresh gauntlet on the same turn', async () => {
+    const live = seat('a', 'final-challenge', { moves: [gauntletMove(0)], walkSeq: 1 })
+    const game = buildGame([live])
+    armFinalQuestionCap(context(game), live)
+
+    // Knocked out, then back at the final tile: a new gauntlet restarts at turn 0.
+    const fresh = store.get(game.id)!.players.a
+    fresh.walkSeq = 2
+    fresh.moves = [gauntletMove(0)]
 
     await vi.advanceTimersByTimeAsync(FINAL_QUESTION_CAP_MS + 100)
     await vi.runAllTicks()
