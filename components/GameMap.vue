@@ -249,13 +249,8 @@ import {
   MICRO_COUNTRIES,
   type MapCode,
 } from '~~/data/map.gen'
-import {
-  largestRing,
-  parsePolygons,
-  partitionRing,
-  poleOfInaccessibility,
-  type OutlinePoint,
-} from '~~/lib/outline'
+import { labelAnchorFor } from '~~/lib/label-anchor'
+import { parsePolygons, partitionRing, type OutlinePoint } from '~~/lib/outline'
 import { terraAbsorber } from '~~/lib/terra-incognita'
 import { STRAIT_CROSSINGS } from '~~/data/straits.gen'
 import {
@@ -1267,48 +1262,6 @@ const SVG_NS = 'http://www.w3.org/2000/svg'
 //
 // Keyed rather than latched: errata deals a new label set per gate, and a
 // build-once flag would leave the previous round's names on the map.
-/**
- * Where a country's name hangs, and how much room it has there. The pole of
- * inaccessibility, not the box centre: a box centre lands on the NEIGHBOUR for
- * any country that curves around another (Norway, Sweden, Chile, Croatia,
- * Vietnam), and errata's stage IS the labels.
- *
- * Memoized because the acronym register asks for ~150 of them in one go, and
- * the search is the expensive part of this whole feature: ~180ms desktop for
- * the full sweep, against ~10ms for a settle's overlap solve and 2.8ms for its
- * layout. The cache lives with GameMap, which the layout keeps mounted, so
- * that sweep is once per SESSION and only in easy mode — accepted rather than
- * engineered away, because the alternative is handing the acronyms back their
- * box centres and Norway's "NO" back to Sweden.
- *
- * Rings are resampled to 128 points before the search (see ANCHOR_RING_POINTS).
- * Coarser budgets were measured: 96 and below still land inside every country,
- * but move some anchors ~48 units, where 128 reproduces the full-resolution
- * answer exactly. Not a trade worth the milliseconds.
- */
-const anchorCache = new Map<string, { point: [number, number]; radius: number } | undefined>()
-const labelAnchorFor = (code: MapCode) => {
-  if (anchorCache.has(code)) return anchorCache.get(code)
-
-  const path = MAP_PATHS[code]
-  const ring = path ? largestRing(path) : undefined
-  const anchor = ring ? poleOfInaccessibility(ring) : undefined
-  const box = labelBoxFor(MAP_BOUNDS[code], MAP_REGIONS[code])
-  // No ring data (a code drawn from EXTRA_MAP_CODES): the box centre is all
-  // there is, and its inscribed radius is unknown — call it half the shorter
-  // side, which is what a rectangle would hold.
-  const resolved =
-    anchor ??
-    (box
-      ? {
-          point: [box[0] + box[2] / 2, box[1] + box[3] / 2] as [number, number],
-          radius: Math.min(box[2], box[3]) / 2,
-        }
-      : undefined)
-  anchorCache.set(code, resolved)
-  return resolved
-}
-
 let builtLabelKey: string | undefined
 const ensureLabels = () => {
   if (!svg.value) return
