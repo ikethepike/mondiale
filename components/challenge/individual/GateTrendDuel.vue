@@ -88,10 +88,10 @@ const answerDuel = (picked: ISOCountryCode) => {
     missNote.value = `${countryName(unpicked)} is the one ${duel.seek}`
     // Any lost duel fails the challenge: submit a token that can't match
     const wrongToken = props.challenge.country === picked ? unpicked : picked
-    return submitAnswer(wrongToken, { reveal: false })
+    return submitAnswer(wrongToken)
   }
   if (index.value >= total.value - 1) {
-    return submitAnswer(props.challenge.country, { reveal: false })
+    return submitAnswer(props.challenge.country)
   }
   revealTimer = setTimeout(() => {
     reveal.value = undefined

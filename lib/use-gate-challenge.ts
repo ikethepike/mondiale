@@ -43,9 +43,18 @@ import { secondsOnDeadline } from './use-deadline-clock'
 import { useSeatClockStart } from './use-seat-clock'
 import { useServerNow } from './use-server-now'
 
+/** Gates whose own reveal is the answer: the duels paint their board, atlas
+ *  draws its chain, chronicle sets its record — the map's country card would
+ *  land on top of it. Read by the submit AND the verdict, which every watcher
+ *  of the seat receives, so neither path can bring the card back. */
+const OWN_REVEAL_VARIANTS = new Set<IndividualChallengeVariant>([
+  'higher-lower',
+  'trend-duel',
+  'atlas',
+  'chronicle',
+])
+
 export interface GateSubmitOptions {
-  /** Skip the map reveal zoom — the duel gates paint their own board first. */
-  reveal?: boolean
   /** Hints bought, each biting `GATE_HINT_BITE_STEPS` off the leap. */
   hintsUsed?: number
 }
@@ -210,7 +219,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     landed => {
       if (!landed || !challenge.value) return
       previewVerdict(landed.correct ? 'correct' : 'incorrect', subject)
-      if (!gameStore.map.reveal) {
+      if (!gameStore.map.reveal && !OWN_REVEAL_VARIANTS.has(variant.value)) {
         gameStore.map.reveal =
           landed.correct && landed.submitted ? landed.submitted : challenge.value.country
       }
@@ -251,7 +260,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     })
 
     const correct = isCorrectIndividualAnswer(active, isoCode)
-    if (options.reveal !== false) {
+    if (!OWN_REVEAL_VARIANTS.has(variant.value)) {
       // A shared-currency gate can be won on a country other than the dealt
       // subject — zoom the reveal to the country the player actually got right.
       gameStore.map.reveal = correct ? isoCode : active.country

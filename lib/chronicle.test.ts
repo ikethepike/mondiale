@@ -4,6 +4,7 @@ import { eventFame } from '~~/lib/timeline'
 import {
   CHRONICLE_TUNING,
   chronicleCountries,
+  chronicleKeptInOrder,
   chronicleSolution,
   chronicleSpanYears,
   dealChronicleEvents,
@@ -65,6 +66,32 @@ describe('isChronicleOrdered', () => {
     const hand = dealChronicleEvents(chronicleCountries(WORLD, 'normal')[0], 'normal')!
     const years = hand.map(slug => EVENTS[slug]!.year)
     expect(chronicleSpanYears(hand)).toBe(Math.max(...years) - Math.min(...years))
+  })
+})
+
+describe('chronicleKeptInOrder', () => {
+  const hand = () => {
+    const dealt = dealChronicleEvents(chronicleCountries(WORLD, 'normal')[0], 'normal')!
+    return chronicleSolution(dealt)
+  }
+
+  it('keeps the whole hand when it is already in order', () => {
+    const solution = hand()
+    expect(chronicleKeptInOrder(solution)).toEqual(new Set(solution))
+  })
+
+  it('lifts out only the one card filed in the wrong place', () => {
+    const [first, ...rest] = hand()
+    const order = [...rest.slice(0, 2), first, ...rest.slice(2)]
+    expect(chronicleKeptInOrder(order)).toEqual(new Set(rest))
+  })
+
+  it('keeps a single card of a fully reversed hand', () => {
+    expect(chronicleKeptInOrder([...hand()].reverse()).size).toBe(1)
+  })
+
+  it('keeps nothing of an empty order', () => {
+    expect(chronicleKeptInOrder([]).size).toBe(0)
   })
 })
 
