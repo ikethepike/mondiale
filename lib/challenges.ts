@@ -127,6 +127,7 @@ import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
+  isCountryPlayable,
   isHardMode,
   playableCountries,
   playableWorldCountries,
@@ -1659,7 +1660,10 @@ const getGhostStateChallenge = async (
   game: gameTypes.Game
 ): Promise<GhostStateChallenge | undefined> => {
   const pool = (await recognitionPool('ghost-state')).filter(
-    territory => territory.parent && isValidISOCode(territory.parent)
+    territory =>
+      territory.parent &&
+      isValidISOCode(territory.parent) &&
+      isCountryPlayable(game, territory.parent)
   )
   if (!pool.length) return undefined
 
@@ -1688,7 +1692,13 @@ const getGhostStateChallenge = async (
 const getNoMansLandChallenge = async (
   game: gameTypes.Game
 ): Promise<NoMansLandChallenge | undefined> => {
-  const pool = await recognitionPool('no-mans-land')
+  // A dispute deals where one of its claimants stands on the board; the rest
+  // may answer from off it. Bir Tawil names no claimant, so only the world deals it.
+  const pool = (await recognitionPool('no-mans-land')).filter(territory =>
+    territory.claimants.length
+      ? territory.claimants.some(isoCode => isCountryPlayable(game, isoCode))
+      : isWorldBoard(game.regions)
+  )
   const territory = sample(pool)
   if (!territory) return undefined
 
@@ -3431,16 +3441,16 @@ const dealAtlas = (
  * resolves at view time through lib/tongue-samples.
  */
 const dealScriptorium = (
-  world: ISOCountryCode[]
+  pool: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'country' | 'scriptorium'> | undefined => {
-  const inPlay = new Set(world)
+  const onBoard = new Set(pool)
   const playable = SCRIPTORIUM_POOL.filter(entry =>
-    scriptoriumAnswers(entry.language).some(isoCode => inPlay.has(isoCode))
+    scriptoriumAnswers(entry.language).some(isoCode => onBoard.has(isoCode))
   )
   const entry = sample(playable)
   if (!entry) return undefined
 
-  const answers = scriptoriumAnswers(entry.language).filter(isoCode => inPlay.has(isoCode))
+  const answers = scriptoriumAnswers(entry.language).filter(isoCode => onBoard.has(isoCode))
   // The reveal zoom's canonical speaker: the most populous in-play answer.
   const country = [...answers].sort(
     (a, b) =>
@@ -3655,7 +3665,7 @@ export const getIndividualChallenge = async ({
         break
       }
       case 'scriptorium': {
-        const dealt = dealScriptorium(world)
+        const dealt = dealScriptorium(pool)
         if (dealt) return { ...base, variant: 'scriptorium', ...dealt }
         break
       }
@@ -3851,7 +3861,7 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'atlas', ...dealt }
       }
       if (roll < 0.6) {
-        const dealt = dealScriptorium(world)
+        const dealt = dealScriptorium(pool)
         if (dealt) return { ...base, variant: 'scriptorium', ...dealt }
       }
       const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
