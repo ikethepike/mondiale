@@ -270,6 +270,7 @@ describe('client timers', () => {
     'lib/time.ts': { count: 1, category: 'transport' },
     'lib/board3d/use-pawn-movement.ts': { count: 1, category: 'cosmetic' },
     'lib/board3d/use-board-camera.ts': { count: 1, category: 'local-input' },
+    'layouts/default.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewVictory.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewTrendRace.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewTerraIncognita.vue': { count: 1, category: 'cosmetic' },
