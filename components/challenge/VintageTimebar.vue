@@ -132,6 +132,9 @@ const track = ref<HTMLElement>()
 /** Where the needle stands mid-drag, in percent — it follows the finger
  *  continuously and only the readout snaps to whole years. */
 const dragAt = ref<number>()
+/** How far from the needle the pointer took hold — grabbing the year label
+ *  off-centre must not make the needle jump under the finger. */
+let grabOffset = 0
 const pick = (year: number) => {
   const next = clamp(Math.round(year), props.range[0], props.range[1])
   if (next !== props.modelValue) emit('update:modelValue', next)
@@ -139,12 +142,18 @@ const pick = (year: number) => {
 const dragTo = (event: PointerEvent) => {
   const box = track.value?.getBoundingClientRect()
   if (!box?.width) return
-  const share = clamp((event.clientX - box.left) / box.width, 0, 1)
+  const share = clamp((event.clientX - grabOffset - box.left) / box.width, 0, 1)
   dragAt.value = share * 100
   pick(props.range[0] + share * (props.range[1] - props.range[0]))
 }
 const startDrag = (event: PointerEvent) => {
   if (!props.interactive || props.disabled) return
+  const box = track.value?.getBoundingClientRect()
+  const onHandle = (event.target as Element | null)?.closest('.readout')
+  grabOffset =
+    onHandle && box && props.modelValue !== undefined
+      ? event.clientX - (box.left + (box.width * at(props.modelValue)) / 100)
+      : 0
   track.value?.setPointerCapture(event.pointerId)
   dragTo(event)
 }
@@ -153,6 +162,7 @@ const moveDrag = (event: PointerEvent) => {
 }
 const endDrag = () => {
   dragAt.value = undefined
+  grabOffset = 0
 }
 const nudge = (by: number) => {
   if (props.modelValue !== undefined && !props.disabled) pick(props.modelValue + by)
@@ -282,6 +292,7 @@ const curve = computed(() => {
     transition: none;
 
     .readout {
+      cursor: grabbing;
       transform: translate(-50%, -0.4rem) scale(1.12);
     }
   }
@@ -338,6 +349,12 @@ const curve = computed(() => {
 
 .interactive .track {
   cursor: ew-resize;
+  touch-action: none;
+}
+
+.interactive .needle:not(.marker) .readout {
+  cursor: grab;
+  pointer-events: auto;
   touch-action: none;
 }
 

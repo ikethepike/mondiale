@@ -16,15 +16,11 @@
         :pass="pass"
         :starts-at="passStartsAt"
         :interactive="phase !== 'rewind'"
+        :tape="flashing"
         @scene="scene => (shownScene = scene)"
       />
 
-      <Transition name="rewind-flash">
-        <div v-if="flashing" class="rewind-flash" aria-hidden="true">
-          <RewindGlyph class="flash-glyph" />
-          <span class="flash-word">Rewind</span>
-        </div>
-      </Transition>
+      <VhsRewind :active="flashing" />
 
       <ChallengePrompt
         ref="promptHost"
@@ -99,6 +95,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import RewindGlyph from '~/components/challenge/RewindGlyph.vue'
+import VhsRewind from '~/components/challenge/VhsRewind.vue'
 import VintageField from '~/components/challenge/VintageField.vue'
 import VintageTimebar from '~/components/challenge/VintageTimebar.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
@@ -369,58 +366,10 @@ onBeforeUnmount(() => {
   }
 }
 
-.rewind-flash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 4;
-  display: grid;
-  justify-items: center;
-  gap: 0.4rem;
-  padding: 2.4rem 4rem 2rem;
-  color: ink(0.95);
-  border-radius: $cardRadius;
-  border: 1px solid ink(0.2);
-  background: color-mix(in srgb, var(--background-color) 88%, transparent);
-  box-shadow: 0 1.2rem 4rem ink(0.18);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-
-  .flash-glyph {
-    font-size: 6.4rem;
-    animation: rewind-blink 0.7s steps(2, jump-none) 2;
-  }
-
-  .flash-word {
-    font-size: 1.6rem;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-  }
-}
-
-@keyframes rewind-blink {
+@keyframes rewind-pulse {
   50% {
-    opacity: 0.25;
+    opacity: 0.45;
   }
-}
-
-.rewind-flash-enter-active {
-  transition:
-    opacity var(--motion-base) var(--ease-out-expressive),
-    transform var(--motion-slow) var(--ease-out-expressive);
-}
-.rewind-flash-leave-active {
-  transition:
-    opacity var(--motion-slow) var(--ease-in-soft),
-    transform var(--motion-slow) var(--ease-in-soft);
-}
-.rewind-flash-enter-from {
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.8);
-}
-.rewind-flash-leave-to {
-  opacity: 0;
-  transform: translate(-30%, -50%) scale(0.96);
 }
 
 .rewinding {
@@ -429,7 +378,7 @@ onBeforeUnmount(() => {
   gap: 0.6rem;
 
   .sub-glyph {
-    animation: rewind-blink 1.4s ease-in-out infinite;
+    animation: rewind-pulse 1.6s ease-in-out infinite;
   }
 }
 

@@ -10,6 +10,7 @@
       v-if="fieldBox"
       :viewBox="`${fieldBox.x} ${fieldBox.y} ${fieldBox.w} ${fieldBox.h}`"
       preserveAspectRatio="none"
+      :class="{ tape }"
       :style="[boxStyle, featherStyle]"
     >
       <g>
@@ -105,6 +106,8 @@ const props = defineProps<{
   startsAt?: number
   /** Hover or tap a unit to read its name. */
   interactive?: boolean
+  /** The tape wobbles while the rewind beat plays. */
+  tape?: boolean
 }>()
 
 const emit = defineEmits<{ scene: [scene: number] }>()
@@ -440,6 +443,22 @@ const showTip = (unit: number, event: PointerEvent) => {
 
 .vintage-unit {
   transition: none;
+}
+
+.tape {
+  animation: tape-wobble 0.18s steps(2) infinite;
+}
+
+@keyframes tape-wobble {
+  50% {
+    transform: translateX(1.5px) skewX(-0.3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tape {
+    animation: none;
+  }
 }
 
 .interactive .vintage-unit {
