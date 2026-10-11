@@ -4,6 +4,7 @@ import {
   GOVERNMENT_BEATS,
   governmentKey,
   scoreBeat,
+  sortedSides,
   type GovernmentAnswer,
   type GovernmentBeat,
   type GovernmentDeal,
@@ -228,9 +229,8 @@ const dealOf = (
 const truthOf = (beat: GovernmentBeat, deal: GovernmentDeal): string => {
   if (beat === 'party') return deal.governingParty
   if (beat === 'seats') return `${deal.governingSeats}`
-  const withGovernment = deal.sorted.filter(
-    name => deal.benches.find(bench => bench.name === name)?.standing !== 'opposition'
-  )
+  const sides = sortedSides(deal)
+  const withGovernment = deal.sorted.filter(name => sides[name] === 'government')
   return withGovernment.length ? withGovernment.join(', ') : 'nobody'
 }
 
@@ -260,7 +260,14 @@ const resolveBeat = async (ctx: EngineContext, game: Game, challenge: Government
   // Beat 1 is graded, so the party stops being a secret: the later beats ask
   // about it by name rather than about an unnamed "it".
   if (deal && beat === 'party') state.subject = deal.governingParty
-  if (deal) state.verdict = { beat, truth: truthOf(beat, deal), scored }
+  if (deal) {
+    state.verdict = {
+      beat,
+      truth: truthOf(beat, deal),
+      scored,
+      ...(beat === 'sides' ? { sides: sortedSides(deal) } : {}),
+    }
+  }
 
   // `turn` moves on EVERY transition, including into the verdict hold — that
   // is what stales a timer this resolve raced.

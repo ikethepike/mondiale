@@ -126,6 +126,7 @@ import {
   GOVERNMENT_BEATS,
   scoreBeat,
   scoreGovernment,
+  sortedSides,
   type GovernmentAnswer,
   type GovernmentBeat,
   type GovernmentDeal,
@@ -457,9 +458,8 @@ const answerGovernmentRivals = (challenge: GovernmentChallenge) => {
 const governmentTruthOf = (beat: GovernmentBeat, deal: GovernmentDeal): string => {
   if (beat === 'party') return deal.governingParty
   if (beat === 'seats') return `${deal.governingSeats}`
-  const withGovernment = deal.sorted.filter(
-    name => deal.benches.find(bench => bench.name === name)?.standing !== 'opposition'
-  )
+  const sides = sortedSides(deal)
+  const withGovernment = deal.sorted.filter(name => sides[name] === 'government')
   return withGovernment.length ? withGovernment.join(', ') : 'nobody'
 }
 
@@ -507,7 +507,12 @@ const resolveGovernmentBeat = (challenge: GovernmentChallenge) => {
         scoreBeat(state.beat, deal, governmentAnswerOf(challenge, playerId)),
       ])
     )
-    state.verdict = { beat: state.beat, truth: governmentTruthOf(state.beat, deal), scored }
+    state.verdict = {
+      beat: state.beat,
+      truth: governmentTruthOf(state.beat, deal),
+      scored,
+      ...(state.beat === 'sides' ? { sides: sortedSides(deal) } : {}),
+    }
   }
   state.turn += 1
   const held = state.turn

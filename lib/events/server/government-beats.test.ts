@@ -362,6 +362,22 @@ describe('staleness', () => {
     expect(challenge.state.picks.party.ada).toBe('Left Party')
   })
 
+  it('names where every sorted bench truly files in the beat-3 verdict', async () => {
+    const { challenge, game, ctx } = await openRound()
+    challenge.state.beat = 'sides'
+    challenge.state.turn = 2
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 2, {
+      sides: { 'Sweden Democrats': 'opposition', 'Left Party': 'opposition' },
+    })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 2, {
+      sides: { 'Sweden Democrats': 'government', 'Left Party': 'opposition' },
+    })
+    expect(live(game.id).state.verdict?.sides).toEqual({
+      'Sweden Democrats': 'government',
+      'Left Party': 'opposition',
+    })
+  })
+
   it('never pays a settled round twice', async () => {
     const { challenge, game, ctx } = await openRound()
     challenge.state.beat = 'sides'

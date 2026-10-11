@@ -513,6 +513,8 @@ export interface GovernmentState {
     beat: 'party' | 'seats' | 'sides'
     truth: string
     scored: Record<string, number>
+    /** Beat 3 only: where each sorted bench truly files. */
+    sides?: Record<string, 'government' | 'opposition'>
   }
   /** The answers, revealed only once the last beat resolves. */
   answers?: GovernmentAnswers

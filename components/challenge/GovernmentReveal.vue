@@ -104,7 +104,7 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
-import { MAX_SEAT_DOTS, type GovernmentBeat } from '~~/lib/government'
+import { MAX_SEAT_DOTS, majorityOf, type GovernmentBeat } from '~~/lib/government'
 import { seatLabel } from '~~/lib/player'
 import { formatNumber } from '~~/lib/number'
 import type { GovernmentAnswers, GovernmentChallenge } from '~~/types/challenges/group-modes.type'
@@ -148,7 +148,7 @@ const chamberLabel = computed(() =>
     : `The ${countryName(props.challenge.country)} chamber`
 )
 
-const majority = computed(() => Math.floor(props.challenge.totalSeats / 2) + 1)
+const majority = computed(() => majorityOf(props.challenge.totalSeats))
 
 const standingOf = (name: string) => props.answers.standings[name] ?? 'opposition'
 
