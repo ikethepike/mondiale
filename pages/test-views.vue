@@ -171,6 +171,7 @@ import type {
   AtlasChallenge,
   BorderChainChallenge,
   GovernmentChallenge,
+  TongueBuzzChallenge,
 } from '~~/types/challenges/group-modes.type'
 import {
   drawnCard,
@@ -1242,7 +1243,7 @@ const TONGUE_RUNGS: {
     /** Hindi has no anthem sung in it (India's is Bengali), so it seeds. */
     seeded?: boolean
     /** Regional boards scope the answer set — and the copy that describes it. */
-    scope?: 'europe'
+    scope?: TongueBuzzChallenge['scope']
   }
 } = {
   // A Europe board asking for French: buzzing Senegal is right about the world
