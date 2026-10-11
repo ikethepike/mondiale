@@ -1,24 +1,29 @@
 <template>
-  <section class="briefing briefing-card pane tr decorator-bottom">
-    <slot />
+  <section
+    class="briefing briefing-card pane tr decorator-bottom"
+    :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+  >
+    <div ref="scroller" class="briefing-scroll" @scroll.passive="syncScrollEdges">
+      <slot />
 
-    <div class="ready-row">
-      <div
-        v-for="playerId in participants"
-        :key="playerId"
-        class="ready-seat"
-        :class="{ waiting: !ready.includes(playerId) }"
-      >
-        <slot name="seat" :player-id="playerId" />
-        <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
-        <span class="seat-name">{{ seatName(playerId) }}</span>
+      <div class="ready-row">
+        <div
+          v-for="playerId in participants"
+          :key="playerId"
+          class="ready-seat"
+          :class="{ waiting: !ready.includes(playerId) }"
+        >
+          <slot name="seat" :player-id="playerId" />
+          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
+          <span class="seat-name">{{ seatName(playerId) }}</span>
+        </div>
       </div>
-    </div>
 
-    <ButtonFilled v-if="canAck" @click="emit('ready')">{{ cta }}</ButtonFilled>
-    <p v-else class="briefing-waiting">
-      {{ spectating ? 'The table is reading the rules…' : 'Waiting for the rest of the table…' }}
-    </p>
+      <ButtonFilled v-if="canAck" @click="emit('ready')">{{ cta }}</ButtonFilled>
+      <p v-else class="briefing-waiting">
+        {{ spectating ? 'The table is reading the rules…' : 'Waiting for the rest of the table…' }}
+      </p>
+    </div>
   </section>
 </template>
 
@@ -27,6 +32,7 @@ import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { seatLabel } from '~~/lib/player'
 import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useGameStore } from '~~/store/game.store'
 
 /** The click-away rules card a briefed round opens on: rules, the table's ready row, the ack. */
@@ -40,6 +46,9 @@ const props = defineProps<{
 const emit = defineEmits<{ ready: [] }>()
 
 const gameStore = useGameStore()
+
+const scroller = ref<HTMLElement>()
+const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => scroller.value)
 
 const spectating = computed(
   () => gameStore.watching || !props.participants.includes(gameStore.seatId)

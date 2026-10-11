@@ -74,6 +74,58 @@
   }
 }
 
+// Old print's answer to the fade: a halftone screen whose dots swell toward the
+// edge the content continues past. Worn by the FRAME around a scrollport, not
+// the scrollport itself — it pins to the frame's padding box, full width and
+// down to its border, which a sticky pseudo inside the scroller cannot reach.
+// The frame carries the `.fade-top`/`.fade-bottom` classes for its scroller.
+// It darkens rather than paints, so it belongs on a cream surface, never under
+// nocturne.
+//
+// The dots are a threshold, not a pattern: a dot grid multiplied by a ramp,
+// pushed through `contrast()`, leaves a dot wherever the product is dark
+// enough, so the dots grow with the ramp. The ramp's dark end stays light
+// enough that the largest dots never merge into a band.
+@mixin scroll-halftone($top: 3.2rem, $bottom: 4.4rem, $dot: 0.7rem) {
+  --halftone-dot: #{$dot};
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    background-blend-mode: multiply;
+    filter: contrast(18);
+    mix-blend-mode: multiply;
+    transition: opacity var(--motion-quick) var(--ease-out-expressive);
+  }
+
+  &::before {
+    top: 0;
+    height: #{$top};
+    background:
+      radial-gradient(closest-side, #808080, #fff) 0 0 / var(--halftone-dot) var(--halftone-dot),
+      linear-gradient(to bottom, #8c8c8c, #fff);
+  }
+
+  &::after {
+    bottom: 0;
+    height: #{$bottom};
+    background:
+      radial-gradient(closest-side, #808080, #fff) 0 100% / var(--halftone-dot) var(--halftone-dot),
+      linear-gradient(to top, #8c8c8c, #fff);
+  }
+
+  &.fade-top::before,
+  &.fade-bottom::after {
+    opacity: 0.4;
+  }
+}
+
 // The alpha sibling. Same tokens, same classes — see the note above for which
 // of the two a surface wants.
 //

@@ -126,13 +126,13 @@ const sidesDemoClass = (index: number) => {
 @use '~/assets/scss/rules/_breakpoints.scss' as *;
 
 .government-briefing {
-  gap: 1.2rem;
+  --briefing-gap: 1.2rem;
   max-width: min(78rem, calc(100% - 2.4rem));
   color: var(--dark-blue);
 
   @media (max-width: $tablet) {
-    gap: 0.9rem;
-    padding: 1.6rem 1.4rem;
+    --briefing-gap: 0.9rem;
+    --briefing-pad: 1.6rem 1.4rem;
   }
 
   &.recap {
