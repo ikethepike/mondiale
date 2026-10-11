@@ -94,10 +94,14 @@
 
     <!-- The briefing: role cards each player dismisses explicitly. No clock
          runs until the whole table is ready (or the server's cap forces it). -->
-    <section
+    <BriefingCard
       v-if="briefing"
-      class="briefing briefing-card pane tr decorator-bottom"
       :class="{ despotic: isDespot }"
+      :participants="briefingParticipants"
+      :ready="state.ready"
+      :cta="isDespot ? 'Flee with dignity' : 'Open the hunt'"
+      :sent="sentReady"
+      @ready="sendReady"
     >
       <DespotHat class="briefing-hat" />
       <h2>{{ isDespot ? 'Glorious Leader!' : 'Your case file' }}</h2>
@@ -135,26 +139,10 @@
           </li>
         </template>
       </ul>
-      <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
-           reading. The gate's state at a glance, no counting required. -->
-      <div class="ready-row">
-        <div
-          v-for="playerId in briefingParticipants"
-          :key="playerId"
-          class="ready-seat"
-          :class="{ waiting: !state.ready.includes(playerId) }"
-        >
-          <!-- The cap marks the quarry — everyone knows WHO from the start. -->
-          <DespotHat v-if="playerId === challenge.despotId" class="seat-hat" />
-          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
-          <span class="seat-name">{{ seatName(playerId) }}</span>
-        </div>
-      </div>
-      <ButtonFilled v-if="!iAmReady" @click="sendReady">
-        {{ isDespot ? 'Flee with dignity' : 'Open the hunt' }}
-      </ButtonFilled>
-      <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
-    </section>
+      <template #seat="{ playerId }">
+        <DespotHat v-if="playerId === challenge.despotId" class="seat-hat" />
+      </template>
+    </BriefingCard>
 
     <ManhuntReveal
       v-if="finished"
@@ -223,8 +211,7 @@
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
+import BriefingCard from '~/components/challenge/BriefingCard.vue'
 import StatCard from '~/components/challenge/StatCard.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
@@ -247,7 +234,7 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sample } from '~~/lib/arrays'
 import { playableCountries, unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
-import { playerDisplayName, seatLabel } from '~~/lib/player'
+import { playerDisplayName } from '~~/lib/player'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { isMapClickEvent, isMapHoverEvent } from '~~/types/events.types'
 import type { ManhuntState } from '~~/types/challenges/group-modes.type'
@@ -430,14 +417,10 @@ const iAmDetective = computed(() => state.value.detectives.includes(gameStore.se
 const briefing = computed(
   () => !!state.value.briefing && !finished.value && !showInterstitial.value
 )
-const seatName = (playerId: string) =>
-  seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
-
 const briefingParticipants = computed(() =>
   challenge.value ? [challenge.value.despotId, ...state.value.detectives] : []
 )
-const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
-const { send: sendReady } = useAckOnce(() => ({ event: 'manhunt-ready' }))
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'manhunt-ready' }))
 
 const tauntCooling = ref(false)
 let tauntTimer: ReturnType<typeof setTimeout> | undefined
@@ -988,11 +971,11 @@ header .headline-line {
     border-color: hsl(18, 75%, 34%);
     background: hsl(20, 80%, 44%);
 
-    .briefing-waiting {
+    :deep(.briefing-waiting) {
       opacity: 0.9;
     }
 
-    .seat-name {
+    :deep(.seat-name) {
       color: #fff;
     }
   }
@@ -1001,14 +984,8 @@ header .headline-line {
     width: 5.2rem;
     transform: rotate(-9deg);
   }
-
-  h2 {
-    margin: 0;
-  }
 }
 
-// The points list and ready row come from the shared .briefing-card
-// template; only the despot's hat placement is local.
 .ready-seat .seat-hat {
   width: 2.4rem;
   z-index: 1;

@@ -302,8 +302,27 @@ export interface GovernmentAnswer {
   party?: string
   seats?: number
   /** Bench name → the side the player filed it under. */
-  sides?: Record<string, 'government' | 'opposition'>
+  sides?: Record<string, BenchSide>
 }
+
+export type BenchSide = 'government' | 'opposition'
+
+/** Seats needed to carry the house. */
+export const majorityOf = (totalSeats: number) => Math.floor(totalSeats / 2) + 1
+
+/**
+ * Where beat 3 grades each sorted bench. Backers file WITH the government:
+ * they keep it in power, and the beat asks who is with it, not who holds
+ * ministries.
+ */
+export const sortedSides = (deal: GovernmentDeal): Record<string, BenchSide> =>
+  Object.fromEntries(
+    deal.sorted.flatMap(name => {
+      const standing = deal.benches.find(bench => bench.name === name)?.standing
+      if (!standing) return []
+      return [[name, standing === 'opposition' ? 'opposition' : 'government'] as const]
+    })
+  )
 
 /**
  * One beat's score. Beats 1 and 2 are all-or-nothing — there is no partial
@@ -325,11 +344,8 @@ export const scoreBeat = (
 
   const filed = answer.sides ?? {}
   if (!deal.sorted.length) return 0
-  const correct = deal.sorted.filter(name => {
-    const truth = deal.benches.find(bench => bench.name === name)?.standing
-    if (!truth) return false
-    return filed[name] === (truth === 'opposition' ? 'opposition' : 'government')
-  }).length
+  const truth = sortedSides(deal)
+  const correct = deal.sorted.filter(name => truth[name] && filed[name] === truth[name]).length
   return clampScore(Math.round((correct / deal.sorted.length) * points), points)
 }
 

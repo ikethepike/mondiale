@@ -1,5 +1,5 @@
 <template>
-  <section class="government-reveal">
+  <div class="government-reveal" :style="{ '--sweep': `${paintedSeats.length * 4}ms` }">
     <!-- The take: the chamber, finally painted, with the government's own
          block sitting where the player was asked to find it. -->
     <header class="take card">
@@ -42,7 +42,12 @@
             <em class="legend-seats">{{ side.seats }} seats</em>
           </span>
           <ul class="legend-parties">
-            <li v-for="bench in side.benches" :key="bench.name" class="legend-party">
+            <li
+              v-for="(bench, benchIndex) in side.benches"
+              :key="bench.name"
+              class="legend-party"
+              :style="{ '--chip-delay': `${(side.order + benchIndex) * 40}ms` }"
+            >
               <img v-if="bench.logo" class="party-logo" :src="bench.logo" alt="" />
               <span v-else class="party-swatch" :style="{ background: bench.color }" />
               <span class="party-name">{{ bench.name }}</span>
@@ -64,11 +69,14 @@
       </header>
       <ul class="score-rows">
         <li
-          v-for="row in scoreboard"
+          v-for="(row, rowIndex) in scoreboard"
           :key="row.playerId"
           class="score-row player-accent"
           :class="{ mine: row.playerId === playerId }"
-          :style="{ '--player-color': players[row.playerId]?.color }"
+          :style="{
+            '--player-color': players[row.playerId]?.color,
+            '--row-delay': `${rowIndex * 70}ms`,
+          }"
         >
           <PlayerPawn class="score-pawn" :player="players[row.playerId]" />
           <span class="score-name">{{ seatName(row.playerId) }}</span>
@@ -87,7 +95,7 @@
         </li>
       </ul>
     </article>
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -96,7 +104,7 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
-import { MAX_SEAT_DOTS, type GovernmentBeat } from '~~/lib/government'
+import { MAX_SEAT_DOTS, majorityOf, type GovernmentBeat } from '~~/lib/government'
 import { seatLabel } from '~~/lib/player'
 import { formatNumber } from '~~/lib/number'
 import type { GovernmentAnswers, GovernmentChallenge } from '~~/types/challenges/group-modes.type'
@@ -140,7 +148,7 @@ const chamberLabel = computed(() =>
     : `The ${countryName(props.challenge.country)} chamber`
 )
 
-const majority = computed(() => Math.floor(props.challenge.totalSeats / 2) + 1)
+const majority = computed(() => majorityOf(props.challenge.totalSeats))
 
 const standingOf = (name: string) => props.answers.standings[name] ?? 'opposition'
 
@@ -169,7 +177,14 @@ const sides = computed(() => {
     }
   })
   // A country with no confidence-and-supply deal has no Backing row to show.
-  return groups.filter(group => group.benches.length)
+  let order = 0
+  return groups
+    .filter(group => group.benches.length)
+    .map(group => {
+      const start = order
+      order += group.benches.length
+      return { ...group, order: start }
+    })
 })
 
 /**
@@ -258,9 +273,19 @@ const scoreboard = computed(() =>
   gap: 0.75rem;
   width: min(94vw, 46rem);
   max-height: 100%;
-  margin-inline: auto;
+  margin: auto;
+  padding-block: 1.2rem;
   overflow-y: auto;
   pointer-events: auto;
+
+  @media (min-width: $laptop) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    width: min(94vw, 100rem);
+
+    .take {
+      grid-column: 1 / -1;
+    }
+  }
 }
 
 .card {
@@ -313,7 +338,7 @@ const scoreboard = computed(() =>
     border-radius: 50%;
     background: ink(0.22);
     transform: translate(-50%, -50%);
-    animation: seat-land 300ms both;
+    animation: seat-land var(--motion-base) var(--ease-out-expressive) both;
     animation-delay: var(--seat-delay);
 
     &.government {
@@ -345,7 +370,7 @@ const scoreboard = computed(() =>
   inset-block: 4% 0;
   width: 0;
   border-left: 1px dashed #{ink(0.45)};
-  animation: rule-in 400ms 900ms both;
+  animation: rule-in var(--motion-slow) var(--ease-smooth) var(--sweep) both;
 }
 
 @keyframes rule-in {
@@ -424,7 +449,8 @@ const scoreboard = computed(() =>
   // it animates absolutely-positioned map chips onto a point. On a chip laid
   // out in flow it leaves a permanent half-width shift, which walked these
   // out past the card's left edge.
-  animation: party-in 240ms both;
+  animation: party-in var(--motion-base) var(--ease-out-expressive)
+    calc(var(--sweep) + var(--chip-delay, 0ms)) both;
 }
 
 @keyframes party-in {
@@ -467,6 +493,8 @@ const scoreboard = computed(() =>
 }
 
 .score-row {
+  animation: row-land var(--motion-base) var(--ease-out-expressive)
+    calc(var(--sweep) + var(--row-delay, 0ms)) backwards;
   display: flex;
   align-items: center;
   gap: 0.6rem;

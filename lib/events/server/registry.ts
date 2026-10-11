@@ -24,6 +24,7 @@ import { uniqueReadyHandler } from './unique-ready.handler'
 import { chainReadyHandler } from './chain-ready.handler'
 import { submitUniqueAnswerHandler } from './submit-unique-answer.handler'
 import { sweepReadyHandler } from './sweep-ready.handler'
+import { governmentReadyHandler } from './government-ready.handler'
 import { terraReadyHandler } from './terra-ready.handler'
 import { timelineRevealDoneHandler } from './timeline-reveal-done.handler'
 import { gateRevealDoneHandler } from './gate-reveal-done.handler'
@@ -101,6 +102,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'sweep-ready': {
     handler: sweepReadyHandler,
+  },
+  'government-ready': {
+    handler: governmentReadyHandler,
   },
   'terra-ready': {
     handler: terraReadyHandler,

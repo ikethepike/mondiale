@@ -126,6 +126,7 @@ import {
   GOVERNMENT_BEATS,
   scoreBeat,
   scoreGovernment,
+  sortedSides,
   type GovernmentAnswer,
   type GovernmentBeat,
   type GovernmentDeal,
@@ -460,9 +461,8 @@ const answerGovernmentRivals = (challenge: GovernmentChallenge) => {
 const governmentTruthOf = (beat: GovernmentBeat, deal: GovernmentDeal): string => {
   if (beat === 'party') return deal.governingParty
   if (beat === 'seats') return `${deal.governingSeats}`
-  const withGovernment = deal.sorted.filter(
-    name => deal.benches.find(bench => bench.name === name)?.standing !== 'opposition'
-  )
+  const sides = sortedSides(deal)
+  const withGovernment = deal.sorted.filter(name => sides[name] === 'government')
   return withGovernment.length ? withGovernment.join(', ') : 'nobody'
 }
 
@@ -510,7 +510,12 @@ const resolveGovernmentBeat = (challenge: GovernmentChallenge) => {
         scoreBeat(state.beat, deal, governmentAnswerOf(challenge, playerId)),
       ])
     )
-    state.verdict = { beat: state.beat, truth: governmentTruthOf(state.beat, deal), scored }
+    state.verdict = {
+      beat: state.beat,
+      truth: governmentTruthOf(state.beat, deal),
+      scored,
+      ...(state.beat === 'sides' ? { sides: sortedSides(deal) } : {}),
+    }
   }
   state.turn += 1
   const held = state.turn
@@ -562,7 +567,7 @@ let governmentTimer: number | undefined
 const armGovernmentScenario = () => {
   const challenge = governmentOf()
   window.clearTimeout(governmentTimer)
-  if (!challenge || challenge.state.finished) return
+  if (!challenge || challenge.state.finished || challenge.state.briefing) return
   if (!challenge.state.deadline) {
     challenge.state.deadline = Date.now() + BEAT_SECONDS[challenge.state.beat] * 1000
   }
@@ -613,6 +618,7 @@ const installStubSocket = () => {
     if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
     if (event === 'chain-ready') chainSim().ready()
     if (event === 'terra-ready') simulateTerraReady()
+    if (event === 'government-ready') simulateGovernmentReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
     if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
@@ -645,6 +651,20 @@ const simulateVintageStory = ({ round }: Record<string, unknown>) => {
       game.difficulty
     ),
   }
+}
+
+/** The stub's half of the government briefing: the harness seat is the last ready. */
+const simulateGovernmentReady = () => {
+  const challenge = governmentOf()
+  if (!challenge?.state.briefing) return
+  if (!challenge.state.ready.includes(ME)) challenge.state.ready.push(ME)
+  window.setTimeout(() => {
+    const current = governmentOf()
+    if (!current?.state.briefing) return
+    current.state.briefing = false
+    current.state.deadline = Date.now() + BEAT_SECONDS[current.state.beat] * 1000
+    armGovernmentScenario()
+  }, SIM_LATENCY_MS)
 }
 
 /** The stub's half of terra-beats: the harness seat is the last ready, so
@@ -805,6 +825,7 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
       sorted: deal.sorted,
       maximumPoints: MAXIMUM_POINTS,
       state: {
+        ready: [],
         beat: 'sides',
         turn: 3,
         deadline: Date.now(),
@@ -1266,7 +1287,8 @@ const GOVERNMENT_COUNTRIES = [...governmentPool(GOVERNMENT_RULES, 'normal')].sor
 const governmentBeatGame = (
   beat: GovernmentBeat,
   index: number,
-  isoCode: ISOCountryCode = 'SE'
+  isoCode: ISOCountryCode = 'SE',
+  briefing?: 'full' | 'recap'
 ): Game => {
   const deal = dealGovernment(GOVERNMENT_RULES, 'normal', isoCode)!
   return mockGame('round', [
@@ -1287,9 +1309,11 @@ const governmentBeatGame = (
       sorted: deal.sorted,
       maximumPoints: MAXIMUM_POINTS,
       state: {
+        ...(briefing ? { briefing: true, ...(briefing === 'recap' ? { recap: true } : {}) } : {}),
+        ready: briefing ? [THIRD] : [],
         beat,
         turn: index,
-        deadline: Date.now() + BEAT_SECONDS[beat] * 1000,
+        deadline: briefing ? 0 : Date.now() + BEAT_SECONDS[beat] * 1000,
         picks: { party: {}, seats: {}, sides: {} },
         scores: {},
         // Published by the engine once beat 1 resolves, so beats 2 and 3 can
@@ -1977,6 +2001,26 @@ const scenarios: Scenario[] = [
     // a country the round would refuse. Each rung opens at beat 1 and the
     // harness's beats stand-in plays it through to its own reveal.
     variants: [
+      {
+        id: 'briefing',
+        label: 'Briefing — rules card, one rival ready',
+        build: () => governmentBeatGame('party', 0, 'SE', 'full'),
+      },
+      {
+        id: 'recap',
+        label: 'Briefing — recap for a second chamber',
+        build: () => governmentBeatGame('party', 0, 'DE', 'recap'),
+      },
+      {
+        id: 'beat-seats',
+        label: 'Beat 2 — how many seats (Germany)',
+        build: () => governmentBeatGame('seats', 1, 'DE'),
+      },
+      {
+        id: 'beat-sides',
+        label: 'Beat 3 — who is with them (Germany)',
+        build: () => governmentBeatGame('sides', 2, 'DE'),
+      },
       ...GOVERNMENT_COUNTRIES.map(isoCode => ({
         id: isoCode,
         label: countryName(isoCode),

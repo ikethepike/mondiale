@@ -114,7 +114,7 @@ export const closeTutorial = async ({
     scheduleManhuntTimeout({ io, redis, socket, eventTarget }, manhunt)
   }
   if (startsGovernment && government) {
-    scheduleGovernmentTimeout({ io, redis, socket, eventTarget }, government)
+    scheduleGovernmentTimeout({ io, redis, socket, eventTarget }, game, government)
   }
   if (startsClassicClock) scheduleClassicSettle({ io, redis, socket, eventTarget }, game)
 

@@ -218,6 +218,11 @@ export type ClientEventData =
       event: 'sweep-ready'
     }
   | {
+      /** Government: a player dismissed the rules card. Beat 1's clock starts
+       *  when everyone has (or the briefing cap forces it). */
+      event: 'government-ready'
+    }
+  | {
       /** Terra Incognita: a player dismissed their briefing card. The one
        *  classic clock stamps when everyone has (or the briefing cap forces
        *  it), so the atlas never starts failing under a card. */
@@ -368,6 +373,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'unique-ready',
   'chain-ready',
   'sweep-ready',
+  'government-ready',
   'terra-ready',
   'timeline-reveal-done',
   'gate-reveal-done',

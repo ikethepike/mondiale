@@ -164,6 +164,7 @@ import {
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
 import { dealGovernment } from './government'
+import { isChallengeOfType } from './rounds'
 import {
   countriesGovernedByFamily,
   countriesWithGoverningLogo,
@@ -1233,6 +1234,11 @@ const getGovernmentChallenge = (game: gameTypes.Game): GovernmentChallenge | und
     sorted: deal.sorted,
     maximumPoints: maximumRoundPoints(game),
     state: {
+      briefing: true,
+      ready: [],
+      ...(game.rounds.some(round => isChallengeOfType(round.groupChallenge, 'government-challenge'))
+        ? { recap: true }
+        : {}),
       beat: 'party',
       turn: 0,
       deadline: 0,

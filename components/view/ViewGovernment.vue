@@ -1,41 +1,13 @@
 <template>
   <section class="challenge-shell government">
-    <Interstitial
-      v-if="showInterstitial"
-      tone="info"
-      kind="government"
-      title="Who governs here?"
-      stakes="Three questions about one chamber: the party in charge, the seats it holds, and who sits with it. Each beat scores on its own."
-      @done="begin()"
-    />
-
     <!-- The chamber is the round; the subject line and "Which party governs?"
          are a caption on it, so the prompt steps down and the beats take the
          column (the logo grid overflowed by 72px on a 560px phone). -->
-    <ChallengePrompt :attributions="promptSources" :compact="!finished">
+    <ChallengePrompt v-if="!briefing && !finished" :attributions="promptSources" compact>
       <h1 class="map-caption">{{ heading }}</h1>
-      <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
-      <GuessTicker v-if="!finished" :entries="entries" :players="gameStore.game?.players ?? {}" />
+      <span class="map-caption sub">{{ prompt }}</span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
-
-    <!-- Beat 3 stows them on a phone: the seat maths is beat 2's subject, and
-         by the roll it is background the round no longer asks about — while
-         the roll itself is the tallest thing the round puts on a phone. -->
-    <p
-      v-if="challenge && !finished && beat !== 'party'"
-      class="chamber-facts"
-      :class="{ stowed: beat === 'sides' }"
-    >
-      <span class="fact"
-        ><strong>{{ challenge.totalSeats }}</strong> seats</span
-      >
-      <span class="fact"
-        ><strong>{{ majority }}</strong> for a majority</span
-      >
-      <span class="fact"
-        ><strong>{{ challenge.benches.length }}</strong> parties seated</span
-      >
-    </p>
 
     <!-- Said plainly, not only washed: beat 3 has no cards to tint, and a
          wash alone never tells a player WHAT the answer was.
@@ -50,16 +22,11 @@
          nothing to measure, nothing to keep in sync, and the beat below never
          moves. What the answer WAS is the reveal's job, and the subject chip
          under this already names the governing party. -->
-    <div v-if="!finished" class="verdict-band">
+    <div v-if="!finished && !briefing" class="verdict-band">
       <Transition name="verdict">
-        <p
-          v-if="verdict"
-          class="beat-verdict"
-          :class="myScore > 0 ? 'right' : 'wrong'"
-          aria-live="polite"
-        >
-          <span class="verdict-mark">{{ myScore > 0 ? '✓' : '✗' }}</span>
-          <span class="verdict-word">{{ myScore > 0 ? 'Correct' : 'Not quite' }}</span>
+        <p v-if="verdict" class="beat-verdict" :class="verdictTone" aria-live="polite">
+          <span class="verdict-mark">{{ VERDICT_COPY[verdictTone].mark }}</span>
+          <span class="verdict-word">{{ VERDICT_COPY[verdictTone].word }}</span>
           <span v-if="myScore > 0" class="verdict-points">+{{ myScore }}</span>
         </p>
       </Transition>
@@ -67,8 +34,16 @@
 
     <!-- Beat 1: the logos rise, one governs. -->
     <Transition name="beat" mode="out-in">
+      <GovernmentBriefing
+        v-if="briefing && challenge"
+        key="briefing"
+        :challenge="challenge"
+        :sent="sentReady"
+        @ready="sendReady"
+      />
+
       <GovernmentReveal
-        v-if="finished && challenge && answers"
+        v-else-if="finished && challenge && answers"
         key="reveal"
         :challenge="challenge"
         :answers="answers"
@@ -140,7 +115,15 @@
               '--sweep-delay': `${index * 4}ms`,
             }"
           />
+          <span class="arc-majority" />
         </div>
+        <p class="arc-caption">
+          <strong>{{ previewBlock ?? challenge?.totalSeats }}</strong>
+          <span>{{
+            previewBlock === undefined ? 'seats' : `of ${challenge?.totalSeats} seats`
+          }}</span>
+          <span class="arc-majority-label">{{ majority }} for a majority</span>
+        </p>
         <div class="card-options blocks">
           <button
             v-for="block in challenge?.blocks ?? []"
@@ -151,11 +134,12 @@
               blockVerdict(block),
               {
                 chosen: mySeats === block,
+                pending: mySeats === undefined && pendingBlock === block,
                 dimmed: !verdict && mySeats !== undefined && mySeats !== block,
               },
             ]"
             :disabled="mySeats !== undefined || !!verdict"
-            @click="pickSeats(block)"
+            @click="confirmsSeats ? (pendingBlock = block) : pickSeats(block)"
             @mouseenter="hoveredBlock = block"
             @mouseleave="hoveredBlock = undefined"
             @focus="hoveredBlock = block"
@@ -175,56 +159,15 @@
           <span v-else class="subject-swatch" :style="{ background: subject.color }" />
           <span class="subject-name">{{ subject.name }} governs</span>
         </header>
-        <!-- The reveal's panel: a hairline-ruled head over the list, so the
-             benches read as a chamber's roll rather than as loose rows on
-             bare cream. -->
-        <div class="sides-panel">
-          <header class="panel-head">
-            <span class="eyebrow">The rest of the house</span>
-          </header>
-          <p class="sides-lede">With the government, or against it?</p>
-          <!-- The roll is the round's one scroller on a phone, so it says so:
-               the shared scroll-fade mists whichever edge still has benches
-               past it (rules/_scroll-fade.scss). -->
-          <div
-            ref="benchRows"
-            class="bench-rows"
-            :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
-            @scroll.passive="syncScrollEdges"
-          >
-            <div
-              v-for="(name, index) in challenge?.sorted ?? []"
-              :key="name"
-              class="bench-row"
-              :style="{ '--row-delay': `${index * 60}ms` }"
-            >
-              <span class="bench-name">
-                <img v-if="logoFor(name)" class="bench-logo" :src="logoFor(name)" alt="" />
-                <span v-else class="bench-swatch" :style="{ background: colorFor(name) }" />
-                <span class="bench-label">{{ name }}</span>
-              </span>
-              <!-- Its own column, not trailing the name: under `space-between`
-                   every seat count landed wherever its party's name happened to
-                   end, so the numbers never read as a comparable set. -->
-              <span class="bench-seats">{{ seatsFor(name) }}</span>
-              <!-- The house segmented control, not a second hand-rolled copy of
-                   it: one track, two bare-text segments and one solid thumb, so
-                   a bench's allegiance reads as a POSITION rather than a pair of
-                   taps. An unfiled bench leaves the thumb hidden, which is what
-                   the "(2/4)" counter on the lock button is counting. -->
-              <SegmentedControl
-                class="bench-sides"
-                :name="`side-${name}`"
-                :options="SIDE_OPTIONS"
-                :option-labels="SIDE_LABELS"
-                :model-value="mySides[name] ?? ''"
-                :label="`${name}: with or against the government`"
-                :disabled="sidesLocked"
-                @update:model-value="side => fileBench(name, side as BenchSide)"
-              />
-            </div>
-          </div>
-        </div>
+        <GovernmentSides
+          v-if="challenge"
+          :challenge="challenge"
+          :governing-name="subject?.name"
+          :filed="filedSides"
+          :locked="sidesLocked || !!verdict"
+          :truth="verdict?.beat === 'sides' ? verdict.sides : undefined"
+          @file="fileBench"
+        />
         <footer class="shell-footer sides-footer">
           <!-- The label shrinks from "Lock it in (0/4)" to "Locked in", and on
                a phone the shell re-centres its column — so a button free to
@@ -258,12 +201,22 @@
          jumped to beat 3's lock row at the next beat. In the footer it is
          centred, inherits `--bottom-clearance`, and sits where beat 3's dial
          sits — one place for the clock all round. -->
-    <footer v-if="!finished && beat !== 'sides'" class="clock-footer">
-      <ChallengeTimerRadial
-        class="footer-clock"
-        :value="secondsOnClock"
-        :total="BEAT_SECONDS[beat]"
-      />
+    <footer v-if="!finished && !briefing && beat !== 'sides'" class="clock-footer">
+      <div class="lock-row">
+        <ButtonFilled
+          v-if="confirmsSeats"
+          class="lock-button seats-lock"
+          :disabled="pendingBlock === undefined || mySeats !== undefined || !!verdict"
+          @click="pendingBlock !== undefined && pickSeats(pendingBlock)"
+        >
+          {{ mySeats !== undefined ? 'Locked in' : 'Lock it in' }}
+        </ButtonFilled>
+        <ChallengeTimerRadial
+          class="footer-clock"
+          :value="secondsOnClock"
+          :total="BEAT_SECONDS[beat]"
+        />
+      </div>
     </footer>
   </section>
 </template>
@@ -272,17 +225,19 @@
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
+import GovernmentBriefing from '~/components/challenge/GovernmentBriefing.vue'
 import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
-import SegmentedControl from '~/components/input/SegmentedControl.vue'
+import GovernmentSides from '~/components/challenge/GovernmentSides.vue'
 import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
-import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
-import { BEAT_SECONDS, MAX_SEAT_DOTS } from '~~/lib/government'
+import { BEAT_POINTS, BEAT_SECONDS, MAX_SEAT_DOTS, majorityOf } from '~~/lib/government'
 import { placedTotalFor } from '~~/lib/live-guess-policy'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
+import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { GovernmentState } from '~~/types/challenges/group-modes.type'
 
@@ -296,12 +251,14 @@ import type { GovernmentState } from '~~/types/challenges/group-modes.type'
  * timer here would eventually disagree with the grade.
  */
 
-const { challenge, showInterstitial, begin, gameStore, update, announce, entries } =
+const { challenge, begin, gameStore, update, announce, entries } =
   useGroupChallenge('government-challenge')
+begin()
 
 // Timers keep evaluating for a beat after the round advances, so the state
 // must never dereference undefined.
 const EMPTY_STATE: GovernmentState = {
+  ready: [],
   beat: 'party',
   turn: 0,
   deadline: 0,
@@ -311,6 +268,8 @@ const EMPTY_STATE: GovernmentState = {
 const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
 const beat = computed(() => state.value.beat)
 const finished = computed(() => !!state.value.finished)
+const briefing = computed(() => !!state.value.briefing && !finished.value)
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'government-ready' }))
 
 const { secondsOnClock } = useDeadlineClock(() => state.value.deadline)
 
@@ -319,43 +278,23 @@ const myParty = computed(() => state.value.picks.party[seatId.value])
 const mySeats = computed(() => state.value.picks.seats[seatId.value])
 const sidesLocked = computed(() => state.value.picks.sides[seatId.value] !== undefined)
 
-/**
- * Which way a bench is filed — DERIVED from the wire type rather than spelled
- * again, so the view cannot drift from what the server grades.
- */
 type BenchSide = GovernmentState['picks']['sides'][string][string]
-
-/** The segments, in reading order. */
-const SIDE_OPTIONS: BenchSide[] = ['government', 'opposition']
-
-/**
- * What the player reads. The question is "is this bench with the government,
- * or against it?", so the segments answer THAT — "Government"/"Opposition"
- * would restate the subject instead of taking a side.
- */
-const SIDE_LABELS: Record<BenchSide, string> = {
-  government: 'With',
-  opposition: 'Against',
-}
 
 /** The only local state: beat 3's in-flight sort, cleared when the beat turns. */
 const mySides = ref<Record<string, BenchSide>>({})
+const pendingBlock = ref<number | undefined>()
 watch(
   () => state.value.turn,
-  () => {
-    mySides.value = {}
-  }
+  () => (pendingBlock.value = undefined)
 )
+watch(
+  () => state.value.beat,
+  () => (mySides.value = {})
+)
+const filedSides = computed(() => state.value.picks.sides[seatId.value] ?? mySides.value)
 
-/**
- * Beat 3's roll scrolls on a phone — a nine-bench chamber cannot stand in one
- * screen beside the lock row. The edges drive the shared fades, so a chamber
- * short enough to fit never wears a dimmed row. The scroller is behind the
- * beat's `v-else`, so it only exists once the beat is dealt; `useScrollEdges`
- * picks it up when it appears.
- */
-const benchRows = ref<HTMLElement>()
-const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => benchRows.value)
+const isCoarsePointer = useIsCoarsePointer()
+const confirmsSeats = computed(() => beat.value === 'seats' && isCoarsePointer.value)
 
 // Beats 1 and 2 scroll as a whole rather than scrolling a roll inside a panel,
 // so their fade is the alpha recipe (the map is behind them, not a pane).
@@ -434,6 +373,17 @@ const submitSides = () => {
 const verdict = computed(() => state.value.verdict)
 const myScore = computed(() => verdict.value?.scored[seatId.value] ?? 0)
 
+const VERDICT_COPY = {
+  right: { mark: '✓', word: 'Correct' },
+  partial: { mark: '◐', word: 'Partly right' },
+  wrong: { mark: '✗', word: 'Not quite' },
+} as const
+const verdictTone = computed(() => {
+  if (myScore.value <= 0) return 'wrong'
+  const beat = verdict.value?.beat
+  return beat && myScore.value < BEAT_POINTS[beat] ? 'partial' : 'right'
+})
+
 /** Beat 1's cards: what you picked, and what governed. */
 const optionVerdict = (name: string) => {
   if (verdict.value?.beat !== 'party') return undefined
@@ -454,7 +404,7 @@ const subject = computed(() => {
   return challenge.value?.options.find(option => option.name === name)
 })
 
-const majority = computed(() => Math.floor((challenge.value?.totalSeats ?? 0) / 2) + 1)
+const majority = computed(() => majorityOf(challenge.value?.totalSeats ?? 0))
 
 /** The answers only exist once the server has spent them onto the state. */
 const answers = computed(() => state.value.answers)
@@ -473,11 +423,6 @@ const revealScores = computed(() =>
   )
 )
 const revealAnswers = computed(() => settledRound.value?.groupAnswers ?? {})
-
-const benchOf = (name: string) => challenge.value?.benches.find(bench => bench.name === name)
-const logoFor = (name: string) => benchOf(name)?.logo
-const colorFor = (name: string) => benchOf(name)?.color ?? 'currentColor'
-const seatsFor = (name: string) => `${benchOf(name)?.seats ?? 0}`
 
 /**
  * The block as a share of the house. Two blocks a few seats apart round to the
@@ -524,7 +469,7 @@ const arcSeats = computed(() => {
 const hoveredBlock = ref<number | undefined>()
 const previewBlock = computed(() => {
   if (verdict.value) return answers.value?.governingSeats
-  return mySeats.value ?? hoveredBlock.value
+  return mySeats.value ?? pendingBlock.value ?? hoveredBlock.value
 })
 
 /**
@@ -608,9 +553,8 @@ const promptSources = computed(() => datasetAttribution('parties'))
   border-radius: 50%;
 }
 
-// Fluid for the same reason as `.bench-name`: beat 3 prints "<party> governs",
-// and a long name at a fixed 19px wrapped the chip to two lines on a phone —
-// which cost the roll below a row it does not have to give.
+// Beat 3 prints "<party> governs"; a long name at a fixed 19px wrapped the chip
+// to two lines on a phone.
 .subject-name {
   font-size: clamp(15px, 4.6vw, 19px);
   font-weight: 600;
@@ -671,6 +615,11 @@ const promptSources = computed(() => datasetAttribution('parties'))
   &.right {
     border: 1px solid hsla(170.5, 34.7%, 45%, 0.7);
     background: hsla(170.5, 34.7%, 55.1%, 0.16);
+  }
+
+  &.partial {
+    border: 1px solid ink(0.35);
+    background: ink(0.06);
   }
 
   &.wrong {
@@ -775,68 +724,15 @@ const promptSources = computed(() => datasetAttribution('parties'))
   }
 }
 
-// A grid, not a wrapping flex line: under `flex: 1 1 110px` a row that broke
-// to two lines stretched the orphan tile to the full width, so "6 parties
-// seated" read as a banner rather than as the third of three numbers. Even
-// tracks reflow 3 → 2 → 1 and every tile keeps its share.
-.chamber-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  gap: 0.5rem;
-  justify-content: center;
-  width: min(94vw, 34rem);
-  // No bottom margin: the verdict band below holds its own room whether or not
-  // a verdict is showing, and stacking a margin on that reservation opened a
-  // visible gutter between the numbers and the beat on every quiet beat.
-  margin: 0.35rem auto 0;
-  padding: 0;
-  pointer-events: auto;
-
-  // The seat maths IS the round's subject from beat 2 on, so it gets card
-  // weight rather than a caption's. It stays off beat 1, where a player has
-  // nothing to relate the numbers to yet.
-  .fact {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.05rem;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid ink(0.2);
-    border-radius: 12px;
-    background: milk(0.85);
-    // NOT `.eyebrow`: that label is bold --soft-blue with 0.14em tracking and a
-    // bottom margin, all wrong under a numeral it must not compete with.
-    font-size: 12px;
-    letter-spacing: 0.02em;
-    text-transform: lowercase;
-    opacity: 0.9;
-
-    strong {
-      font-size: 26px;
-      line-height: 1.05;
-      letter-spacing: -0.01em;
-    }
-  }
-
-  // Stowed for beat 3 on a phone: the tiles cost ~76px of a screen that has to
-  // hold the subject chip, a scrolling roll of benches and the lock row. The
-  // numbers are beat 2's material — by the roll they are trivia, and the
-  // question on screen is about allegiance, not arithmetic. Tablets up keep
-  // them: there the column has the room and the majority line still reads as
-  // context for who can carry the house.
-  &.stowed {
-    @media (max-width: $phone) {
-      display: none;
-    }
-  }
+.beat-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
 }
-
-.beat-enter-active,
 .beat-leave-active {
   transition:
-    opacity 220ms ease,
-    transform 220ms ease;
+    opacity var(--motion-quick) var(--ease-in-soft),
+    transform var(--motion-quick) var(--ease-in-soft);
 }
 .beat-enter-from {
   opacity: 0;
@@ -882,25 +778,38 @@ const promptSources = computed(() => datasetAttribution('parties'))
 // column — a seven-party table on a phone, or the arc over four blocks on a
 // short one, simply ran off the bottom edge with no way to reach it. They
 // scroll only when they actually overflow, so a beat that fits still centres.
-// Beat 3 is excluded on purpose: it scrolls its ROLL (`.bench-rows`) so the
+// Beat 3 is excluded on purpose: its sorting board scrolls itself so the
 // subject chip and the lock row stay put.
 .logos,
 .seats-beat {
   overflow-y: auto;
   overscroll-behavior: contain;
-  // Alpha, not paint: these two beats stand over the board, where the cream
-  // wash `.bench-rows` uses inside its pane would smear over the map.
+  // Alpha, not paint: these two beats stand over the board, where a cream
+  // wash would smear over the map.
   @include scroll-mask($top: 2rem, $bottom: 2rem);
 }
 
-// Chip, panel, footer — and the PANEL is the one that both GROWS and gives
-// way, so the subject stays put and the lock row never leaves the screen.
-// `1fr` rather than `auto`: as `auto` the panel took only its content's height
-// and the beat's `align-content: center` banked the leftover room above the
-// chip, so the roll scrolled inside a short panel under a band of empty cream.
 .sides-beat {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto minmax(0, max-content) 1fr auto;
   align-content: stretch;
+
+  .beat-subject {
+    grid-row: 2;
+  }
+
+  .government-sides {
+    grid-row: 3;
+  }
+
+  .sides-footer {
+    grid-row: 5;
+  }
+}
+
+.seats-beat {
+  @media (max-width: $phone) {
+    padding-inline: 16px;
+  }
 }
 
 // The chamber deals 3–7 of these (PARTY_OPTIONS raises a CEILING and the
@@ -960,7 +869,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
     grid-template-rows: auto 1fr;
     gap: 0.5rem;
     justify-items: center;
-    animation: rise 320ms both;
+    animation: rise var(--motion-base) var(--ease-out-expressive) both;
     animation-delay: var(--rise-delay);
     transition:
       transform var(--motion-quick) var(--ease-out-expressive),
@@ -995,8 +904,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
     border-radius: 50%;
   }
 
-  // Two lines is the house ceiling for a party name (same clamp as
-  // `.bench-label`), and centring it in the 1fr row keeps short and long names
+  // Two lines is the house ceiling for a party name, and centring it in the 1fr row keeps short and long names
   // sitting on one baseline across the table.
   .option-name {
     display: -webkit-box;
@@ -1041,7 +949,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
     border-radius: 50%;
     background: ink(0.22);
     transform: translate(-50%, -50%);
-    animation: seat-in 260ms both;
+    animation: seat-in var(--motion-base) var(--ease-out-expressive) both;
     animation-delay: var(--sweep-delay);
     // Seats light in place as the preview changes, so moving between blocks
     // reads as the bench growing rather than the arc redrawing.
@@ -1063,6 +971,39 @@ const promptSources = computed(() => datasetAttribution('parties'))
 
   &.wrong .seat.lit {
     --seat-lit: var(--hior-ange);
+  }
+}
+
+// Half the seats sit left of centre, so the majority line is the arc's spine.
+.arc-majority {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px dashed ink(0.35);
+}
+
+.arc-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.2rem 0.8rem;
+  margin: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+
+  strong {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .arc-majority-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.6;
   }
 }
 
@@ -1113,6 +1054,12 @@ const promptSources = computed(() => datasetAttribution('parties'))
     &.dimmed {
       opacity: 0.4;
     }
+
+    &.pending {
+      border-color: var(--dark-blue);
+      background: milk();
+      box-shadow: 0 0 0 1px var(--dark-blue);
+    }
   }
 
   .block-share {
@@ -1129,208 +1076,6 @@ const promptSources = computed(() => datasetAttribution('parties'))
     letter-spacing: 0.04em;
     text-transform: uppercase;
     opacity: 0.75;
-  }
-}
-
-// The reveal's panel language, brought forward to the beat that plays it: a
-// hairline-ruled head over the roll, on one cream card.
-// 640px matches `.blocks`, so beat 3's panel and beat 2's options present at
-// one width. 38rem read as 380px on the 62.5% root — narrow enough that party
-// names truncated on a 1280px screen with the page two-thirds empty.
-// The panel yields first on a short viewport: it scrolls its own roll rather
-// than growing the beat past the column, which is what pushed the subject chip
-// off the top.
-.sides-panel {
-  @include caption-surface($cardRadius);
-
-  display: flex;
-  flex-direction: column;
-  width: min(94vw, 640px);
-  min-height: 0;
-  max-height: 100%;
-  margin-inline: auto;
-  padding: 1.1rem 1.25rem;
-  pointer-events: auto;
-}
-
-.panel-head {
-  padding-bottom: 0.8rem;
-  border-bottom: $hairline;
-
-  // The shared label carries a bottom margin for stacked cards; here the
-  // hairline is the separator, so it would only double the gap.
-  .eyebrow {
-    margin-bottom: 0;
-  }
-}
-
-.sides-lede {
-  margin-block: 12px 14px;
-  font-size: 15px;
-  opacity: 0.75;
-}
-
-// A BLOCK scroller, not a grid: the shared scroll-fade's sticky ::before and
-// ::after cancel their own height with a negative margin, which a grid (or a
-// flex column) defeats — they would become items of their own and each add a
-// gap. The rows space themselves instead, and the recipe's maths holds.
-.bench-rows {
-  min-height: 0;
-  overflow-y: auto;
-  // Thin rather than absent: the fade says "more below", the bar says how much
-  // more, and on a phone the roll can run twice the panel's height.
-  scrollbar-width: thin;
-  overscroll-behavior: contain;
-  // The rows' own focus rings and the card's radius must not be clipped flat
-  // against the scroller's edge.
-  padding: 2px;
-  margin: -2px;
-
-  // Edge fades from the shared recipe (rules/_scroll-fade.scss), each showing
-  // only when benches really continue past that edge. Deeper at the bottom
-  // than the top: the panel's lede sits above the first row and the fade only
-  // has a row's corner to soften, while the bottom edge is where a half-shown
-  // bench needs to read as receding rather than sliced.
-  @include scroll-fade($top: 1.8rem, $bottom: 3rem);
-
-  .bench-row + .bench-row {
-    margin-top: 8px;
-  }
-}
-
-// Three tracks rather than `space-between`, so the seat counts stand in a
-// column of their own and read down the roll as a comparable set.
-// Deliberately NOT `caption-surface`: $cardRadius would read as a lozenge on a
-// 44px row, and the mixin's blur would cost a compositor layer per row for
-// nothing on the flat cream of the panel it already sits on.
-.bench-row {
-  // The row's type, one token for the name and its seat count — see
-  // `.bench-name` for why it is fluid.
-  --bench-type: clamp(12px, 4vw, 15px);
-
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid ink(0.2);
-  border-radius: 12px;
-  background: milk(0.85);
-  // The house arrives bench by bench rather than all at once — the same
-  // staggered landing the reveal's rows use.
-  animation: row-land var(--motion-base) var(--ease-out-expressive) var(--row-delay, 0ms) backwards;
-
-  // On a phone the name and a full-size control cannot share a line without
-  // squeezing one of them. The control takes the row beneath and spans the
-  // width, which makes both segments bigger targets rather than smaller ones —
-  // as grid ROWS, not a wrap, so the name keeps its column against the seats
-  // and the card's own border still encloses the two halves as one bench.
-  @media (max-width: $phone) {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 8px;
-    padding: 10px 12px;
-
-    .bench-sides {
-      grid-column: 1 / -1;
-      width: 100%;
-
-      // The two segments split the row rather than holding a fixed width, and
-      // give back the desktop height: a full-width target is already easy to
-      // hit, and four benches have to share one screen with the lock button.
-      :deep(.segment) {
-        min-width: 0;
-        min-height: 4rem;
-        padding: 0.7rem 1rem;
-      }
-    }
-  }
-}
-
-// The mark gets room to read as a mark rather than a prefix — 0.5rem was 5px
-// on the 62.5% root, which crowded every logo against its party.
-//
-// Party names are the one string in this round whose length the data decides:
-// "Fidesz" and "Alliance of Independent Social Democrats" stand in the same
-// column. The type is fluid so the long ones give ground on a narrow phone
-// instead of clamping to two lines and doubling the row — full size from a
-// ~375px screen up, easing to 12px on the narrowest. The seat count reads off
-// the same token, so the row stays one set of type rather than two.
-.bench-name {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  font-size: var(--bench-type);
-}
-
-// Wraps to a second line before it will truncate: an ellipsis is the last
-// resort for a chamber whose names genuinely cannot fit, never the first
-// answer to a narrow column. `line-clamp` keeps a three-line party name from
-// making one row twice the height of its neighbours.
-.bench-label {
-  min-width: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-}
-
-.bench-logo {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  flex: none;
-}
-
-// Stands in for a 28px logo — sized like one, for the same reason as
-// `.subject-swatch`.
-.bench-swatch {
-  width: 20px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  flex: none;
-}
-
-// Tabular figures: proportional digits leave 107 and 24 visibly out of true
-// even inside a fixed track.
-.bench-seats {
-  min-width: 4ch;
-  font-size: var(--bench-type, 15px);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  opacity: 0.6;
-}
-
-/**
- * The for/against control. This was a hand-rolled rocker — a second copy of
- * SegmentedControl's idiom that had drifted off every token (a washed `ink(0.88)`
- * thumb instead of `--dark-blue`, a border AND a cream fill on each end, pill
- * radii, `scale()` on press). Three concentric outlines and a cream face inside
- * a cream face is what made it read as mush. The shared control owns the look
- * now; the view only sizes it for a bench row.
- */
-.bench-sides {
-  flex: none;
-
-  // A locked-in bench is still the player's ANSWER, held on screen through the
-  // verdict — the shared control's disabled wash is meant for a setting you
-  // cannot use yet, and here it faded the one thing worth reading. Untappable,
-  // but at full strength.
-  &.disabled {
-    opacity: 1;
-
-    :deep(.segmented-track) {
-      opacity: 1;
-    }
-  }
-
-  // The segments carry the round's touch floor: 44px tall is the comfortable
-  // target, and an equal minimum width keeps "With" and "Against" the same
-  // size so the thumb's travel is a clean half.
-  :deep(.segment) {
-    min-width: 8.6rem;
-    min-height: 4.4rem;
   }
 }
 

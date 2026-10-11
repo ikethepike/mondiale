@@ -206,7 +206,7 @@ describe('server waits', () => {
     'lib/events/server/deferred-task.ts': { count: 1, owner: 'the timer→queue seam' },
     'lib/events/server/classic-rounds.ts': { count: 2, owner: 'table', token: 'groupAnswers' },
     'lib/events/server/chain-engine.ts': { count: 4, owner: 'table', token: 'state.turn' },
-    'lib/events/server/government-beats.ts': { count: 3, owner: 'table', token: 'state.beat' },
+    'lib/events/server/government-beats.ts': { count: 4, owner: 'table', token: 'state.beat' },
     'lib/events/server/heritage-beats.ts': { count: 3, owner: 'table', token: 'state.beat' },
     'lib/events/server/manhunt-beats.ts': { count: 3, owner: 'table', token: 'state.turn' },
     'lib/events/server/sweep-beats.ts': { count: 3, owner: 'table', token: 'state.briefing' },
@@ -214,7 +214,7 @@ describe('server waits', () => {
     'lib/events/server/timeline-turns.ts': { count: 3, owner: 'table', token: 'state.turn' },
     'lib/events/server/unique-beats.ts': { count: 3, owner: 'table', token: 'state.briefing' },
     'lib/events/server/bot-brain.ts': {
-      count: 23,
+      count: 24,
       owner: 'a bot thinking — every act re-checks seq',
       token: 'seq',
     },

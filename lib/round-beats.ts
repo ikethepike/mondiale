@@ -61,6 +61,9 @@ export const TRAP_HOLD_MS = 5500
  * does not turn into three interstitials.
  */
 export const BEAT_VERDICT_HOLD_MS = 2600
+/** Government's briefing cap once the table has already played a chamber this
+ *  game: the card shrinks to a recap, and so does the wait. */
+export const GOVERNMENT_RECAP_CAP_MS = 8000
 /** Clean Sweep's bench: how long a wrong name locks a seat out of the board.
  *  The mode's whole penalty — in a contested pool, seconds in front of a
  *  draining board are the only scarce thing, so the cost is tempo rather than
@@ -472,7 +475,7 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   'star-chart': { owner: 'classic', revealHoldMs: 6000 },
   // The reveal IS the lesson: the arc paints itself bloc by bloc, and a share
   // a player misjudged is only legible once its neighbours are coloured in.
-  government: engine({}),
+  government: engine({ briefingCapMs: BRIEFING_CAP_MS }),
   // The reveal is the mode's whole lesson and the only moment the table sees
   // the world whole again: every loss re-inks itself, the saved ones in the
   // player's own hand and the missed ones alongside. At 0 the scorecard
