@@ -228,15 +228,27 @@ const showPen = (pen: Pen, drawn: number) => {
 }
 
 const labelScene = ref(props.pass.from)
-const placedLabels = computed(() => {
+/** Placement only moves with the zoom; a pan just re-projects it. */
+const labelScale = computed(() => {
   const vb = viewBox.value
-  if (!props.labelled || !vb?.w || !size.w) return []
-  const looks = sceneOf(labelScene.value).looks
-  return placeLabels(props.region, looks, size.w / vb.w, isPhone.value ? 10 : 12).flatMap(label => {
+  return vb?.w && size.w ? Math.round((size.w / vb.w) * 1000) / 1000 : 0
+})
+const labelPlacements = computed(() =>
+  props.labelled && labelScale.value
+    ? placeLabels(
+        props.region,
+        sceneOf(labelScene.value).looks,
+        labelScale.value,
+        isPhone.value ? 10 : 12
+      )
+    : []
+)
+const placedLabels = computed(() =>
+  labelPlacements.value.flatMap(label => {
     const at = toScreenPercent(label.at[0], label.at[1])
     return at ? [{ ...label, ...at }] : []
   })
-})
+)
 
 /** What the DOM shows right now, so a new scene repaints only what differs. */
 let shownScene: number | undefined
@@ -321,8 +333,6 @@ const beginStep = (index: number, next: number): StepInFlight => {
   return { key: `${index}>${next}`, step, tracks, pens, bending }
 }
 
-/** A time-lapse, not a sequence of beats: every part of a step runs at a
- *  steady rate and overlaps its neighbours, so the map never stops to start. */
 const linear = (progress: number, from: number, to: number) =>
   clamp01((progress - from) / (to - from))
 const glide = gsap.parseEase('sine.inOut')
@@ -380,13 +390,16 @@ const tick = () => {
   if (!frame.done) raf = requestAnimationFrame(tick)
 }
 
+let disposed = false
 const restart = () => {
   if (raf) cancelAnimationFrame(raf)
+  settleStep()
   shownScene = undefined
-  inFlight = undefined
   paintedLooks = []
+  sceneCache.clear()
   for (const el of penEls) if (el) el.style.display = 'none'
   nextTick(() => {
+    if (disposed) return
     // Path strings are built up front, inside the lead: a first one built
     // mid-rewind is a dropped frame.
     const low = Math.min(props.pass.from, props.pass.to)
@@ -403,10 +416,23 @@ const restart = () => {
   })
 }
 
-watch(() => [props.pass, props.startsAt, fieldBox.value !== undefined], restart, {
-  immediate: true,
+watch(
+  [
+    () => props.region,
+    () => props.pass.from,
+    () => props.pass.to,
+    () => props.pass.budgetMs,
+    () => props.pass.leadMs,
+    () => props.startsAt,
+    () => fieldBox.value !== undefined,
+  ],
+  restart,
+  { immediate: true }
+)
+onBeforeUnmount(() => {
+  disposed = true
+  if (raf) cancelAnimationFrame(raf)
 })
-onBeforeUnmount(() => raf && cancelAnimationFrame(raf))
 
 const tip = ref<{ name: string; x: number; y: number }>()
 const showTip = (unit: number, event: PointerEvent) => {

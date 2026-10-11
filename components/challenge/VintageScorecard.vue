@@ -19,7 +19,7 @@
     />
     <p class="curve-caption">
       Shaded: sovereign states on this map, year by year — {{ statesThen }} then, {{ statesNow }} in
-      2019.
+      {{ VINTAGE_LAST_YEAR }}.
     </p>
 
     <div class="evidence">
@@ -50,7 +50,6 @@
             :class="{ lit: row.n === hovered }"
             @pointerenter="hovered = row.n"
             @pointerleave="hovered = undefined"
-            @focusin="hovered = row.n"
           >
             <span class="badge">{{ row.n }}</span>
             <CountryChip v-if="row.country" tag="span" compact :country="row.country" />
@@ -92,7 +91,7 @@
               compact
               :country="countryOf(change)!"
             />
-            <span class="verb chip">{{ VERB[change.kind] }}</span>
+            <span class="verb chip">{{ CHANGE_LABELS[change.kind] }}</span>
             <span class="sentence">
               {{ sentenceCase(describeChange(change)) }}
               <small v-if="change.note">{{ change.note }}</small>
@@ -124,8 +123,12 @@ import VintageTimebar from '~/components/challenge/VintageTimebar.vue'
 import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import { sentenceCase } from '~~/lib/strings'
+import { useClientEvents } from '~~/lib/events/client-side'
+import { useVintageStory } from '~~/lib/use-vintage-story'
 import { loadVintageRegion } from '~~/lib/vintage'
+import { yearsFrom } from '~~/lib/vintage-tuning'
 import {
+  CHANGE_LABELS,
   bookends,
   changelog,
   clues,
@@ -134,14 +137,15 @@ import {
   formatRuns,
   formatYears,
   lastYear,
+  verdictReason,
   vintageVerdict,
+  yearsWord,
   type VintageChange,
-  type VintageChangeKind,
 } from '~~/lib/vintage-story'
 import type { VintageChallenge } from '~~/types/challenges/group-modes.type'
-import type { GroupChallengeAnswer } from '~~/types/game.types'
+import type { GroupChallengeAnswer, Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
-import { VINTAGE_REGION_NAMES, type VintageRegion } from '~~/types/vintage.types'
+import { VINTAGE_LAST_YEAR, VINTAGE_REGION_NAMES, type VintageRegion } from '~~/types/vintage.types'
 
 /** Vintage's scorecard: how close the table came, how the map could have
  *  been dated, and everything that changed since. */
@@ -151,16 +155,11 @@ const props = defineProps<{
   players: Record<string, Player>
   playerId: string
   viewerId: string
+  round?: Round
 }>()
 
-const VERB: Record<VintageChangeKind, string> = {
-  independence: 'Independence',
-  renamed: 'Renamed',
-  formed: 'New',
-  gone: 'Gone',
-  ruler: 'New rule',
-  moved: 'Border moved',
-}
+const { gameStore } = useClientEvents()
+
 const CLUE_CAP = 6
 const CHANGELOG_CAP = 6
 
@@ -169,10 +168,13 @@ onMounted(async () => {
   region.value = await loadVintageRegion(props.challenge.region)
 })
 
-const outcome = computed(
-  () =>
-    props.roundAnswers[props.playerId]?.vintage ??
-    Object.values(props.roundAnswers).find(answer => answer.vintage)?.vintage
+const outcome = useVintageStory(
+  () => {
+    const rounds = gameStore.game?.rounds ?? []
+    const index = props.round ? rounds.indexOf(props.round) : -1
+    return index >= 0 ? index : rounds.length ? rounds.length - 1 : undefined
+  },
+  () => !!props.roundAnswers[props.viewerId] || !gameStore.game?.players[props.viewerId]
 )
 const run = computed(() =>
   outcome.value ? dealtRun(outcome.value, props.challenge.scene) : undefined
@@ -188,30 +190,22 @@ const verdict = computed(() =>
 )
 const verdictLine = computed(() => {
   const v = verdict.value
-  const said = who.value === 'You' ? 'You said' : `${who.value} said`
-  if (v.kind === 'none') return `${who.value === 'You' ? 'You' : who.value} gave no date`
+  const said = `${who.value} said`
+  if (v.kind === 'none') return `${who.value} gave no date`
   if (v.kind === 'inside') return `${said} ${year.value} — spot on`
   if (v.kind === 'close') return `${said} ${year.value} — close enough for full marks`
-  return `${said} ${year.value} — ${v.off} ${v.off === 1 ? 'year' : 'years'} too ${v.kind}`
+  return `${said} ${year.value} — ${yearsWord(v.off)} too ${v.kind}`
 })
 const because = computed(() => {
-  const v = verdict.value
-  if ((v.kind !== 'early' && v.kind !== 'late') || !v.because) return ''
-  const sentence = describeChange(v.because)
-  return v.kind === 'late'
-    ? `But the map hadn't changed yet: ${sentence} only in ${v.because.year}.`
-    : `But that had already happened: ${sentence} in ${v.because.year}.`
+  const reason = verdictReason(verdict.value)
+  return reason ? `But ${reason}` : ''
 })
 
 const pawns = computed(() =>
   Object.entries(props.roundAnswers).flatMap(([id, answer]) => {
     const player = props.players[id]
     if (!player || answer.year === undefined || !outcome.value) return []
-    const off = Math.min(
-      ...outcome.value.runs.map(([from, to]) =>
-        answer.year! < from ? answer.year! - from : answer.year! > to ? answer.year! - to : 0
-      )
-    )
+    const off = yearsFrom(outcome.value.runs, answer.year)
     return [{ player, year: answer.year, label: off ? `${off > 0 ? '+' : ''}${off}` : '✓' }]
   })
 )

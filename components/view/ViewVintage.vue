@@ -120,6 +120,7 @@ import { latestRound } from '~~/lib/rounds'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { useServerWindow } from '~~/lib/use-server-window'
+import { useVintageStory } from '~~/lib/use-vintage-story'
 import { sentenceCase } from '~~/lib/strings'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import {
@@ -134,15 +135,21 @@ import {
 import {
   WASH_RULERS,
   dealtRun,
-  describeChange,
   describeRewind,
   formatRuns,
   formatYears,
   leadChange,
   unitChanges,
+  verdictReason,
   vintageVerdict,
+  yearsWord,
 } from '~~/lib/vintage-story'
-import { VINTAGE_REGION_NAMES, type VintageRegion, type VintageWash } from '~~/types/vintage.types'
+import {
+  VINTAGE_LAST_YEAR,
+  VINTAGE_REGION_NAMES,
+  type VintageRegion,
+  type VintageWash,
+} from '~~/types/vintage.types'
 
 const VINTAGE_FRAME_PAD = { scale: 0.04, floor: 6 }
 
@@ -196,7 +203,10 @@ watch(
 
 const round = computed(() => (gameStore.game ? latestRound(gameStore.game) : undefined))
 const answer = computed(() => (me.value ? round.value?.groupAnswers[me.value.id] : undefined))
-const outcome = computed(() => answer.value?.vintage)
+const outcome = useVintageStory(
+  () => (gameStore.game ? gameStore.game.rounds.length - 1 : undefined),
+  () => !!answer.value
+)
 const myGuess = computed(() => answer.value?.year)
 
 const rewind = computed<VintagePass | undefined>(() => {
@@ -295,7 +305,7 @@ const regionName = computed(() =>
 )
 const stakes = computed(
   () =>
-    `${sentenceCase(regionName.value)}'s map runs backward from 2019 — borders unpick, names change, empires return. When it stops, drag to the year you think it shows.`
+    `${sentenceCase(regionName.value)}'s map runs backward from ${VINTAGE_LAST_YEAR} — borders unpick, names change, empires return. When it stops, drag to the year you think it shows.`
 )
 const headline = computed(() =>
   phase.value === 'rewind' ? 'Time runs backward…' : 'When is this map from?'
@@ -325,18 +335,11 @@ const verdict = computed(() =>
 const verdictLine = computed(() => {
   const v = verdict.value
   if (v.kind === 'inside') return `Spot on — ${myGuess.value}`
-  if (v.kind === 'close') return `Within ${v.off} ${v.off === 1 ? 'year' : 'years'} — full marks`
+  if (v.kind === 'close') return `Within ${yearsWord(v.off)} — full marks`
   if (v.kind === 'none') return 'No date given'
-  return `${v.off} ${v.off === 1 ? 'year' : 'years'} too ${v.kind}`
+  return `${yearsWord(v.off)} too ${v.kind}`
 })
-const because = computed(() => {
-  const v = verdict.value
-  if ((v.kind !== 'early' && v.kind !== 'late') || !v.because) return ''
-  const sentence = describeChange(v.because)
-  return v.kind === 'late'
-    ? `Not yet: ${sentence} only in ${v.because.year}.`
-    : `Already: ${sentence} in ${v.because.year}.`
-})
+const because = computed(() => sentenceCase(verdictReason(verdict.value)))
 const heldLine = computed(() => (outcome.value ? formatRuns(outcome.value.runs) : ''))
 
 /** The year on the ruler: masked through the rewind, then riding the replay
@@ -419,6 +422,10 @@ onBeforeUnmount(() => {
   .sub-glyph {
     flex: none;
     animation: rewind-pulse 1.6s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
   }
 
   // The prompt's height is the map's berth: a line that wrapped mid-rewind
@@ -493,7 +500,16 @@ onBeforeUnmount(() => {
 
 @media (max-width: $tablet) {
   .legend {
-    display: none;
+    left: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+
+    li {
+      padding: 0.1rem 0.6rem;
+      font-size: 1.1rem;
+    }
   }
 
   .lock-row {

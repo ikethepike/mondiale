@@ -9,7 +9,6 @@ import {
   scoreVintage,
   vintageRuns,
   vintageStory,
-  yearsOff,
 } from '~~/lib/events/server/vintage-grade'
 import {
   VINTAGE_CAPTION_MS,
@@ -52,6 +51,8 @@ import {
   legibleFame,
   sceneLegibility,
   vintageFameWeight,
+  yearsFrom,
+  yearsOff,
 } from '~~/lib/vintage-tuning'
 import { isFameDealable } from '~~/types/fame.types'
 import { withArticle } from '~~/lib/strings'
@@ -180,9 +181,9 @@ describe('vintage answer key boundary', () => {
       ])
   })
 
-  it('is imported only by the server grader and the answer loader', () => {
+  const importersOf = (pattern: RegExp) => {
     const root = join(__dirname, '..')
-    const offenders: string[] = []
+    const found: string[] = []
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir)) {
         if (
@@ -191,21 +192,31 @@ describe('vintage answer key boundary', () => {
           continue
         const path = join(dir, entry)
         if (statSync(path).isDirectory()) walk(path)
-        else if (
-          /\.(ts|vue)$/.test(entry) &&
-          /(from|import\()\s*['"][^'"]*vintage-years\.gen['"]/.test(readFileSync(path, 'utf-8'))
-        ) {
-          const relative = path.slice(root.length + 1)
-          if (
-            relative !== 'lib/events/server/vintage-grade.ts' &&
-            relative !== 'lib/vintage.test.ts' &&
-            !relative.startsWith('generators/')
-          )
-            offenders.push(relative)
-        }
+        else if (/\.(ts|vue)$/.test(entry) && pattern.test(readFileSync(path, 'utf-8')))
+          found.push(path.slice(root.length + 1))
       }
     }
     walk(root)
+    return found
+  }
+
+  it('is imported only by the server grader', () => {
+    const offenders = importersOf(/(from|import\()\s*['"][^'"]*vintage-years\.gen['"]/).filter(
+      path =>
+        path !== 'lib/events/server/vintage-grade.ts' &&
+        path !== 'lib/vintage.test.ts' &&
+        !path.startsWith('generators/')
+    )
+    expect(offenders).toEqual([])
+  })
+
+  it('reaches the client only through the answer loader', () => {
+    const offenders = importersOf(/(from|import\()\s*['"][^'"]*vintage-grade['"]/).filter(
+      path =>
+        path !== 'lib/vintage-answers.ts' &&
+        !path.startsWith('lib/events/server/') &&
+        !path.endsWith('.test.ts')
+    )
     expect(offenders).toEqual([])
   })
 })
@@ -358,20 +369,16 @@ describe('vintage dealer and grader', () => {
     expect(regions.size).toBe(VINTAGE_REGION_IDS.length)
   })
 
-  it('visits every region of a board before revisiting one, never a scene twice', () => {
-    for (const difficulty of ['normal', 'hard'] as const) {
-      const game = gameOn(difficulty, 'world')
-      const seen: string[] = []
-      for (let round = 0; round < 12; round++) {
-        const challenge = pickVintage(game, 10)!
-        if (round < VINTAGE_REGION_IDS.length && difficulty === 'hard')
-          expect(seen.map(key => key.split(':')[0])).not.toContain(challenge.region)
-        const key = `${challenge.region}:${challenge.scene}`
-        expect(seen).not.toContain(key)
-        seen.push(key)
-        game.rounds.push({ groupChallenge: challenge } as Game['rounds'][number])
-      }
+  it('deals a region at most once a game', () => {
+    const game = gameOn('hard', 'world')
+    const seen: string[] = []
+    for (let round = 0; round < VINTAGE_REGION_IDS.length; round++) {
+      const challenge = pickVintage(game, 10)!
+      expect(seen).not.toContain(challenge.region)
+      seen.push(challenge.region)
+      game.rounds.push({ groupChallenge: challenge } as Game['rounds'][number])
     }
+    expect(pickVintage(game, 10)).toBeUndefined()
   })
 
   it('leans toward the tiers each difficulty favours', () => {
@@ -383,6 +390,19 @@ describe('vintage dealer and grader', () => {
     )
     expect(vintageFameWeight('minor', 'easy')).toBe(0)
     expect(vintageFameWeight('obscure', 'normal')).toBe(0)
+  })
+
+  it('measures a guess from the nearest run, keeping its side', () => {
+    const runs: [number, number][] = [
+      [1900, 1910],
+      [1950, 1960],
+    ]
+    expect(yearsFrom(runs, 1905)).toBe(0)
+    expect(yearsFrom(runs, 1955)).toBe(0)
+    expect(yearsFrom(runs, 1925)).toBe(15)
+    expect(yearsFrom(runs, 1940)).toBe(-10)
+    expect(yearsFrom(runs, 1890)).toBe(-10)
+    expect(yearsOff(runs, 1940)).toBe(10)
   })
 
   it('pays in full inside the runs and tapers monotonically outside', () => {

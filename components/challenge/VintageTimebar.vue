@@ -84,12 +84,16 @@
         @input="emit('update:modelValue', Number(($event.target as HTMLInputElement).value))"
       />
     </div>
-    <div v-if="pawns?.length" class="pawns" :style="{ height: `${(rows + 1) * 3.4}rem` }">
+    <div
+      v-if="pawns?.length"
+      class="pawns"
+      :style="{ height: `calc(var(--pawn-row) * ${rows + 1})` }"
+    >
       <span
         v-for="pawn in stackedPawns"
         :key="pawn.player.id"
         class="pawn-stop"
-        :style="{ left: `${at(pawn.year)}%`, top: `${pawn.row * 3.4}rem` }"
+        :style="{ left: `${at(pawn.year)}%`, top: `calc(var(--pawn-row) * ${pawn.row})` }"
       >
         <PlayerPawn class="pawn" :player="pawn.player" />
         <small v-if="pawn.label">{{ pawn.label }}</small>
@@ -212,17 +216,17 @@ const curve = computed(() => {
 @use '~/assets/scss/rules/ink' as *;
 
 .vintage-timebar {
+  --pawn-row: 3.4rem;
   width: 100%;
   display: grid;
   gap: 0.4rem;
+  pointer-events: auto;
+  font-variant-numeric: tabular-nums;
 
   &.interactive,
   &.marked {
     padding-top: 3.4rem;
   }
-
-  pointer-events: auto;
-  font-variant-numeric: tabular-nums;
 }
 
 .track {
@@ -368,6 +372,11 @@ input[type='range'] {
   margin: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+.vintage-timebar:has(input[type='range']:focus-visible) .needle:not(.marker) .readout {
+  outline: 2px solid ink(0.9);
+  outline-offset: 2px;
 }
 
 .disabled {

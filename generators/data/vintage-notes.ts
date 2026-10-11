@@ -120,7 +120,7 @@ export const VINTAGE_NOTES: Record<string, string> = {
   '255:1919':
     'The Treaty of Versailles took Alsace-Lorraine, the Polish Corridor and more from Germany.',
   '365:1917':
-    'Revolution swept away the tsar, and Finland, Poland and the Baltic states broke free.',
+    'Revolution swept away the tsar and Finland broke free; Poland and the Baltic states followed in 1918.',
   '365:1922': 'The Soviet Union was founded from Russia, Ukraine, Belarus and the Transcaucasus.',
   '365:1940': 'The Soviet Union annexed Estonia, Latvia and Lithuania.',
   '365:1991': 'The Soviet Union dissolved into fifteen countries.',
@@ -197,7 +197,7 @@ export const VINTAGE_NOTES: Record<string, string> = {
     "Japan's surrender stripped it of an empire stretching from Sakhalin to the South Seas.",
   '800:1939': 'Siam renamed itself Thailand, "land of the free".',
   '811:1953': 'Cambodia won independence from France.',
-  '811:1975': 'The Khmer Rouge took power and renamed the country Democratic Kampuchea.',
+  '811:1976': 'A year after taking power, the Khmer Rouge renamed Cambodia Democratic Kampuchea.',
   '816:1975': 'North Vietnam took Saigon; the country was reunified the next year.',
   '817:1954': 'The Geneva Accords split Vietnam at the 17th parallel.',
   '820:1963': 'Malaya joined Singapore, Sabah and Sarawak to form Malaysia.',

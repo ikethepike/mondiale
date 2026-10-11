@@ -49,9 +49,23 @@ export const VINTAGE_TUNING: Record<
 export const vintageFameWeight = (fame: Fame, difficulty: GameDifficulty): number =>
   isFameDealable(fame, difficulty) ? VINTAGE_TUNING[difficulty].fameWeights[fame] : 0
 
+/** Signed years from a guess to the nearest year that shows the dealt map:
+ *  negative early, positive late, 0 inside. */
+export const yearsFrom = (runs: readonly (readonly [number, number])[], year: number): number => {
+  let nearest = Infinity
+  for (const [from, to] of runs) {
+    const off = year < from ? year - from : year > to ? year - to : 0
+    if (Math.abs(off) < Math.abs(nearest)) nearest = off
+  }
+  return nearest
+}
+
+export const yearsOff = (runs: readonly (readonly [number, number])[], year: number) =>
+  Math.abs(yearsFrom(runs, year))
+
 export const VINTAGE_FAME = {
   /** Share of the camera frame a step must visibly change to be a landmark a
-   *  player can date the map by — South Sudan clears it, Eritrea does not. */
+   *  player can date the map by. */
   landmark: 0.01,
   /** A rename shows as a label, not a fill, so it weighs less than a recolour. */
   rename: 0.5,
@@ -95,7 +109,7 @@ export const sceneLegibility = ({
     let earned = 0
     for (let year = low; year <= high; year++)
       earned += taperScore({
-        distance: year < from ? from - year : year > to ? year - to : 0,
+        distance: yearsOff([[from, to]], year),
         perfect: grace,
         zero: zeroAt,
         maximumPoints: 100,

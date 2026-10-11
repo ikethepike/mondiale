@@ -1,6 +1,6 @@
 <template>
   <figure class="vintage-lens">
-    <div class="frame">
+    <div class="frame" :style="{ '--aspect': region.frame[2] / region.frame[3] }">
       <svg :viewBox="region.frame.join(' ')" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
         <defs>
           <clipPath :id="`${uid}-then`">
@@ -61,7 +61,7 @@
 </template>
 <script lang="ts" setup>
 import { arcPath, finalScene, sceneAt, shapePath, type VintageScene } from '~~/lib/vintage'
-import type { VintageRegion } from '~~/types/vintage.types'
+import { VINTAGE_LAST_YEAR, type VintageRegion } from '~~/types/vintage.types'
 
 /** The scorecard's then-and-now: the dealt map and 2019 in one inset, split
  *  by a divider the reader drags. */
@@ -78,7 +78,7 @@ const uid = useId()
 const share = ref(55)
 const x0 = computed(() => props.region.frame[0])
 const split = computed(() => (props.region.frame[2] * share.value) / 100)
-const nowLabel = '2019'
+const nowLabel = String(VINTAGE_LAST_YEAR)
 
 const layerOf = (key: 'then' | 'now', scene: VintageScene) => ({
   key,
@@ -122,6 +122,8 @@ const placedBadges = computed(() =>
 
 .frame {
   position: relative;
+  width: min(100%, calc(32rem * var(--aspect)));
+  margin-inline: auto;
   border-radius: 0.8rem;
   overflow: hidden;
   background: var(--background-color);
@@ -131,7 +133,6 @@ const placedBadges = computed(() =>
     display: block;
     width: 100%;
     height: auto;
-    max-height: 32rem;
   }
 }
 
@@ -147,6 +148,10 @@ const placedBadges = computed(() =>
   stroke: ink(0.95);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
+}
+
+.frame:has(input[type='range']:focus-visible) .divider {
+  stroke-width: 4;
 }
 
 .badge {

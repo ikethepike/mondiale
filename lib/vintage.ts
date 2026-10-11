@@ -207,9 +207,6 @@ export const shapePath = (region: VintageRegion, shape: number, overrides?: ArcO
     .join('')
 }
 
-export const eraOf = (region: VintageRegion, look: VintageUnitLook): VintageEra | undefined =>
-  look[0] < 0 ? undefined : region.eras[look[1]]
-
 const SLIDE_SAMPLES = 96
 
 export interface SlideTrack {
@@ -387,9 +384,16 @@ export interface PassFrame {
 
 /** Where a pass stands `elapsedMs` after it started — a pure seek, so a
  *  reload, a booth or a throttled tab all land on the same frame. */
+const schedules = new WeakMap<VintagePass, [number, number][]>()
+const scheduleOf = (pass: VintagePass) => {
+  let schedule = schedules.get(pass)
+  if (!schedule) schedules.set(pass, (schedule = vintageSchedule(pass.weights, pass.budgetMs)))
+  return schedule
+}
+
 export const passFrameAt = (pass: VintagePass, elapsedMs: number): PassFrame => {
   const direction = pass.to >= pass.from ? 1 : -1
-  const schedule = vintageSchedule(pass.weights, pass.budgetMs)
+  const schedule = scheduleOf(pass)
   const t = elapsedMs - pass.leadMs
   let completed = 0
   while (completed < schedule.length && t >= schedule[completed][0] + schedule[completed][1])
@@ -419,7 +423,7 @@ export const passCaptions = (
   pass: VintagePass,
   dwellMs: number
 ): { atMs: number; crossing: number }[] => {
-  const schedule = vintageSchedule(pass.weights, pass.budgetMs)
+  const schedule = scheduleOf(pass)
   const captions: { atMs: number; crossing: number }[] = []
   let freeAt = 0
   let waiting: number | undefined
@@ -442,7 +446,7 @@ export const passCaptions = (
 }
 
 export const passLengthMs = (pass: VintagePass) => {
-  const schedule = vintageSchedule(pass.weights, pass.budgetMs)
+  const schedule = scheduleOf(pass)
   const last = schedule[schedule.length - 1]
   return pass.leadMs + (last ? last[0] + last[1] : 0)
 }

@@ -158,7 +158,7 @@ export const VINTAGE_UNITS: Record<number, VintageUnitSpec> = {
     eras: [
       ruled(1886, 'Southern Rhodesia', 'gb'),
       ruled(1965, 'Rhodesia', 'contested'),
-      ruled(1979, 'Zimbabwe Rhodesia', 'contested'),
+      ruled(1979, 'Southern Rhodesia', 'gb'),
       ind(1980, 'Zimbabwe'),
     ],
   },
@@ -397,7 +397,7 @@ export const VINTAGE_UNITS: Record<number, VintageUnitSpec> = {
     eras: [
       ruled(1886, 'Cambodia', 'fr'),
       ind(1953, 'Cambodia'),
-      ind(1975, 'Democratic Kampuchea'),
+      ind(1976, 'Democratic Kampuchea'),
       ind(1979, 'Kampuchea'),
       ind(1989, 'Cambodia'),
     ],
@@ -571,7 +571,7 @@ export const VINTAGE_REGION_SPECS: Record<VintageRegionId, VintageRegionSpec> = 
     pointBudget: 11000,
   },
   'north-america': {
-    owns: gwcode => (gwcode >= 2 && gwcode <= 95) || (gwcode >= 20 && gwcode < 100),
+    owns: gwcode => gwcode >= 2 && gwcode < 100,
     frame: [-168, 7, -52, 72],
     clip: [-180, -2, -36, 84],
     pointBudget: 9000,

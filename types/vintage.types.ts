@@ -2,6 +2,9 @@ import type { Fame } from './fame.types'
 import type { GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 
+/** Every region's history runs to this year's map — CShapes' last. */
+export const VINTAGE_LAST_YEAR = 2019
+
 export const VINTAGE_REGION_IDS = [
   'africa',
   'europe',

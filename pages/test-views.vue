@@ -140,6 +140,7 @@ import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import { vintageStoryKey } from '~~/lib/vintage-story'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import type { VintageRegionId } from '~~/types/vintage.types'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
@@ -614,6 +615,7 @@ const installStubSocket = () => {
     if (event === 'terra-ready') simulateTerraReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
+    if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
   }
   // Critical events go through timeout().emitWithAck() — stub both paths.
   // `io` is the manager views subscribe to for reconnects; it never fires in
@@ -628,6 +630,21 @@ const installStubSocket = () => {
     io: { on: () => {}, off: () => {} },
   }
   gameStore.socket = stub as never
+}
+
+/** The stub's half of fetch-vintage-story: the harness holds the answer key,
+ *  so it plays the server's targeted reply. */
+const simulateVintageStory = ({ round }: Record<string, unknown>) => {
+  const game = gameStore.game
+  const dealt = typeof round === 'number' ? game?.rounds[round]?.groupChallenge : undefined
+  if (!game || !vintageAnswers || !isChallengeOfType(dealt, 'vintage-challenge')) return
+  gameStore.vintageStories = {
+    ...gameStore.vintageStories,
+    [vintageStoryKey(game.id, round as number)]: vintageAnswers.vintageStory(
+      dealt,
+      game.difficulty
+    ),
+  }
 }
 
 /** The stub's half of terra-beats: the harness seat is the last ready, so
@@ -835,6 +852,8 @@ const VINTAGE_DEALS: Record<
   { region: VintageRegionId; year: number; difficulty: GameDifficulty }
 > = {
   'africa-1955': { region: 'africa', year: 1955, difficulty: 'normal' },
+  'africa-1962': { region: 'africa', year: 1962, difficulty: 'normal' },
+  'europe-1921': { region: 'europe', year: 1921, difficulty: 'normal' },
   'europe-1900': { region: 'europe', year: 1900, difficulty: 'normal' },
   'europe-1930': { region: 'europe', year: 1930, difficulty: 'normal' },
   'europe-1780': { region: 'europe', year: 1780, difficulty: 'hard' },
@@ -882,8 +901,6 @@ const vintageScoresGame = (id: string): Game => {
     },
     hard: { deal: 'africa-1975-hard', years: ([from]) => [from - 4, from, from + 15] },
   }
-  VINTAGE_DEALS['africa-1962'] = { region: 'africa', year: 1962, difficulty: 'normal' }
-  VINTAGE_DEALS['europe-1921'] = { region: 'europe', year: 1921, difficulty: 'normal' }
   const plan = deals[id] ?? deals.late!
   const game = vintageGame(plan.deal, 'scores')
   const round = game.rounds[game.rounds.length - 1]
@@ -894,7 +911,7 @@ const vintageScoresGame = (id: string): Game => {
   const years = plan.years(story.runs[0]!)
   Object.keys(game.players).forEach((playerId, seat) => {
     const year = years[seat % years.length]
-    round.groupAnswers[playerId] = { submitted: [], correct: [], year, vintage: story }
+    round.groupAnswers[playerId] = { submitted: [], correct: [], year }
     round.playerTurns[playerId] = {
       points: vintageAnswers!.scoreVintage({ challenge, difficulty: game.difficulty, year }),
     }

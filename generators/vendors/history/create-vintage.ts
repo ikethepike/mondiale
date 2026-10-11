@@ -1,8 +1,8 @@
 /**
  * Generates Vintage's map history from CShapes 2.0, one region at a time:
  *
- *   data/vintage.gen.ts        — geometry, eras and the step stream, with NO
- *                                years (the client view's, lazy import)
+ *   data/vintage-<region>.gen.ts — geometry, eras and the step stream, with
+ *                                  NO years (the client view's, lazy import)
  *   data/vintage-years.gen.ts  — each scene's years, its look-alike classes,
  *                                tells, pacing weights and notes (server only)
  *
@@ -23,8 +23,14 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import { jsonParseLiteral } from '../../lib/emit'
 import { balancedAnchor, ringArea } from '../../../lib/outline'
-import { VINTAGE_FAME, legibleFame, sceneLegibility } from '../../../lib/vintage-tuning'
 import {
+  VINTAGE_FAME,
+  VINTAGE_TUNING,
+  legibleFame,
+  sceneLegibility,
+} from '../../../lib/vintage-tuning'
+import {
+  VINTAGE_LAST_YEAR,
   VINTAGE_REGION_IDS,
   type VintageEra,
   type VintageEraSpec,
@@ -58,11 +64,9 @@ const OHM_CREDIT = `// Europe before 1886: OpenHistoricalMap contributors (openh
 // some boundary ways CC BY 4.0), at the keyframes in generators/data/vintage-keyframes.ts.
 `
 const CSHAPES_FIRST_YEAR = 1886
-const LAST_YEAR = 2019
+const LAST_YEAR = VINTAGE_LAST_YEAR
 /** Islets below this projected area (map units²) are dropped from fills. */
 const MIN_RING_AREA = 0.02
-/** Tells a scene needs before the dealer may deal it — reported, not enforced. */
-const REPORT_TELL_FLOOR = 2
 
 const report: string[] = []
 const log = (line: string) => {
@@ -85,6 +89,11 @@ const applyOverrides = (features: CShapesFeature[]): CShapesFeature[] => {
   const byCode = (gwcode: number) => features.filter(entry => entry.gwcode === gwcode)
   const endingIn = (gwcode: number, year: number) =>
     byCode(gwcode).find(entry => entry.end[0] === year)
+  const sliceEnding = (gwcode: number, year: number) => {
+    const entry = endingIn(gwcode, year)
+    if (!entry) throw new Error(`CShapes has no ${gwcode} slice ending ${year}`)
+    return entry
+  }
   const reuse = (
     gwcode: number,
     fromYear: number,
@@ -132,7 +141,7 @@ const applyOverrides = (features: CShapesFeature[]): CShapesFeature[] => {
     { ...spanishSahara, start: afterSpain.start, end: lastDay, name: 'Western Sahara' },
     { ...latest(6631), start: occupied.start, end: lastDay },
     { ...latest(6511), start: occupied.start, end: lastDay },
-    { ...endingIn(860, 1976)!, start: annexed.start, end: annexed.end },
+    { ...sliceEnding(860, 1976), start: annexed.start, end: annexed.end },
   ]
 }
 
@@ -410,7 +419,11 @@ const TONES = 5
  * a union reads as one country and a split shows as a tone change as well as
  * a new line. Fixed for the unit's whole life: tones never flicker in a rewind.
  */
-const toneUnits = (codes: number[], neighbours: Set<string>): Map<number, number> => {
+const toneUnits = (
+  region: VintageRegionId,
+  codes: number[],
+  neighbours: Set<string>
+): Map<number, number> => {
   const adjacent = (a: number, b: number) => neighbours.has(a < b ? `${a}:${b}` : `${b}:${a}`)
   const near = new Map(codes.map(code => [code, codes.filter(other => adjacent(code, other))]))
   const tones = new Map<number, number>()
@@ -432,7 +445,7 @@ const toneUnits = (codes: number[], neighbours: Set<string>): Map<number, number
     const taken = new Set(near.get(next)!.map(other => tones.get(other)))
     let tone = 0
     while (taken.has(tone) && tone < TONES - 1) tone++
-    if (taken.has(tone)) log(`  ${next}: every tone is taken by a neighbour`)
+    if (taken.has(tone)) log(`  ${region} ${next}: every tone is taken by a neighbour`)
     tones.set(next, tone)
   }
   return tones
@@ -501,7 +514,6 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
     })
   )
 
-  // Every feature's rings as signed arc lists; the arcs it touches.
   const featurePolygons = simplified.objects.units.geometries.map(
     geometry => (geometry as { arcs?: number[][][] }).arcs ?? []
   )
@@ -517,7 +529,6 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
       }
   })
 
-  // Units: the region's own gwcodes, in a stable order.
   const unitCodes = [...new Set(selected.map(pair => pair.entry.gwcode).filter(spec.owns))].sort(
     (a, b) => a - b
   )
@@ -531,7 +542,6 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
     frameY + frameH,
   ]
 
-  // Shapes, deduped on their visible rings.
   const shapes: VintageShape[] = []
   /** Land each shape shows inside the frame, holes cut out. */
   const shapeAreas: number[] = []
@@ -665,7 +675,7 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
   const yearStates: YearState[] = []
   for (let year = firstYear; year <= LAST_YEAR; year++) yearStates.push(stateOf(year))
 
-  const tones = toneUnits(unitCodes, neighbours)
+  const tones = toneUnits(id, unitCodes, neighbours)
 
   // Scenes: runs of years that look identical with labels on.
   const scenes: { from: number; to: number; state: YearState }[] = []
@@ -779,12 +789,13 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
       )
       .join(' ')}`
   )
-  log(
-    `  below the ${REPORT_TELL_FLOOR}-tell floor: ${scenes
-      .filter((_, index) => tells.labelled[index] < REPORT_TELL_FLOOR)
-      .map(scene => scene.from)
-      .join(' ')}`
-  )
+  for (const [difficulty, { minTells, labelled }] of Object.entries(VINTAGE_TUNING))
+    log(
+      `  below ${difficulty}'s ${minTells}-tell floor: ${scenes
+        .filter((_, index) => tells[labelled ? 'labelled' : 'bare'][index] < minTells)
+        .map(scene => scene.from)
+        .join(' ')}`
+    )
   for (const tier of FAME_TIERS)
     log(
       `  ${tier}: ${scenes
@@ -809,7 +820,7 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
   const first = scenes[0].state
   return {
     geometry: {
-      frame: projectBox(spec.frame),
+      frame: [frameX, frameY, frameW, frameH],
       arcs: arcs.map(arc => arc.flat()),
       shapes,
       units: unitCodes.map(gwcode => ({

@@ -306,7 +306,7 @@ export const groundPlanSeconds = (layers: number, hints = 0): number =>
 
 /** Vintage holds on 2019's map this long before the rewind starts. */
 export const VINTAGE_LEAD_MS = 1800
-/** The big rewind sign that opens the round, inside the lead. */
+/** How long the VHS rewind beat plays over the round's opening. */
 export const VINTAGE_FLASH_MS = 2200
 /** What a rewind is budgeted, shared across its steps by how much each one
  *  changes — never by the years between them, which would leak the date. */
@@ -331,8 +331,6 @@ export const vintageSchedule = (
   weights: readonly number[],
   budgetMs = VINTAGE_REWIND_BUDGET_MS
 ): [number, number][] => {
-  // Square roots keep the pace even, a time-lapse rather than long holds
-  // between bursts, while a big change still takes longer than a small one.
   const shares = weights.map(weight => Math.sqrt(weight))
   const total = shares.reduce((sum, share) => sum + share, 0)
   if (!total) return weights.map(() => [0, 0])

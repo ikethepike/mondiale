@@ -7,8 +7,8 @@ import type { VintageWash } from '../../types/vintage.types'
  * turn the rewind into flicker.
  */
 export const VINTAGE_KEYFRAMES = [
-  1772, 1793, 1795, 1797, 1806, 1807, 1809, 1812, 1815, 1830, 1832, 1859, 1860, 1861, 1864, 1866,
-  1867, 1870, 1871, 1878,
+  1772, 1793, 1795, 1797, 1806, 1807, 1809, 1812, 1815, 1816, 1830, 1832, 1859, 1860, 1861, 1864,
+  1866, 1867, 1870, 1871, 1878, 1881,
 ] as const
 
 export interface KeyframePolity {
@@ -191,7 +191,15 @@ export const KEYFRAME_POLITIES: Record<string, KeyframePolity> = {
   },
   // Still Ottoman by law, as CShapes draws it until 1914.
   'Cyprus Protectorate': { gwcode: 640, rank: PIECE },
-  'United Romanian Principalities': { gwcode: 360, name: 'Romania' },
+  'United Romanian Principalities': {
+    gwcode: 360,
+    name: 'Romania',
+    wash: 'tr',
+    sovereign: false,
+    sovereignFrom: 1878,
+  },
+  // Autonomous under the Sultan from Berlin until 1908.
+  Bulgaria: { gwcode: 355, wash: 'tr', sovereign: false },
   'Kingdom of Romania': { gwcode: 360, name: 'Romania' },
   'Russian Empire': { gwcode: 365, wash: 'ru' },
   'Crimean Khanate': { gwcode: 3651, wash: 'tr', sovereign: false },

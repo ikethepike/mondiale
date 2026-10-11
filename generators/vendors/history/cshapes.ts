@@ -10,7 +10,7 @@ import { MAP_PROJECTION } from '../../../data/map.gen'
  * the CI cron.
  */
 
-export const CSHAPES_URL = 'https://icr.ethz.ch/data/cshapes/CShapes-2.0.geojson'
+const CSHAPES_URL = 'https://icr.ethz.ch/data/cshapes/CShapes-2.0.geojson'
 const CACHE_DIR = `${import.meta.dirname}/.cache`
 
 export type Point = [number, number]

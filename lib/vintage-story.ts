@@ -1,4 +1,5 @@
 import { sentenceCase, withArticle as the } from '~~/lib/strings'
+import { yearsOff } from '~~/lib/vintage-tuning'
 import type { VintageOutcome } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { VintageEra, VintageRegion, VintageWash } from '~~/types/vintage.types'
@@ -56,6 +57,10 @@ export interface VintageChange {
   after?: VintageEra
   note?: string
 }
+
+/** Where a round's story sits in the store: stories arrive per socket, and a
+ *  later game's round 3 must never read an earlier one's. */
+export const vintageStoryKey = (gameId: string, round: number) => `${gameId}:${round}`
 
 export const formatYears = ([from, to]: readonly [number, number]) =>
   from === to ? `${from}` : `${from}–${to}`
@@ -254,6 +259,28 @@ export type VintageVerdict =
   | { kind: 'early' | 'late'; off: number; because?: VintageChange }
   | { kind: 'none' }
 
+/** Each change kind as a label — the changelog's chips, the dossier's eyebrow. */
+export const CHANGE_LABELS: Record<VintageChangeKind, string> = {
+  independence: 'Independence',
+  renamed: 'Renamed',
+  formed: 'New on the map',
+  gone: 'Gone from the map',
+  ruler: 'New rule',
+  moved: 'Border moved',
+}
+
+export const yearsWord = (count: number) => `${count} ${count === 1 ? 'year' : 'years'}`
+
+/** The fact that rules a miss out, as a clause: the change the map had not
+ *  made yet, or had already made. Empty for anything but a miss. */
+export const verdictReason = (verdict: VintageVerdict): string => {
+  if ((verdict.kind !== 'early' && verdict.kind !== 'late') || !verdict.because) return ''
+  const sentence = describeChange(verdict.because)
+  return verdict.kind === 'late'
+    ? `the map hadn't changed yet: ${sentence} only in ${verdict.because.year}.`
+    : `that had already happened: ${sentence} in ${verdict.because.year}.`
+}
+
 /** Where a guess landed against the dealt map's years — and, for a miss, the
  *  one change that rules it out. */
 export const vintageVerdict = (
@@ -264,9 +291,7 @@ export const vintageVerdict = (
   year: number | undefined
 ): VintageVerdict => {
   if (year === undefined) return { kind: 'none' }
-  const off = Math.min(
-    ...outcome.runs.map(([from, to]) => (year < from ? from - year : year > to ? year - to : 0))
-  )
+  const off = yearsOff(outcome.runs, year)
   if (!off) return { kind: 'inside' }
   if (off <= outcome.grace) return { kind: 'close', off }
   const { already, notYet } = bookends(region, outcome, run, labelled)

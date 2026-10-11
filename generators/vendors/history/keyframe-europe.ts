@@ -15,7 +15,7 @@ import {
 } from '../../data/vintage-keyframes'
 import { VINTAGE_UNITS } from '../../data/vintage-units'
 import { tupleCompare, type CShapesFeature, type DateTuple, type Point } from './cshapes'
-import { fetchOhmGeometries, fetchOhmIndex, type OhmIndexEntry } from './ohm'
+import { fetchOhmGeometries, fetchOhmIndex, stitchLosses, type OhmIndexEntry } from './ohm'
 
 /**
  * Europe's keyframes as CShapes-shaped features, so the region builds them
@@ -32,15 +32,15 @@ type Box = [number, number, number, number]
 
 const COUNTRY = 2
 const FROZEN = 3
-/** Coordinates snap to this grid (degrees) before any boolean work —
+/** Coordinates snap to a 1/GRID_SCALE° grid before any boolean work —
  *  OpenHistoricalMap's ways are far denser than the map draws, and a shared
  *  way snaps the same on both sides. */
 const GRID_SCALE = 20
 /** Two drawings of one polity differ by long thin slivers when only the
  *  sources disagree (OpenHistoricalMap and CShapes sit 1–5 km apart along a
  *  whole border), and by a solid piece when land changed hands. A piece this
- *  large and this thick (twice its area over its perimeter) is a change —
- *  Savoy's is ~25 km; anything thinner is the same border drawn twice. */
+ *  large and this thick (twice its area over its perimeter) is a change;
+ *  anything thinner is the same border drawn twice. */
 const CHANGE_KM2 = 1000
 const CHANGE_THICK_KM = 15
 /** Below this many km² a polity is a speck at the region's zoom and its land
@@ -59,9 +59,6 @@ const NESTED_SHARE = 0.8
 const GAP_TILE = 4
 /** How far a stand-in may be borrowed across a hole in the record. */
 const STAND_IN_YEARS = 5
-/** Unclaimed land up to this size goes to a neighbour; larger is beyond
- *  the region's story and stays undrawn. */
-const MAX_GAP_KM2 = 60000
 
 const boxPolygon = ([west, south, east, north]: Box): ClipPolygon => [
   [
@@ -127,8 +124,9 @@ const snap = (geometry: ClipMultiPolygon): ClipMultiPolygon => {
   return snapped.length ? ops.union(snapped) : []
 }
 
-/** polygon-clipping can dead-end on near-degenerate input; one retry on
- *  micro-snapped operands clears every case met so far. */
+/** polygon-clipping can dead-end on near-degenerate input: retry on ever
+ *  coarser snapped operands, then one operand at a time, skipping (and
+ *  reporting) only an operand that still fails. */
 const settle = (geometry: Geom, scale: number): ClipMultiPolygon =>
   asMulti(geometry).map(polygon =>
     polygon.map(ring =>
@@ -320,7 +318,7 @@ class LinePool {
         if (steps < 2 || steps > POOL_BRIDGE || (best && best.length <= steps - 1)) continue
         const path: Pair[] = []
         for (let k = 1; k < steps; k++)
-          path.push(ring[(start.at + (forward <= backward ? k : -k) + n * POOL_BRIDGE) % n])
+          path.push(ring[(start.at + (forward <= backward ? k : -k) + n) % n])
         let length = 0
         let previous = a
         for (const point of [...path, b]) {
@@ -509,7 +507,6 @@ export const buildEuropeKeyframes = async (
   )
   for (let keyIndex = VINTAGE_KEYFRAMES.length - 1; keyIndex >= 0; keyIndex--) {
     const year = VINTAGE_KEYFRAMES[keyIndex]
-    console.info(`keyframe ${year}`)
     const until = (VINTAGE_KEYFRAMES[keyIndex + 1] ?? 1886) - 1
     const grouped = new Map<number, { entries: OhmIndexEntry[]; polities: KeyframePolity[] }>()
     for (const entry of picked[keyIndex]) {
@@ -522,7 +519,6 @@ export const buildEuropeKeyframes = async (
     }
 
     const units: KeyframeUnit[] = []
-    const changes: string[] = []
     for (const [gwcode, { entries, polities }] of grouped) {
       let geometry = ops.intersection(union(entries.map(e => preparedOf(e.id))), land)
       const lead = polities
@@ -532,14 +528,7 @@ export const buildEuropeKeyframes = async (
       const later = next.get(gwcode)
       let source: KeyframeUnit['source']
       if (later) {
-        const moved = changedPiece(geometry, later.geometry)
-        if (moved) {
-          const size = km2([moved])
-          const [lon, lat] = moved[0][0]
-          changes.push(
-            `${lead.polity.name ?? lead.entry.name} ${Math.round(size)}km²×${Math.round((2 * size) / ringKm(moved[0]))}km@${lon.toFixed(1)},${lat.toFixed(1)}`
-          )
-        } else {
+        if (!changedPiece(geometry, later.geometry)) {
           geometry = later.geometry
           source = later.source
           rank = FROZEN
@@ -579,7 +568,7 @@ export const buildEuropeKeyframes = async (
     }
 
     const original = new Map(units.map(unit => [unit, unit.geometry]))
-    const settle = () => {
+    const settleKeyframe = () => {
       const sizes = new Map(units.map(unit => [unit, km2(unit.geometry)]))
       const bounds = new Map(
         units.map(unit => {
@@ -658,10 +647,6 @@ export const buildEuropeKeyframes = async (
       let leftKm2 = 0
       for (const gap of gaps) {
         const size = km2([gap])
-        if (size > MAX_GAP_KM2) {
-          leftKm2 += size
-          continue
-        }
         const shared = new Map<number, number>()
         for (const ring of gap)
           for (let at = 0; at + 1 < ring.length; at++) {
@@ -696,7 +681,7 @@ export const buildEuropeKeyframes = async (
     // next one only where a dropped statelet's land or an overlap went
     // never changed, so it takes the later shape and the keyframe settles
     // again around it.
-    let { drawn, dropped, filled, leftKm2 } = settle()
+    let { drawn, dropped, filled, leftKm2 } = settleKeyframe()
     const unchanged = drawn.filter(unit => {
       const later = next.get(unit.gwcode)
       return unit.rank !== FROZEN && later && !changedPiece(unit.geometry, later.geometry)
@@ -709,7 +694,7 @@ export const buildEuropeKeyframes = async (
         unit.rank = FROZEN
         if (later.source) unit.source = later.source
       }
-      ;({ drawn, dropped, filled, leftKm2 } = settle())
+      ;({ drawn, dropped, filled, leftKm2 } = settleKeyframe())
     }
 
     report.push(
@@ -717,7 +702,12 @@ export const buildEuropeKeyframes = async (
         `${filled} gaps filled, ${Math.round(leftKm2)} km² undrawn` +
         (dropped.length ? `; too small: ${dropped.map(unit => unit.era.name).join(', ')}` : '')
     )
-    report.push(`    changed since: ${changes.join(', ')}`)
+    report.push(
+      `    changed since: ${drawn
+        .filter(unit => unit.rank !== FROZEN && next.has(unit.gwcode))
+        .map(unit => unit.era.name)
+        .join(', ')}`
+    )
 
     for (const unit of drawn) if (unit.rank !== FROZEN) unit.geometry = pool.conflate(unit.geometry)
     for (const unit of drawn) pool.add(unit.geometry)
@@ -748,12 +738,20 @@ export const buildEuropeKeyframes = async (
       eras.set(unit.gwcode, list)
     }
 
+  const used = new Map(picked.flat().map(entry => [entry.id, entry.name]))
+  const unstitched = [...stitchLosses]
+    .filter(([id]) => used.has(id))
+    .map(([id, { lost, total }]) => `${used.get(id)} (${id}) ${lost}/${total} ways`)
+  if (unstitched.length) report.push(`  unclosed rings: ${unstitched.join(', ')}`)
   if (skippedOperations.length)
     report.push(
       `  skipped ${skippedOperations.length} failed clips: ${skippedOperations.join('; ')}`
     )
   report.push(
-    `  auto-coded: ${[...autoCodes.entries()].map(([name, code]) => `${code} ${name}`).join(', ')}`
+    `  auto-coded: ${[...autoCodes.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .map(([name, code]) => `${code} ${name}`)
+      .join(', ')}`
   )
   return { features, eras, report }
 }

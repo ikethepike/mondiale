@@ -5,7 +5,7 @@
         <img :src="event.image" :alt="event.name" />
       </figure>
       <div class="dossier-body">
-        <span class="eyebrow">{{ CHANGE_COPY[change.kind] }}</span>
+        <span class="eyebrow">{{ CHANGE_LABELS[change.kind] }}</span>
         <p class="dossier-year">{{ change.year }}</p>
         <h2 class="dossier-title">{{ title }}</h2>
         <p v-if="change.note" class="dossier-note">{{ change.note }}</p>
@@ -29,21 +29,12 @@ import ExpandDock from '~/components/feedback/ExpandDock.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { sentenceCase } from '~~/lib/strings'
-import { describeChange, type VintageChange, type VintageChangeKind } from '~~/lib/vintage-story'
+import { CHANGE_LABELS, describeChange, type VintageChange } from '~~/lib/vintage-story'
 
 /** One change on a Vintage scorecard, opened to read: why it happened, what
  *  the new name means, and the curated event the country lived that year. */
 const props = defineProps<{ change?: VintageChange }>()
 const open = defineModel<boolean>('open', { default: false })
-
-const CHANGE_COPY: Record<VintageChangeKind, string> = {
-  independence: 'Independence',
-  renamed: 'Renamed',
-  formed: 'New on the map',
-  gone: 'Gone from the map',
-  ruler: 'New rule',
-  moved: 'Border moved',
-}
 
 const sources = datasetAttribution('vintage')
 const title = computed(() => (props.change ? sentenceCase(describeChange(props.change)) : ''))

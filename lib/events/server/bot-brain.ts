@@ -1474,12 +1474,6 @@ const takeShare = (correct: readonly ISOCountryCode[], share: number): ISOCountr
   return correct.slice(0, take)
 }
 
-/**
- * A bot's pin throw — ONE inverse of the scorer's distance taper for both
- * pin surfaces (Heritage Hunt beats, the pin-landmark classic): the share
- * interpolates the miss radius between a bullseye and just inside the zero
- * ring, the bearing is anyone's guess, like a real pin.
- */
 /** `pinScatter` on a timeline: thrown that many years outside the dealt
  *  map's run that the taper pays exactly the share, early or late at random. */
 const yearScatter = (challenge: VintageChallenge, difficulty: GameDifficulty, share: number) => {
@@ -1489,9 +1483,15 @@ const yearScatter = (challenge: VintageChallenge, difficulty: GameDifficulty, sh
   const jitter = span * PIN_SCATTER_BAND
   const thrown = Math.round(Math.max(0, randomBetween(missYears - jitter, missYears + jitter)))
   const [from, to] = sample(vintageRuns(challenge))!
-  return Math.random() < 0.5 ? from - thrown : to + thrown
+  return sample([from - thrown, to + thrown])!
 }
 
+/**
+ * A bot's pin throw — ONE inverse of the scorer's distance taper for both
+ * pin surfaces (Heritage Hunt beats, the pin-landmark classic): the share
+ * interpolates the miss radius between a bullseye and just inside the zero
+ * ring, the bearing is anyone's guess, like a real pin.
+ */
 const pinScatter = (
   target: LatLng,
   ring: { perfectDistanceKm: number; zeroDistanceKm: number },

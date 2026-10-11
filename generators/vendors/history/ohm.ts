@@ -27,7 +27,11 @@ const overpass = async (query: string): Promise<unknown> => {
     body: new URLSearchParams({ data: query }),
   })
   if (!response.ok) throw new Error(`Overpass failed: ${response.status}`)
-  return response.json()
+  // A timeout still answers 200, with partial elements and a remark — never
+  // cache that as the whole truth.
+  const data = (await response.json()) as { remark?: string }
+  if (data.remark) throw new Error(`Overpass incomplete: ${data.remark}`)
+  return data
 }
 
 const cachedOverpass = async (cacheName: string, query: string): Promise<unknown> => {
@@ -87,12 +91,18 @@ export const fetchOhmIndex = async (
  *  relations are not always noded, and a ring that cannot close is lost. */
 const JOIN_DEGREES = 0.02
 
-const ringsFromWays = (ways: Point[][]): Point[][] => {
+/** Ways a relation lost to rings that never closed, by relation — the
+ *  generator reports them so a half-drawn polity is never silent. */
+export const stitchLosses = new Map<number, { lost: number; total: number }>()
+
+const ringsFromWays = (ways: Point[][]): { rings: Point[][]; lost: number } => {
   const open = ways.filter(way => way.length >= 2).map(way => [...way])
   const gap = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1])
   const rings: Point[][] = []
+  let lost = 0
   while (open.length) {
     const ring = open.shift()!
+    let joined = 1
     for (;;) {
       const head = ring[0]
       const tail = ring[ring.length - 1]
@@ -110,14 +120,16 @@ const ringsFromWays = (ways: Point[][]): Point[][] => {
         const [way] = open.splice(best, 1)
         const next = flip ? way.reverse() : way
         ring.push(...(gap(next[0], tail) === 0 ? next.slice(1) : next))
+        joined++
         continue
       }
       if (gap(head, tail) < JOIN_DEGREES * 5) ring.push(head)
       break
     }
     if (ring.length >= 4 && gap(ring[0], ring[ring.length - 1]) === 0) rings.push(ring)
+    else lost += joined
   }
-  return rings
+  return { rings, lost }
 }
 
 /** A relation's members stitched into polygons: outers unioned, inners cut. */
@@ -126,8 +138,15 @@ export const relationGeometry = (element: OverpassElement): ClipMultiPolygon => 
     (element.members ?? [])
       .filter(member => member.type === 'way' && member.role === role && member.geometry)
       .map(member => member.geometry!.map(({ lon, lat }): Point => [lon, lat]))
-  const outers = ringsFromWays([...waysOf('outer'), ...waysOf('')])
-  const inners = ringsFromWays(waysOf('inner'))
+  const outerWays = [...waysOf('outer'), ...waysOf('')]
+  const innerWays = waysOf('inner')
+  const { rings: outers, lost: lostOuter } = ringsFromWays(outerWays)
+  const { rings: inners, lost: lostInner } = ringsFromWays(innerWays)
+  if (lostOuter + lostInner)
+    stitchLosses.set(element.id, {
+      lost: lostOuter + lostInner,
+      total: outerWays.length + innerWays.length,
+    })
   if (!outers.length) return []
   const [first, ...rest] = outers.map(ring => [[ring]] as ClipMultiPolygon)
   const shell = polygonClipping.union(first, ...rest)
