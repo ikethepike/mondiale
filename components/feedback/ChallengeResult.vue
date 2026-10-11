@@ -37,7 +37,7 @@ import VerdictStamp from './VerdictStamp.vue'
  * Shared correct/incorrect result moment. The choreography around it:
  * t=0 the map wash starts (the parent sets gameStore.map.status just before
  * mounting this), t≈0.15s the dossier rises in, t≈0.3s the reveal card in
- * layouts/default.vue slides up (CSS delay), t≈0.45s the ripple plays.
+ * layouts/default.vue slides up (REVEAL_CARD_BEAT_MS, held while the keyboard is up), t≈0.45s the ripple plays.
  */
 const props = defineProps({
   status: {

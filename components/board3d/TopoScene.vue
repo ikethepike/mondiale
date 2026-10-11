@@ -636,13 +636,13 @@ const rebuild = () => {
 }
 
 // Dev harness: `?frame=summit` pins the entry shot on the finale massif,
-// `?frame=railway` on the railway loop. Sculpt iteration was unverifiable
-// through blind orbit choreography — a named subject makes a screenshot loop
+// `?frame=railway` on the railway loop, `?frame=landmark` on the monument.
+// Sculpt iteration was unverifiable through blind orbit choreography — a named subject makes a screenshot loop
 // deterministic. Inert without the query, and a real gesture reclaims the
 // camera as always. Declared before the immediate rebuild watcher below,
 // which calls it.
 const devFrameQuery = String(useRoute().query.frame ?? '')
-const devFramePinned = devFrameQuery === 'summit' || devFrameQuery === 'railway'
+const devFramePinned = ['summit', 'railway', 'landmark'].includes(devFrameQuery)
 const frameDevSubject = () => {
   if (!devFramePinned || !boardCamera) return
   const summit = board.value?.summit
@@ -650,13 +650,28 @@ const frameDevSubject = () => {
   const subject =
     devFrameQuery === 'summit'
       ? summit?.center
-      : railway?.reduce((sum, point) => sum.add(point), new Vector3()).divideScalar(railway.length)
+      : devFrameQuery === 'landmark'
+        ? board.value?.landmark?.center
+        : railway
+            ?.reduce((sum, point) => sum.add(point), new Vector3())
+            .divideScalar(railway.length)
   if (!subject) return
+  // A monument faces the track; swing round to its front before framing.
+  const landmark = board.value?.landmark
+  const camera = resolveThree<PerspectiveCamera>(cameraRef.value)
+  const controls = resolveThree<Parameters<typeof createBoardCamera>[1]>(controlsRef.value)
+  if (devFrameQuery === 'landmark' && landmark && camera && controls)
+    camera.position
+      .copy(controls.target)
+      .add(new Vector3(Math.sin(landmark.yaw), 0.5, Math.cos(landmark.yaw)))
   // Claim the entry beat AND the pending announce, or the show-pass sweep
   // and the walk-announce frame each re-take the shot for the pawn.
   hasFramed = true
   framedAnnounce = announceTokenFor(props.game.players[cameraTargetId.value]) ?? framedAnnounce
-  boardCamera.frameOn(subject, { tiles: devFrameQuery === 'summit' ? 7 : 9, commanding: true })
+  boardCamera.frameOn(subject, {
+    tiles: devFrameQuery === 'summit' ? 7 : devFrameQuery === 'landmark' ? 2 : 9,
+    commanding: true,
+  })
 }
 
 // Fingerprint the tile types: with seeded gate rhythm, same-length boards

@@ -55,6 +55,8 @@
       "
     />
 
+    <MapPins v-if="gameStore.map.pin || gameStore.map.pinAnswer" />
+
     <!-- The persistent 3D stage: mounted once the game starts and alive until
          the room is left. Board steps cross-fade it in over the parked map
          (`stage-active`) instead of cold-starting a WebGL context per walk.
@@ -80,7 +82,12 @@
 
     <RoundHistoryDrawer v-if="showStatusPanel && game" :game="game" />
 
-    <div v-if="revealCountry && !gameStore.map.atlasMode" ref="revealCard" class="reveal-wrapper">
+    <div
+      v-if="revealCountry && !gameStore.map.atlasMode"
+      ref="revealCard"
+      class="reveal-wrapper"
+      :class="{ entered: revealEntered }"
+    >
       <CountryPinwheel :country="revealCountry" class="flag-pinwheel" />
       <article class="pane tr decorator-bottom" :class="[gameStore.previewStatus]">
         <div class="pane-content">
@@ -114,6 +121,7 @@ import CheerToast from '~/components/feedback/CheerToast.vue'
 import NoticeToast from '~/components/feedback/NoticeToast.vue'
 import ReconnectToast from '~/components/feedback/ReconnectToast.vue'
 import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
+import MapPins from '~/components/map/MapPins.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { useChromeTint } from '~~/lib/chrome-tint'
 import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
@@ -121,7 +129,8 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { excludedMicroNations } from '~~/lib/game-rules'
 import { formatNumber } from '~~/lib/number'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
-import { useIsPhone, useKeyboardInset } from '~~/lib/use-viewport'
+import { REVEAL_CARD_BEAT_MS } from '~~/lib/motion'
+import { keyboardInset, useIsPhone, useKeyboardInset } from '~~/lib/use-viewport'
 import { REGION_LABELS } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { BOARD_STEPS } from '~~/lib/seat-transitions'
@@ -186,6 +195,18 @@ watch([revealCard, isPhone], () => {
 onBeforeUnmount(() => {
   revealObserver?.disconnect()
   claimMapBerth(gameStore, REVEAL_BERTH_KEY, undefined)
+})
+
+// The card's bottom clearance includes the keyboard inset, so entering while a
+// round's keyboard is still dropping slid it in mid-screen and then snapped it down.
+const revealEntered = ref(false)
+watch(revealCard, card => {
+  if (!card) revealEntered.value = false
+})
+watchEffect(onCleanup => {
+  if (!revealCard.value || revealEntered.value || keyboardInset.value > 0) return
+  const timer = setTimeout(() => (revealEntered.value = true), REVEAL_CARD_BEAT_MS)
+  onCleanup(() => clearTimeout(timer))
 })
 
 const revealPopulation = computed(() => {
@@ -264,6 +285,10 @@ onMounted(() => {
   z-index: 3000;
   position: absolute;
   mix-blend-mode: difference;
+}
+
+.map-pins {
+  transition: opacity var(--motion-slow) var(--ease-smooth);
 }
 
 .game-map {
@@ -345,6 +370,10 @@ onMounted(() => {
     transition: opacity var(--motion-slow) var(--ease-smooth);
   }
 
+  .map-pins {
+    opacity: 0;
+  }
+
   .game-map {
     opacity: 0;
   }
@@ -361,14 +390,18 @@ onMounted(() => {
   max-width: 34rem;
   overflow: hidden;
   position: absolute;
+  visibility: hidden;
   padding: 0.3rem 0.3rem 0 0;
-  // `backwards` so the card holds its off-screen start from the moment it is
-  // painted — without it the first frames render at the resting position and
-  // the entrance reads as a pop-in mid-screen.
-  animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1 backwards;
   border-top: 0.1rem solid #ccc;
   border-left: 0.1rem solid #ccc;
   border-top-right-radius: 1.9rem;
+  &.entered {
+    visibility: visible;
+    // `backwards` so the card holds its off-screen start from the moment it is
+    // painted — without it the first frames render at the resting position and
+    // the entrance reads as a pop-in mid-screen.
+    animation: slide-up-full var(--motion-slow) var(--ease-out-expressive) 1 backwards;
+  }
   small {
     opacity: 0.7;
     display: block;

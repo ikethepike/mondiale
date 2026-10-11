@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PLACES } from '~~/data/places.gen'
 import { getRoundChallenge, PIN_LANDMARK_TIERS } from '~~/lib/challenges'
@@ -291,8 +291,15 @@ describe('PLACES', () => {
   })
 
   it('never ships the same photo twice', () => {
-    const byHash = new Map<string, string[]>()
+    // Only same-size files can be duplicates — hashing all 230MB of photos
+    // ran past the test timeout whenever the suite shared a busy machine.
+    const bySize = new Map<number, string[]>()
     for (const file of readdirSync('public/landmarks')) {
+      const { size } = statSync(`public/landmarks/${file}`)
+      bySize.set(size, [...(bySize.get(size) ?? []), file])
+    }
+    const byHash = new Map<string, string[]>()
+    for (const file of [...bySize.values()].filter(files => files.length > 1).flat()) {
       const hash = createHash('md5')
         .update(readFileSync(`public/landmarks/${file}`))
         .digest('hex')

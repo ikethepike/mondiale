@@ -172,10 +172,7 @@ const onGuess = (country: Country) => {
   if (banked.value >= props.challenge.atlas.target) {
     stop()
     gameStore.map.pulsing = []
-    return submitAnswer(props.challenge.country, {
-      hintsUsed: hintsUsed.value,
-      reveal: false,
-    })
+    return submitAnswer(props.challenge.country, { hintsUsed: hintsUsed.value })
   }
   // Mid-round refocus — the keyboard is already up, keep the rally going.
   guessInput.value?.focus()

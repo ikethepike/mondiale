@@ -23,7 +23,11 @@ const WELD_EPSILON = 1e-3
  * Index state is preserved: callers merge outlines per bucket, and
  * mergeGeometries refuses mixed indexed/non-indexed input.
  */
-export const outlineOf = (geometry: BufferGeometry, width: number): BufferGeometry => {
+export const outlineOf = (
+  geometry: BufferGeometry,
+  width: number,
+  flatBase = false
+): BufferGeometry => {
   const outline = geometry.clone()
   if (!outline.attributes.normal) outline.computeVertexNormals()
 
@@ -50,6 +54,15 @@ export const outlineOf = (geometry: BufferGeometry, width: number): BufferGeomet
     if (sum.lengthSq() > 1e-8) sum.normalize()
   }
 
+  // A flat-based hull stops at the part's own underside: below it, the hull
+  // pokes out of whatever the part stands on as ink teeth.
+  let floor = -Infinity
+  if (flatBase) {
+    floor = Infinity
+    for (let index = 0; index < positions.count; index++)
+      floor = Math.min(floor, positions.getY(index))
+  }
+
   const fallback = new Vector3()
   for (let index = 0; index < positions.count; index++) {
     let direction = welded.get(keyFor(index))!
@@ -59,7 +72,7 @@ export const outlineOf = (geometry: BufferGeometry, width: number): BufferGeomet
     positions.setXYZ(
       index,
       positions.getX(index) + direction.x * width,
-      positions.getY(index) + direction.y * width,
+      Math.max(floor, positions.getY(index) + direction.y * width),
       positions.getZ(index) + direction.z * width
     )
   }

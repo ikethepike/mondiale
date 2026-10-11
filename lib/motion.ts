@@ -25,6 +25,9 @@ export const DWELL = {
   taunt: 5200,
 } as const
 
+/** How long the reveal card waits, once the keyboard is down, before it slides in, in ms. */
+export const REVEAL_CARD_BEAT_MS = 300
+
 /** The beat a chain or trail reveal holds blank before its replay redraws, in ms. */
 export const REPLAY_REDRAW_MS = 400
 

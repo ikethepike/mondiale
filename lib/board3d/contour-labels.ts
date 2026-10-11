@@ -12,6 +12,7 @@ import { CONTOUR_MAJOR_EVERY, CONTOUR_STEP } from './contour-material'
 import { type LakeSite, lakeShoreDistance } from './lake'
 import type { TilePathResult } from './path'
 import type { TownSite } from './town'
+import type { LandmarkSite } from './landmark'
 import type { PondSite } from './water'
 import type { RiverPath } from './river'
 import type { SummitSite } from './summit'
@@ -65,6 +66,7 @@ export interface ContourLabelOptions {
   railway?: Vector3[]
   lake?: LakeSite
   town?: TownSite
+  landmark?: LandmarkSite
   /** Standing furniture (cairns, stones, scale bar, basecamp, waymarks,
    *  boat) the numbers keep off of. */
   furniture?: Vector3[]
@@ -82,7 +84,7 @@ export const pickContourLabels = (
   path: TilePathResult,
   options: ContourLabelOptions = {}
 ): ContourLabelPlan => {
-  const { pond, summit, river, railway, lake, town, furniture, snowlineY } = options
+  const { pond, summit, river, railway, lake, town, landmark, furniture, snowlineY } = options
   const { shelfPoints, spacing } = path
   const clearance = spacing * 0.95
   const clearanceSquared = clearance * clearance
@@ -117,6 +119,8 @@ export const pickContourLabels = (
     }
     if (lake && lakeShoreDistance(lake, x, z) < 1.5) return false
     if (town && Math.hypot(town.center.x - x, town.center.z - z) < town.radius + 1) return false
+    if (landmark && Math.hypot(landmark.center.x - x, landmark.center.z - z) < landmark.radius + 1)
+      return false
     if (furniture) {
       for (const piece of furniture) {
         if (Math.hypot(piece.x - x, piece.z - z) < FURNITURE_GAP) return false

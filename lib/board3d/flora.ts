@@ -22,6 +22,7 @@ import type { SummitSite } from './summit'
 import type { RiverPath } from './river'
 import type { LakeSite } from './lake'
 import type { TownSite } from './town'
+import type { LandmarkSite } from './landmark'
 
 /**
  * The board's living layer, proven in /test-terrain: blade grass grown as a
@@ -196,6 +197,7 @@ export interface FloraOptions {
   river?: RiverPath
   lake?: LakeSite
   town?: TownSite
+  landmark?: LandmarkSite
   /** The railway loop, when this board dealt one — props keep off the rails. */
   railway?: Vector3[]
   /** The FINAL composed sampler — flora sits exactly on rendered ground. */
@@ -218,6 +220,7 @@ export const buildFlora = (
     river,
     lake,
     town,
+    landmark,
     railway,
     sampler,
     waterDistanceAt,
@@ -249,6 +252,11 @@ export const buildFlora = (
       // caller's clearance tells which population is asking.
       const margin = clearance >= spacing * 1.2 ? 2 : 0.5
       if (Math.hypot(town.center.x - x, town.center.z - z) < town.radius + margin) return false
+    }
+    if (landmark) {
+      const margin = clearance >= spacing * 1.2 ? 2 : 0.5
+      if (Math.hypot(landmark.center.x - x, landmark.center.z - z) < landmark.radius + margin)
+        return false
     }
     if (railway) {
       // 2.6 covers the worst case: a spot midway between two ~2.5-apart loop

@@ -41,6 +41,7 @@ import { PHONE_MAX_PX } from '~~/lib/use-viewport'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { CLIMAX_TILES } from '~~/lib/tiles'
 import { createNumberAtlas } from './atlas'
+import { faceted, type MarkerPart } from './parts'
 import { BOARD_COLORS, TILE_TOP_TINTS } from './colors'
 import { type ContourMaterial, createContourMaterial } from './contour-material'
 import { buildContourLabels, pickContourLabels } from './contour-labels'
@@ -59,6 +60,8 @@ import {
 } from './scenery'
 import { pickSummitSite, type SummitSite, withSummitMassif } from './summit'
 import { pickTownSite, type TownSite } from './town'
+import { type LandmarkSite, pickLandmarkSite } from './landmark'
+import { landmarkParts } from './landmark-models'
 import {
   BOARD_SIZE,
   createHeightSampler,
@@ -97,6 +100,8 @@ export interface BoardBuild {
   summit?: SummitSite
   /** The railway loop, when this board dealt one — the dev camera pin. */
   railway?: Vector3[]
+  /** The monument, when this board dealt one — the dev camera pin. */
+  landmark?: LandmarkSite
   contourMaterial: ContourMaterial
   dispose(): void
 }
@@ -590,6 +595,30 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     animations.push(railway.drive)
   }
 
+  // A famous monument in miniature on some boards — sited after everything
+  // else that stands, so it is always the feature that yields.
+  const landmarkSite = pickLandmarkSite(seed, tilePath, sampler, {
+    pond: pondSite,
+    summit: summitSite,
+    river: riverPath,
+    lake: lakeSite,
+    town: townSite,
+    railway: railwayLoop,
+    furniture: [
+      ...furniturePoints(scenery),
+      ...waymarks.map(mark => mark.position),
+      ...(mooring ? [mooring.position] : []),
+    ],
+  })
+  if (landmarkSite)
+    bakePartsToMeshes(
+      landmarkParts(landmarkSite),
+      new Matrix4()
+        .makeRotationY(landmarkSite.yaw)
+        .setPosition(landmarkSite.center.x, landmarkSite.center.y, landmarkSite.center.z),
+      spacing
+    ).forEach(mesh => group.add(mesh))
+
   // Elevation labels along the major contour lines — sited after the rails
   // so no number ends up under a sleeper.
   const labelPlan = pickContourLabels(sampler, tilePath, {
@@ -599,6 +628,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     railway: railwayLoop,
     lake: lakeSite,
     town: townSite,
+    landmark: landmarkSite,
     furniture: [
       ...furniturePoints(scenery),
       ...waymarks.map(mark => mark.position),
@@ -620,6 +650,7 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
       river: riverPath,
       lake: lakeSite,
       town: townSite,
+      landmark: landmarkSite,
       railway: railwayLoop,
       sampler,
       waterDistanceAt,
@@ -665,18 +696,10 @@ const buildBoard = (seed: string, tiles: Tile[], difficulty: GameDifficulty): Bo
     animations,
     summit: summitSite,
     railway: railwayLoop,
+    landmark: landmarkSite,
     contourMaterial,
     dispose,
   }
-}
-
-export interface MarkerPart {
-  geometry: BufferGeometry
-  color: string
-  /** Opt out of the ink hull. For parts meeting another surface at a grazing
-   *  angle, the inflated shell surfaces through the neighbour as black
-   *  gashes — flush hardware (the lectern's mic mount) skips it. */
-  outline?: boolean
 }
 
 export type MarkerType = IndividualChallengeAccessorId | 'final'
@@ -698,22 +721,6 @@ type MarkerRecipe = (s: number) => MarkerPart[]
  * thin and leaning ones vanish. Detail finer than a tier or a plate is lost to
  * the flat toon shading, so shapes have to work as silhouettes.
  */
-/**
- * Flat-shade a geometry by giving every face its own normals.
- *
- * three.js interpolates normals across a cone's sides, which is right for a
- * many-segment cone and wrong for a four-segment one: the toon ramp smears a
- * gradient over each triangle instead of lighting it as a facet, and the shape
- * reads as a soft blob. Markers share one material per colour (they are merged
- * into a handful of draw calls), so `flatShading` on the material is not
- * available — the fix has to live in the geometry.
- */
-const faceted = (geometry: BufferGeometry): BufferGeometry => {
-  const flat = geometry.toNonIndexed()
-  flat.computeVertexNormals()
-  geometry.dispose()
-  return flat
-}
 
 /**
  * The closed ink pot every lexicon variant stands its quill in: a squat belly
@@ -1218,7 +1225,7 @@ const bakeParts = (
     if (geometry !== part.geometry) part.geometry.dispose()
 
     if (part.outline !== false) {
-      const outline = outlineOf(geometry, outlineWidth)
+      const outline = outlineOf(geometry, outlineWidth, part.flatBase)
       outline.applyMatrix4(matrix)
       outlines.push(outline)
     }

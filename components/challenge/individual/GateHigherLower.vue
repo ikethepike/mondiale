@@ -70,7 +70,7 @@ const answerDuel = (picked: ISOCountryCode) => {
     if (index.value >= total.value - 1) {
       // Swept the whole streak — submit the winning token
       revealDuelsOnMap()
-      return submitAnswer(props.challenge.country, { reveal: false })
+      return submitAnswer(props.challenge.country)
     }
     index.value++
     return
@@ -80,6 +80,6 @@ const answerDuel = (picked: ISOCountryCode) => {
   missNote.value = `${countryName(other)} ranks higher`
   const wrongToken = props.challenge.country === picked ? other : picked
   revealDuelsOnMap()
-  submitAnswer(wrongToken, { reveal: false })
+  submitAnswer(wrongToken)
 }
 </script>
