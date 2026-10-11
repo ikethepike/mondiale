@@ -1,0 +1,29 @@
+// A Vintage unit's fill — its paper tone, washed with its ruler's hue — shared
+// by the live field, the scorecard's lens and the legend swatches.
+
+$vintage-washes: gb, fr, pt, be, es, it, de, za, dk, at-hu, ru, su, tr, contested;
+
+@each $wash in $vintage-washes {
+  .wash-#{$wash} {
+    --wash: var(--vintage-#{$wash});
+  }
+}
+
+@for $tone from 0 through 4 {
+  .tone-#{$tone} {
+    --tone: var(--vintage-tone-#{$tone});
+  }
+}
+
+.vintage-unit {
+  fill: var(--tone, var(--vintage-tone-0));
+  fill-rule: evenodd;
+
+  &[data-wash] {
+    fill: color-mix(in srgb, var(--wash) 48%, var(--tone, var(--vintage-tone-0)));
+  }
+}
+
+.vintage-swatch {
+  background: color-mix(in srgb, var(--wash, transparent) 48%, var(--tone, var(--vintage-tone-0)));
+}

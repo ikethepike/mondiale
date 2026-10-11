@@ -186,6 +186,7 @@ export const warmDeferredModules = () =>
     import('~~/lib/empires'),
     import('~~/lib/migration'),
     import('~~/lib/pyramids'),
+    import('~~/lib/events/server/vintage-grade'),
     import('~~/lib/timeline'),
     import('~~/lib/trends-data'),
     import('~~/data/conflict-events.gen'),

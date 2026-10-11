@@ -98,6 +98,8 @@ export type ClientEventData =
        *  the server re-derives the score from these against the dealt benches
        *  and never trusts a claimed one. */
       parliament?: { placed: string[] }
+      /** Vintage rounds: the year the player dated the map to. */
+      year?: number
     })
   | (SeatEcho & {
       event: 'submit-individual-challenge-answer'

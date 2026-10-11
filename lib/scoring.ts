@@ -146,6 +146,25 @@ export const blitzScore = (
   return { scored: clampScore(raw, maximumPoints), maximum: maximumPoints }
 }
 
+/** Full marks within `perfect` of the target, tapering linearly to nothing at
+ *  `zero` — whatever the distance is measured in. */
+export const taperScore = ({
+  distance,
+  perfect,
+  zero,
+  maximumPoints,
+}: {
+  distance: number
+  perfect: number
+  zero: number
+  maximumPoints: number
+}): number => {
+  if (distance <= perfect) return maximumPoints
+  if (distance >= zero) return 0
+  const scored = Math.round(maximumPoints * (1 - (distance - perfect) / (zero - perfect)))
+  return clampScore(scored, maximumPoints)
+}
+
 /**
  * Pin-drop taper (pin-landmark, heritage-hunt): full marks anywhere
  * inside `perfectDistanceKm`, tapering linearly to nothing at `zeroDistanceKm`.
@@ -161,14 +180,13 @@ export const scorePinDistance = ({
   perfectDistanceKm: number
   zeroDistanceKm: number
   maximumPoints: number
-}): number => {
-  if (distanceKm <= perfectDistanceKm) return maximumPoints
-  if (distanceKm >= zeroDistanceKm) return 0
-  const span = zeroDistanceKm - perfectDistanceKm
-  const missed = distanceKm - perfectDistanceKm
-  const scored = Math.round(maximumPoints * (1 - missed / span))
-  return clampScore(scored, maximumPoints)
-}
+}): number =>
+  taperScore({
+    distance: distanceKm,
+    perfect: perfectDistanceKm,
+    zero: zeroDistanceKm,
+    maximumPoints,
+  })
 
 /** A found answer worth `maximum`, docked per wasted attempt, never below `floor`. */
 export const attemptDecayScore = (wasted: number, maximum: number, step = 2, floor = 2): number =>

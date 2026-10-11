@@ -114,6 +114,9 @@ export const ROUND_WEIGHTS = {
   // session; at 0.05 — empire's rate, for the same reason — a game usually
   // sees one and the read still lands.
   'pyramid-scheme': 0.05,
+  // A set-piece like terra-incognita: a long rewind that rewrites the map, so
+  // it stays an event rather than a rotation slot.
+  vintage: 0.05,
 } as const satisfies Record<RoundChallengeKind, number>
 
 /**
@@ -163,6 +166,8 @@ export const MECHANIC_BY_KIND = {
   'pin-landmark': 'pin',
   flashpoint: 'pin',
   'ghost-state': 'pin',
+  // A pin on a timeline: one guess, scored by how far it lands.
+  vintage: 'pin',
   'no-mans-land': 'collect',
   // Pick from a small table of options.
   'stat-detective': 'choice',

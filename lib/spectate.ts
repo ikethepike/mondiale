@@ -184,6 +184,7 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   // The four pyramids are the round, and they ride the challenge — a
   // spectator reads the same shapes the racer is matching.
   'pyramid-scheme': true,
+  vintage: true,
 }
 
 export const MOUNTABLE_KINDS: RoundChallengeKind[] = (

@@ -26,25 +26,33 @@
 import { jsonParseLiteral } from '../../lib/emit'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { optimize } from 'svgo'
-import { geoRobinson } from 'd3-geo-projection'
 import { topology } from 'topojson-server'
 import { presimplify, quantile, simplify } from 'topojson-simplify'
 import { merge } from 'topojson-client'
 import type { Topology, GeometryCollection } from 'topojson-specification'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
-import { MAP_PROJECTION, MAP_PATHS, MAP_REGIONS } from '../../../data/map.gen'
+import { MAP_PATHS, MAP_REGIONS } from '../../../data/map.gen'
 import { editDistance } from '../../../lib/strings'
 import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
 import { EMPIRE_SEEDS } from '../../data/empire-seeds'
 import type { EmpireKeyframeSpec, EmpireSeed } from '../../data/empire-seeds'
 import { fetchCommonsSvgText, fetchImageAttribution, wait } from '../wikidata/commons'
+import {
+  asPolygonRings,
+  fetchCached,
+  fetchCShapes,
+  project,
+  roundTo,
+  splitAtAntimeridian,
+  tupleCompare,
+  type CShapesFeature,
+  type Point,
+} from './cshapes'
 
 // Pinned: historical-basemaps has no releases, so pin a commit like NE pins a tag.
 const BASEMAPS_COMMIT = '62d8f1a03a71f2d3ff17f2d166f7553f256bce68'
-const CSHAPES_URL = 'https://icr.ethz.ch/data/cshapes/CShapes-2.0.geojson'
-const CACHE_DIR = `${import.meta.dirname}/.cache`
 const OUT_META = 'data/empires.gen.ts'
 const OUT_PATHS = 'data/empire-paths.gen.ts'
 const OUT_FLAGS = 'data/empire-flags.gen.ts'
@@ -86,28 +94,9 @@ const MEMBER_SAMPLE_STEP = 3
 const CORE_COVERAGE = 0.5
 const PARTIAL_COVERAGE = 0.05
 
-type Point = [number, number]
-
-const projection = geoRobinson().scale(MAP_PROJECTION.scale).translate(MAP_PROJECTION.translate)
-const project = ([lon, lat]: Point): Point => projection([lon, lat]) as Point
-
-const roundTo = (value: number, decimals = 2) => Number(value.toFixed(decimals))
-
 // --- Fetch / cache -------------------------------------------------------------
 
 const basemapTag = (year: number) => (year < 0 ? `bc${-year}` : String(year))
-
-const fetchCached = async (cacheName: string, url: string): Promise<string> => {
-  const cachePath = `${CACHE_DIR}/${cacheName}`
-  if (!existsSync(cachePath)) {
-    console.info(`Downloading ${url}`)
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`Download failed: ${response.status} for ${url}`)
-    mkdirSync(CACHE_DIR, { recursive: true })
-    writeFileSync(cachePath, await response.text())
-  }
-  return readFileSync(cachePath, 'utf-8')
-}
 
 const basemapCache = new Map<number, FeatureCollection>()
 const fetchBasemaps = async (year: number): Promise<FeatureCollection> => {
@@ -125,53 +114,11 @@ const fetchBasemaps = async (year: number): Promise<FeatureCollection> => {
   return collection
 }
 
-interface CShapesFeature {
-  feature: Feature<Polygon | MultiPolygon>
-  name: string
-  gwcode: number
-  start: [number, number, number]
-  end: [number, number, number]
-}
-
-let cshapesFeatures: CShapesFeature[] | undefined
-const fetchCShapes = async (): Promise<CShapesFeature[]> => {
-  if (cshapesFeatures) return cshapesFeatures
-  const text = await fetchCached('CShapes-2.0.geojson', CSHAPES_URL)
-  const collection = JSON.parse(text) as FeatureCollection
-  cshapesFeatures = collection.features
-    .filter(
-      feature => feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon'
-    )
-    .map(feature => {
-      const properties = (feature.properties ?? {}) as Record<string, unknown>
-      // The date strings are locale-formatted; the numeric y/m/d fields are not.
-      return {
-        feature: feature as Feature<Polygon | MultiPolygon>,
-        name: String(properties.cntry_name ?? '').trim(),
-        gwcode: Number(properties.gwcode ?? -1),
-        start: [
-          Number(properties.gwsyear),
-          Number(properties.gwsmonth),
-          Number(properties.gwsday),
-        ] as [number, number, number],
-        end: [
-          Number(properties.gweyear),
-          Number(properties.gwemonth),
-          Number(properties.gweday),
-        ] as [number, number, number],
-      }
-    })
-  return cshapesFeatures
-}
-
 const dateTuple = (date: string): [number, number, number] => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
   if (!match) throw new Error(`CShapes slice date must be YYYY-MM-DD, got '${date}'`)
   return [Number(match[1]), Number(match[2]), Number(match[3])]
 }
-
-const tupleCompare = (a: [number, number, number], b: [number, number, number]) =>
-  a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
 
 // --- Alias matching with suggestions ---------------------------------------------
 
@@ -198,50 +145,6 @@ const property = (feature: Feature, key: string): string => {
 }
 
 // --- Geometry helpers -------------------------------------------------------------
-
-const asPolygonRings = (geometry: Polygon | MultiPolygon): Point[][] =>
-  geometry.type === 'Polygon'
-    ? (geometry.coordinates as Point[][])
-    : (geometry.coordinates as Point[][][]).flat()
-
-/**
- * Split rings that cross the antimeridian into a west part and an east part
- * BEFORE topology, so point-by-point projection can never smear a band across
- * the map (USSR's Chukotka, the Russian Empire, Japan's Pacific holdings).
- * Works in a continuous longitude domain (negatives shifted +360), then clips
- * against lon = 180 with a half-plane Sutherland–Hodgman pass per side.
- */
-const splitAtAntimeridian = (ring: Point[]): Point[][] => {
-  const lons = ring.map(([lon]) => lon)
-  const crosses = Math.max(...lons) > 170 && Math.min(...lons) < -170
-  if (!crosses) return [ring]
-
-  const continuous: Point[] = ring.map(([lon, lat]) => [lon < 0 ? lon + 360 : lon, lat])
-
-  const clipHalfPlane = (points: Point[], keepWest: boolean): Point[] => {
-    const inside = ([lon]: Point) => (keepWest ? lon <= 180 : lon >= 180)
-    const output: Point[] = []
-    for (let i = 0; i < points.length; i++) {
-      const current = points[i]
-      const previous = points[(i + points.length - 1) % points.length]
-      const currentIn = inside(current)
-      const previousIn = inside(previous)
-      if (currentIn !== previousIn) {
-        const t = (180 - previous[0]) / (current[0] - previous[0])
-        output.push([180, previous[1] + (current[1] - previous[1]) * t])
-      }
-      if (currentIn) output.push(current)
-    }
-    return output
-  }
-
-  const west = clipHalfPlane(continuous, true)
-  const east = clipHalfPlane(continuous, false).map(([lon, lat]): Point => [
-    lon === 180 ? -180 : lon - 360,
-    lat,
-  ])
-  return [west, east].filter(part => part.length >= 3)
-}
 
 const splitFeature = (
   feature: Feature<Polygon | MultiPolygon>

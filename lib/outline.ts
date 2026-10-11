@@ -341,6 +341,48 @@ export const poleOfInaccessibility = (
   return { point: best, radius: bestDistance }
 }
 
+/**
+ * A label anchor that reads as the country's middle: among the points with at
+ * least `share` of the pole's room, the one nearest the ring's centroid. The
+ * bare pole sits wherever a ring is widest — Lapland for Sweden — which is
+ * correct geometry and the wrong place for a name.
+ */
+export const balancedAnchor = (
+  ring: OutlinePoint[],
+  share = 0.6,
+  /** Holes the anchor must keep clear of (Lesotho inside South Africa). */
+  holes: OutlinePoint[][] = []
+): { point: OutlinePoint; radius: number } | undefined => {
+  const pole = poleOfInaccessibility(ring)
+  if (!pole) return undefined
+  const probe = ring.length > ANCHOR_RING_POINTS ? resampleClosed(ring, ANCHOR_RING_POINTS) : ring
+  const [cx, cy] = ringCentroid(probe)
+  const xs = probe.map(([x]) => x)
+  const ys = probe.map(([, y]) => y)
+  const minX = Math.min(...xs)
+  const minY = Math.min(...ys)
+  const cell = Math.min(Math.max(...xs) - minX, Math.max(...ys) - minY) / 24
+  if (!(cell > 0)) return pole
+  const roomAt = (x: number, y: number) =>
+    holes.reduce(
+      (room, hole) => Math.min(room, -signedEdgeDistance(hole, x, y)),
+      signedEdgeDistance(probe, x, y)
+    )
+  let best = holes.length ? { point: pole.point, radius: roomAt(...pole.point) } : pole
+  let bestOffset = best.radius > 0 ? Math.hypot(pole.point[0] - cx, pole.point[1] - cy) : Infinity
+  for (let x = minX + cell / 2; x < Math.max(...xs); x += cell)
+    for (let y = minY + cell / 2; y < Math.max(...ys); y += cell) {
+      const radius = roomAt(x, y)
+      if (radius < pole.radius * share) continue
+      const offset = Math.hypot(x - cx, y - cy)
+      if (offset < bestOffset) {
+        bestOffset = offset
+        best = { point: [x, y], radius }
+      }
+    }
+  return best
+}
+
 /** Hill-climb passes before the anchor is called good enough. */
 const ANCHOR_MAX_PASSES = 200
 

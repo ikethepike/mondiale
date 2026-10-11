@@ -14,6 +14,7 @@ import {
 import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { VintageOutcome } from '~~/types/challenges/group-modes.type'
 
 /**
  * The preview harness's stand-in for the classic group-round settle.
@@ -54,7 +55,16 @@ const RIVAL_SHARES = [0.6, 0.3]
  * sliced from the round's own correct set, and grade THAT through the same
  * scorer — so the points are real even though the answer is synthetic.
  */
-const rivalSubmission = (correct: readonly ISOCountryCode[], seat: number): GroupSubmission => {
+const rivalSubmission = (
+  correct: readonly ISOCountryCode[],
+  seat: number,
+  vintage?: VintageOutcome
+): GroupSubmission => {
+  // A year round: one rival dates it inside the band, the next a decade late.
+  if (vintage?.runs[0]) {
+    const [from, to] = vintage.runs[0]
+    return { ranking: [], year: seat % 2 ? to + 10 : from }
+  }
   const share = RIVAL_SHARES[seat % RIVAL_SHARES.length] ?? 0.5
   const take = Math.max(1, Math.round(correct.length * share))
   return { ranking: [...correct].slice(0, take) }
@@ -101,7 +111,7 @@ export const settleGroupRound = async ({
         game,
         round,
         playerId,
-        submission: rivalSubmission(correct, rivalSeat++),
+        submission: rivalSubmission(correct, rivalSeat++, mine.answer.vintage),
       })
     } catch {
       graded = await gradeGroupAnswer({

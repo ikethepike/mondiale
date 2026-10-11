@@ -820,6 +820,7 @@ export type DataSetId =
   | 'events'
   | 'changes'
   | 'empires'
+  | 'vintage'
   | 'conflicts'
   | 'conflict-events'
   | 'commodity-exporters'
@@ -1060,6 +1061,14 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'cshapes-2' },
       { source: 'commons-media', dataset: 'Historical flags' },
       { source: 'mondiale-editorial', dataset: 'generators/data/empire-seeds.ts' },
+    ],
+  },
+  vintage: {
+    label: 'Historical political maps',
+    files: ['data/vintage.gen.ts', 'data/vintage-years.gen.ts'],
+    origins: [
+      { source: 'cshapes-2' },
+      { source: 'mondiale-editorial', dataset: 'generators/data/vintage-units.ts' },
     ],
   },
   conflicts: {

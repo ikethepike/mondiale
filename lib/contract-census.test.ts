@@ -287,6 +287,7 @@ describe('client timers', () => {
     'components/challenge/individual/GateTrendDuel.vue': { count: 1, category: 'local-input' },
     'components/challenge/individual/GateAtlas.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/TimelineScorecard.vue': { count: 1, category: 'cosmetic' },
+    'components/challenge/VintageField.vue': { count: 2, category: 'cosmetic' },
     'components/challenge/SunsetVeil.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/FinalSunsetBlitz.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/FinalScales.vue': { count: 1, category: 'cosmetic' },

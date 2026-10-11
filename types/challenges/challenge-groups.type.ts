@@ -154,6 +154,9 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // nothing about it is cultural, and its subject is the country itself
   // rather than an outline held up out of context the way silhouette's is.
   'terra-incognita': 'navigation',
+  // Imperial and colonial borders are the subject, so it shares the empire
+  // round's consent toggle.
+  vintage: 'empires',
 } as const satisfies Record<RoundChallengeKind, ChallengeGroupId | 'core'>
 
 /**
@@ -204,6 +207,8 @@ export const ANSWER_SHAPE_BY_KIND = {
   'ghost-state': 'set',
   composition: 'set',
   'trend-race': 'set',
+  // A year, not a country: the scorecard replaces the ledger.
+  vintage: 'set',
   // Never reaches the answer rows either: the answer is an array of countries
   // whose POSITION is the claim (index = which pyramid it was dropped on), so
   // reordering it would destroy the match it encodes.

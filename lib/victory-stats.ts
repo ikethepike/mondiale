@@ -72,6 +72,7 @@ const SUPERLATIVE_TITLES: { [kind in RoundChallengeKind]: string[] } = {
   'unique-or-bust': ['One of One', 'The Contrarian', 'Road Less Travelled', 'The Original'],
   'clean-sweep': ['Land Grabber', 'Quickest Draw', 'The Closer', 'First to Say It'],
   'pyramid-scheme': ['Demographer', 'The Cohort Reader', 'Shape of Things', 'Census Whisperer'],
+  vintage: ['The Cartographer', 'Map Dater', 'Keeper of Borders', 'Old Atlas'],
 }
 
 /**
@@ -121,6 +122,7 @@ export const KIND_LABELS: {
   'unique-or-bust': { prose: 'unique or bust', title: 'Unique or Bust' },
   'clean-sweep': { prose: 'clean sweep', title: 'Clean Sweep' },
   'pyramid-scheme': { prose: 'age pyramids', title: 'Pyramid Scheme' },
+  vintage: { prose: 'old maps', title: 'Vintage' },
 }
 
 const pickEpithet = (kind: RoundChallengeKind, seed: string): string => {

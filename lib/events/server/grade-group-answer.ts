@@ -18,6 +18,7 @@ import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp01 } from '~~/lib/number'
+import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, Round } from '~~/types/game.types'
@@ -277,6 +278,20 @@ export const gradeGroupAnswer = async ({
       const challenge = expectChallengeType(roundChallenge, 'trend-race-challenge')
       answer = { submitted: submission.ranking, correct: [challenge.standings[0]] }
       scoring = scoreTrendRace({ challenge, submittedGuesses: submission.ranking })
+      break
+    }
+    case 'vintage': {
+      const challenge = expectChallengeType(roundChallenge, 'vintage-challenge')
+      const answers = await loadVintageAnswers()
+      if (!answers) throw new Error('Vintage graded without its answer key')
+      const year = absent ? undefined : submission.year
+      answer = {
+        submitted: [],
+        correct: [],
+        ...(year !== undefined ? { year } : {}),
+        vintage: answers.vintageStory(challenge, game.difficulty),
+      }
+      scoring = answers.scoreVintage({ challenge, difficulty: game.difficulty, year })
       break
     }
     case 'pin-landmark': {

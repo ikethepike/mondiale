@@ -10,6 +10,7 @@ import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SweepRevealCard from '~/components/challenge/SweepRevealCard.vue'
 import TerraRevealCard from '~/components/challenge/TerraRevealCard.vue'
 import TimelineScorecard from '~/components/challenge/TimelineScorecard.vue'
+import VintageScorecard from '~/components/challenge/VintageScorecard.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import { isChallengeOfType } from '~~/lib/rounds'
@@ -161,6 +162,19 @@ export const SCORECARD_REVEALS: Partial<Record<RoundChallengeKind, ScorecardReve
       props: ({ challenge, players, playerId, viewerId }) =>
         isChallengeOfType(challenge, 'timeline-challenge')
           ? { challenge, players, playerId, viewerId }
+          : undefined,
+    },
+  ],
+
+  // A year, not a country: the generic ledger has nothing to say about it.
+  vintage: [
+    {
+      component: VintageScorecard,
+      mode: 'replace',
+      props: ({ challenge, roundAnswers, players, playerId, viewerId }) =>
+        isChallengeOfType(challenge, 'vintage-challenge') &&
+        Object.values(roundAnswers).some(answer => answer.vintage)
+          ? { challenge, roundAnswers, players, playerId, viewerId }
           : undefined,
     },
   ],

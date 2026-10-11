@@ -1,4 +1,4 @@
-import { clamp01 } from '~~/lib/number'
+import { clamp, clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
 import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
 import type { Round } from '~~/types/game.types'
@@ -304,6 +304,56 @@ export const groundPlanSeconds = (layers: number, hints = 0): number =>
   (hints ? GROUND_PLAN_HINT_LEAD_SECONDS + hints * GROUND_PLAN_SECONDS_PER_HINT : 0) +
   GROUND_PLAN_TAIL_SECONDS
 
+/** Vintage holds on 2019's map this long before the rewind starts. */
+export const VINTAGE_LEAD_MS = 1800
+/** What a rewind is budgeted, shared across its steps by how much each one
+ *  changes — never by the years between them, which would leak the date. */
+export const VINTAGE_REWIND_BUDGET_MS = 18000
+/** The reveal replays the same steps forward on a shorter budget, after the
+ *  verdict has had a beat on the dealt map. */
+export const VINTAGE_REPLAY_BUDGET_MS = 6000
+export const VINTAGE_REPLAY_LEAD_MS = 1600
+export const VINTAGE_STEP_MIN_MS = 350
+export const VINTAGE_STEP_MAX_MS = 2600
+/** How far past its budget a crowded pass may run before every step shrinks. */
+const VINTAGE_BUDGET_STRETCH = 1.25
+/** Thinking time once the map stops. */
+export const VINTAGE_GUESS_SECONDS = 20
+export const VINTAGE_REVEAL_HOLD_MS = 10000
+
+/** Each step's [start, length] in ms, in the order given. A weightless step
+ *  (nothing visible changes on this label mode) takes no time at all. */
+export const vintageSchedule = (
+  weights: readonly number[],
+  budgetMs = VINTAGE_REWIND_BUDGET_MS
+): [number, number][] => {
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  if (!total) return weights.map(() => [0, 0])
+  let lengths = weights.map(weight =>
+    weight ? clamp((budgetMs * weight) / total, VINTAGE_STEP_MIN_MS, VINTAGE_STEP_MAX_MS) : 0
+  )
+  const spent = lengths.reduce((sum, length) => sum + length, 0)
+  const cap = budgetMs * VINTAGE_BUDGET_STRETCH
+  if (spent > cap) lengths = lengths.map(length => (length * cap) / spent)
+  let start = 0
+  return lengths.map(length => {
+    const slot: [number, number] = [start, length]
+    start += length
+    return slot
+  })
+}
+
+export const vintageRewindMs = (weights: readonly number[], budgetMs?: number): number => {
+  const schedule = vintageSchedule(weights, budgetMs)
+  const last = schedule[schedule.length - 1]
+  return last ? last[0] + last[1] : 0
+}
+
+/** The one length formula for a Vintage round, shared by the dealer (which
+ *  stamps `durationSeconds`) and `playSeconds` (which the server clocks). */
+export const vintageSeconds = (weights: readonly number[]): number =>
+  Math.ceil((VINTAGE_LEAD_MS + vintageRewindMs(weights)) / 1000) + VINTAGE_GUESS_SECONDS
+
 export interface RoundBeatSpec {
   /** Who runs this kind's server clock — the ONE home for the classic/engine
    *  taxonomy; nothing else may hand-roll a list of engine `_type`s. */
@@ -454,6 +504,16 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // an epidemic showing up as a dent that climbs the chart. The hold is the
   // time to actually watch one country's century go past.
   'pyramid-scheme': { owner: 'classic', revealHoldMs: 9000 },
+  // The hold is the forward replay: the map plays from the dealt year back up
+  // to 2019 so the seat sees everything that changed since.
+  vintage: {
+    owner: 'classic',
+    revealHoldMs: VINTAGE_REVEAL_HOLD_MS,
+    playSeconds: challenge =>
+      isChallengeOfType(challenge, 'vintage-challenge')
+        ? vintageSeconds(challenge.stepWeights)
+        : undefined,
+  },
   empire: {
     owner: 'classic',
     revealHoldMs: 12000,
