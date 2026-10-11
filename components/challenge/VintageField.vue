@@ -34,12 +34,12 @@
           />
         </g>
         <g class="borders">
+          <path ref="settledEl" class="border" />
           <path
-            v-for="arc in borderArcs"
-            :key="arc"
-            :ref="el => setArcEl(arc, el as SVGPathElement | null)"
+            v-for="index in penSlots"
+            :key="`pen-${index}`"
+            :ref="el => (penEls[index - 1] = el as SVGPathElement)"
             class="border"
-            :d="arcPath(region, arc)"
           />
           <path
             v-for="index in slideSlots"
@@ -78,6 +78,7 @@ import { readServerNow } from '~~/lib/use-server-now'
 import { bleedBox, useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import { useIsPhone } from '~~/lib/use-viewport'
 import {
+  arcLength,
   arcPath,
   passFrameAt,
   placeLabels,
@@ -146,33 +147,22 @@ const FEATHER_SOFTNESS = 0.07
 const unitEls: SVGPathElement[] = []
 const incomingEls: SVGPathElement[] = []
 const slideEls: SVGPathElement[] = []
-const arcEls = new Map<number, SVGPathElement>()
-const arcLengths = new Map<number, number>()
-const setArcEl = (arc: number, el: SVGPathElement | null) => {
-  if (!el) return arcEls.delete(arc)
-  arcEls.set(arc, el)
-}
+/** Every border at rest is one path; only the arcs a step is tracing or
+ *  retracting get their own, from a pool sized to the busiest step — a
+ *  rewind to 1772 would otherwise hold thousands of paths. */
+const settledEl = ref<SVGPathElement>()
+const penEls: SVGPathElement[] = []
 
-/** Every arc the pass can show, so no path is ever created mid-animation. */
-const borderArcs = computed(() => {
-  const low = Math.min(props.pass.from, props.pass.to)
-  const high = Math.max(props.pass.from, props.pass.to)
-  const arcs = new Set(sceneAt(props.region, low).borders)
-  for (let step = low; step < high; step++) {
-    for (const arc of props.region.steps[step].draw) arcs.add(arc)
-    for (const arc of props.region.steps[step].erase) arcs.add(arc)
-  }
-  return [...arcs]
-})
-
-const slideSlots = computed(() => {
-  const low = Math.min(props.pass.from, props.pass.to)
-  const high = Math.max(props.pass.from, props.pass.to)
-  let most = 0
-  for (let step = low; step < high; step++)
-    most = Math.max(most, props.region.steps[step].slides.length)
-  return most
-})
+const busiest = (count: (step: VintageStep) => number) =>
+  computed(() => {
+    const low = Math.min(props.pass.from, props.pass.to)
+    const high = Math.max(props.pass.from, props.pass.to)
+    let most = 0
+    for (let step = low; step < high; step++) most = Math.max(most, count(props.region.steps[step]))
+    return most
+  })
+const penSlots = busiest(step => step.erase.length + step.draw.length)
+const slideSlots = busiest(step => step.slides.length)
 
 const sceneCache = new Map<number, VintageScene>()
 const sceneOf = (index: number) => {
@@ -203,14 +193,25 @@ const paintLook = (el: SVGPathElement | undefined, unit: number, shape: number, 
   else delete el.dataset.wash
 }
 
-/** Each arc's last painted draw, so a held arc costs no style write. */
-const arcDrawn = new Map<number, number>()
-const showArc = (arc: number, drawn: number) => {
-  const el = arcEls.get(arc)
-  if (!el) return
+const paintSettled = (arcs: Iterable<number>) => {
+  let d = ''
+  for (const arc of arcs) d += arcPath(props.region, arc)
+  settledEl.value?.setAttribute('d', d)
+}
+
+interface Pen {
+  el: SVGPathElement
+  length: number
+  erasing: boolean
+  /** The last painted draw, so a held pen costs no style write. */
+  drawn?: number
+}
+
+const showPen = (pen: Pen, drawn: number) => {
   drawn = clamp01(drawn)
-  if (arcDrawn.get(arc) === drawn) return
-  arcDrawn.set(arc, drawn)
+  if (pen.drawn === drawn) return
+  pen.drawn = drawn
+  const { el, length } = pen
   if (drawn >= 1) {
     el.style.opacity = '1'
     el.style.strokeDasharray = ''
@@ -221,8 +222,6 @@ const showArc = (arc: number, drawn: number) => {
     el.style.opacity = '0'
     return
   }
-  let length = arcLengths.get(arc)
-  if (length === undefined) arcLengths.set(arc, (length = el.getTotalLength()))
   el.style.opacity = '1'
   el.style.strokeDasharray = `${length} ${length}`
   el.style.strokeDashoffset = `${length * (1 - drawn)}`
@@ -242,24 +241,21 @@ const placedLabels = computed(() => {
 /** What the DOM shows right now, so a new scene repaints only what differs. */
 let shownScene: number | undefined
 let paintedLooks: VintageUnitLook[] = []
-let paintedBorders = new Set<number>()
 
 interface StepInFlight {
   key: string
   step: VintageStep
   tracks: SlideTrack[]
-  sliding: Set<number>
+  pens: Pen[]
   /** Units whose before-outline runs along a sliding border — their fill
    *  bends with the line every frame. */
   bending: Set<number>
 }
 let inFlight: StepInFlight | undefined
 
-/** Ends the step in flight; returns the arcs it touched, which the next
- *  scene must repaint whatever state the last frame left them in. */
-const settleStep = (): Set<number> => {
-  if (!inFlight) return new Set()
-  const touched = new Set([...inFlight.step.erase, ...inFlight.step.draw])
+const settleStep = () => {
+  if (!inFlight) return
+  for (const pen of inFlight.pens) pen.el.style.display = 'none'
   for (const [unit] of inFlight.step.units) {
     if (unitEls[unit]) setOpacity(unitEls[unit], 1)
     if (incomingEls[unit]) incomingEls[unit].style.display = 'none'
@@ -267,11 +263,10 @@ const settleStep = (): Set<number> => {
   for (const el of slideEls) if (el) el.style.display = 'none'
   for (const [unit] of inFlight.step.units) paintedLooks[unit] = [-2, -2]
   inFlight = undefined
-  return touched
 }
 
 const paintScene = (index: number) => {
-  const touched = settleStep()
+  settleStep()
   const scene = sceneOf(index)
   scene.looks.forEach(([shape, era], unit) => {
     const painted = paintedLooks[unit]
@@ -280,11 +275,7 @@ const paintScene = (index: number) => {
     if (unitEls[unit]) setOpacity(unitEls[unit], 1)
     paintedLooks[unit] = [shape, era]
   })
-  for (const arc of borderArcs.value) {
-    const want = scene.borders.has(arc)
-    if (touched.has(arc) || want !== paintedBorders.has(arc)) showArc(arc, want ? 1 : 0)
-  }
-  paintedBorders = new Set(scene.borders)
+  paintSettled(scene.borders)
   labelScene.value = index
   shownScene = index
   emit('scene', index)
@@ -313,8 +304,21 @@ const beginStep = (index: number, next: number): StepInFlight => {
     paintLook(incoming, unit, afterShape, afterEra)
     if (incoming) setOpacity(incoming, 0)
   }
-  for (const arc of sliding) showArc(arc, 0)
-  return { key: `${index}>${next}`, step, tracks, sliding, bending }
+  const moving = new Set([...step.erase, ...step.draw, ...sliding])
+  paintSettled([...sceneOf(index).borders].filter(arc => !moving.has(arc)))
+  const pens = [
+    ...step.erase.filter(arc => !sliding.has(arc)).map(arc => ({ arc, erasing: true })),
+    ...step.draw.filter(arc => !sliding.has(arc)).map(arc => ({ arc, erasing: false })),
+  ].flatMap(({ arc, erasing }, slot): Pen[] => {
+    const el = penEls[slot]
+    if (!el) return []
+    el.setAttribute('d', arcPath(props.region, arc))
+    el.style.display = ''
+    const pen: Pen = { el, length: arcLength(props.region, arc), erasing }
+    showPen(pen, erasing ? 1 : 0)
+    return [pen]
+  })
+  return { key: `${index}>${next}`, step, tracks, pens, bending }
 }
 
 /** A time-lapse, not a sequence of beats: every part of a step runs at a
@@ -329,15 +333,14 @@ const paintStep = (index: number, next: number, progress: number) => {
     settleStep()
     inFlight = beginStep(index, next)
   }
-  const { step, tracks, sliding, bending } = inFlight
+  const { step, tracks, pens, bending } = inFlight
 
   const erase = linear(progress, 0, 0.7)
   const draw = linear(progress, 0.3, 1)
   const fade = linear(progress, 0.1, 0.9)
   const slide = glide(linear(progress, 0.05, 0.95))
 
-  for (const arc of step.erase) if (!sliding.has(arc)) showArc(arc, 1 - erase)
-  for (const arc of step.draw) if (!sliding.has(arc)) showArc(arc, draw)
+  for (const pen of pens) showPen(pen, pen.erasing ? 1 - erase : draw)
 
   const overrides: ArcOverrides = new Map()
   tracks.forEach((track, slot) => {
@@ -382,24 +385,20 @@ const restart = () => {
   shownScene = undefined
   inFlight = undefined
   paintedLooks = []
-  paintedBorders = new Set()
-  arcLengths.clear()
-  arcDrawn.clear()
+  for (const el of penEls) if (el) el.style.display = 'none'
   nextTick(() => {
-    // Measured and built up front, inside the lead: a first getTotalLength or
-    // path string mid-rewind is a dropped frame.
-    for (const arc of borderArcs.value) {
-      showArc(arc, 0)
-      const el = arcEls.get(arc)
-      if (el) arcLengths.set(arc, el.getTotalLength())
-    }
+    // Path strings are built up front, inside the lead: a first one built
+    // mid-rewind is a dropped frame.
     const low = Math.min(props.pass.from, props.pass.to)
     const high = Math.max(props.pass.from, props.pass.to)
-    for (let step = low; step < high; step++)
-      for (const [, beforeShape, , afterShape] of props.region.steps[step].units) {
+    for (let step = low; step < high; step++) {
+      const { units, erase, draw } = props.region.steps[step]
+      for (const [, beforeShape, , afterShape] of units) {
         if (beforeShape >= 0) shapePath(props.region, beforeShape)
         if (afterShape >= 0) shapePath(props.region, afterShape)
       }
+      for (const arc of [...erase, ...draw]) arcPath(props.region, arc)
+    }
     raf = requestAnimationFrame(tick)
   })
 }

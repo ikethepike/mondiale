@@ -121,19 +121,47 @@ const tailText = (points: OutlinePoint[]) => {
 export const polylinePath = (points: OutlinePoint[]) =>
   points.length ? `M${pointText(points[0])}${tailText(points)}` : ''
 
-export const arcPath = (region: VintageRegion, arc: number, overrides?: ArcOverrides) =>
-  polylinePath(pointsOf(region, arc, overrides))
+export const arcPath = (region: VintageRegion, arc: number, overrides?: ArcOverrides) => {
+  if (overrides?.has(arc < 0 ? ~arc : arc)) return polylinePath(pointsOf(region, arc, overrides))
+  const { arcs } = pathTextsOf(region)
+  let text = arcs.get(arc)
+  if (text === undefined) arcs.set(arc, (text = polylinePath(arcPoints(region, arc))))
+  return text
+}
+
+/** An arc's drawn length in map units — what a dash must span to trace it. */
+export const arcLength = (region: VintageRegion, arc: number) => {
+  const { lengths } = pathTextsOf(region)
+  let length = lengths.get(arc)
+  if (length === undefined) {
+    const flat = region.arcs[arc < 0 ? ~arc : arc]
+    length = 0
+    for (let index = 2; index + 1 < flat.length; index += 2)
+      length += Math.hypot(flat[index] - flat[index - 2], flat[index + 1] - flat[index - 1])
+    lengths.set(arc, length)
+  }
+  return length
+}
 
 /** Arc outlines never change, so each signed arc's run after its first point
  *  is formatted once per region; a frame of a slide re-formats only the
  *  arcs it bends. */
 const pathTexts = new WeakMap<
   VintageRegion,
-  { tails: Map<number, string>; rings: Map<number, string[]> }
+  {
+    tails: Map<number, string>
+    rings: Map<number, string[]>
+    arcs: Map<number, string>
+    lengths: Map<number, number>
+  }
 >()
 const pathTextsOf = (region: VintageRegion) => {
   let texts = pathTexts.get(region)
-  if (!texts) pathTexts.set(region, (texts = { tails: new Map(), rings: new Map() }))
+  if (!texts)
+    pathTexts.set(
+      region,
+      (texts = { tails: new Map(), rings: new Map(), arcs: new Map(), lengths: new Map() })
+    )
   return texts
 }
 
