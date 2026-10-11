@@ -40,33 +40,37 @@
           entry.status.steps
         }}</span>
         <span v-if="!folded" class="who">
-          <span class="name"
-            >{{ entry.player.name || 'Player' }}<span v-if="entry.you" class="tag">you</span
-            ><span v-if="entry.points" class="points">+{{ entry.points }}</span></span
-          >
+          <span class="name">
+            <span class="name-text">{{ entry.player.name || 'Player' }}</span>
+            <span v-if="entry.you" class="tag">you</span>
+            <span v-if="entry.points" class="points">+{{ entry.points }}</span>
+          </span>
           <span class="status">
             <span v-if="entry.status.busy" class="pulse" aria-hidden="true" />
-            {{ entry.player.retiring ? 'Leaving after this round' : entry.status.label }}
+            <span class="status-text">{{
+              entry.player.retiring ? 'Leaving after this round' : entry.status.label
+            }}</span>
           </span>
         </span>
-        <button
-          v-if="!folded && isPlayerHost && entry.player.bot && !entry.player.retiring"
-          class="remove-bot-button"
-          type="button"
-          :aria-label="`Remove ${entry.player.name || 'bot'} from the game`"
-          :title="`Remove ${entry.player.name || 'bot'}`"
-          @click.stop="removeBot(entry.player.id)"
-        ></button>
-        <button
-          v-if="!folded && !entry.you"
-          class="cheer-button"
-          type="button"
-          :aria-label="`Cheer ${entry.player.name || 'player'}`"
-          :disabled="cheerCooldown"
-          @click.stop="toggleStrip(entry.player.id)"
-        >
-          👏
-        </button>
+        <span v-if="!folded && !entry.you" class="actions">
+          <button
+            v-if="isPlayerHost && entry.player.bot && !entry.player.retiring"
+            class="action-button remove-bot-button"
+            type="button"
+            :aria-label="`Remove ${entry.player.name || 'bot'} from the game`"
+            :title="`Remove ${entry.player.name || 'bot'}`"
+            @click.stop="removeBot(entry.player.id)"
+          ></button>
+          <button
+            class="action-button cheer-button"
+            type="button"
+            :aria-label="`Cheer ${entry.player.name || 'player'}`"
+            :disabled="cheerCooldown"
+            @click.stop="toggleStrip(entry.player.id)"
+          >
+            👏
+          </button>
+        </span>
         <div v-if="!folded && strip === entry.player.id" class="cheer-strip" @click.stop>
           <button
             v-for="emoji in CHEER_EMOJIS"
@@ -265,42 +269,37 @@ const entries = computed(() =>
 }
 
 .row {
+  --bar-inset: 0.8rem;
   position: relative;
   overflow: hidden;
   display: grid;
-  // The trailing auto columns hold whichever action buttons the row earns
-  // (host's bot-remove, the cheer) — absent buttons collapse their column.
-  grid-template-columns: 2.4rem 1fr auto auto;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.9rem;
-  padding: 0.55rem 0.7rem;
+  gap: 0.8rem;
+  padding: 0.7rem var(--bar-inset) 1.1rem;
   border-radius: 0.9rem;
   background: glass(0.5);
   border: 1px solid ink(0.08);
 
-  // Board progress: a static hairline along the bottom edge — reads at a
-  // glance without costing the row any height.
+  // Inset past the corner radius: flush to the edge, a short fill was sliced
+  // by the rounded corner into a blob. The pending layer sits under the fill.
   &::after {
     content: '';
     position: absolute;
-    left: 0;
-    bottom: 0;
-    height: 2px;
-    width: calc(var(--progress, 0) * 100%);
-    background: var(--player-color);
-    opacity: 0.8;
-  }
-
-  // Faint continuation: where the pawn will stand once queued steps land
-  &::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: calc(var(--progress, 0) * 100%);
-    height: 2px;
-    width: calc(var(--pending, 0) * 100%);
-    background: var(--player-color);
-    opacity: 0.3;
+    left: var(--bar-inset);
+    right: var(--bar-inset);
+    bottom: 0.45rem;
+    height: 0.3rem;
+    border-radius: 0.15rem;
+    background:
+      linear-gradient(var(--player-color), var(--player-color)) 0 0 /
+        calc(var(--progress, 0) * 100%) 100% no-repeat,
+      linear-gradient(
+          color-mix(in srgb, var(--player-color) 35%, transparent),
+          color-mix(in srgb, var(--player-color) 35%, transparent)
+        )
+        0 0 / calc((var(--progress, 0) + var(--pending, 0)) * 100%) 100% no-repeat,
+      ink(0.07);
   }
 
   &.you {
@@ -318,15 +317,20 @@ const entries = computed(() =>
   }
 }
 
-.cheer-button {
+// Stacked, so a host's bot rows don't spend two button widths of the name column.
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.action-button {
   width: 2.4rem;
   height: 2.4rem;
   padding: 0;
   border: none;
   border-radius: 50%;
   background: ink(0.08);
-  font-size: 1.3rem;
-  line-height: 1;
   cursor: pointer;
 
   &:disabled {
@@ -335,17 +339,16 @@ const entries = computed(() =>
   }
 }
 
+.cheer-button {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
 // Host-only mid-race bot removal: the kick affordance's language (a masked
 // cross), quiet at rest — removal shouldn't shout on every row.
 .remove-bot-button {
-  width: 2.4rem;
-  height: 2.4rem;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: ink(0.08);
-  cursor: pointer;
   position: relative;
+  color: var(--dark-blue);
 
   &::after {
     content: '';
@@ -399,14 +402,27 @@ const entries = computed(() =>
 }
 
 .name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
   font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.name-text {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.tag,
+.points {
+  flex-shrink: 0;
+}
+
 .tag {
-  margin-left: 0.5rem;
   font-size: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -414,7 +430,6 @@ const entries = computed(() =>
 }
 
 .points {
-  margin-left: 0.5rem;
   padding: 0.1rem 0.5rem;
   border-radius: 1rem;
   font-size: 1.1rem;
@@ -440,11 +455,22 @@ const entries = computed(() =>
 
 .status {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   font-size: 1.25rem;
+  line-height: 1.3;
   color: var(--dark-blue);
   opacity: 0.75;
+
+  // Centres the dot on the FIRST line when the label wraps.
+  .pulse {
+    margin-top: calc((1.3em - 0.7rem) / 2);
+  }
+}
+
+.status-text {
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 // .pulse lives in assets/scss/templates/_pulse.scss — shared with LoadingRoom.
@@ -484,16 +510,30 @@ const entries = computed(() =>
     gap: 0.6rem;
   }
   .row {
+    --bar-inset: 0.5rem;
     grid-template-columns: 2.4rem;
-    padding: 0.4rem 0.5rem;
+    padding: 0.4rem var(--bar-inset) 0.8rem;
+
+    &::after {
+      bottom: 0.3rem;
+    }
   }
 }
 
 @media (max-width: $tablet) {
   .status-panel {
-    width: min(20rem, 70vw);
+    width: min(27rem, 80vw);
     padding: 1rem;
-    font-size: 0.9em;
+  }
+  .panel-header {
+    gap: 0.6rem;
+  }
+  .panel-title {
+    letter-spacing: 0.05em;
+  }
+  .history-button {
+    padding: 0.2rem 0.6rem;
+    letter-spacing: 0.05em;
   }
   .status-panel.folded {
     width: auto;
