@@ -3,20 +3,16 @@
     <!-- The chamber is the round; the subject line and "Which party governs?"
          are a caption on it, so the prompt steps down and the beats take the
          column (the logo grid overflowed by 72px on a 560px phone). -->
-    <ChallengePrompt v-if="!briefing" :attributions="promptSources" :compact="!finished">
+    <ChallengePrompt v-if="!briefing && !finished" :attributions="promptSources" compact>
       <h1 class="map-caption">{{ heading }}</h1>
-      <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
-      <GuessTicker v-if="!finished" :entries="entries" :players="gameStore.game?.players ?? {}" />
+      <span class="map-caption sub">{{ prompt }}</span>
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
     <!-- Beat 3 stows them on a phone: the seat maths is beat 2's subject, and
          by the roll it is background the round no longer asks about — while
          the roll itself is the tallest thing the round puts on a phone. -->
-    <p
-      v-if="challenge && !finished && !briefing && beat !== 'party'"
-      class="chamber-facts"
-      :class="{ stowed: beat === 'sides' }"
-    >
+    <p v-if="challenge && !finished && !briefing && beat === 'sides'" class="chamber-facts">
       <span class="fact"
         ><strong>{{ challenge.totalSeats }}</strong> seats</span
       >
@@ -139,7 +135,15 @@
               '--sweep-delay': `${index * 4}ms`,
             }"
           />
+          <span class="arc-majority" />
         </div>
+        <p class="arc-caption">
+          <strong>{{ previewBlock ?? challenge?.totalSeats }}</strong>
+          <span>{{
+            previewBlock === undefined ? 'seats' : `of ${challenge?.totalSeats} seats`
+          }}</span>
+          <span class="arc-majority-label">{{ majority }} for a majority</span>
+        </p>
         <div class="card-options blocks">
           <button
             v-for="block in challenge?.blocks ?? []"
@@ -150,11 +154,12 @@
               blockVerdict(block),
               {
                 chosen: mySeats === block,
+                pending: mySeats === undefined && pendingBlock === block,
                 dimmed: !verdict && mySeats !== undefined && mySeats !== block,
               },
             ]"
             :disabled="mySeats !== undefined || !!verdict"
-            @click="pickSeats(block)"
+            @click="confirmsSeats ? (pendingBlock = block) : pickSeats(block)"
             @mouseenter="hoveredBlock = block"
             @mouseleave="hoveredBlock = undefined"
             @focus="hoveredBlock = block"
@@ -178,10 +183,6 @@
              benches read as a chamber's roll rather than as loose rows on
              bare cream. -->
         <div class="sides-panel">
-          <header class="panel-head">
-            <span class="eyebrow">The rest of the house</span>
-          </header>
-          <p class="sides-lede">With the government, or against it?</p>
           <!-- The roll is the round's one scroller on a phone, so it says so:
                the shared scroll-fade mists whichever edge still has benches
                past it (rules/_scroll-fade.scss). -->
@@ -205,7 +206,9 @@
               <!-- Its own column, not trailing the name: under `space-between`
                    every seat count landed wherever its party's name happened to
                    end, so the numbers never read as a comparable set. -->
-              <span class="bench-seats">{{ seatsFor(name) }}</span>
+              <span class="bench-seats"
+                >{{ seatsFor(name) }}<span class="seats-unit"> seats</span></span
+              >
               <!-- The house segmented control, not a second hand-rolled copy of
                    it: one track, two bare-text segments and one solid thumb, so
                    a bench's allegiance reads as a POSITION rather than a pair of
@@ -258,11 +261,21 @@
          centred, inherits `--bottom-clearance`, and sits where beat 3's dial
          sits — one place for the clock all round. -->
     <footer v-if="!finished && !briefing && beat !== 'sides'" class="clock-footer">
-      <ChallengeTimerRadial
-        class="footer-clock"
-        :value="secondsOnClock"
-        :total="BEAT_SECONDS[beat]"
-      />
+      <div class="lock-row">
+        <ButtonFilled
+          v-if="confirmsSeats"
+          class="lock-button seats-lock"
+          :disabled="pendingBlock === undefined || mySeats !== undefined || !!verdict"
+          @click="pendingBlock !== undefined && pickSeats(pendingBlock)"
+        >
+          {{ mySeats !== undefined ? 'Locked in' : 'Lock it in' }}
+        </ButtonFilled>
+        <ChallengeTimerRadial
+          class="footer-clock"
+          :value="secondsOnClock"
+          :total="BEAT_SECONDS[beat]"
+        />
+      </div>
     </footer>
   </section>
 </template>
@@ -283,6 +296,7 @@ import { placedTotalFor } from '~~/lib/live-guess-policy'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
+import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { GovernmentState } from '~~/types/challenges/group-modes.type'
 
@@ -344,12 +358,17 @@ const SIDE_LABELS: Record<BenchSide, string> = {
 
 /** The only local state: beat 3's in-flight sort, cleared when the beat turns. */
 const mySides = ref<Record<string, BenchSide>>({})
+const pendingBlock = ref<number | undefined>()
 watch(
   () => state.value.turn,
   () => {
     mySides.value = {}
+    pendingBlock.value = undefined
   }
 )
+
+const isCoarsePointer = useIsCoarsePointer()
+const confirmsSeats = computed(() => beat.value === 'seats' && isCoarsePointer.value)
 
 /**
  * Beat 3's roll scrolls on a phone — a nine-bench chamber cannot stand in one
@@ -528,7 +547,7 @@ const arcSeats = computed(() => {
 const hoveredBlock = ref<number | undefined>()
 const previewBlock = computed(() => {
   if (verdict.value) return answers.value?.governingSeats
-  return mySeats.value ?? hoveredBlock.value
+  return mySeats.value ?? pendingBlock.value ?? hoveredBlock.value
 })
 
 /**
@@ -829,18 +848,20 @@ const promptSources = computed(() => datasetAttribution('parties'))
   // question on screen is about allegiance, not arithmetic. Tablets up keep
   // them: there the column has the room and the majority line still reads as
   // context for who can carry the house.
-  &.stowed {
-    @media (max-width: $phone) {
-      display: none;
-    }
+  @media (max-width: $phone) {
+    display: none;
   }
 }
 
-.beat-enter-active,
+.beat-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+}
 .beat-leave-active {
   transition:
-    opacity 220ms ease,
-    transform 220ms ease;
+    opacity var(--motion-quick) var(--ease-in-soft),
+    transform var(--motion-quick) var(--ease-in-soft);
 }
 .beat-enter-from {
   opacity: 0;
@@ -903,8 +924,26 @@ const promptSources = computed(() => datasetAttribution('parties'))
 // and the beat's `align-content: center` banked the leftover room above the
 // chip, so the roll scrolled inside a short panel under a band of empty cream.
 .sides-beat {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto minmax(0, max-content) 1fr auto;
   align-content: stretch;
+
+  .beat-subject {
+    grid-row: 2;
+  }
+
+  .sides-panel {
+    grid-row: 3;
+  }
+
+  .sides-footer {
+    grid-row: 5;
+  }
+}
+
+.seats-beat {
+  @media (max-width: $phone) {
+    padding-inline: 16px;
+  }
 }
 
 // The chamber deals 3–7 of these (PARTY_OPTIONS raises a CEILING and the
@@ -964,7 +1003,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
     grid-template-rows: auto 1fr;
     gap: 0.5rem;
     justify-items: center;
-    animation: rise 320ms both;
+    animation: rise var(--motion-base) var(--ease-out-expressive) both;
     animation-delay: var(--rise-delay);
     transition:
       transform var(--motion-quick) var(--ease-out-expressive),
@@ -1045,7 +1084,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
     border-radius: 50%;
     background: ink(0.22);
     transform: translate(-50%, -50%);
-    animation: seat-in 260ms both;
+    animation: seat-in var(--motion-base) var(--ease-out-expressive) both;
     animation-delay: var(--sweep-delay);
     // Seats light in place as the preview changes, so moving between blocks
     // reads as the bench growing rather than the arc redrawing.
@@ -1067,6 +1106,39 @@ const promptSources = computed(() => datasetAttribution('parties'))
 
   &.wrong .seat.lit {
     --seat-lit: var(--hior-ange);
+  }
+}
+
+// Half the seats sit left of centre, so the majority line is the arc's spine.
+.arc-majority {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px dashed ink(0.35);
+}
+
+.arc-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.2rem 0.8rem;
+  margin: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+
+  strong {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .arc-majority-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.6;
   }
 }
 
@@ -1117,6 +1189,12 @@ const promptSources = computed(() => datasetAttribution('parties'))
     &.dimmed {
       opacity: 0.4;
     }
+
+    &.pending {
+      border-color: var(--dark-blue);
+      background: milk();
+      box-shadow: 0 0 0 1px var(--dark-blue);
+    }
   }
 
   .block-share {
@@ -1155,23 +1233,6 @@ const promptSources = computed(() => datasetAttribution('parties'))
   margin-inline: auto;
   padding: 1.1rem 1.25rem;
   pointer-events: auto;
-}
-
-.panel-head {
-  padding-bottom: 0.8rem;
-  border-bottom: $hairline;
-
-  // The shared label carries a bottom margin for stacked cards; here the
-  // hairline is the separator, so it would only double the gap.
-  .eyebrow {
-    margin-bottom: 0;
-  }
-}
-
-.sides-lede {
-  margin-block: 12px 14px;
-  font-size: 15px;
-  opacity: 0.75;
 }
 
 // A BLOCK scroller, not a grid: the shared scroll-fade's sticky ::before and
@@ -1231,23 +1292,43 @@ const promptSources = computed(() => datasetAttribution('parties'))
   // and the card's own border still encloses the two halves as one bench.
   @media (max-width: $phone) {
     grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 8px;
-    padding: 10px 12px;
+    grid-template-areas:
+      'name sides'
+      'seats sides';
+    row-gap: 2px;
+    column-gap: 10px;
+    padding: 8px 8px 8px 12px;
+
+    .bench-name {
+      grid-area: name;
+    }
+
+    .bench-seats {
+      grid-area: seats;
+      padding-left: 40px;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .seats-unit {
+      display: inline;
+    }
 
     .bench-sides {
-      grid-column: 1 / -1;
-      width: 100%;
+      grid-area: sides;
 
-      // The two segments split the row rather than holding a fixed width, and
-      // give back the desktop height: a full-width target is already easy to
-      // hit, and four benches have to share one screen with the lock button.
       :deep(.segment) {
-        min-width: 0;
+        min-width: 6.4rem;
         min-height: 4rem;
-        padding: 0.7rem 1rem;
+        padding: 0.6rem 0.8rem;
+        font-size: 1.4rem;
       }
     }
   }
+}
+
+.seats-unit {
+  display: none;
 }
 
 // The mark gets room to read as a mark rather than a prefix — 0.5rem was 5px

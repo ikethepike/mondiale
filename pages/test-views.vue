@@ -1873,6 +1873,16 @@ const scenarios: Scenario[] = [
         label: 'Briefing — recap for a second chamber',
         build: () => governmentBeatGame('party', 0, 'DE', 'recap'),
       },
+      {
+        id: 'beat-seats',
+        label: 'Beat 2 — how many seats (Germany)',
+        build: () => governmentBeatGame('seats', 1, 'DE'),
+      },
+      {
+        id: 'beat-sides',
+        label: 'Beat 3 — who is with them (Germany)',
+        build: () => governmentBeatGame('sides', 2, 'DE'),
+      },
       ...GOVERNMENT_COUNTRIES.map(isoCode => ({
         id: isoCode,
         label: countryName(isoCode),
