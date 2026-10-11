@@ -42,6 +42,31 @@
   --plan-water-edge: hsla(197.6, 51.2%, 41.8%, 0.5);
   --plan-green: hsla(170.5, 24.7%, 65.1%, 0.3);
 
+  --vintage-gb: hsl(345, 58%, 66%);
+  --vintage-fr: hsl(214, 46%, 58%);
+  --vintage-pt: hsl(150, 30%, 48%);
+  --vintage-be: hsl(44, 78%, 55%);
+  --vintage-es: hsl(24, 72%, 58%);
+  --vintage-it: hsl(78, 34%, 48%);
+  --vintage-de: hsl(26, 12%, 46%);
+  --vintage-za: hsl(18, 38%, 46%);
+  --vintage-dk: hsl(300, 24%, 58%);
+  --vintage-at-hu: hsl(46, 72%, 52%);
+  --vintage-habsburg: var(--vintage-at-hu);
+  --vintage-ru: hsl(276, 24%, 56%);
+  --vintage-su: hsl(4, 60%, 50%);
+  --vintage-tr: hsl(176, 34%, 42%);
+  --vintage-us: hsl(228, 34%, 52%);
+  --vintage-nl: hsl(28, 82%, 56%);
+  --vintage-jp: hsl(196, 46%, 42%);
+  --vintage-qing: hsl(52, 64%, 50%);
+  --vintage-contested: hsl(30, 6%, 55%);
+  --vintage-tone-0: color-mix(in srgb, var(--soft-blue) 12%, var(--background-color));
+  --vintage-tone-1: color-mix(in srgb, var(--warm-sand) 30%, var(--background-color));
+  --vintage-tone-2: color-mix(in srgb, var(--soft-mint) 34%, var(--background-color));
+  --vintage-tone-3: color-mix(in srgb, var(--soft-blue) 22%, var(--background-color));
+  --vintage-tone-4: color-mix(in srgb, var(--dark-blue) 10%, var(--background-color));
+
   --black: hsl(0, 0%, 7.5%);
   --white: hsl(0, 0%, 94.9%);
 }

@@ -69,7 +69,8 @@ jobs:
           flyctl deploy --remote-only --ha=false \
             --config fly.preview.toml \
             --app "$APP" \
-            --build-arg GIT_SHA=${{ github.event.pull_request.head.sha }}
+            --build-arg GIT_SHA=${{ github.event.pull_request.head.sha }} \
+            --build-arg HARNESS_ANSWERS=1
 
       - name: Comment the preview link on the PR
         uses: actions/github-script@v7

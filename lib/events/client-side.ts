@@ -77,6 +77,7 @@ export const WATCH_SAFE_EVENTS: ClientEventData['event'][] = [
   'player-cheering',
   'seat-rendered',
   'time-sync',
+  'fetch-vintage-story',
 ]
 
 export const useClientEvents = () => {

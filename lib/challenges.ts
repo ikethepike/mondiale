@@ -1,3 +1,4 @@
+import { loadVintageAnswers } from './vintage-answers'
 import { ANTHEM_LYRICS } from '~~/data/anthem-lyrics.gen'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { BORDERS } from '~~/data/borders.gen'
@@ -1909,6 +1910,9 @@ const getPyramidSchemeChallenge = async (
   }
 }
 
+const getVintageChallenge = async (game: gameTypes.Game) =>
+  (await loadVintageAnswers())?.pickVintage(game, maximumRoundPoints(game))
+
 /**
  * Trend race: which of these countries' stat moved the most? Every dealt card
  * is a decisive mover in the same direction over a SHARED window (series
@@ -2114,6 +2118,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'pin-landmark': game => getPinLandmarkChallenge(game),
   'trend-race': game => getTrendRaceChallenge({ game }),
   'pyramid-scheme': game => getPyramidSchemeChallenge(game),
+  vintage: game => getVintageChallenge(game),
 }
 
 /**

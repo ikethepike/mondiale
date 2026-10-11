@@ -123,6 +123,8 @@ export interface GroupChallengeAnswer {
    *  the score is already settled by then, and inverting `buzzScore` would not
    *  recover it through the rounding and the server's clamp. */
   buzzAt?: number
+  /** Vintage rounds: the year the player dated the map to. */
+  year?: number
 }
 
 export const gameVariants = [

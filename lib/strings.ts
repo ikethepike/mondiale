@@ -107,6 +107,14 @@ export const baseEncode = (data: string) => {
 export const sentenceCase = (value: string): string =>
   value ? `${value[0].toUpperCase()}${value.slice(1)}` : value
 
+const TAKES_THE =
+  /\b(Union|Empire|Federation|Republic|Kingdom|Confederation|Free State|Free City|Protectorate|Mandate|Territory|Territories|Colony|Emirates|States|Islands|Coast|Commonwealth|Dominion|Raj|Sultanate|Emirate|Khanate|Duchy|Principality|Netherlands|Gambia|Philippines|Bahamas|Belgian Congo|French Congo|Anglo-Egyptian Sudan)\b/
+
+/** A polity's name as prose uses it: "the Soviet Union", "the Gold Coast",
+ *  but "Ghana". */
+export const withArticle = (name: string): string =>
+  TAKES_THE.test(name) && !/^the\b/i.test(name) ? `the ${name}` : name
+
 /** "north-america" → "North America" — the one kebab/slug humanizer. */
 export const titleCase = (value: string): string =>
   value.replace(/-/g, ' ').replace(/\b\w/g, character => character.toUpperCase())

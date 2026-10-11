@@ -1,3 +1,4 @@
+import type { VintageRegionId } from '../vintage.types'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
 import type { TrendMetricId } from '~~/lib/trends'
@@ -1264,6 +1265,45 @@ export interface PyramidSchemeChallenge {
   maximumPoints: number
 }
 
+/**
+ * Vintage: a region's political map rewinds from 2019 to a dealt scene, and
+ * the table dates it. The challenge carries the scene and never its years;
+ * the story reaches each socket over a targeted 'vintage-story' emit once its
+ * seat is graded (`useVintageStory`), since every snapshot reaches the room.
+ */
+export interface VintageChallenge {
+  _type: 'vintage-challenge'
+  region: VintageRegionId
+  /** Index into the region's scenes (lib/vintage), oldest first. */
+  scene: number
+  /** Names on the map; hard plays lines and washes alone. */
+  labelled: boolean
+  /** How much each step between `scene` and 2019 changes, oldest first —
+   *  what paces the rewind (`vintageSchedule`). */
+  stepWeights: number[]
+  /** The slider's bounds. */
+  range: [number, number]
+  durationSeconds: number
+  maximumPoints: number
+}
+
+export interface VintageOutcome {
+  /** Every year that shows exactly the dealt map, as inclusive runs. */
+  runs: [number, number][]
+  /** The year each step of the region lands (step i turns scene i into i + 1). */
+  stepYears: number[]
+  /** Sovereign states in the region per year, from `firstYear`. */
+  states: number[]
+  firstYear: number
+  /** One-line notes keyed `${gwcode}:${year}`, for the changes from the
+   *  band onward — the ones the scorecard explains. */
+  notes: Record<string, string>
+  /** Years either side of a run that still pay in full. */
+  grace: number
+  /** How far outside a run a guess may land before it pays nothing. */
+  zeroAt: number
+}
+
 export type GroupModeChallenge =
   | CleanSweepChallenge
   | PyramidSchemeChallenge
@@ -1297,3 +1337,4 @@ export type GroupModeChallenge =
   | TrendRaceChallenge
   | UniqueOrBustChallenge
   | TerraIncognitaChallenge
+  | VintageChallenge

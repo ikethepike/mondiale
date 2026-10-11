@@ -11,7 +11,9 @@ import {
   SERVER_CONTROLLED_CAPS,
   stampClassicClock,
 } from '~~/lib/round-beats'
+import { isChallengeOfType } from '~~/lib/rounds'
 import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
+import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -54,7 +56,16 @@ const RIVAL_SHARES = [0.6, 0.3]
  * sliced from the round's own correct set, and grade THAT through the same
  * scorer — so the points are real even though the answer is synthetic.
  */
-const rivalSubmission = (correct: readonly ISOCountryCode[], seat: number): GroupSubmission => {
+const rivalSubmission = (
+  correct: readonly ISOCountryCode[],
+  seat: number,
+  runs?: [number, number][]
+): GroupSubmission => {
+  // A year round: one rival dates it inside the band, the next a decade late.
+  if (runs?.[0]) {
+    const [from, to] = runs[0]
+    return { ranking: [], year: seat % 2 ? to + 10 : from }
+  }
   const share = RIVAL_SHARES[seat % RIVAL_SHARES.length] ?? 0.5
   const take = Math.max(1, Math.round(correct.length * share))
   return { ranking: [...correct].slice(0, take) }
@@ -87,6 +98,9 @@ export const settleGroupRound = async ({
   // The correct set the mode just graded against — the rivals' answers are
   // sliced from it, so they can never contain a country the round never had.
   const correct = mine.answer.correct ?? []
+  const vintageRuns = isChallengeOfType(round.groupChallenge, 'vintage-challenge')
+    ? (await loadVintageAnswers())?.vintageRuns(round.groupChallenge)
+    : undefined
 
   let rivalSeat = 0
   for (const playerId of seats) {
@@ -101,7 +115,7 @@ export const settleGroupRound = async ({
         game,
         round,
         playerId,
-        submission: rivalSubmission(correct, rivalSeat++),
+        submission: rivalSubmission(correct, rivalSeat++, vintageRuns),
       })
     } catch {
       graded = await gradeGroupAnswer({

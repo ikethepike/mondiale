@@ -99,13 +99,13 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
 import { MOTION } from '~~/lib/motion'
 import { terraFrame, terraRestoredHoles, terraVanishedBy } from '~~/lib/terra-incognita'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
+import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { TerraBriefingState } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -159,24 +159,6 @@ useFooterBerth(consoleFooter)
  * one place a vanishing could not be seen.
  */
 const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
-const PROMPT_BERTH_KEY = 'terra-prompt'
-let promptBerthClosed = false
-const placePromptBerth = () => {
-  nextTick(() => {
-    if (promptBerthClosed) return
-    const prompt = promptHost.value?.$el as HTMLElement | undefined
-    const bottom = prompt?.getBoundingClientRect().bottom
-    claimMapBerth(
-      gameStore,
-      PROMPT_BERTH_KEY,
-      bottom && !revealed.value ? { top: Math.round(bottom) + BERTH_GAP_PX } : undefined
-    )
-  })
-}
-onBeforeUnmount(() => {
-  promptBerthClosed = true
-  claimMapBerth(gameStore, PROMPT_BERTH_KEY, undefined)
-})
 
 // Total fallback: watchers keep evaluating for a beat after the round
 // advances past this mode, so the state must never dereference undefined.
@@ -230,6 +212,11 @@ const {
  * what starts the round — never the click itself.
  */
 const revealed = computed(() => submitted.value)
+usePromptBerth(
+  computed(() => promptHost.value?.$el as HTMLElement | undefined),
+  () => !revealed.value,
+  'terra-prompt'
+)
 const briefing = computed(() => briefingOpen.value && !showInterstitial.value && !revealed.value)
 const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'terra-ready' }))
 
@@ -335,11 +322,6 @@ const frame = computed(() =>
 // The frame already carries the difficulty's margin, so the camera's own pad
 // stays near zero — the default 35% would undo the easy crop.
 gameStore.map.framePad = { scale: 0.02, floor: 4 }
-
-// The prompt is measured once it stands (after the card) and again when the
-// reveal swaps its copy; the reveal releases the claim so the pull-in can use
-// the whole viewport.
-watch([briefing, revealed, showInterstitial], placePromptBerth, { immediate: true })
 
 // Deliberately NOT watching `missed`: it changes on every restore, and each
 // change would re-aim the rig mid-round. Read inside the callback instead,

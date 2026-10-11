@@ -37,6 +37,7 @@ export type ProviderId =
   | 'unsplash'
   | 'historical-basemaps'
   | 'cshapes'
+  | 'openhistoricalmap'
   | 'flag-icons'
   | 'countries-list'
   | 'mozilla'
@@ -184,6 +185,11 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     description:
       'State borders and capitals 1886–2019, dated to the day — Schvitz et al. 2022, Journal of Conflict Resolution.',
   },
+  openhistoricalmap: {
+    name: 'OpenHistoricalMap',
+    url: 'https://www.openhistoricalmap.org',
+    description: 'Volunteer-mapped history, dated to the day: the borders Europe drew before 1886.',
+  },
   'flag-icons': {
     name: 'flag-icons',
     url: 'https://github.com/lipis/flag-icons',
@@ -247,6 +253,7 @@ export type SourceId =
   | 'unsplash-photos'
   | 'historical-basemaps-geojson'
   | 'cshapes-2'
+  | 'ohm-overpass'
   | 'flag-icons-svg'
   | 'countries-list-package'
   | 'common-voice-clips'
@@ -464,6 +471,14 @@ export const SOURCES: Record<SourceId, Source> = {
     edition: '2.0 (1886–2019)',
     license: 'CC BY-NC-SA 4.0',
     year: 2019,
+  },
+  'ohm-overpass': {
+    provider: 'openhistoricalmap',
+    title: 'OpenHistoricalMap via Overpass',
+    url: 'https://www.openhistoricalmap.org/copyright',
+    edition: '2026-10-11 extract',
+    // CC0 as a whole; a few boundary ways carry their own CC BY 4.0 tag.
+    license: 'CC0 1.0 (some ways CC BY 4.0)',
   },
   'flag-icons-svg': {
     provider: 'flag-icons',
@@ -820,6 +835,7 @@ export type DataSetId =
   | 'events'
   | 'changes'
   | 'empires'
+  | 'vintage'
   | 'conflicts'
   | 'conflict-events'
   | 'commodity-exporters'
@@ -1060,6 +1076,25 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'cshapes-2' },
       { source: 'commons-media', dataset: 'Historical flags' },
       { source: 'mondiale-editorial', dataset: 'generators/data/empire-seeds.ts' },
+    ],
+  },
+  vintage: {
+    label: 'Historical political maps',
+    files: [
+      'data/vintage-africa.gen.ts',
+      'data/vintage-europe.gen.ts',
+      'data/vintage-middle-east.gen.ts',
+      'data/vintage-south-asia.gen.ts',
+      'data/vintage-east-asia.gen.ts',
+      'data/vintage-north-america.gen.ts',
+      'data/vintage-south-america.gen.ts',
+      'data/vintage-years.gen.ts',
+    ],
+    origins: [
+      { source: 'cshapes-2' },
+      { source: 'ohm-overpass', dataset: 'Europe before 1886' },
+      { source: 'mondiale-editorial', dataset: 'generators/data/vintage-units.ts' },
+      { source: 'mondiale-editorial', dataset: 'generators/data/vintage-keyframes.ts' },
     ],
   },
   conflicts: {

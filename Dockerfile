@@ -21,6 +21,9 @@ COPY . .
 # (bun run deploy passes it).
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
+# PR previews only (fly-preview.yml): keep the harness's answer key in the bundle.
+ARG HARNESS_ANSWERS
+ENV HARNESS_ANSWERS=$HARNESS_ANSWERS
 # Bundling the generated country/water data needs more heap than the container
 # default, and the ceiling has moved BOTH ways as the tree changed: 1536, then
 # 3584, then 5120, then back down to 3072, up again to 3584 — and now 4608.

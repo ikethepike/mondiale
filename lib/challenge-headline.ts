@@ -10,6 +10,7 @@ import { isChallengeOfType } from '~~/lib/rounds'
 import { starChartStars } from '~~/lib/star-chart'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import { sentenceCase } from '~~/lib/strings'
+import { VINTAGE_REGION_NAMES } from '~~/types/vintage.types'
 import {
   isTraversalChallenge,
   roundChallengeKind,
@@ -149,6 +150,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'unique-or-bust-challenge'
         ? `Letter ${challenge.letter} — only unshared answers paid`
         : ''
+    case 'vintage': {
+      if (!isChallengeOfType(challenge, 'vintage-challenge')) return ''
+      return `An old map of ${VINTAGE_REGION_NAMES[challenge.region]}`
+    }
     case 'pyramid-scheme': {
       if (!isChallengeOfType(challenge, 'pyramid-scheme-challenge')) return ''
       return `Four age pyramids: ${challenge.countries.map(countryName).join(', ')}`

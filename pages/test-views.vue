@@ -140,7 +140,10 @@ import { heritagePlaces } from '~~/lib/places'
 import { PLAYER_COLORS } from '~~/data/palette'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
 import { SWEEP_SETS } from '~~/lib/clean-sweep'
-import { latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
+import { vintageStoryKey } from '~~/lib/vintage-story'
+import { loadVintageAnswers } from '~~/lib/vintage-answers'
+import type { VintageRegionId } from '~~/types/vintage.types'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { REGION_LABELS } from '~~/lib/variant'
 import { resolveSeatView } from '~/components/view/dispatch'
@@ -618,6 +621,7 @@ const installStubSocket = () => {
     if (event === 'government-ready') simulateGovernmentReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
+    if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
   }
   // Critical events go through timeout().emitWithAck() — stub both paths.
   // `io` is the manager views subscribe to for reconnects; it never fires in
@@ -632,6 +636,21 @@ const installStubSocket = () => {
     io: { on: () => {}, off: () => {} },
   }
   gameStore.socket = stub as never
+}
+
+/** The stub's half of fetch-vintage-story: the harness holds the answer key,
+ *  so it plays the server's targeted reply. */
+const simulateVintageStory = ({ round }: Record<string, unknown>) => {
+  const game = gameStore.game
+  const dealt = typeof round === 'number' ? game?.rounds[round]?.groupChallenge : undefined
+  if (!game || !vintageAnswers || !isChallengeOfType(dealt, 'vintage-challenge')) return
+  gameStore.vintageStories = {
+    ...gameStore.vintageStories,
+    [vintageStoryKey(game.id, round as number)]: vintageAnswers.vintageStory(
+      dealt,
+      game.difficulty
+    ),
+  }
 }
 
 /** The stub's half of the government briefing: the harness seat is the last ready. */
@@ -842,6 +861,85 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
   return game
 }
 
+/** Vintage's answer key reaches the harness only through the dev-guarded
+ *  loader — a production build of this page never carries the years. */
+let vintageAnswers: Awaited<ReturnType<typeof loadVintageAnswers>>
+const prepareVintage = async () => {
+  vintageAnswers ??= await loadVintageAnswers()
+}
+
+const VINTAGE_DEALS: Record<
+  string,
+  { region: VintageRegionId; year: number; difficulty: GameDifficulty }
+> = {
+  'africa-1955': { region: 'africa', year: 1955, difficulty: 'normal' },
+  'africa-1962': { region: 'africa', year: 1962, difficulty: 'normal' },
+  'europe-1921': { region: 'europe', year: 1921, difficulty: 'normal' },
+  'europe-1900': { region: 'europe', year: 1900, difficulty: 'normal' },
+  'europe-1930': { region: 'europe', year: 1930, difficulty: 'normal' },
+  'europe-1780': { region: 'europe', year: 1780, difficulty: 'hard' },
+  'europe-1810': { region: 'europe', year: 1810, difficulty: 'normal' },
+  'europe-1820': { region: 'europe', year: 1820, difficulty: 'normal' },
+  'europe-1862': { region: 'europe', year: 1862, difficulty: 'normal' },
+  'africa-1975-hard': { region: 'africa', year: 1975, difficulty: 'hard' },
+  'middle-east-1930': { region: 'middle-east', year: 1930, difficulty: 'normal' },
+  'south-asia-1946': { region: 'south-asia', year: 1946, difficulty: 'normal' },
+  'east-asia-1935': { region: 'east-asia', year: 1935, difficulty: 'normal' },
+  'north-america-1940': { region: 'north-america', year: 1940, difficulty: 'normal' },
+  'south-america-1930-hard': { region: 'south-america', year: 1930, difficulty: 'hard' },
+}
+
+const vintageChallengeOf = (id: string) => {
+  const deal = VINTAGE_DEALS[id] ?? VINTAGE_DEALS['africa-1955']!
+  if (!vintageAnswers) return undefined
+  const scene = vintageAnswers.vintageSceneAt(deal.region, deal.year)
+  return {
+    challenge: vintageAnswers.vintageChallengeFor(
+      deal.region,
+      scene,
+      deal.difficulty,
+      MAXIMUM_POINTS
+    ),
+    difficulty: deal.difficulty,
+  }
+}
+
+const vintageGame = (id: string, step: SeatStep): Game => {
+  const dealt = vintageChallengeOf(id)
+  const game = mockGame(step, dealt ? [groupRound(dealt.challenge)] : [])
+  if (dealt) game.difficulty = dealt.difficulty
+  return game
+}
+
+/** A settled Vintage table: each seat's year graded through the real scorer. */
+const vintageScoresGame = (id: string): Game => {
+  const deals: Record<string, { deal: string; years: (run: [number, number]) => number[] }> = {
+    late: { deal: 'africa-1962', years: ([, to]) => [to + 11, to + 2, to] },
+    early: { deal: 'europe-1921', years: ([from]) => [from - 6, from, from - 20] },
+    inside: {
+      deal: 'europe-1930',
+      years: ([from, to]) => [Math.round((from + to) / 2), to + 3, from - 9],
+    },
+    hard: { deal: 'africa-1975-hard', years: ([from]) => [from - 4, from, from + 15] },
+  }
+  const plan = deals[id] ?? deals.late!
+  const game = vintageGame(plan.deal, 'scores')
+  const round = game.rounds[game.rounds.length - 1]
+  if (!round || !vintageAnswers || !isChallengeOfType(round.groupChallenge, 'vintage-challenge'))
+    return game
+  const challenge = round.groupChallenge
+  const story = vintageAnswers.vintageStory(challenge, game.difficulty)
+  const years = plan.years(story.runs[0]!)
+  Object.keys(game.players).forEach((playerId, seat) => {
+    const year = years[seat % years.length]
+    round.groupAnswers[playerId] = { submitted: [], correct: [], year }
+    round.playerTurns[playerId] = {
+      points: vintageAnswers!.scoreVintage({ challenge, difficulty: game.difficulty, year }),
+    }
+  })
+  return game
+}
+
 const groupRound = (groupChallenge: unknown): Round =>
   stampMockClassicClock({ groupChallenge, groupAnswers: {}, playerTurns: {} } as unknown as Round)
 
@@ -1011,6 +1109,8 @@ interface Scenario {
   variants?: Variant[]
   /** True when a variant may name ANY country, not just a curated rung. */
   anyCountry?: boolean
+  /** Async data a builder needs before it can run synchronously. */
+  prepare?: () => Promise<void>
   build: (variant?: Variant) => Game
 }
 
@@ -1382,6 +1482,39 @@ const scenarios: Scenario[] = [
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
+  },
+  {
+    id: 'vintage',
+    label: 'Vintage (the map rewinds — date it)',
+    prepare: prepareVintage,
+    variants: [
+      { id: 'africa-1955', label: 'Africa — the eve of independence (normal)' },
+      { id: 'europe-1900', label: 'Europe — Poland partitioned (normal)' },
+      { id: 'europe-1930', label: 'Europe — between the wars (normal)' },
+      { id: 'europe-1780', label: 'Europe — after the First Partition (hard)' },
+      { id: 'europe-1810', label: "Europe — Napoleon's continent (normal)" },
+      { id: 'europe-1820', label: 'Europe — the Vienna settlement (normal)' },
+      { id: 'europe-1862', label: 'Europe — Italy just united (normal)' },
+      { id: 'africa-1975-hard', label: 'Africa 1975 — hard, no names' },
+      { id: 'middle-east-1930', label: 'Middle East — the mandates (normal)' },
+      { id: 'south-asia-1946', label: 'South Asia — the Raj before Partition (normal)' },
+      { id: 'east-asia-1935', label: 'East Asia — Imperial Japan (normal)' },
+      { id: 'north-america-1940', label: 'North America — Newfoundland apart (normal)' },
+      { id: 'south-america-1930-hard', label: 'South America — before the Chaco War (hard)' },
+    ],
+    build: variant => vintageGame(variant?.id ?? 'africa-1955', 'round'),
+  },
+  {
+    id: 'vintage-scores',
+    label: 'Vintage — scorecard',
+    prepare: prepareVintage,
+    variants: [
+      { id: 'late', label: 'A decade too late (Africa 1962)' },
+      { id: 'early', label: 'Too early (Europe 1921)' },
+      { id: 'inside', label: 'Spot on, three seats (Europe 1930)' },
+      { id: 'hard', label: 'Hard — bare map (Africa 1975)' },
+    ],
+    build: variant => vintageScoresGame(variant?.id ?? 'late'),
   },
   {
     id: 'pyramid-scheme-reveal',
@@ -4760,9 +4893,10 @@ const pickFreeCountry = () => {
   pickVariant(scenario.variants?.some(entry => entry.id === wanted) ? wanted : isoCode)
 }
 
-const deal = () => {
+const deal = async () => {
   const scenario = activeScenario.value
   if (!scenario) return
+  await scenario.prepare?.()
   const variant = activeVariant.value
   // Selection survives a refresh:
   //   /test-views?scenario=anthem-buzz&variant=japan

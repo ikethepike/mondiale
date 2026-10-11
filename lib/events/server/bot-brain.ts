@@ -1,3 +1,10 @@
+import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
+import { vintageRuns } from './vintage-grade'
+import type {
+  GovernmentAnswers,
+  UniqueCategoryId,
+  VintageChallenge,
+} from '~~/types/challenges/group-modes.type'
 import { randomBetween, randomInt, sample, sampleMany } from '~~/lib/arrays'
 import {
   botShare,
@@ -64,8 +71,7 @@ import {
   type FinalChallengeAnswer,
   type FinalChallengeItem,
 } from '~~/types/challenges/final-challenge.type'
-import type { GovernmentAnswers, UniqueCategoryId } from '~~/types/challenges/group-modes.type'
-import type { Game, Round } from '~~/types/game.types'
+import type { Game, GameDifficulty, Round } from '~~/types/game.types'
 import { worldRegions, type ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
 import type { ClientEventData } from '~~/types/events.types'
@@ -1436,6 +1442,10 @@ export const composeClassicSubmission = async (
       if (!target) return { ranking: [] }
       return { ranking: [], pin: pinScatter(target, pin, share) }
     }
+    case 'vintage': {
+      const vintage = expectChallengeType(challenge, 'vintage-challenge')
+      return { ranking: [], year: yearScatter(vintage, game.difficulty, share) }
+    }
     case 'sketch': {
       // The one kind with NO correctness gate: `gradeGroupAnswer` clamps the
       // claim with `correct: true` always, because a sketch's similarity IS
@@ -1477,6 +1487,18 @@ const takeShare = (correct: readonly ISOCountryCode[], share: number): ISOCountr
   if (!correct.length) return []
   const take = Math.max(1, Math.round(correct.length * share))
   return correct.slice(0, take)
+}
+
+/** `pinScatter` on a timeline: thrown that many years outside the dealt
+ *  map's run that the taper pays exactly the share, early or late at random. */
+const yearScatter = (challenge: VintageChallenge, difficulty: GameDifficulty, share: number) => {
+  const { grace, zeroAt } = VINTAGE_TUNING[difficulty]
+  const span = zeroAt - grace
+  const missYears = grace + (1 - share) * span
+  const jitter = span * PIN_SCATTER_BAND
+  const thrown = Math.round(Math.max(0, randomBetween(missYears - jitter, missYears + jitter)))
+  const [from, to] = sample(vintageRuns(challenge))!
+  return sample([from - thrown, to + thrown])!
 }
 
 /**

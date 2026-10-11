@@ -118,6 +118,8 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
       return 'Every name goes to whoever said it first. Beating your share of the board pays more; clearing it pays the whole table, and the last name pays its closer.'
     case 'timeline':
       return 'A correct slot banks points — the fuller the line when you placed, the more it paid.'
+    case 'vintage':
+      return 'Any year that shows exactly this map pays in full — the further outside them, the less.'
     case 'empire':
       return 'Naming the ghost pays the smaller share — the earlier the buzz, the more of it. The rest is for tracing its lands: points scale with how closely your taps match its core.'
     default:

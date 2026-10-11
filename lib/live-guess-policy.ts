@@ -108,6 +108,8 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // their third, someone has taken one back. The round is otherwise a silent
   // minute, and it is the one mode with real intermediate state to broadcast.
   'pyramid-scheme': 'presence',
+  // One hidden span of years, shared by the room: a guess is a bearing on it.
+  vintage: 'presence',
 
   // Turn-based: every move is already public, and the views narrate the turns.
   'border-chain': 'none',

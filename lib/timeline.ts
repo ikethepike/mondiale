@@ -3,7 +3,7 @@ import { clamp, formatNumber } from './number'
 import type { EventEntry } from '~~/generators/create-events-file'
 import type { EventKind } from '~~/generators/data/event-seeds'
 import { isFameDealable, type Fame } from '~~/types/fame.types'
-import { isValidISOCode } from '~~/types/geography.types'
+import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import type {
   TimelineChallenge,
   TimelinePlacement,
@@ -50,6 +50,16 @@ export const TIMELINE_TUNING: {
 }
 
 export const timelineEvent = (slug: string): EventEntry | undefined => EVENTS[slug]
+
+/** The curated events a country lived through in one year — Vintage's
+ *  dossier shows one beside the border change it explains. */
+export const eventsIn = (
+  country: ISOCountryCode,
+  year: number
+): (EventEntry & { slug: string })[] =>
+  Object.entries(EVENTS)
+    .filter(([, entry]) => entry.country === country && entry.year === year)
+    .map(([slug, entry]) => ({ ...entry, slug }))
 
 /** An event's tier, defaulting to `minor` for seeds nobody has rated yet — so
  *  adding a seed without a fame rating can never leak onto an easy table. */
