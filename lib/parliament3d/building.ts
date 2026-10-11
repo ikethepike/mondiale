@@ -5,8 +5,10 @@ import {
   ExtrudeGeometry,
   LatheGeometry,
   Shape,
+  ShapeGeometry,
   Vector2,
 } from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { BOARD_COLORS } from '../board3d/colors'
 import { faceted } from '../board3d/parts'
 import { HEMICYCLE_ROWS, hemicycleRadii, hemicycleSeats } from '../hemicycle'
@@ -74,22 +76,43 @@ const column = (radius: number, height: number, x: number, y: number, z: number,
   return faceted(geometry)
 }
 
-/** A flat half-annulus, extruded upward from `y`: one tier of the chamber's benches. */
-const tier = (inner: number, outer: number, height: number, y: number) => {
-  const shape = new Shape()
-  shape.absarc(0, 0, outer, 0, Math.PI, false)
-  shape.absarc(0, 0, inner, Math.PI, 0, true)
-  const geometry = new ExtrudeGeometry(shape, {
-    depth: height,
-    bevelEnabled: false,
-    curveSegments: 18,
+/**
+ * The chamber's benches as ONE stepped solid: a half-lathe of the step profile
+ * closed by its two end faces. Separate rings met at shared walls and shared end
+ * planes, and every coplanar pair z-fought into flicker under the seats.
+ */
+const benches = (steps: readonly { inner: number; height: number }[], outer: number, y: number) => {
+  const profile: Vector2[] = []
+  let previous = 0
+  for (const step of steps) {
+    profile.push(new Vector2(step.inner, previous), new Vector2(step.inner, step.height))
+    previous = step.height
+  }
+  profile.push(new Vector2(outer, previous), new Vector2(outer, 0))
+
+  const shell = new LatheGeometry([...profile].reverse(), 24, Math.PI / 2, Math.PI)
+  const end = (mirror: number) =>
+    new ShapeGeometry(
+      new Shape([
+        ...profile.map(point => new Vector2(point.x * mirror, point.y)),
+        new Vector2(steps[0]!.inner * mirror, 0),
+      ])
+    )
+  shell.deleteAttribute('uv')
+  const caps = [end(1), end(-1)].map(cap => {
+    cap.deleteAttribute('uv')
+    return cap
   })
-  geometry.rotateX(-Math.PI / 2)
-  geometry.translate(chamber.center[0], y, chamber.center[2])
-  return faceted(geometry)
+  const solid = mergeGeometries([shell.toNonIndexed(), ...caps.map(cap => cap.toNonIndexed())])!
+  solid.translate(chamber.center[0], y, chamber.center[2])
+  return faceted(solid)
 }
 
 const tierHeight = (row: number, rows: number) => (rows - 1 - row) * chamber.tier
+
+/** What stands on a surface stands this far above it: a shared plane z-fights. */
+const SURFACE_CLEARANCE = 0.004
+const SPINE_THICKNESS = 0.012
 
 const STONE = BOARD_COLORS.stone
 const TRIM = BOARD_COLORS.plinth
@@ -144,20 +167,19 @@ export const buildParliament = (): ParliamentModel => {
   })
   const radii = hemicycleRadii(HEMICYCLE_ROWS)
   const spacing = (radii[0]! - radii[radii.length - 1]!) / (radii.length - 1)
-  radii.forEach((radius, row) => {
-    const height = tierHeight(row, radii.length)
-    if (height <= 0) return
-    add({
-      geometry: tier(
-        (radius - spacing / 2) * chamber.radius,
-        (radius + spacing / 2) * chamber.radius,
-        height,
-        floorTop
-      ),
-      color: STONE,
-      group: 'chamber',
-      order: 0.1 + row * 0.01,
-    })
+  const steps = radii
+    .map((radius, row) => ({
+      inner: (radius - spacing / 2) * chamber.radius,
+      height: tierHeight(row, radii.length),
+    }))
+    .filter(step => step.height > 0)
+    .reverse()
+  const outer = (radii[0]! + spacing / 2) * chamber.radius
+  add({
+    geometry: benches(steps, outer, floorTop),
+    color: TRIM,
+    group: 'chamber',
+    order: 0.1,
   })
   add({
     geometry: box(0.9, 0.34, 0.36, 0, floorTop, chamber.center[2] + 0.42),
@@ -165,20 +187,32 @@ export const buildParliament = (): ParliamentModel => {
     group: 'chamber',
     order: 0.16,
   })
-  add({
-    geometry: box(
-      0.04,
-      0.014,
-      chamber.radius * 0.96,
-      0,
-      floorTop + tierHeight(0, radii.length) + 0.002,
-      chamber.center[2] - (chamber.radius * 0.96) / 2
-    ),
-    color: SLATE,
-    group: 'spine',
-    order: 0.5,
-    outline: false,
-  })
+  const spineFrom = chamber.center[2] - 0.25
+  const landings = [
+    { near: spineFrom, far: chamber.center[2] - steps[0]!.inner, height: 0 },
+  ].concat(
+    steps.map((step, index) => ({
+      near: chamber.center[2] - step.inner,
+      far: chamber.center[2] - (steps[index + 1]?.inner ?? outer),
+      height: step.height,
+    }))
+  )
+  for (const landing of landings) {
+    add({
+      geometry: box(
+        0.04,
+        SPINE_THICKNESS,
+        landing.near - landing.far - 0.02,
+        0,
+        floorTop + landing.height + SURFACE_CLEARANCE,
+        (landing.near + landing.far) / 2
+      ),
+      color: SLATE,
+      group: 'spine',
+      order: 0.5,
+      outline: false,
+    })
+  }
 
   add({
     geometry: box(hall.width, hall.wallHeight, hall.wall, 0, plinthTop, hallBack + hall.wall / 2),
@@ -400,7 +434,7 @@ export const seatPositions = (dots: number): Vec3[] => {
   const rows = Math.min(HEMICYCLE_ROWS, Math.max(1, dots))
   return seats.map(seat => [
     chamber.center[0] + ((seat.x - 50) / 50) * chamber.radius,
-    floorTop + tierHeight(seat.row, rows),
+    floorTop + tierHeight(seat.row, rows) + SURFACE_CLEARANCE,
     chamber.center[2] - ((100 - seat.y) / 100) * chamber.radius,
   ])
 }

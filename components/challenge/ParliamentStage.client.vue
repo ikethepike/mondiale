@@ -155,7 +155,15 @@ const toonFor = (color: string, own: boolean) => {
   }
   return material
 }
-const inkMaterial = new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide })
+/** Hulls are pushed back in depth so a hull always loses a tie with the surface it outlines. */
+const inkOptions = {
+  color: BOARD_COLORS.ink,
+  side: BackSide,
+  polygonOffset: true,
+  polygonOffsetFactor: 1,
+  polygonOffsetUnits: 2,
+}
+const inkMaterial = new MeshBasicMaterial(inkOptions)
 disposables.push(inkMaterial)
 
 const buildScene = () => {
@@ -188,9 +196,7 @@ const buildScene = () => {
     const mesh = new Mesh(geometry, body)
     if (part.outline !== false) {
       const inkGeometry = outlineOf(geometry, OUTLINE_WIDTH, true)
-      const ink = own
-        ? new MeshBasicMaterial({ color: BOARD_COLORS.ink, side: BackSide, transparent: true })
-        : inkMaterial
+      const ink = own ? new MeshBasicMaterial({ ...inkOptions, transparent: true }) : inkMaterial
       if (own) {
         materials.push(ink)
         disposables.push(ink)
