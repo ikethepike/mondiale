@@ -48,7 +48,7 @@ const buildGame = (players: Player[]): Game =>
     id: uniqueGameId('exits'),
     host: 'a',
     started: true,
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     tiles: Array.from({ length: 11 }, (_, position) => ({
       position,

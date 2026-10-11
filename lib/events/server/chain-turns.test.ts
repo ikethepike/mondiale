@@ -44,7 +44,7 @@ const buildGame = (stateOverrides: Partial<BorderChainState> = {}): Game => {
     id: 'test-game',
     host: 'a',
     tiles: [],
-    variant: 'world',
+    regions: [],
     difficulty: 'hard',
     players: { a: testSeat('a'), b: testSeat('b'), c: testSeat('c') },
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],

@@ -30,7 +30,7 @@ describe('dealErrata', () => {
     for (const difficulty of gameDifficulties) {
       for (let attempt = 0; attempt < 10; attempt++) {
         const { errata } = await dealErrata(difficulty)
-        const inPlay = new Set(playableCountries({ difficulty, variant: 'world' }))
+        const inPlay = new Set(playableCountries({ difficulty, regions: [] }))
 
         expect(errata.lineup.length).toBeGreaterThanOrEqual(5)
         expect(new Set(errata.lineup).size).toBe(errata.lineup.length)

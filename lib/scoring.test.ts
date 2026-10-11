@@ -42,7 +42,7 @@ const hotCold = (maximumPoints: number): HotColdChallenge => ({
 })
 
 // FR -> DE -> PL is a real border route: optimalHops 2, so minimumGuesses is 1.
-const rules: GameRules = { variant: 'world', difficulty: 'normal' }
+const rules: GameRules = { regions: [], difficulty: 'normal' }
 
 const traversal = (maximumPoints: number): TraversalChallenge => ({
   _type: 'traversal-challenge',

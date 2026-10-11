@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
-import { dropsSnapshot } from '~~/lib/events/client/snapshot-revision'
+import { admitsSnapshot } from '~~/lib/events/client/snapshot-revision'
 import { useGameStore } from '~~/store/game.store'
 import {
   clientSendTime,
@@ -108,7 +108,7 @@ export default defineNuxtPlugin(() => {
       console.info(`Received client event: ${eventKey}`)
       noteSnapshotClock(payload.serverNow)
 
-      if (dropsSnapshot(configuration.snapshotScope, gameStore.game, payload)) {
+      if (!admitsSnapshot(configuration.snapshotScope, gameStore.game, payload)) {
         console.info(`Dropped stale ${eventKey}`)
         return
       }

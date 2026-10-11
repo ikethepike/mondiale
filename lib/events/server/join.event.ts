@@ -7,6 +7,9 @@ import { noteSeatPresence, releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { rearmLiveRound } from './rearm-round'
+import { regionsForVariant } from '~~/lib/board-regions'
+import { boardLabel } from '~~/lib/variant'
+import { isValidGameVariant } from '~~/types/game.types'
 
 export const joinEventHandler: EventHandler = async ({
   io,
@@ -55,10 +58,12 @@ export const joinEventHandler: EventHandler = async ({
 
   // Game does not exist, we have to create it
   if (!game) {
-    const { variant } = eventData
-    console.log(`Creating room: ${gameId} - ${variant}`)
+    const regions = isValidGameVariant(eventData.variant)
+      ? regionsForVariant(eventData.variant)
+      : []
+    console.log(`Creating room: ${gameId} - ${boardLabel(regions)}`)
     game = {
-      variant,
+      regions,
       id: gameId,
       rounds: [],
       players: {},

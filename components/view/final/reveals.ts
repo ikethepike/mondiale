@@ -18,7 +18,7 @@ export interface FinalRevealContext {
   challenge: FinalChallengeItem
   /** The country the player last picked, for the cards that mark it. */
   picked?: ISOCountryCode
-  variant?: Game['variant']
+  regions?: Game['regions']
   /** The ranking pool the stat questions are scored against. */
   pool: ISOCountryCode[]
   /** Per-round tallies the multi-pick rounds accumulate in the view. */
@@ -65,11 +65,11 @@ export const FINAL_REVEALS: Record<FinalChallengeItem['_type'], FinalReveal | un
   // board, and where the player's pick landed.
   'min-challenge': {
     component: MinMaxReveal,
-    props: ({ challenge, pool, variant, picked }) => ({ challenge, pool, variant, picked }),
+    props: ({ challenge, pool, regions, picked }) => ({ challenge, pool, regions, picked }),
   },
   'max-challenge': {
     component: MinMaxReveal,
-    props: ({ challenge, pool, variant, picked }) => ({ challenge, pool, variant, picked }),
+    props: ({ challenge, pool, regions, picked }) => ({ challenge, pool, regions, picked }),
   },
   'language-challenge': {
     component: LanguageReveal,

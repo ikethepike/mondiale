@@ -193,7 +193,7 @@ const walked = computed(() => chain.value)
 // Countries out of this game — off a continental board, or benched
 // micro-nations — are illegal moves; fade them so the rule is visible
 // before someone walks Spain → Morocco into it.
-const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+const rules = gameStore.game ?? { regions: [], difficulty: 'normal' as const }
 gameStore.map.dimmed = unplayableCountries(rules)
 
 /** Walk-order badges over the live chain (1 = seed). On easy, the head's open

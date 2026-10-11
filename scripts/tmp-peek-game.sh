@@ -17,7 +17,7 @@ if not value:
     sys.exit(0)
 game = json.loads(value)
 now = int(time.time() * 1000)
-print(f"game: {game.get(\"id\")} variant={game.get(\"variant\")} difficulty={game.get(\"difficulty\")} started={game.get(\"started\")} nextRoundAt={game.get(\"nextRoundAt\")}")
+print(f"game: {game.get(\"id\")} regions={game.get(\"regions\")} difficulty={game.get(\"difficulty\")} started={game.get(\"started\")} nextRoundAt={game.get(\"nextRoundAt\")}")
 rounds = game.get("rounds", [])
 print(f"rounds: {len(rounds)}")
 for player in game.get("players", {}).values():

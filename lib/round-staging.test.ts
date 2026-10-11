@@ -27,7 +27,7 @@ const dealsInOrder = (...kinds: RoundChallengeKind[]) => {
 const game = (players: number, rounds = 3, difficulty: Game['difficulty'] = 'normal'): Game =>
   ({
     id: 'test-room',
-    variant: 'world',
+    regions: [],
     difficulty,
     rounds: Array.from({ length: rounds }, () => ({})),
     players: Object.fromEntries(
@@ -91,7 +91,7 @@ describe('round staging', () => {
     expect(summary).toContain('test-room')
     expect(summary).toContain('manhunt, unique-or-bust, border-chain')
     expect(summary).toContain('1 players')
-    expect(summary).toContain('normal/world')
+    expect(summary).toContain('normal/the world')
   })
 
   it('does not retry a dealer that THREW — it takes the floor at once', async () => {

@@ -21,7 +21,7 @@ import {
 import type { UniqueCategoryId, UniqueOrBustChallenge } from '~~/types/challenges/group-modes.type'
 import type { GameRules } from '~~/types/game.types'
 
-const RULES: GameRules = { variant: 'world', difficulty: 'normal' }
+const RULES: GameRules = { regions: [], difficulty: 'normal' }
 
 const boardChallenge = (
   order: string[],

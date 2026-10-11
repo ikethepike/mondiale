@@ -24,7 +24,7 @@ import {
 } from './manhunt'
 import { getValueByAccessorID } from './values'
 
-const RULES = { variant: 'world' as const, difficulty: 'normal' as const }
+const RULES = { regions: [], difficulty: 'normal' as const }
 const game = { difficulty: 'normal' as const }
 
 const state = (overrides: Partial<ManhuntState> = {}): ManhuntState => ({

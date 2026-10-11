@@ -94,9 +94,9 @@ describe('dealRosetta', () => {
     // folds the Middle East in, so it can still meet it — both must stay on
     // the board the player is actually looking at.
     for (const variant of ['europe', 'africa', 'asia'] as const) {
-      const board = new Set(playableCountries({ variant, difficulty: 'normal' }))
+      const board = new Set(playableCountries({ regions: [variant], difficulty: 'normal' }))
       for (const accessorId of individualChallengeAccessors) {
-        const dealt = await getIndividualChallenge({ accessorId, variant })
+        const dealt = await getIndividualChallenge({ accessorId, regions: [variant] })
         const exemplar = dealt.rosetta?.exemplar.isoCode
         if (!exemplar) continue // relation too thin for this board — a legal fallback
         expect(board.has(dealt.country), `${variant}/${accessorId} answer`).toBe(true)

@@ -1,5 +1,5 @@
 import type { Fame } from './fame.types'
-import type { GameVariant } from './game.types'
+import type { BoardRegion, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 
 /** Every region's history runs to this year's map — CShapes' last. */
@@ -35,6 +35,14 @@ export const VINTAGE_REGIONS_BY_VARIANT: Record<GameVariant, readonly VintageReg
   'north-america': ['north-america'],
   'south-america': ['south-america'],
 }
+
+/** A combined board deals every region any of its continents would. */
+export const vintageRegionsFor = (regions: readonly BoardRegion[]): VintageRegionId[] =>
+  regions.length
+    ? VINTAGE_REGION_IDS.filter(id =>
+        regions.some(region => VINTAGE_REGIONS_BY_VARIANT[region].includes(id))
+      )
+    : [...VINTAGE_REGIONS_BY_VARIANT.world]
 
 /**
  * Whose wash a unit wears: a colony takes its ruler's, and the land empires

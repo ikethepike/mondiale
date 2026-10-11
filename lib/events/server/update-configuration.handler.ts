@@ -1,4 +1,5 @@
 import { generateTiles } from '~~/lib/tiles'
+import { normalizeBoardRegions, upgradeLegacyConfiguration } from '~~/lib/board-regions'
 import { isValidGameConfiguration } from '~~/types/game.types'
 import { defineGameHandler } from '../server-side'
 
@@ -12,7 +13,7 @@ export const updateConfigurationHandler = defineGameHandler(
     if (game.started)
       return console.warn(`Configuration change rejected — game already started: ${game.id}`)
 
-    const { configuration } = eventData
+    const configuration = upgradeLegacyConfiguration(eventData.configuration)
     // The client validates before emitting, but the payload is still
     // client-supplied — never assign an unchecked shape into game state.
     if (!isValidGameConfiguration(configuration))
@@ -20,7 +21,7 @@ export const updateConfigurationHandler = defineGameHandler(
 
     game.difficulty = configuration.difficulty
     game.length = configuration.length
-    game.variant = configuration.variant
+    game.regions = normalizeBoardRegions(configuration.regions)
     game.liveGuesses = configuration.liveGuesses
     // Tri-state: an absent key means auto (the difficulty decides), so the
     // key must actually disappear rather than persist as an explicit value.

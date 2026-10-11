@@ -7,7 +7,7 @@ import type { Game, GameDifficulty } from '~~/types/game.types'
 
 const game = (difficulty: GameDifficulty, overrides?: object): Game =>
   ({
-    variant: 'world',
+    regions: [],
     difficulty,
     rounds: [{}],
     players: {},
@@ -28,7 +28,7 @@ describe('dealTrendDuels (via getIndividualChallenge)', () => {
       const dealt = await getIndividualChallenge({
         accessorId: 'capital.name',
         difficulty: difficulty as GameDifficulty,
-        variant: 'world',
+        regions: [],
       })
       const duels = dealt.trendDuels
       expect(duels).toHaveLength(expected)
@@ -54,7 +54,7 @@ describe('dealTrendDuels (via getIndividualChallenge)', () => {
     const dealt = await getIndividualChallenge({
       accessorId: 'capital.name',
       difficulty: 'normal',
-      variant: 'world',
+      regions: [],
       challengeOverrides: { trends: false },
     })
     expect(dealt.trendDuels).toBeUndefined()
@@ -71,7 +71,7 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
       const dealt = await getIndividualChallenge({
         accessorId: 'isoCode',
         difficulty: difficulty as GameDifficulty,
-        variant: 'world',
+        regions: [],
       })
       const trajectory = dealt.trajectory
       expect(trajectory).toBeDefined()
@@ -98,7 +98,7 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
         const dealt = await getIndividualChallenge({
           accessorId: 'isoCode',
           difficulty: difficulty as GameDifficulty,
-          variant: 'world',
+          regions: [],
         })
         const trajectory = dealt.trajectory
         if (!trajectory) continue
@@ -129,7 +129,7 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
         const dealt = await getIndividualChallenge({
           accessorId: 'isoCode',
           difficulty,
-          variant: 'world',
+          regions: [],
         })
         if (dealt.trajectory) dealtCount++
       }
@@ -142,7 +142,7 @@ describe('dealTrajectoryMatch (via getIndividualChallenge)', () => {
     const dealt = await getIndividualChallenge({
       accessorId: 'isoCode',
       difficulty: 'normal',
-      variant: 'world',
+      regions: [],
       challengeOverrides: { trends: false },
     })
     expect(dealt.trajectory).toBeUndefined()

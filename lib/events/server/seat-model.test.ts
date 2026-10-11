@@ -172,7 +172,7 @@ const lobby = (scenario: Scenario): { game: Game; roles: Map<string, SeatRole> }
     host: seats[0]!.id,
     started: false,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: scenario.difficulty,
     liveGuesses: true,
     challengeOverrides: {},

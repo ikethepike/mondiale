@@ -85,7 +85,7 @@ const buildGame = (players: Player[]): Game =>
     host: players[0]!.id,
     started: true,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     tiles: TILES,
     players: Object.fromEntries(players.map(player => [player.id, player])),

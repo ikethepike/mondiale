@@ -153,7 +153,7 @@ describe('isGroupEnabled', () => {
 describe('conflicts stay a rare find', () => {
   it('never opens a game with a conflict stat', () => {
     const game = {
-      variant: 'world',
+      regions: [],
       difficulty: 'hard',
       rounds: [],
       players: { p1: {} },
@@ -178,7 +178,7 @@ describe('ranking hands split the field', () => {
     // Europe is the pool that bites: electricity access is 100% across the
     // continent, and a flat hand scores itself.
     const game = {
-      variant: 'europe',
+      regions: ['europe'],
       difficulty: 'normal',
       rounds: [],
       players: { p1: {}, p2: {} },
@@ -223,7 +223,7 @@ describe('isValidChallengeOverrides', () => {
 describe('isValidGameConfiguration', () => {
   const valid = {
     difficulty: 'normal',
-    variant: 'world',
+    regions: [],
     length: 'medium',
     liveGuesses: true,
     challengeOverrides: { conflicts: false },

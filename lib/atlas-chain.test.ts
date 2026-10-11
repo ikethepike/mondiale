@@ -18,7 +18,7 @@ import { gameDifficulties, type GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const WORLD: ISOCountryCode[] = [...ISOCountryCodes]
-const RULES: GameRules = { variant: 'world', difficulty: 'normal', includeMicroNations: false }
+const RULES: GameRules = { regions: [], difficulty: 'normal', includeMicroNations: false }
 
 describe('atlasKey and letters', () => {
   it('normalizes punctuation, diacritics and spaces', () => {
@@ -114,7 +114,7 @@ describe('pickAtlasSeed', () => {
   })
 
   it('seeds the world pool even in region games', () => {
-    const seed = pickAtlasSeed({ ...RULES, variant: 'europe' })
+    const seed = pickAtlasSeed({ ...RULES, regions: ['europe'] })
     expect(seed).toBeTruthy()
   })
 })

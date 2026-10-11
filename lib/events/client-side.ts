@@ -282,7 +282,6 @@ export const useClientEvents = () => {
               'join',
               {
                 event: 'join',
-                variant: game.value.variant,
                 ...(gameStore.joinAsSpectator ? { asSpectator: true } : {}),
               },
               eventTarget

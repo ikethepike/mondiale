@@ -11,6 +11,7 @@ import {
   subsampleKeyframes,
 } from '~~/lib/empires'
 import { testSeat } from '~~/lib/events/server/test-seat'
+import { regionsForVariant } from '~~/lib/board-regions'
 import { variantCountries } from '~~/lib/variant'
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
 import { FAME_BY_DIFFICULTY, FAME_TIERS, isFameDealable } from '~~/types/fame.types'
@@ -191,7 +192,7 @@ describe('the fame gate', () => {
 
 const game = (difficulty: GameDifficulty, overrides?: object): Game =>
   ({
-    variant: 'world',
+    regions: [],
     difficulty,
     rounds: [{}],
     players: { a: testSeat('a') },
@@ -266,7 +267,7 @@ describe('getEmpireChallenge (via getRoundChallenge)', () => {
     for (const variant of ['world', 'europe', 'south-america'] as const) {
       const pool = new Set(variantCountries(variant))
       const dealt = await getRoundChallenge({
-        game: game('normal', { variant }),
+        game: game('normal', { regions: regionsForVariant(variant) }),
       })
       if (!('_type' in dealt) || dealt._type !== 'empire-challenge') continue // ranking fallback is the contract
       for (const isoCode of dealt.members) expect(pool.has(isoCode)).toBe(true)

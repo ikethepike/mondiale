@@ -10,6 +10,7 @@ import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/
 import { mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
 import { gameVariants } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/board-regions'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { readFileSync } from 'node:fs'
@@ -51,7 +52,7 @@ describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => 
         const dealt = await getIndividualChallenge({
           accessorId,
           difficulty: 'normal',
-          variant: 'world',
+          regions: [],
         })
         expect(dealt._type).toBe('individual-challenge')
         expect(dealt.id).toBe(accessorId)
@@ -324,6 +325,27 @@ describe('dealOddOneOut (via forced variant)', { timeout: TIMEOUT }, () => {
     }
     expect(sawFamily, 'no party-family question was dealt — test is vacuous').toBe(true)
   })
+  // One continent makes "three share a region" unanswerable; two make it a question.
+  it('asks about regions on a combined board, never on a single continent', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'odd-one-out'
+    let sawRegion = false
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const single = await getIndividualChallenge({ accessorId: 'isoCode', regions: ['europe'] })
+      expect(single.oddOneOut?.kind).not.toBe('region')
+
+      const combined = await getIndividualChallenge({
+        accessorId: 'isoCode',
+        regions: ['europe', 'africa'],
+      })
+      if (combined.oddOneOut?.kind !== 'region') continue
+      sawRegion = true
+      const board = new Set(
+        playableCountries({ regions: ['europe', 'africa'], difficulty: 'normal' })
+      )
+      for (const isoCode of combined.oddOneOut.countries) expect(board.has(isoCode)).toBe(true)
+    }
+    expect(sawRegion, 'no region question was dealt — test is vacuous').toBe(true)
+  })
 })
 
 describe('atlas gate dealing', { timeout: TIMEOUT }, () => {
@@ -411,13 +433,15 @@ describe('far-flung gate dealing', { timeout: TIMEOUT }, () => {
     process.env.FORCE_INDIVIDUAL_VARIANT = 'far-flung'
     for (const variant of gameVariants) {
       for (const difficulty of ['normal', 'hard'] as const) {
-        const board = new Set(playableCountries({ variant, difficulty }))
+        const board = new Set(
+          playableCountries({ regions: regionsForVariant(variant), difficulty })
+        )
         let staged = 0
         for (let attempt = 0; attempt < 20; attempt++) {
           const dealt = await getIndividualChallenge({
             accessorId: 'isoCode',
             difficulty,
-            variant,
+            regions: regionsForVariant(variant),
           })
           // A board too thin for the mode deals the `find` fallback instead —
           // that's the designed fallthrough, not a failure.

@@ -7,7 +7,7 @@ import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
-import { REGION_LABELS } from '~~/lib/variant'
+import { boardLabel } from '~~/lib/variant'
 
 /**
  * The scorecard's per-kind prose, beside `roundChallengeHeadline` — the other
@@ -184,9 +184,7 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
             : undefined
         return {
           submitted: 'Your Answers',
-          correct: scope
-            ? `Where It's Spoken in ${REGION_LABELS[scope]}`
-            : "Everywhere It's Spoken",
+          correct: scope ? `Where It's Spoken in ${boardLabel(scope)}` : "Everywhere It's Spoken",
         }
       }
       case 'clean-sweep':

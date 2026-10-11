@@ -46,7 +46,7 @@ const buildGame = (
     id: 'test-game',
     host: 'a',
     tiles: [],
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     started: true,
     players: Object.fromEntries(

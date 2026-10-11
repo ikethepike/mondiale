@@ -19,8 +19,8 @@ import {
 } from './chain'
 
 // Hard rules keep micro-nations in play, preserving the full historic graph.
-const WORLD: GameRules = { variant: 'world', difficulty: 'hard' }
-const EUROPE: GameRules = { variant: 'europe', difficulty: 'hard' }
+const WORLD: GameRules = { regions: [], difficulty: 'hard' }
+const EUROPE: GameRules = { regions: ['europe'], difficulty: 'hard' }
 
 const state = (overrides: Partial<BorderChainState> = {}): BorderChainState => ({
   ready: [],

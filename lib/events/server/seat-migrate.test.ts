@@ -78,7 +78,7 @@ const legacyGame = (
     host: seats[0]!.id,
     started: true,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     tiles: TILES,
     players: Object.fromEntries(seats.map(seat => [seat.id, seat])),

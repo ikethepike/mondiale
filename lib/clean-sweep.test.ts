@@ -22,9 +22,10 @@ import { DATASETS } from '~~/lib/attribution'
 import { playableCountries } from '~~/lib/game-rules'
 import type { CleanSweepChallenge, SweepClaim } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty, GameRules, GameVariant } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-const RULES: GameRules = { variant: 'world', difficulty: 'normal' }
+const RULES: GameRules = { regions: [], difficulty: 'normal' }
 
 const DIFFICULTIES: GameDifficulty[] = ['easy', 'normal', 'hard']
 const VARIANTS: GameVariant[] = [
@@ -69,7 +70,7 @@ describe('the set register', () => {
       for (const difficulty of DIFFICULTIES) {
         for (const [setId, spec] of Object.entries(SWEEP_SETS)) {
           expect(
-            () => spec.members({ variant, difficulty }),
+            () => spec.members({ regions: regionsForVariant(variant), difficulty }),
             `${setId} on ${variant}`
           ).not.toThrow()
         }
@@ -137,7 +138,7 @@ describe('the set register', () => {
     // country on the board is not a question.
     const band = sweepSlotBand('normal', 2)
     expect(
-      sweepBoardFor('south-america', { variant: 'south-america', difficulty: 'normal' }, band)
+      sweepBoardFor('south-america', { regions: ['south-america'], difficulty: 'normal' }, band)
     ).toBeUndefined()
     expect(sweepBoardFor('south-america', RULES, band)).toBeDefined()
   })
@@ -326,7 +327,7 @@ describe('scoring the round', () => {
 
 describe('sweepOffBoardFor', () => {
   const rules = (variant: GameVariant, difficulty: GameDifficulty = 'normal') =>
-    ({ variant, difficulty }) as GameRules
+    ({ regions: regionsForVariant(variant), difficulty }) as GameRules
 
   it('names the members the band trimmed away', () => {
     // "Name every member of NATO" deals 30 of 32 on a hard world board —
@@ -338,7 +339,7 @@ describe('sweepOffBoardFor', () => {
     for (const isoCode of off) expect(dealt).not.toContain(isoCode)
     // Every name it yields is a real member — never a stray.
     const everywhere = SWEEP_SETS.nato!.members({
-      variant: 'world',
+      regions: [],
       difficulty: 'hard',
       includeMicroNations: true,
     } as GameRules)

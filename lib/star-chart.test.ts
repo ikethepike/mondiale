@@ -19,10 +19,11 @@ import {
 } from '~~/lib/star-chart'
 import type { StarChartChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const rules = (difficulty: GameDifficulty = 'normal', variant: GameVariant = 'world') =>
-  ({ difficulty, variant }) as Game
+  ({ difficulty, regions: regionsForVariant(variant) }) as Game
 
 const seeded = (seed: string) => alea(seed) as unknown as () => number
 
@@ -188,7 +189,7 @@ describe('pickStarChart', () => {
   it('yields to another round kind when the board has no sky to fill', () => {
     // No shipped variant is this thin, so the guard is driven through an empty
     // pool: a dealer that returned five of nothing would freeze the round.
-    const empty = { difficulty: 'normal', variant: 'atlantis' } as unknown as Game
+    const empty = { difficulty: 'normal', regions: ['atlantis'] } as unknown as Game
     expect(starChartField(empty)).toEqual([])
     expect(pickStarChart(empty)).toBeUndefined()
   })
@@ -267,7 +268,7 @@ describe('the star-chart round', () => {
     ({
       id: 'star-chart-test',
       difficulty,
-      variant: 'world',
+      regions: [],
       rounds: [],
       players: {},
       challengeOverrides: {},
