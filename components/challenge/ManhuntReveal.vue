@@ -1,39 +1,43 @@
 <template>
   <section class="manhunt-reveal pane tr decorator-bottom">
-    <DespotHat class="despot-hat" />
-    <h2 class="headline">
-      {{ headline }}
-    </h2>
-    <p class="escape-line">{{ escapeLine }}</p>
-    <ol class="trail country-chip-list">
-      <template v-for="(isoCode, index) in walk" :key="`${index}-${isoCode}`">
-        <li v-if="index > 0" class="hop-mark" :class="{ sea: isSeaHop(index) }">
-          {{ isSeaHop(index) ? '〜' : '→' }}
+    <div class="reveal-head">
+      <DespotHat class="despot-hat" />
+      <div class="head-text">
+        <h2 class="headline">{{ headline }}</h2>
+        <p class="escape-line">{{ escapeLine }}</p>
+      </div>
+    </div>
+    <ol ref="trailRail" class="trail country-chip-list rail">
+      <template v-for="(stop, index) in stops" :key="`${index}-${stop.isoCode}`">
+        <li v-if="index > 0" class="hop-mark" :class="stop.shape">
+          {{ stop.shape === 'sea' ? '〜' : '→' }}
         </li>
         <CountryChip
           compact
           class="map-caption"
-          :class="{ last: index === walk.length - 1 }"
-          :country="getCountry(isoCode)"
-        />
+          :class="{ last: index === stops.length - 1, vault: stop.looted }"
+          :country="getCountry(stop.isoCode)"
+        >
+          <span v-if="stop.stayed" class="stop-tag">lay low</span>
+          <span v-if="stop.looted" class="stop-tag">vault</span>
+        </CountryChip>
       </template>
     </ol>
-    <div v-if="capturerNames.length" class="capturers">
-      <p>
-        Cornered by
-        <strong>{{ capturerNames.join(' and ') }}</strong>
-        on turn {{ capturedHop }}.
-      </p>
-    </div>
-    <div v-if="clues.length" class="intel-recap">
-      <p class="recap-lead">The intel that closed the net:</p>
+    <p v-if="capturerName" class="capturer">
+      Cornered by <strong>{{ capturerName }}</strong> on beat {{ capturedHop }}.
+    </p>
+    <details v-if="clues.length" class="intel-recap" :open="!isPhone && !isShort">
+      <summary class="recap-lead">
+        The leaks that {{ capturerName ? 'closed the net' : 'never closed it' }}
+      </summary>
       <ul class="clues">
-        <li v-for="clue in clues" :key="clue.hop" class="clue-row">
+        <li v-for="clue in clues" :key="clue.text" class="clue-row">
           <span class="hop-badge">{{ clue.hop }}</span>
           <span>{{ clue.text }}</span>
+          <span v-if="clue.askedBy" class="clue-tag">⚖ {{ nameOf(clue.askedBy) }}</span>
         </li>
       </ul>
-    </div>
+    </details>
     <span class="credit-row">
       <SourceInfo :attributions="sources" label="Sources" />
       <span class="credit">{{ sources[0].credit }}</span>
@@ -46,8 +50,11 @@ import DespotHat from '~/components/challenge/DespotHat.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { attributionFor, datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { isStraitHop } from '~~/lib/chain'
+import { manhuntHopShape } from '~~/lib/manhunt'
 import { seatLabel } from '~~/lib/player'
 import { countryName, getCountry } from '~~/lib/country'
+import { useChipTrail } from '~~/lib/use-chip-trail'
+import { useIsPhone, useIsShortViewport } from '~~/lib/use-viewport'
 import type { ManhuntChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
 
@@ -57,14 +64,47 @@ const props = defineProps<{
   playerId: string
 }>()
 
+const isPhone = useIsPhone()
+const isShort = useIsShortViewport()
 const nameOf = (playerId: string) => seatLabel(props.players, playerId, props.playerId)
 
 const outcome = computed(() => props.challenge.state.outcome)
 const walk = computed(() => outcome.value?.trail ?? [])
 const clues = computed(() => props.challenge.state.clues)
+const looted = computed(() => outcome.value?.looted ?? [])
 
-/** The trail's legality (borders + straits), the profile data the categorical
- *  clues read from, and each threshold clue's own stat source. */
+/** One chip per country stopped in — a beat lying low folds into its stop. */
+const stops = computed(() => {
+  const out: {
+    isoCode: (typeof walk.value)[number]
+    shape: string
+    stayed: boolean
+    looted: boolean
+  }[] = []
+  walk.value.forEach((isoCode, index) => {
+    const previous = walk.value[index - 1]
+    const shape = previous ? manhuntHopShape(previous, isoCode) : 'ground'
+    if (shape === 'stay' && out.length) {
+      out[out.length - 1].stayed = true
+      return
+    }
+    out.push({
+      isoCode,
+      shape: shape === 'sea' || (previous && isStraitHop(previous, isoCode)) ? 'sea' : 'ground',
+      stayed: false,
+      looted: false,
+    })
+  })
+  for (const vault of looted.value) {
+    const stop = out.find(entry => entry.isoCode === vault)
+    if (stop) stop.looted = true
+  }
+  return out
+})
+const { trail: trailRail } = useChipTrail(() => stops.value.length)
+
+/** The trail's legality (borders, straits, sea lanes), the profile data the
+ *  categorical leaks read from, and each threshold leak's own stat source. */
 const sources = computed(() =>
   dedupeAttributions([
     ...datasetAttribution('borders'),
@@ -79,75 +119,120 @@ const despotName = computed(() => nameOf(props.challenge.despotId))
 
 const headline = computed(() => {
   if (outcome.value?.kind === 'captured') {
+    const where = countryName(getCountry(outcome.value.country))
     return despotIsMe.value
-      ? `You were captured in ${countryName(getCountry(outcome.value.country))}`
-      : `${despotName.value} — captured in ${countryName(getCountry(outcome.value.country))}`
+      ? `You were captured in ${where}`
+      : `${despotName.value} — captured in ${where}`
   }
   if (outcome.value?.kind === 'escaped') {
-    return despotIsMe.value ? 'You got away with the treasury' : `${despotName.value} escaped`
+    return despotIsMe.value ? 'You got away with it' : `${despotName.value} escaped`
   }
   return 'The hunt is over'
 })
 
 const escapeLine = computed(() => {
-  const hops = walk.value.length - 1
-  const seaHops = props.challenge.state.moves.filter(move => move.kind === 'sea').length
-  const flight = `${hops} ${hops === 1 ? 'border' : 'borders'} crossed`
-  return seaHops
-    ? `${flight}, ${seaHops} ${seaHops === 1 ? 'sea passage' : 'sea passages'} taken`
-    : flight
+  const hops = props.challenge.state.moves.length
+  const favours = props.challenge.state.moves.filter(move => move.kind === 'favour').length
+  const parts = [`${hops} ${hops === 1 ? 'move' : 'moves'}`]
+  if (favours) parts.push(`${favours} ${favours === 1 ? 'favour' : 'favours'} called in`)
+  if (looted.value.length) {
+    parts.push(`${looted.value.length} ${looted.value.length === 1 ? 'vault' : 'vaults'} emptied`)
+  }
+  return parts.join(' · ')
 })
 
 const capturedHop = computed(() =>
   outcome.value?.kind === 'captured' ? outcome.value.hop : undefined
 )
-const capturerNames = computed(() =>
-  outcome.value?.kind === 'captured' ? outcome.value.capturerIds.map(nameOf) : []
+const capturerName = computed(() =>
+  outcome.value?.kind === 'captured' ? nameOf(outcome.value.capturerId) : ''
 )
-
-/** Hop `index` (into the trail) crossed water: an announced sea passage, or a
- *  plain strait hop. */
-const seaHopNumbers = computed(
-  () =>
-    new Set(props.challenge.state.moves.filter(move => move.kind === 'sea').map(move => move.hop))
-)
-const isSeaHop = (index: number): boolean =>
-  seaHopNumbers.value.has(index) || isStraitHop(walk.value[index - 1], walk.value[index])
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
+@use '~/assets/scss/rules/breakpoints' as *;
+
 .manhunt-reveal {
-  gap: 1rem;
+  gap: 0.8rem;
+  width: 100%;
   display: flex;
-  padding: 1.6rem;
+  padding: 1.4rem 1.6rem;
   text-align: center;
   align-items: center;
   flex-flow: column nowrap;
+  max-height: 46dvh;
+
+  @media screen and (max-height: $short) {
+    gap: 0.5rem;
+    padding: 0.8rem 1.2rem;
+    max-height: 62dvh;
+  }
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+.reveal-head {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+  text-align: left;
 }
 
 .despot-hat {
-  width: 4.6rem;
+  width: 4.2rem;
+  flex-shrink: 0;
   // Worn slightly askew, as the office demands.
   transform: rotate(-9deg);
+
+  @media screen and (max-width: $phone) {
+    width: 3.2rem;
+  }
+}
+
+.headline,
+.escape-line {
+  margin: 0;
 }
 
 .headline {
-  margin: 0;
+  @media screen and (max-width: $tablet) {
+    font-size: 1.9rem;
+  }
 }
 
 .escape-line {
-  margin: 0;
   opacity: 0.75;
 }
 
-// Chip and trail-list recipes come from templates/_country-chip.scss.
+// One row on every width: the route reads left to right like the replay.
 .trail {
   gap: 0.4rem;
+  flex: none;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  justify-content: flex-start;
+  scrollbar-width: none;
+
+  > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 .last {
   font-weight: bold;
   border-width: 0.15rem;
+}
+
+.vault {
+  border-color: hsl(42, 80%, 45%);
+}
+
+.stop-tag {
+  opacity: 0.7;
+  font-size: 0.85em;
 }
 
 .hop-mark {
@@ -159,7 +244,7 @@ const isSeaHop = (index: number): boolean =>
   }
 }
 
-.capturers p {
+.capturer {
   margin: 0;
 }
 
@@ -167,8 +252,9 @@ const isSeaHop = (index: number): boolean =>
   width: 100%;
 
   .recap-lead {
-    margin: 0 0 0.5rem;
+    cursor: pointer;
     opacity: 0.75;
+    margin-bottom: 0.4rem;
   }
 }
 
@@ -186,6 +272,12 @@ const isSeaHop = (index: number): boolean =>
   gap: 0.6rem;
   display: flex;
   align-items: center;
+}
+
+.clue-tag {
+  opacity: 0.7;
+  font-size: 0.85em;
+  white-space: nowrap;
 }
 
 .hop-badge {

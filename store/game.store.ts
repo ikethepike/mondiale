@@ -3,7 +3,7 @@ import type { BoardFactFamily } from '~~/lib/board-facts'
 import type { LatLng, MapBox } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
 import { previewOn } from '~~/lib/seat-view'
-import type { VintageOutcome } from '~~/types/challenges/group-modes.type'
+import type { ManhuntPosition, VintageOutcome } from '~~/types/challenges/group-modes.type'
 import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -74,7 +74,7 @@ interface GameStoreState {
    * 'manhunt-position' emit — never in a broadcast snapshot. Cleared when a
    * new round arrives; detectives never see this populated.
    */
-  manhunt?: { trail: ISOCountryCode[]; turn: number }
+  manhunt?: ManhuntPosition
   /** Vintage round stories this socket has been sent, by game and round —
    *  from the targeted 'vintage-story' emit, never a snapshot. */
   vintageStories: Record<string, VintageOutcome>

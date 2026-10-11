@@ -162,10 +162,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') return ''
       const outcome = challenge.state.outcome
       if (outcome?.kind === 'captured') {
-        return `The despot was cornered in ${countryName(outcome.country)} on turn ${outcome.hop}`
+        return `The despot was cornered in ${countryName(outcome.country)} on beat ${outcome.hop}`
       }
       if (outcome?.kind === 'escaped') {
-        return `The despot escaped after ${challenge.turnCount} turns on the run`
+        return `The despot escaped after ${challenge.turnCount} beats on the run`
       }
       return 'The hunt for the despot'
     }

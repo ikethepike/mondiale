@@ -1,20 +1,26 @@
 import { drawLabel, recordedDraw } from './draws'
 import type { Redis } from '@upstash/redis'
 import {
-  answerManhuntSubpoena,
+  clueAdmits,
+  claimantOf,
   initialManhuntCandidates,
-  legalManhuntMoves,
+  isSheltered,
+  manhuntBeatSettled,
   manhuntKey,
-  pickManhuntClue,
+  manhuntLeakOptions,
+  manhuntMoveKind,
   pickManhuntSeed,
   pruneManhuntCandidates,
   randomManhuntMove,
   scoreManhunt,
   stepManhuntCandidates,
+  subpoenaTopic,
+  type ManhuntPlan,
   type ManhuntSecret,
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
-import type { ManhuntChallenge, ManhuntMoveKind } from '~~/types/challenges/group-modes.type'
+import { isCountryPlayable } from '~~/lib/game-rules'
+import type { ManhuntChallenge, ManhuntPosition } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
@@ -30,31 +36,27 @@ import {
 } from './round-engine'
 
 /**
- * Manhunt's beat engine: chain-turns' single-actor clock (the despot's move
- * beat) alternating with heritage-beats' everyone-acts clock (the detectives'
- * hunt beat). Same concurrency discipline as its siblings — every mutation
- * inside the per-game queue, timers outside it, `state.turn` as the staleness
- * token.
+ * The Despot's beat engine: ONE simultaneous beat per hop — detectives stake
+ * out the current hideout while the despot plans the next hop and its leak.
+ * Same concurrency discipline as its siblings — every mutation inside the
+ * per-game queue, timers outside it, `state.turn` as the staleness token.
  *
- * What is NOT like its siblings: the despot's trail is a real secret. It
- * lives in a redis blob under manhuntKey — the player-secret pattern, a key
- * that never rides a broadcast — alongside the hunt beat's live markers and
- * the authoritative candidate set. The public challenge state carries clues,
- * presence, and RESOLVED beats' attributed markers only; the trail surfaces
- * in the snapshot exactly once, inside `state.outcome` at round end. The despot's own client
- * learns its position over a single-socket 'manhunt-position' emit.
+ * The trail, the despot's plan and the looted vaults are real secrets: they
+ * live in a redis blob under manhuntKey that never rides a broadcast. The
+ * trail surfaces in the snapshot exactly once, inside `state.outcome` at
+ * round end; the despot's own client learns its position (and its plan's
+ * leak options) over a single-socket 'manhunt-position' emit.
  */
 
 export const isManhuntChallenge = (challenge: unknown): challenge is ManhuntChallenge =>
   isChallengeOfType(challenge, 'manhunt-challenge')
 
-/** The live round's manhunt challenge, when the live round is one. */
 export const currentManhunt = (game: Game): ManhuntChallenge | undefined =>
   latestChallengeOfType(game, 'manhunt-challenge')
 
 const roundIndexOf = (game: Game): number => game.rounds.length - 1
 
-const fetchManhuntSecret = async (
+export const fetchManhuntSecret = async (
   redis: Redis,
   gameId: string,
   roundIndex: number
@@ -70,16 +72,30 @@ const saveManhuntSecret = async (
   await setWithGameTtl(redis, manhuntKey(gameId, roundIndex), secret)
 }
 
-const stampDeadline = (challenge: ManhuntChallenge, extraMs = 0) => {
-  const seconds = challenge.state.beat === 'move' ? challenge.moveSeconds : challenge.huntSeconds
-  challenge.state.deadline = Date.now() + seconds * 1000 + extraMs
+const stampBeat = (challenge: ManhuntChallenge, extraMs = 0) => {
+  const now = Date.now()
+  const beatMs = challenge.beatSeconds * 1000
+  challenge.state.deadline = now + beatMs + extraMs
+  challenge.state.analysisAt = now + extraMs + beatMs * challenge.analysisDelay
 }
 
-/**
- * The despot's own position channel: a single-socket emit, never the room
- * broadcast. Tolerates the despot being offline — the reconnect path
- * (fetch-manhunt-position) covers them when they return.
- */
+/** What the despot's socket is told: never a broadcast. */
+export const manhuntPositionPayload = (
+  secret: ManhuntSecret,
+  turn: number
+): { event: 'manhunt-position' } & ManhuntPosition => ({
+  event: 'manhunt-position',
+  trail: secret.trail,
+  turn,
+  looted: secret.looted,
+  plan:
+    secret.plan?.turn === turn
+      ? { isoCode: secret.plan.isoCode, options: secret.plan.options, leak: secret.plan.leak }
+      : undefined,
+})
+
+/** Tolerates the despot being offline — fetch-manhunt-position covers them
+ *  when they return. */
 const pushManhuntPosition = async (
   ctx: ChainContext,
   despotId: string,
@@ -90,52 +106,51 @@ const pushManhuntPosition = async (
     const sockets = await ctx.io.in(ctx.eventTarget.gameId).fetchSockets()
     for (const roomSocket of sockets) {
       if (roomSocket.data.playerId !== despotId) continue
-      roomSocket.emit(
-        'manhunt-position',
-        { event: 'manhunt-position', trail: secret.trail, turn },
-        ctx.eventTarget
-      )
+      roomSocket.emit('manhunt-position', manhuntPositionPayload(secret, turn), ctx.eventTarget)
     }
   } catch (error) {
     console.error(`Manhunt position push failed for ${ctx.eventTarget.gameId}`, error)
   }
 }
 
-/**
- * Kick off the revealed round: seed the trail into the secret blob and stamp
- * the first move deadline. Async, unlike its siblings' start functions — the
- * secret write must land before the snapshot save so a fast despot can't act
- * against a blob that isn't there. Called BEFORE the caller saves/emits;
- * scheduleManhuntTimeout arms AFTER, as usual.
- */
-export const startManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
-  // Idempotent: the round-1 path calls this from EVERY tutorial close (the
-  // briefing keeps deadline at 0, so the caller's guard can't distinguish
-  // first from later closes) — a second run must never re-seed the trail.
-  const existing = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-  if (existing) return
-  const seed = recordedDraw(game, drawLabel.manhuntSeed(), () => pickManhuntSeed(game))
-  if (!seed) {
-    // The dealer verified the pool, so only drifted data lands here — run the
-    // finish ritual (everyone scores zero, every seat moves on) rather than strand
-    // the room on an unplayable hunt.
-    return finishManhunt(ctx, game, challenge)
-  }
-  const secret: ManhuntSecret = {
-    trail: [seed],
-    candidates: recordedDraw(game, drawLabel.manhuntCandidates(), () =>
-      initialManhuntCandidates(game)
-    ),
-    markers: {},
-  }
-  await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
-  // No clock yet: the round opens on the briefing, and the despot's first
-  // move clock starts only when everyone is ready (or the cap forces it).
+const broadcast = async (ctx: ChainContext, game: Game) => {
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
 }
 
-/** The round's cast — ONE membership check for every applyManhuntReady
- *  caller (wire handler and bot brain): a stray ready pushed for a
- *  non-participant would stall the briefing barrier forever. */
+const paint = (challenge: ManhuntChallenge, before: ISOCountryCode[], after: ISOCountryCode[]) => {
+  challenge.state.candidatesBefore = challenge.showCandidates ? [...before] : []
+  challenge.state.candidates = challenge.showCandidates ? [...after] : []
+}
+
+/**
+ * Seed the trail and deal the opening leak (the engine's own pick — the
+ * despot has no say before the chase starts). Called BEFORE the caller
+ * saves/emits; scheduleManhuntTimeout arms AFTER, as usual. Idempotent: the
+ * round-1 path calls this from every tutorial close.
+ */
+export const startManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
+  const existing = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
+  if (existing) return
+  const { state, vaults } = challenge
+  const seed = recordedDraw(game, drawLabel.manhuntSeed(), () => pickManhuntSeed(game, vaults))
+  if (!seed) return finishManhunt(ctx, game, challenge)
+  const pool = recordedDraw(game, drawLabel.manhuntCandidates(), () =>
+    initialManhuntCandidates(game, vaults)
+  )
+  const [opening] = recordedDraw(game, drawLabel.manhuntClue(), () =>
+    manhuntLeakOptions(game, seed, pool, 1, [], challenge.claimsPerBeat)
+  )
+  state.clues = [opening.clue]
+  paint(challenge, pool, opening.matches)
+  await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), {
+    trail: [seed],
+    candidates: opening.matches,
+    looted: [],
+  })
+}
+
 export const isManhuntParticipant = (challenge: ManhuntChallenge, playerId: string): boolean =>
   playerId === challenge.despotId || challenge.state.detectives.includes(playerId)
 
@@ -144,8 +159,7 @@ const briefingParticipants = (challenge: ManhuntChallenge): string[] => [
   ...challenge.state.detectives,
 ]
 
-/** A player dismissed their briefing card. Idempotent; the last ready (or the
- *  cap) opens the pursuit. */
+/** Idempotent; the last ready (or the cap) opens the chase. */
 export const applyManhuntReady = async (
   ctx: ChainContext,
   game: Game,
@@ -155,29 +169,21 @@ export const applyManhuntReady = async (
   const { state } = challenge
   if (!state.briefing || state.ready.includes(playerId)) return
   state.ready.push(playerId)
-
   if (briefingParticipants(challenge).every(id => state.ready.includes(id))) {
     return beginPursuit(ctx, game, challenge)
   }
-  const server = useServerSideEvents(ctx)
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
+  await broadcast(ctx, game)
 }
 
-/** Briefing over: the despot's first move clock starts for real. */
 const beginPursuit = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
   challenge.state.briefing = false
-  stampDeadline(challenge, FIRST_TURN_GRACE_MS)
-  const server = useServerSideEvents(ctx)
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
+  stampBeat(challenge, FIRST_TURN_GRACE_MS)
+  await broadcast(ctx, game)
   scheduleManhuntTimeout(ctx, challenge)
 }
 
 /** Arm the beat clock (call AFTER the save — the fired task re-reads fresh state). */
 export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChallenge) => {
-  // During the briefing there is no beat clock — arm the reading cap instead;
-  // it force-starts the pursuit for a table that never all clicks ready.
   if (challenge.state.briefing) {
     scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
       const current = currentManhunt(game)
@@ -189,100 +195,109 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
   const { turn, deadline } = challenge.state
   scheduleDeadlineTask(ctx, deadline, async game => {
     const current = currentManhunt(game)
-    // A move, a full dragnet, or the finish advanced the state — stale.
     if (!current || current.state.finished || current.state.turn !== turn) return
-
-    if (current.state.beat === 'move') {
-      const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-      // A vanished blob is unplayable — this task holds the round's only
-      // timer, so bailing silently would strand the table. Run the finish
-      // ritual (everyone scores zero, every seat moves on) like the no-seed path.
-      if (!secret) {
-        console.warn(`Manhunt secret missing for ${game.id} — finishing round`)
-        return finishManhunt(ctx, game, current)
-      }
-      const from = secret.trail[secret.trail.length - 1]
-      // The free hop: random, ground where possible — a charge burns only
-      // when the despot idles somewhere ground can't leave.
-      const move = recordedDraw(game, drawLabel.manhuntMove(), () =>
-        randomManhuntMove(from, current.state.seaPassagesLeft, game)
-      )
-      await commitManhuntMove(ctx, game, current, secret, move.isoCode, move.kind)
-    } else {
-      await resolveHuntBeat(ctx, game, current)
-    }
+    await resolveBeat(ctx, game, current)
   })
 }
 
-/** The despot chose a hop. Illegal picks are a silent no-op — the client
- *  greys them out, and the clock keeps running either way. */
+const isLive = (challenge: ManhuntChallenge): boolean =>
+  !challenge.state.briefing && !challenge.state.finished
+
+/** The despot's leak options for a destination, bound by any served
+ *  subpoena. Stepping from the pre-dragnet set is sound: the dragnet only
+ *  ever removes countries, and the leak is re-applied through `clueAdmits`. */
+const planFor = (
+  game: Game,
+  challenge: ManhuntChallenge,
+  secret: ManhuntSecret,
+  isoCode: ISOCountryCode,
+  kind: ManhuntPlan['kind']
+): ManhuntPlan => {
+  const { state } = challenge
+  const stepped = stepManhuntCandidates(secret.candidates, kind, game)
+  const topic = subpoenaTopic(state.subpoena?.topic)?.id as ManhuntSubpoenaTopicId | undefined
+  const options = recordedDraw(game, drawLabel.manhuntClue(), () =>
+    manhuntLeakOptions(
+      game,
+      isoCode,
+      stepped,
+      state.hop + 1,
+      state.clues,
+      challenge.claimsPerBeat,
+      topic
+    )
+  )
+  return {
+    turn: state.turn,
+    isoCode,
+    kind,
+    options: options.map(option => option.clue),
+    subpoenaBy: topic ? state.subpoena?.by : undefined,
+  }
+}
+
+/** The despot picked (or re-picked) where to go next. Illegal picks are a
+ *  silent no-op; the plan stays open until its leak is chosen. */
 export const applyManhuntMove = async (
   ctx: ChainContext,
   game: Game,
   challenge: ManhuntChallenge,
   isoCode: ISOCountryCode
 ) => {
+  const { state } = challenge
+  if (!isLive(challenge) || state.hop >= challenge.turnCount || state.despotReady) return
   const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
   if (!secret) return
   const from = secret.trail[secret.trail.length - 1]
-  const { ground, sea } = legalManhuntMoves(from, challenge.state.seaPassagesLeft, game)
-  // Ground first: a destination reachable both ways never wastes a charge.
-  const kind: ManhuntMoveKind | undefined = ground.includes(isoCode)
-    ? 'ground'
-    : sea.includes(isoCode)
-      ? 'sea'
-      : undefined
+  const kind = manhuntMoveKind(from, isoCode, state.favoursLeft, game)
   if (!kind) return
-  await commitManhuntMove(ctx, game, challenge, secret, isoCode, kind)
+  secret.plan = planFor(game, challenge, secret, isoCode, kind)
+  await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
+  await pushManhuntPosition(ctx, challenge.despotId, secret, state.turn)
 }
 
-/**
- * Land the hop and open the hunt: extend the trail, announce a sea passage,
- * step the candidate set by the announced movement kind, cut it with the
- * best true clue about the new hideout, and put every detective on the clock.
- */
-const commitManhuntMove = async (
+/** The despot chose which leak reaches the hunt — their beat is locked. */
+export const applyManhuntLeak = async (
   ctx: ChainContext,
   game: Game,
   challenge: ManhuntChallenge,
-  secret: ManhuntSecret,
-  isoCode: ISOCountryCode,
-  kind: ManhuntMoveKind
+  index: number
 ) => {
   const { state } = challenge
-
-  secret.trail.push(isoCode)
-  if (kind === 'sea') state.seaPassagesLeft = Math.max(0, state.seaPassagesLeft - 1)
-  state.moves.push({ hop: state.hop, kind })
-
-  const stepped = stepManhuntCandidates(secret.candidates, kind, game)
-  const pick = recordedDraw(game, drawLabel.manhuntClue(), () =>
-    pickManhuntClue(game, isoCode, stepped, state.hop, state.clues)
-  )
-  secret.candidates = pick.matches
-  secret.markers = {}
+  if (!isLive(challenge) || state.despotReady) return
+  const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
+  const plan = secret?.plan
+  if (!secret || !plan || plan.turn !== state.turn) return
+  if (!Number.isInteger(index) || index < 0 || index >= plan.options.length) return
+  plan.leak = index
+  state.despotReady = true
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
-
-  state.clues.push(pick.clue)
-  state.candidates = challenge.showCandidates ? [...pick.matches] : []
-  state.beat = 'hunt'
-  state.committed = []
-  state.turn++
-  stampDeadline(challenge)
-
-  const server = useServerSideEvents(ctx)
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
   await pushManhuntPosition(ctx, challenge.despotId, secret, state.turn)
-  scheduleManhuntTimeout(ctx, challenge)
+  if (manhuntBeatSettled(challenge)) return resolveBeat(ctx, game, challenge)
+  await broadcast(ctx, game)
 }
 
-/**
- * A detective spends a subpoena token mid hunt beat: the engine answers with
- * a true clue scoped to their chosen topic, the candidate set takes the cut
- * immediately, and the beat clock keeps running — `state.turn` is untouched,
- * so pending timeouts stay valid.
- */
+/** A detective stakes out a country — first come, one detective per
+ *  country, and only as many stakeouts as the beat seats. */
+export const applyManhuntClaim = async (
+  ctx: ChainContext,
+  game: Game,
+  challenge: ManhuntChallenge,
+  playerId: string,
+  isoCode: ISOCountryCode
+) => {
+  const { state } = challenge
+  if (!isLive(challenge) || !state.detectives.includes(playerId)) return
+  if (state.claims[playerId] !== undefined || claimantOf(state, isoCode)) return
+  if (Object.keys(state.claims).length >= challenge.claimsPerBeat) return
+  if (!isCountryPlayable(game, isoCode)) return
+  state.claims[playerId] = isoCode
+  if (manhuntBeatSettled(challenge)) return resolveBeat(ctx, game, challenge)
+  await broadcast(ctx, game)
+}
+
+/** A detective serves a subpoena: the despot's next unchosen leak must come
+ *  from this topic, and they lose the choice between two. */
 export const applyManhuntSubpoena = async (
   ctx: ChainContext,
   game: Game,
@@ -291,167 +306,140 @@ export const applyManhuntSubpoena = async (
   topicId: ManhuntSubpoenaTopicId
 ) => {
   const { state } = challenge
+  if (!isLive(challenge) || state.subpoena) return
+  // A subpoena needs a leak left to bind — none follows the last beat.
+  const lastLeakLocked = state.hop === challenge.turnCount - 1 && state.despotReady
+  if (state.hop >= challenge.turnCount || lastLeakLocked) return
   if ((state.subpoenasLeft[playerId] ?? 0) < 1) return
+  state.subpoenasLeft[playerId] -= 1
+  state.subpoena = { by: playerId, topic: topicId }
+
   const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-  if (!secret) return
-
-  const despotAt = secret.trail[secret.trail.length - 1]
-  const pick = answerManhuntSubpoena(
-    game,
-    despotAt,
-    secret.candidates,
-    state.hop,
-    state.clues,
-    topicId
-  )
-  secret.candidates = pick.matches
-  await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
-
-  state.subpoenasLeft[playerId] = (state.subpoenasLeft[playerId] ?? 0) - 1
-  state.clues.push({ ...pick.clue, askedBy: playerId })
-  state.candidates = challenge.showCandidates ? [...pick.matches] : []
-
-  const server = useServerSideEvents(ctx)
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
-}
-
-/** A detective locked a marker. WHERE it landed goes to the secret blob; the
- *  snapshot only ever says WHO has committed. */
-export const applyManhuntMarker = async (
-  ctx: ChainContext,
-  game: Game,
-  challenge: ManhuntChallenge,
-  playerId: string,
-  isoCode: ISOCountryCode
-) => {
-  const { state } = challenge
-  if (state.committed.includes(playerId)) return
-  const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-  if (!secret) return
-
-  secret.markers[playerId] = isoCode
-  await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
-  state.committed.push(playerId)
-
-  if (state.committed.length >= state.detectives.length) {
-    return resolveHuntBeat(ctx, game, challenge)
+  const plan = secret?.plan
+  if (secret && plan && plan.turn === state.turn && plan.leak === undefined) {
+    secret.plan = planFor(game, challenge, secret, plan.isoCode, plan.kind)
+    await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
+    await pushManhuntPosition(ctx, challenge.despotId, secret, state.turn)
   }
-
-  const server = useServerSideEvents(ctx)
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
+  await broadcast(ctx, game)
 }
 
 /**
- * Every marker is in (or the clock ran out): spring the dragnet. A marker on
- * the despot's country ends the hunt; otherwise the misses are confirmed
- * "not here"s, the aggregate goes public for the despot to study, and the
- * next move beat begins — the dragnet reveal IS the move beat, so no extra
- * hold is needed mid-round.
+ * The beat is over: spring the dragnet on the current hideout, then carry
+ * out the despot's plan (or a random hop and the engine's leak if they never
+ * locked one) and open the next beat.
  */
-const resolveHuntBeat = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
-  const { state } = challenge
+const resolveBeat = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
+  const { state, vaults } = challenge
   const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
-  // See the move-beat timeout: a vanished blob must finish, never strand.
   if (!secret) {
     console.warn(`Manhunt secret missing for ${game.id} — finishing round`)
     return finishManhunt(ctx, game, challenge)
   }
 
-  const despotAt = secret.trail[secret.trail.length - 1]
-  state.dragnets.push({ hop: state.hop, markers: { ...secret.markers } })
+  const at = secret.trail[secret.trail.length - 1]
+  const claims = { ...state.claims }
+  state.dragnets.push({ hop: state.hop, claims })
+  const sheltered = isSheltered(at, vaults, secret.looted)
+  if (sheltered) secret.looted.push(at)
 
-  const capturerIds = state.detectives.filter(playerId => secret.markers[playerId] === despotAt)
-  if (capturerIds.length) {
+  const capturerId = sheltered ? undefined : claimantOf(state, at)
+  if (capturerId) {
     state.outcome = {
       kind: 'captured',
       hop: state.hop,
-      capturerIds,
-      country: despotAt,
+      capturerId,
+      country: at,
       trail: [...secret.trail],
+      looted: [...secret.looted],
+    }
+    return finishManhunt(ctx, game, challenge)
+  }
+  if (state.hop >= challenge.turnCount) {
+    state.outcome = {
+      kind: 'escaped',
+      country: at,
+      trail: [...secret.trail],
+      looted: [...secret.looted],
     }
     return finishManhunt(ctx, game, challenge)
   }
 
-  if (state.hop >= challenge.turnCount) {
-    state.outcome = { kind: 'escaped', country: despotAt, trail: [...secret.trail] }
-    return finishManhunt(ctx, game, challenge)
+  const plan =
+    secret.plan?.turn === state.turn
+      ? secret.plan
+      : (() => {
+          const move = recordedDraw(game, drawLabel.manhuntMove(), () =>
+            randomManhuntMove(at, state.favoursLeft, game)
+          )
+          return planFor(game, challenge, secret, move.isoCode, move.kind)
+        })()
+  const leak = { ...plan.options[plan.leak ?? 0] }
+  if (plan.subpoenaBy) {
+    leak.askedBy = plan.subpoenaBy
+    if (state.subpoena?.by === plan.subpoenaBy) delete state.subpoena
   }
 
-  secret.candidates = pruneManhuntCandidates(secret.candidates, Object.values(secret.markers))
-  secret.markers = {}
+  const pruned = pruneManhuntCandidates(secret.candidates, Object.values(claims), vaults)
+  const stepped = stepManhuntCandidates(pruned, plan.kind, game)
+  const candidates = stepped.filter(isoCode => clueAdmits(leak, isoCode))
+  if (!candidates.includes(plan.isoCode)) candidates.push(plan.isoCode)
+
+  if (plan.kind === 'favour') state.favoursLeft = Math.max(0, state.favoursLeft - 1)
+  secret.trail.push(plan.isoCode)
+  secret.candidates = candidates
+  delete secret.plan
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
 
-  state.candidates = challenge.showCandidates ? [...secret.candidates] : []
-  state.beat = 'move'
+  state.moves.push({ hop: state.hop + 1, kind: plan.kind })
+  state.clues.push(leak)
+  paint(challenge, stepped, candidates)
   state.hop++
-  state.committed = []
   state.turn++
-  stampDeadline(challenge)
+  state.claims = {}
+  state.despotReady = false
+  stampBeat(challenge)
 
-  const server = useServerSideEvents(ctx)
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
+  await broadcast(ctx, game)
+  await pushManhuntPosition(ctx, challenge.despotId, secret, state.turn)
   scheduleManhuntTimeout(ctx, challenge)
 }
 
-/**
- * The pursuit is over: freeze the state (the trail goes public inside
- * `outcome` — its first and only appearance in a snapshot), hold for the
- * reveal, then score both sides and hand out board moves through the same
- * conversion the submit path uses.
- */
+/** The chase is over: freeze the state (the trail goes public inside
+ *  `outcome`), hold for the reveal, then score the table. */
 const finishManhunt = async (ctx: ChainContext, game: Game, challenge: ManhuntChallenge) => {
-  const { state } = challenge
-  const server = useServerSideEvents(ctx)
-
-  state.finished = true
-  await server.updateGameState(game)
-  server.emit({ event: 'manhunt-updated', game }, ctx.eventTarget)
-
+  challenge.state.finished = true
+  await broadcast(ctx, game)
   scheduleManhuntSettle(ctx)
 }
 
-/** Arm the finished round's settle follow-up. Everything is re-derived from
- *  fresh state inside the task, so re-arming (rejoin recovery) is safe: the
- *  `groupAnswers` latch makes any duplicate a no-op. */
+/** Re-derives everything from fresh state, so re-arming (rejoin recovery) is
+ *  safe: the `groupAnswers` latch makes any duplicate a no-op. */
 const scheduleManhuntSettle = (ctx: ChainContext) => {
   scheduleRevealTask(ctx, async (fresh, freshServer) => {
-    // No outcome check: the degenerate no-seed finish scores zeros through
-    // the same ritual (scoreManhunt returns {} without an outcome).
     const current = currentManhunt(fresh)
     if (!current?.state.finished) return
-
     const round = latestRound(fresh)
-    // The reveal follow-up fires exactly once: scoring marks the round.
     if (!round || Object.keys(round.groupAnswers).length) return
 
-    // The final beat's markers are still in the blob — they price proximity.
-    const secret = await fetchManhuntSecret(ctx.redis, fresh.id, roundIndexOf(fresh))
     await settleRoundScores({
       game: fresh,
       round,
       order: [...current.state.detectives, current.despotId],
-      scores: scoreManhunt(current, secret?.markers ?? {}),
+      scores: scoreManhunt(current),
       maximumPoints: current.maximumPoints,
     })
-
     await freshServer.updateGameState(fresh)
-    // Not 'seat-advanced': its client handler applies only the
-    // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'manhunt-updated', game: fresh }, ctx.eventTarget)
-    // The secret has served its round; the trail lives on in the outcome.
     await ctx.redis.del(manhuntKey(fresh.id, roundIndexOf(fresh)))
   })
 }
 
 /**
- * Re-arm whatever follow-up the live manhunt round is waiting on after its
- * in-process timer was lost (restart, or a save that threw once the timer was
- * already spent). Called from the rejoin recovery path (rearm-round.ts); safe
- * alongside a live timer — every task dies on its `turn` token, the briefing
- * flag, or the settle latch.
+ * Re-arm whatever follow-up the live round is waiting on after its timer was
+ * lost (restart, or a save that threw once the timer was spent). Safe beside
+ * a live timer — every task dies on its `turn` token, the briefing flag, or
+ * the settle latch.
  */
 export const rearmManhunt = (
   ctx: ChainContext,
@@ -460,11 +448,7 @@ export const rearmManhunt = (
 ) => {
   const challenge = currentManhunt(game)
   if (!challenge) return
-  // Finished but unsettled — the reveal hold died before banking the table.
   if (challenge.state.finished) return scheduleManhuntSettle(ctx)
-  // The one shape a rearm may not touch: a briefing cap while the caller says
-  // rules cards are still up (round-1 seam) — close-tutorial owns that arm.
   if (challenge.state.briefing && !options.armBriefingCaps) return
-  // Briefing cap or the live beat's clock, as the state dictates.
   scheduleManhuntTimeout(ctx, challenge)
 }

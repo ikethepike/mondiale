@@ -15,7 +15,8 @@ import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answ
 import { submitChainMoveHandler } from './submit-chain-move.handler'
 import { submitManhuntMoveHandler } from './submit-manhunt-move.handler'
 import { submitGovernmentPickHandler } from './submit-government-pick.handler'
-import { submitManhuntMarkerHandler } from './submit-manhunt-marker.handler'
+import { submitManhuntClaimHandler } from './submit-manhunt-claim.handler'
+import { submitManhuntLeakHandler } from './submit-manhunt-leak.handler'
 import { submitManhuntSubpoenaHandler } from './submit-manhunt-subpoena.handler'
 import { fetchManhuntPositionHandler } from './fetch-manhunt-position.handler'
 import { fetchVintageStoryHandler } from './fetch-vintage-story.handler'
@@ -82,8 +83,11 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'submit-manhunt-move': {
     handler: submitManhuntMoveHandler,
   },
-  'submit-manhunt-marker': {
-    handler: submitManhuntMarkerHandler,
+  'submit-manhunt-leak': {
+    handler: submitManhuntLeakHandler,
+  },
+  'submit-manhunt-claim': {
+    handler: submitManhuntClaimHandler,
   },
   'submit-manhunt-subpoena': {
     handler: submitManhuntSubpoenaHandler,

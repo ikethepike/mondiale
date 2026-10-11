@@ -942,61 +942,70 @@ export interface EmpireChallenge {
 }
 
 /**
- * Manhunt: one player is the Despot, secretly fleeing country-to-country;
- * everyone knows WHO, not WHERE. Each turn has two beats — the despot makes a
- * forced hop (ground = border/strait, or a limited announced sea passage
- * across a shared named sea), then every detective drops one marker after a
- * server-picked clue that bisects the live candidate set. A marker on the
- * despot's country captures them.
+ * The Despot (manhunt): one player flees country to country in secret while
+ * everyone else hunts them. Every hop is ONE simultaneous beat — detectives
+ * claim the hideout they suspect (one detective per country) while the despot
+ * plans their next hop and picks which of two true leaks about it reaches the
+ * hunt. A claim on the despot's country captures them; a miss is a confirmed
+ * "not here". Three public treasury vaults
+ * tempt the despot: one carried away pays out, but a vault is the first place
+ * a detective stakes out.
  *
- * Unlike every other mode, the answer must NOT ride the game snapshot: the
- * trail, live markers and authoritative candidate set live in a separate
- * redis blob (lib/manhunt manhuntKey) that never enters a broadcast. `state`
- * carries only what the whole table may see; the trail goes public only in
- * `outcome` at round end. The despot's own client learns its position over a
- * targeted socket emit ('manhunt-position').
+ * The answer must NOT ride the game snapshot: the trail, the despot's plan and
+ * the looted vaults live in a separate redis blob (lib/manhunt manhuntKey).
+ * `state` carries only what the whole table may see; the trail goes public
+ * only in `outcome` at round end. The despot's own client learns its position
+ * over a targeted socket emit ('manhunt-position').
  */
 export interface ManhuntChallenge {
   _type: 'manhunt-challenge'
-  /** Hops the despot must survive to escape. */
+  /** Beats the despot must survive to escape. */
   turnCount: number
-  moveSeconds: number
-  huntSeconds: number
+  beatSeconds: number
+  /** Stakeouts per beat, first come first served — capped by what the board
+   *  can hide (manhuntClaimsPerBeat). */
+  claimsPerBeat: number
   maximumPoints: number
   /** WHO the despot is, is public by design — only WHERE is hidden. */
   despotId: string
-  /** Sea passage charges the despot starts with. */
-  seaPassages: number
-  /** Subpoena tokens each detective starts with: spending one forces a true
-   *  engine-graded clue onto a topic of THEIR choosing, mid hunt beat. */
+  /** Smuggler's favours: a sea passage or a beat lying low, announced only as
+   *  "a favour was called in". */
+  favours: number
+  /** Subpoena tokens each detective starts with: one binds the despot's next
+   *  leak to a topic of THEIR choosing, and takes away the despot's choice. */
   subpoenas: number
   /** Easy/normal paint the candidate set on the map; hard shows clue text
    *  only. A difficulty gate, not a security boundary — the set is derivable
-   *  from the public clues and the graph. */
+   *  from the public record and the graph. */
   showCandidates: boolean
+  /** Fraction of a beat before the leak's cut is painted (`state.analysisAt`). */
+  analysisDelay: number
+  /** Public from the deal; looting is silent until the reveal. */
+  vaults: ISOCountryCode[]
   state: ManhuntState
 }
 
-export type ManhuntMoveKind = 'ground' | 'sea'
+/** Favours (sea or lie low) are announced; WHICH one never is. */
+export type ManhuntMoveKind = 'ground' | 'favour'
 
 export interface ManhuntClue {
-  /** 1-based hop the clue was emitted on. */
+  /** 1-based hop the clue describes. */
   hop: number
   kind: 'threshold' | 'region' | 'language' | 'membership' | 'flag-colors'
   /** Server-composed, render-ready intel line. */
   text: string
+  /** What the categorical kinds test: a region id, a language, an
+   *  organization id or a flag colour — read by `clueAdmits`. */
+  subject?: string
   /** Threshold clues name their accessor — the intel card wears the stat's
    *  own emblem (StatTopicIcon), like Stat Detective's dossier. */
   accessorId?: GroupChallengeAccessorId
   /** Categorical clues name a glyph key instead (topic/relations/department). */
   topic?: string
-  /** Threshold clues carry their cut, structured — the intel card plots the
-   *  field with the rule drawn where the clue slices it. */
   threshold?: number
   /** Which side of the cut survives. */
   above?: boolean
-  /** Set when a detective subpoenaed this clue rather than the engine
-   *  dealing it — credits the asker in the rail and the reveal. */
+  /** Set when a detective's subpoena bound this leak. */
   askedBy?: string
 }
 
@@ -1004,44 +1013,63 @@ export interface ManhuntState {
   /** The round opens on a briefing: role cards each player must explicitly
    *  dismiss. No clock runs until everyone is ready (or the cap forces it). */
   briefing?: boolean
-  /** Players who dismissed their briefing card. */
   ready: string[]
-  /** Monotonic beat counter — timeout token and submit idempotency key.
-   *  Increments on EVERY beat transition, mirroring border chain's `turn`. */
+  /** Monotonic beat counter — timeout token and submit idempotency key. */
   turn: number
-  /** 1..turnCount — which budgeted hop we're in. */
+  /** 1..turnCount — which beat of the chase we're in. */
   hop: number
-  beat: 'move' | 'hunt'
   /** Epoch ms the live beat expires; client shot clocks render from it. */
   deadline: number
+  /** Epoch ms the leak's cut paints the map — before it, only
+   *  `candidatesBefore` is painted. */
+  analysisAt: number
   /** Everyone but the despot, fixed at the deal. */
   detectives: string[]
-  /** Public clue history, oldest first. */
+  /** Public leak history, oldest first. */
   clues: ManhuntClue[]
-  /** Movement-kind log — sea passages are announced, ground hops are not. */
+  /** The move that opened each hop after the first. */
   moves: { hop: number; kind: ManhuntMoveKind }[]
-  seaPassagesLeft: number
-  /** Subpoena tokens remaining, by detective. */
+  favoursLeft: number
   subpoenasLeft: { [playerId: string]: number }
-  /** Clue-consistent set snapshot for the live hunt beat; [] on hard. */
+  /** Served and waiting: binds the despot's next unchosen leak. */
+  subpoena?: { by: string; topic: string }
+  /** Where the despot could be before this beat's leak; [] on hard. */
+  candidatesBefore: ISOCountryCode[]
+  /** Where the despot could be, leak applied; [] on hard. */
   candidates: ISOCountryCode[]
-  /** RESOLVED turns' markers, attributed — public only once the beat is
-   *  over and the information is spent. Live markers stay in the secret. */
-  dragnets: { hop: number; markers: { [playerId: string]: ISOCountryCode } }[]
-  /** Detectives who locked a marker this hunt beat — presence, never where. */
-  committed: string[]
+  /** This beat's claims — public, one detective per country. */
+  claims: { [playerId: string]: ISOCountryCode }
+  /** The despot has locked this beat's move and leak — presence only. */
+  despotReady: boolean
+  /** Resolved beats: who claimed where. */
+  dragnets: { hop: number; claims: { [playerId: string]: ISOCountryCode } }[]
   /** The trail becomes public ONLY here, at round end. */
   outcome?:
     | {
         kind: 'captured'
         hop: number
-        capturerIds: string[]
+        capturerId: string
         country: ISOCountryCode
         trail: ISOCountryCode[]
+        looted: ISOCountryCode[]
       }
-    | { kind: 'escaped'; country: ISOCountryCode; trail: ISOCountryCode[] }
+    | {
+        kind: 'escaped'
+        country: ISOCountryCode
+        trail: ISOCountryCode[]
+        looted: ISOCountryCode[]
+      }
   /** Set when the round resolves; freezes the clock and starts the reveal. */
   finished?: boolean
+}
+
+/** The despot's own view of the chase, sent only to their socket: the trail,
+ *  the vaults they've emptied, and the live beat's plan with its leak options. */
+export interface ManhuntPosition {
+  trail: ISOCountryCode[]
+  turn: number
+  looted: ISOCountryCode[]
+  plan?: { isoCode: ISOCountryCode; options: ManhuntClue[]; leak?: number }
 }
 
 /** Unique or Bust's category board — each id names a register in lib/unique-or-bust. */

@@ -1,6 +1,5 @@
-import { manhuntKey, type ManhuntSecret } from '~~/lib/manhunt'
 import { defineGameHandler } from '../server-side'
-import { currentManhunt } from './manhunt-beats'
+import { currentManhunt, fetchManhuntSecret, manhuntPositionPayload } from './manhunt-beats'
 
 /**
  * The despot's reconnect path: their client re-asks for its own trail after a
@@ -15,12 +14,12 @@ export const fetchManhuntPositionHandler = defineGameHandler(
     if (!challenge) return
     if (eventTarget.playerId !== challenge.despotId) return
 
-    const secret = await redis.get<ManhuntSecret>(manhuntKey(game.id, game.rounds.length - 1))
+    const secret = await fetchManhuntSecret(redis, game.id, game.rounds.length - 1)
     if (!secret) return
 
     socket.emit(
       'manhunt-position',
-      { event: 'manhunt-position', trail: secret.trail, turn: challenge.state.turn },
+      manhuntPositionPayload(secret, challenge.state.turn),
       eventTarget
     )
   }

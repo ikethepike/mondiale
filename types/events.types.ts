@@ -1,6 +1,10 @@
 import type { LatLng } from '~~/lib/geo'
 import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
-import type { UniqueCategoryId, VintageOutcome } from './challenges/group-modes.type'
+import type {
+  ManhuntPosition,
+  UniqueCategoryId,
+  VintageOutcome,
+} from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 import { SEAT_STEPS, type SeatStep } from './seat.types'
@@ -148,26 +152,32 @@ export type ClientEventData =
       }
     }
   | {
-      /** Manhunt: the despot's forced hop. Kind (ground vs sea passage) is
-       *  inferred server-side, preferring ground so no charge is wasted.
-       *  `turn` echoes the state's beat counter — a retried send can't land
-       *  as a second move. */
+      /** Manhunt: the despot plans next beat's hop (re-pickable until the
+       *  leak is chosen). Kind (ground vs favour) is inferred server-side,
+       *  preferring ground so no favour is wasted. `turn` echoes the beat
+       *  counter — a retried send can't land on the next beat. */
       event: 'submit-manhunt-move'
       isoCode: ISOCountryCode
       turn: number
     }
   | {
-      /** Manhunt: a detective's marker for the live hunt beat. The marker
-       *  itself stays off the broadcast (presence-only) — it lands in the
-       *  round's secret blob. */
-      event: 'submit-manhunt-marker'
+      /** Manhunt: the despot picks which of their plan's leak options reaches
+       *  the hunt, locking their beat. */
+      event: 'submit-manhunt-leak'
+      index: number
+      turn: number
+    }
+  | {
+      /** Manhunt: a detective's stakeout for the live beat — public, first
+       *  come, one detective per country. */
+      event: 'submit-manhunt-claim'
       isoCode: ISOCountryCode
       turn: number
     }
   | {
-      /** Manhunt: a detective spends a subpoena token to force a clue onto
-       *  their chosen topic, mid hunt beat. `turn` echoes the beat counter so
-       *  a retried send can't spend two tokens. */
+      /** Manhunt: a detective serves a subpoena binding the despot's next
+       *  leak to a topic. `turn` echoes the beat counter so a retried send
+       *  can't spend two tokens. */
       event: 'submit-manhunt-subpoena'
       topic: string
       turn: number
@@ -368,7 +378,8 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-timeline-placement',
   'submit-manhunt-move',
   'submit-government-pick',
-  'submit-manhunt-marker',
+  'submit-manhunt-leak',
+  'submit-manhunt-claim',
   'submit-manhunt-subpoena',
   'manhunt-ready',
   'unique-ready',
@@ -455,9 +466,10 @@ export type ServerEventData =
    *  whole-table state. Also how a seat that LOST a race learns it: the
    *  snapshot comes back with the slot held by someone else. */
   | { event: 'sweep-updated'; game: Game }
-  /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
-   *  never broadcast. `turn` stamps which beat the trail was current at. */
-  | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }
+  /** Manhunt: the despot's own trail, looted vaults and live plan, emitted
+   *  ONLY to the despot's socket — never broadcast. `turn` stamps which beat
+   *  it was current at. */
+  | ({ event: 'manhunt-position' } & ManhuntPosition)
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
