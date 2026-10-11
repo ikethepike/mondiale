@@ -7,6 +7,13 @@
       <span class="take-sub">{{ verdictLine }}</span>
     </header>
 
+    <GovernmentCoalition
+      class="coalition-card card"
+      :summary="coalition"
+      :challenge="challenge"
+      :lesson="backingLine"
+    />
+
     <article class="panel card">
       <header class="panel-head">
         <span class="eyebrow">{{ chamberLabel }}</span>
@@ -15,7 +22,7 @@
 
       <!-- The arc, painted by STANDING rather than by party: the shape of who
            rules is the thing the round has been circling for three beats. -->
-      <div class="arc">
+      <div v-if="withArc" class="arc">
         <span
           v-for="(seat, index) in paintedSeats"
           :key="index"
@@ -35,7 +42,7 @@
       </div>
 
       <ul class="legend">
-        <li v-for="side in sides" :key="side.key" class="legend-row">
+        <li v-for="side in legendSides" :key="side.key" class="legend-row">
           <span class="legend-head">
             <span class="legend-dot" :class="side.key" />
             <strong>{{ side.label }}</strong>
@@ -56,9 +63,6 @@
           </ul>
         </li>
       </ul>
-
-      <!-- The lesson, in one sentence, only where it applies. -->
-      <p v-if="backingLine" class="lesson">{{ backingLine }}</p>
     </article>
 
     <!-- Per beat, because "4 of 10" says nothing about which question a player
@@ -99,12 +103,13 @@
 </template>
 
 <script setup lang="ts">
+import GovernmentCoalition from '~/components/challenge/GovernmentCoalition.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { hemicycleSeats } from '~/components/challenge/individual/ring'
+import { hemicycleSeats, seatDots, seatRun } from '~~/lib/hemicycle'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
-import { MAX_SEAT_DOTS, majorityOf, type GovernmentBeat } from '~~/lib/government'
+import { coalitionName, coalitionSummary, majorityOf, type GovernmentBeat } from '~~/lib/government'
 import { seatLabel } from '~~/lib/player'
 import { formatNumber } from '~~/lib/number'
 import type { GovernmentAnswers, GovernmentChallenge } from '~~/types/challenges/group-modes.type'
@@ -120,14 +125,19 @@ import type { Player } from '~~/types/player.type'
  * has been circling.
  */
 
-const props = defineProps<{
-  challenge: GovernmentChallenge
-  answers: GovernmentAnswers
-  players: Partial<Record<string, Player>>
-  playerId: string
-  scores: Record<string, { scored: number; maximum: number }>
-  groupAnswers: Record<string, GroupChallengeAnswer>
-}>()
+const props = withDefaults(
+  defineProps<{
+    challenge: GovernmentChallenge
+    answers: GovernmentAnswers
+    players: Partial<Record<string, Player>>
+    playerId: string
+    scores: Record<string, { scored: number; maximum: number }>
+    groupAnswers: Record<string, GroupChallengeAnswer>
+    /** Draw the 2D arc — off when the 3D chamber already shows it. */
+    withArc?: boolean
+  }>(),
+  { withArc: true }
+)
 
 const BEAT_LABELS: { [beat in GovernmentBeat]: string } = {
   party: 'Which party governs',
@@ -187,25 +197,36 @@ const sides = computed(() => {
     })
 })
 
+/** With the arc drawn, every standing needs its key; without it the coalition card already names the government's side. */
+const legendSides = computed(() =>
+  props.withArc ? sides.value : sides.value.filter(side => side.key === 'opposition')
+)
+
+const coalition = computed(() =>
+  coalitionSummary(
+    props.challenge.country,
+    props.challenge.totalSeats,
+    props.answers.governingParty,
+    props.challenge.benches.map(bench => ({
+      name: bench.name,
+      seats: seatsOf(bench.name),
+      standing: standingOf(bench.name),
+    }))
+  )
+)
+
 /**
  * The arc, ordered government → backing → opposition rather than by party, so
  * the government's block reads as one mass against the rest of the house.
  */
 const paintedSeats = computed(() => {
-  const total = props.challenge.totalSeats
-  if (!total) return []
-  const scale = Math.min(1, MAX_SEAT_DOTS / total)
-  const run: ('government' | 'backing' | 'opposition')[] = []
-  for (const side of sides.value) {
-    for (const bench of side.benches) {
-      const dots = Math.max(1, Math.round(seatsOf(bench.name) * scale))
-      for (let index = 0; index < dots; index += 1) run.push(side.key)
-    }
-  }
-  return hemicycleSeats(run.length).map((seat, index) => ({
-    ...seat,
-    standing: run[index] ?? 'opposition',
-  }))
+  const run = seatRun(
+    seatDots(props.challenge.totalSeats),
+    sides.value.flatMap(side =>
+      side.benches.map(bench => ({ key: side.key, seats: seatsOf(bench.name) }))
+    )
+  )
+  return hemicycleSeats(run.length).map((seat, index) => ({ ...seat, standing: run[index]! }))
 })
 
 /** Where the majority line falls across the arc, as a percentage of its width. */
@@ -219,12 +240,12 @@ const governmentSeats = computed(
 )
 
 const verdictLine = computed(() => {
-  const held = formatNumber(governmentSeats.value)
-  // The shape used to come from a prose `status` the Factbook cabinet phrased
-  // ("minority government"). polity states the fact as a boolean instead, and
-  // the teaching sentence below already spells out what it means — so the head
-  // is just the count.
-  return `${held} of ${formatNumber(props.challenge.totalSeats)} seats`
+  const held = `${formatNumber(governmentSeats.value)} of ${formatNumber(props.challenge.totalSeats)} seats`
+  const lead =
+    coalition.value.members.length > 1
+      ? `Leads a ${coalitionName(coalition.value)}`
+      : 'Governs alone'
+  return `${lead} · ${held}`
 })
 
 /**
@@ -232,19 +253,14 @@ const verdictLine = computed(() => {
  * opposition at all: a government can hold power well short of half the house.
  */
 const backingLine = computed(() => {
-  const backers = sides.value.find(side => side.key === 'backing')
-  if (backers) {
-    const names = backers.benches.map(bench => bench.name).join(', ')
-    return `${names} hold no ministries, but supply the votes: ${formatNumber(
-      governmentSeats.value + backers.seats
-    )} seats behind the government, against the ${formatNumber(majority.value)} a majority needs.`
+  if (coalition.value.backers.length) {
+    const backed = 'Its backers hold no ministries but vote it through'
+    return coalition.value.kind === 'majority'
+      ? `${backed}.`
+      : `${backed}: a government stands while the house cannot muster a majority against it.`
   }
   if (props.answers.minority) {
-    return `A minority government: it holds ${formatNumber(
-      governmentSeats.value
-    )} of the ${formatNumber(
-      props.challenge.totalSeats
-    )} seats and must find the rest vote by vote.`
+    return 'A minority government: it holds no majority of its own and must find the rest of the house vote by vote.'
   }
   return ''
 })
@@ -271,7 +287,7 @@ const scoreboard = computed(() =>
   display: grid;
   align-content: start;
   gap: 0.75rem;
-  width: min(94vw, 46rem);
+  width: min(calc(100% - 2.4rem), 46rem);
   max-height: 100%;
   margin: auto;
   padding-block: 1.2rem;
@@ -280,10 +296,15 @@ const scoreboard = computed(() =>
 
   @media (min-width: $laptop) {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    width: min(94vw, 100rem);
+    grid-template-rows: auto auto 1fr;
+    width: min(calc(100% - 2.4rem), 100rem);
 
     .take {
       grid-column: 1 / -1;
+    }
+
+    .coalition-card {
+      grid-row: span 2;
     }
   }
 }
@@ -474,14 +495,6 @@ const scoreboard = computed(() =>
 
 .party-seats {
   opacity: 0.6;
-}
-
-.lesson {
-  margin: 0.75rem 0 0;
-  padding-top: 0.6rem;
-  border-top: $hairline;
-  font-size: 1rem;
-  line-height: 1.5;
 }
 
 .score-rows {

@@ -11,3 +11,13 @@ $desktop: 1920px;
 // height. A phone on its side is short and wide at once, so a stage that only
 // squeezes by width keeps its desk layout in the 390px it has left.
 $short: 480px;
+
+// Big screens: px-authored chrome reads small at arm's length on a 1440p
+// panel, so a stage-first view may scale its controls up from here. Both
+// rungs together, so a wide but short window never zooms its controls off it.
+$wall: 2400px;
+$tall: 1000px;
+
+// A phone on its side: the column a view hands its controls is phone-narrow
+// even though the viewport is not.
+$short-landscape: '(orientation: landscape) and (max-height: #{$short})';

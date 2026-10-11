@@ -183,7 +183,7 @@ const markOf = (name: string) => {
 
   display: grid;
   gap: 14px;
-  width: min(94vw, 640px);
+  width: min(calc(100% - 2.4rem), 640px);
   min-height: 0;
   max-height: 100%;
   margin-inline: auto;

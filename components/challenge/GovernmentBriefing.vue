@@ -1,7 +1,7 @@
 <template>
   <BriefingCard
     class="government-briefing"
-    :class="{ recap: challenge.state.recap }"
+    :class="{ recap: challenge.state.recap, compact }"
     :participants="participants"
     :ready="challenge.state.ready"
     :cta="challenge.state.recap ? 'Back to the chamber' : 'I understand'"
@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 import BriefingCard from '~/components/challenge/BriefingCard.vue'
-import { hemicycleSeats } from '~/components/challenge/individual/ring'
+import { hemicycleSeats } from '~~/lib/hemicycle'
 import { countryName } from '~~/lib/country'
 import { BEAT_POINTS, BEAT_SECONDS, type GovernmentBeat } from '~~/lib/government'
 import { chainContenders } from '~~/lib/player'
@@ -72,6 +72,8 @@ import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 const props = defineProps<{
   challenge: GovernmentChallenge
   sent: boolean
+  /** The 3D chamber stands above the card: phones drop the per-step demos. */
+  compact?: boolean
 }>()
 const emit = defineEmits<{ ready: [] }>()
 
@@ -124,13 +126,13 @@ const sidesDemoClass = (index: number) => {
 @use '~/assets/scss/rules/_breakpoints.scss' as *;
 
 .government-briefing {
-  gap: 1.2rem;
+  --briefing-gap: 1.2rem;
   max-width: min(78rem, calc(100% - 2.4rem));
   color: var(--dark-blue);
 
-  @media (max-width: $tablet) {
-    gap: 0.9rem;
-    padding: 1.6rem 1.4rem;
+  @media (max-width: $tablet), #{$short-landscape} {
+    --briefing-gap: 0.9rem;
+    --briefing-pad: 1.6rem 1.4rem;
   }
 
   &.recap {
@@ -149,7 +151,7 @@ const sidesDemoClass = (index: number) => {
   line-height: 1.4;
   opacity: 0.8;
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     display: none;
   }
 }
@@ -164,7 +166,7 @@ const sidesDemoClass = (index: number) => {
   list-style: none;
   text-align: left;
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.8rem;
   }
@@ -191,7 +193,7 @@ const sidesDemoClass = (index: number) => {
     }
   }
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     grid-template-columns: 92px minmax(0, 1fr);
     grid-template-rows: auto;
     align-items: center;
@@ -245,6 +247,18 @@ const sidesDemoClass = (index: number) => {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   opacity: 0.6;
+}
+
+.compact {
+  @media (max-width: $tablet), #{$short-landscape} {
+    .demo {
+      display: none;
+    }
+
+    .step {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
 }
 
 .demo {

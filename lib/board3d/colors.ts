@@ -20,6 +20,15 @@ export const BOARD_COLORS = {
   duneShade: '#cf9a66',
   // Scene-only: red desert rock (Uluru)
   ochre: '#c2673f',
+  // Scene-only: an empty parliament seat, pale against the chamber floor
+  seatGhost: '#f2ece3',
+  // Scene-only: the verdict teal of `.was-right`, as a solid
+  verdictRight: '#4b9a8d',
+  // Scene-only: the parliament's stone, a shade warmer than the page
+  stone: '#f1e8da',
+  // Scene-only: the parliament's plinth and its chamber floor
+  plinth: '#e7d5bc',
+  chamberFloor: '#d8c09f',
 } as const
 
 // Scene-only gate-top washes: each brand hue mixed toward sourMilk so a

@@ -290,6 +290,7 @@ describe('client timers', () => {
     'components/challenge/individual/GateAtlas.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/VintageField.vue': { count: 2, category: 'cosmetic' },
     'components/challenge/SunsetVeil.vue': { count: 1, category: 'cosmetic' },
+    'components/challenge/ParliamentStage.client.vue': { count: 2, category: 'cosmetic' },
     'components/challenge/FinalSunsetBlitz.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/FinalScales.vue': { count: 1, category: 'cosmetic' },
     'components/challenge/DragDial.vue': { count: 1, category: 'local-input' },
@@ -418,6 +419,7 @@ describe('client timers', () => {
       'pages/index.vue': 1,
       'components/challenge/SunsetVeil.vue': 1,
       'components/board3d/TopoScene.vue': 1,
+      'components/challenge/ParliamentStage.client.vue': 2,
     }
     expect(hits(LOCAL_CLOCK, clientFiles)).toEqual(CLOCK_READERS)
   })

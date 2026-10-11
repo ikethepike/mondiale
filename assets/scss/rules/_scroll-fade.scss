@@ -1,3 +1,6 @@
+@use 'sass:math';
+@use 'ink' as *;
+
 // The home for how a scrollport treats its own edges: the two fade recipes,
 // the bleed that carries rows under the chrome, and the snap that keeps a
 // resting list off a half-served row. Every one of them keys off the SAME
@@ -66,6 +69,79 @@
     height: var(--scroll-fade-bottom);
     margin-top: calc(-1 * var(--scroll-fade-bottom));
     background: linear-gradient(to top, var(--background-color), transparent);
+  }
+
+  &.fade-top::before,
+  &.fade-bottom::after {
+    opacity: 1;
+  }
+}
+
+// Old print's answer to the fade: a halftone screen whose dots swell toward the
+// edge the content continues past. Worn by the FRAME around a scrollport, not
+// the scrollport itself — it pins to the frame's padding box, full width and
+// down to its border, which a sticky pseudo inside the scroller cannot reach.
+// The frame carries the `.fade-top`/`.fade-bottom` classes for its scroller.
+// `$top`/`$bottom` are ROWS of dots, so a band always ends on a whole row. Ink
+// dots belong on a cream surface, never under nocturne.
+//
+// The dots are drawn, not thresholded: each row is one SVG circle whose radius
+// falls off linearly from the edge, alternate rows offset half a pitch (a hex screen), tiled
+// sideways as a mask over an ink wash. A `contrast()` threshold over a blurred
+// grid was tried first — it merged neighbours and lost the size ramp.
+@function halftone-mask($rows, $from-top, $parity) {
+  $step: 8.66;
+  $height: $rows * $step;
+  $dots: '';
+  @for $row from 0 to $rows {
+    @if $row % 2 == $parity {
+      $r: math.div(math.round(40 * (1 - math.div($row + 0.5, $rows))), 10);
+      $y: math.div(math.round(($row + 0.5) * $step * 10), 10);
+      @if not $from-top {
+        $y: $height - $y;
+      }
+      $dots: $dots + "%3Ccircle cx='5' cy='#{$y}' r='#{$r}'/%3E";
+    }
+  }
+  @return url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 #{$height}' preserveAspectRatio='none'%3E#{$dots}%3C/svg%3E");
+}
+
+// Odd rows ride their own layer shifted half a pitch, so no dot ever straddles
+// a tile seam.
+@mixin halftone-band($rows, $from-top, $pitch) {
+  $size: #{$pitch} #{$rows * $pitch * 0.866};
+  $edge: if($from-top, top, bottom);
+  $layers:
+    halftone-mask($rows, $from-top, 0) left $edge / $size repeat-x,
+    halftone-mask($rows, $from-top, 1) calc(#{$pitch} / 2) $edge / $size repeat-x;
+
+  height: $rows * $pitch * 0.866;
+  -webkit-mask: $layers;
+  mask: $layers;
+}
+
+@mixin scroll-halftone($top: 7, $bottom: 11, $pitch: 0.4rem) {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    background: ink(0.3);
+    transition: opacity var(--motion-quick) var(--ease-out-expressive);
+  }
+
+  &::before {
+    top: 0;
+    @include halftone-band($top, true, $pitch);
+  }
+
+  &::after {
+    bottom: 0;
+    @include halftone-band($bottom, false, $pitch);
   }
 
   &.fade-top::before,

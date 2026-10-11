@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   BEAT_POINTS,
+  coalitionName,
+  coalitionSummary,
   dealGovernment,
   governmentPool,
   GOVERNMENT_BEATS,
@@ -199,6 +201,67 @@ describe('the reveal facts', () => {
     const dealt = deal('SE')
     expect(dealt.minority).toBe(true)
     expect(dealt.backedSeats).toBeGreaterThan(dealt.totalSeats / 2)
+  })
+})
+
+describe('coalitionSummary', () => {
+  const summaryOf = (dealt: GovernmentDeal) =>
+    coalitionSummary(dealt.country, dealt.totalSeats, dealt.governingParty, dealt.benches)
+
+  it('agrees with the deal on every chamber the round can deal', () => {
+    for (const isoCode of governmentPool(RULES)) {
+      const dealt = deal(isoCode)
+      const summary = summaryOf(dealt)
+      expect(summary.members[0]?.name, isoCode).toBe(dealt.governingParty)
+      expect(summary.kind === 'majority', isoCode).toBe(!dealt.minority)
+      expect(summary.backedSeats, isoCode).toBe(dealt.backedSeats ?? summary.seats)
+      expect(summary.members.length + summary.backers.length, isoCode).toBe(
+        dealt.benches.filter(bench => bench.standing !== 'opposition').length
+      )
+    }
+  })
+
+  it('lists the partners largest first, behind the party that leads them', () => {
+    const summary = coalitionSummary('SE', 10, 'B', [
+      { name: 'A', seats: 4, standing: 'government' },
+      { name: 'B', seats: 1, standing: 'government' },
+      { name: 'C', seats: 2, standing: 'government' },
+      { name: 'D', seats: 3, standing: 'opposition' },
+    ])
+    expect(summary.members.map(member => member.name)).toEqual(['B', 'A', 'C'])
+    expect(summary.backers).toEqual([])
+  })
+
+  it('tells a majority from one its backers carry, and from neither', () => {
+    const kindAt = (seats: number, backed: number) =>
+      coalitionSummary('SE', 10, 'A', [
+        { name: 'A', seats, standing: 'government' },
+        { name: 'B', seats: backed, standing: 'backing' },
+        { name: 'C', seats: 10 - seats - backed, standing: 'opposition' },
+      ]).kind
+    expect(kindAt(6, 0)).toBe('majority')
+    expect(kindAt(5, 1)).toBe('backed')
+    expect(kindAt(4, 1)).toBe('minority')
+  })
+
+  it('names a lone party as governing alone, and counts a coalition', () => {
+    const members = (count: number) => Array.from({ length: count }, () => ({}))
+    expect(coalitionName({ members: members(1) } as never)).toBe('single-party government')
+    expect(coalitionName({ members: members(3) } as never)).toBe('three-party coalition')
+    expect(coalitionName({ members: members(12) } as never)).toBe('12-party coalition')
+  })
+
+  it('spans the bands its members sit in, left to right', () => {
+    for (const isoCode of governmentPool(RULES)) {
+      const { members, span } = summaryOf(deal(isoCode))
+      const placed = members.flatMap(member => (member.spectrum ? [member.spectrum] : []))
+      if (!placed.length) {
+        expect(span, isoCode).toBeUndefined()
+        continue
+      }
+      expect(placed, isoCode).toContain(span![0])
+      expect(placed, isoCode).toContain(span![1])
+    }
   })
 })
 
