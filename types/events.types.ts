@@ -2,6 +2,7 @@ import type { LatLng } from '~~/lib/geo'
 import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
 import type {
   ManhuntPosition,
+  ManhuntReading,
   UniqueCategoryId,
   VintageOutcome,
 } from './challenges/group-modes.type'
@@ -175,6 +176,13 @@ export type ClientEventData =
       turn: number
     }
   | {
+      /** Manhunt: a detective's sonar ping for the live beat — where is
+       *  public, the reading returns to them alone over 'manhunt-sonar'. */
+      event: 'submit-manhunt-ping'
+      isoCode: ISOCountryCode
+      turn: number
+    }
+  | {
       /** Manhunt: a detective serves a subpoena binding the despot's next
        *  leak to a topic. `turn` echoes the beat counter so a retried send
        *  can't spend two tokens. */
@@ -194,10 +202,9 @@ export type ClientEventData =
       index: number
     }
   | {
-      /** Manhunt: the despot's client asks for its own trail (reconnect
-       *  path). Answered with a targeted 'manhunt-position' emit; ignored for
-       *  anyone but the despot. */
-      event: 'fetch-manhunt-position'
+      /** Manhunt: a seat asks for its own private intel (reconnect path) —
+       *  the despot's 'manhunt-position', a detective's 'manhunt-sonar'. */
+      event: 'fetch-manhunt-intel'
     }
   | {
       /** Vintage: a graded seat (or a spectator) asks for a round's story.
@@ -380,6 +387,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-government-pick',
   'submit-manhunt-leak',
   'submit-manhunt-claim',
+  'submit-manhunt-ping',
   'submit-manhunt-subpoena',
   'manhunt-ready',
   'unique-ready',
@@ -470,6 +478,9 @@ export type ServerEventData =
    *  ONLY to the despot's socket — never broadcast. `turn` stamps which beat
    *  it was current at. */
   | ({ event: 'manhunt-position' } & ManhuntPosition)
+  /** Manhunt: one detective's own sonar readings, emitted ONLY to their
+   *  socket — never broadcast. */
+  | { event: 'manhunt-sonar'; readings: ManhuntReading[]; turn: number }
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }

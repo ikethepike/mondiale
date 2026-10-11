@@ -943,19 +943,20 @@ export interface EmpireChallenge {
 
 /**
  * The Despot (manhunt): one player flees country to country in secret while
- * everyone else hunts them. Every hop is ONE simultaneous beat — detectives
- * claim the hideout they suspect (one detective per country) while the despot
- * plans their next hop and picks which of two true leaks about it reaches the
- * hunt. A claim on the despot's country captures them; a miss is a confirmed
- * "not here". Three public treasury vaults
- * tempt the despot: one carried away pays out, but a vault is the first place
- * a detective stakes out.
+ * everyone else hunts them. Every hop is ONE simultaneous beat. Each detective
+ * does one thing: PINGS a country (a private reading of how many borders away
+ * the despot is — no capture) or STAKES one out (first come, one detective
+ * per country; landing on the despot captures them, a miss only says "not
+ * here"). Meanwhile the despot slips up to two borders and picks which of two
+ * true leaks about their next hideout reaches the hunt. Public treasury vaults
+ * tempt the despot: the beat they empty one, no stakeout can land there.
  *
- * The answer must NOT ride the game snapshot: the trail, the despot's plan and
- * the looted vaults live in a separate redis blob (lib/manhunt manhuntKey).
- * `state` carries only what the whole table may see; the trail goes public
- * only in `outcome` at round end. The despot's own client learns its position
- * over a targeted socket emit ('manhunt-position').
+ * The answer must NOT ride the game snapshot: the trail, the despot's plan,
+ * the looted vaults and every detective's readings live in a separate redis
+ * blob (lib/manhunt manhuntKey). `state` carries only what the whole table may
+ * see; where the despot can be is REPLAYED from it by `huntCandidates`. The
+ * despot learns its position over 'manhunt-position', each detective their own
+ * readings over 'manhunt-sonar' — single-socket emits, never a broadcast.
  */
 export interface ManhuntChallenge {
   _type: 'manhunt-challenge'
@@ -974,9 +975,9 @@ export interface ManhuntChallenge {
   /** Subpoena tokens each detective starts with: one binds the despot's next
    *  leak to a topic of THEIR choosing, and takes away the despot's choice. */
   subpoenas: number
-  /** Easy/normal paint the candidate set on the map; hard shows clue text
-   *  only. A difficulty gate, not a security boundary — the set is derivable
-   *  from the public record and the graph. */
+  /** Easy/normal paint each player's possible set on their map; hard paints
+   *  only the readings themselves. A difficulty gate, not a security
+   *  boundary — the set is derivable from the public record and the graph. */
   showCandidates: boolean
   /** Fraction of a beat before the leak's cut is painted (`state.analysisAt`). */
   analysisDelay: number
@@ -1020,8 +1021,8 @@ export interface ManhuntState {
   hop: number
   /** Epoch ms the live beat expires; client shot clocks render from it. */
   deadline: number
-  /** Epoch ms the leak's cut paints the map — before it, only
-   *  `candidatesBefore` is painted. */
+  /** Epoch ms the live leak's cut paints the map — before it, the map shows
+   *  the set without it (`huntCandidates` with `latestLeak: false`). */
   analysisAt: number
   /** Everyone but the despot, fixed at the deal. */
   detectives: string[]
@@ -1033,16 +1034,18 @@ export interface ManhuntState {
   subpoenasLeft: { [playerId: string]: number }
   /** Served and waiting: binds the despot's next unchosen leak. */
   subpoena?: { by: string; topic: string }
-  /** Where the despot could be before this beat's leak; [] on hard. */
-  candidatesBefore: ISOCountryCode[]
-  /** Where the despot could be, leak applied; [] on hard. */
-  candidates: ISOCountryCode[]
-  /** This beat's claims — public, one detective per country. */
+  /** This beat's stakeouts — public, one detective per country. */
   claims: { [playerId: string]: ISOCountryCode }
+  /** This beat's pings — WHERE is public, the reading is not. */
+  pings: { [playerId: string]: ISOCountryCode }
   /** The despot has locked this beat's move and leak — presence only. */
   despotReady: boolean
-  /** Resolved beats: who claimed where. */
-  dragnets: { hop: number; claims: { [playerId: string]: ISOCountryCode } }[]
+  /** Resolved beats: who staked out and who pinged where. */
+  dragnets: {
+    hop: number
+    claims: { [playerId: string]: ISOCountryCode }
+    pings: { [playerId: string]: ISOCountryCode }
+  }[]
   /** The trail becomes public ONLY here, at round end. */
   outcome?:
     | {
@@ -1052,15 +1055,26 @@ export interface ManhuntState {
         country: ISOCountryCode
         trail: ISOCountryCode[]
         looted: ISOCountryCode[]
+        readings: { [playerId: string]: ManhuntReading[] }
       }
     | {
         kind: 'escaped'
         country: ISOCountryCode
         trail: ISOCountryCode[]
         looted: ISOCountryCode[]
+        readings: { [playerId: string]: ManhuntReading[] }
       }
   /** Set when the round resolves; freezes the clock and starts the reveal. */
   finished?: boolean
+}
+
+/** A ping's private answer: borders from the pinged country to the hideout,
+ *  capped at SONAR_CAP (meaning "that many or more"); null when no land route
+ *  links them — the hideout is overseas. */
+export interface ManhuntReading {
+  hop: number
+  isoCode: ISOCountryCode
+  distance: number | null
 }
 
 /** The despot's own view of the chase, sent only to their socket: the trail,

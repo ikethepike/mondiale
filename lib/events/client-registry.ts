@@ -5,6 +5,7 @@ import { genericUpdateEvent } from '~~/lib/events/client/generic-update.event'
 import { seatAdvancedEvent } from '~~/lib/events/client/seat-advanced.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.event'
+import { manhuntSonarEvent } from '~~/lib/events/client/manhunt-sonar.event'
 import { vintageStoryEvent } from '~~/lib/events/client/vintage-story.event'
 import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
 import { playerCheeringEvent } from '~~/lib/events/client/player-cheering.event'
@@ -118,6 +119,10 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // Despot's eyes only — arrives on their socket alone, no game payload
   'manhunt-position': {
     handler: manhuntPositionEvent,
+  },
+  // One detective's own readings — arrives on their socket alone
+  'manhunt-sonar': {
+    handler: manhuntSonarEvent,
   },
   // A graded seat's own round story — targeted, no game payload
   'vintage-story': {

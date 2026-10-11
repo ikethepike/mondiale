@@ -59,7 +59,7 @@
       <h2>{{ isDespot ? 'Glorious Leader!' : 'Your case file' }}</h2>
       <ul class="briefing-points">
         <template v-if="isDespot">
-          <li>Each beat, slip one border while the hunt stakes out where you might be.</li>
+          <li>Each beat, slip up to two borders. You see every ping and stakeout land.</li>
           <li>You choose which of two true facts about your next hideout leaks.</li>
           <li>
             ⚓ {{ challenge.favours }} smuggler's favours: a sea passage or a beat lying low. The
@@ -72,14 +72,14 @@
           <li>Survive {{ challenge.turnCount }} beats to escape.</li>
         </template>
         <template v-else>
-          <li>Each beat brings one true leak about the hideout.</li>
           <li>
-            Stake out a country: one detective per country, first come. Land on the Despot to
-            capture them.
+            Each beat, do one thing. 📡 <strong>Ping</strong> a country to learn how many borders
+            away the Despot is (only you see it), or ✕ <strong>stake one out</strong> to catch them.
           </li>
+          <li>The Despot runs up to two borders a beat, and one true fact leaks every beat.</li>
           <li>A vault shelters the Despot the beat they loot it, so guard the exits.</li>
           <li>⚖ A subpoena picks the next leak's topic and takes the Despot's choice away.</li>
-          <li>The bounty splits by how close your last stakeout lands.</li>
+          <li>The bounty splits by how close your last marker lands.</li>
         </template>
       </ul>
       <template #seat="{ playerId }">
@@ -155,11 +155,37 @@
           </button>
         </div>
 
+        <div v-if="canAct" class="action-switch" role="radiogroup" aria-label="This beat">
+          <button
+            class="switch-option map-caption"
+            :class="{ active: mode === 'ping' }"
+            role="radio"
+            :aria-checked="mode === 'ping'"
+            @click="mode = 'ping'"
+          >
+            <SonarGlyph />
+            Ping
+          </button>
+          <button
+            class="switch-option map-caption"
+            :class="{ active: mode === 'stakeout' }"
+            role="radio"
+            :aria-checked="mode === 'stakeout'"
+            :disabled="!stakeoutOpen"
+            @click="mode = 'stakeout'"
+          >
+            ✕ Stake out
+            <small>{{ stakeoutsLeft }} left</small>
+          </button>
+        </div>
+
         <div v-if="staged" class="stage-row">
           <CountryChip tag="span" class="map-caption staged" :country="getCountry(staged)">
             <span v-if="challenge.vaults.includes(staged)" class="chip-tag">Vault</span>
           </CountryChip>
-          <ButtonFilled @click="sendClaim(staged)">Stake out</ButtonFilled>
+          <ButtonFilled @click="sendAction(staged)">
+            {{ mode === 'ping' ? 'Ping' : 'Stake out' }}
+          </ButtonFilled>
           <button class="dock-button" aria-label="Cancel" @click="staged = undefined">✕</button>
         </div>
 
@@ -222,22 +248,33 @@
           </div>
         </template>
 
-        <section v-if="earlierLeaks.length" class="case-file">
+        <section v-if="caseRows.length" class="case-file">
           <button
             class="case-toggle map-caption"
             :aria-expanded="caseFileOpen"
             @click="caseFileOpen = !caseFileOpen"
           >
-            {{ isDespot ? 'What the hunt knows' : 'Case file' }} · {{ earlierLeaks.length }} earlier
-            {{ earlierLeaks.length === 1 ? 'leak' : 'leaks' }}
+            {{ isDespot ? 'What the hunt knows' : 'Case file' }} · {{ caseSummary }}
             <span class="toggle-mark">{{ caseFileOpen ? '▾' : '▸' }}</span>
           </button>
           <ol v-if="caseFileOpen" class="leak-list">
-            <li v-for="clue in earlierLeaks" :key="clue.text" class="leak-row map-caption">
-              <StatTopicIcon class="row-icon" :topic="clue.topic" :accessor="clue.accessorId" />
-              <span class="row-hop">{{ clue.hop }}</span>
-              <span class="row-text">{{ clue.text }}</span>
-              <span v-if="clue.askedBy" class="row-tag">⚖</span>
+            <li
+              v-for="row in caseRows"
+              :key="row.key"
+              class="leak-row map-caption"
+              :class="{ reading: row.reading !== undefined }"
+              :style="row.reading !== undefined ? { '--warmth': row.color } : undefined"
+            >
+              <SonarGlyph v-if="row.reading !== undefined" class="row-icon" />
+              <StatTopicIcon
+                v-else
+                class="row-icon"
+                :topic="row.clue?.topic"
+                :accessor="row.clue?.accessorId"
+              />
+              <span class="row-hop">{{ row.hop }}</span>
+              <span class="row-text">{{ row.text }}</span>
+              <span v-if="row.clue?.askedBy" class="row-tag">⚖</span>
             </li>
           </ol>
         </section>
@@ -250,6 +287,7 @@ import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import BriefingCard from '~/components/challenge/BriefingCard.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import SonarGlyph from '~/components/challenge/SonarGlyph.vue'
 import DespotHat from '~/components/challenge/DespotHat.vue'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
@@ -262,18 +300,25 @@ import { isStraitHop, walkColor } from '~~/lib/chain'
 import {
   claimantOf,
   clueAdmits,
+  formatReading,
+  hasActed,
+  huntCandidates,
   isSheltered,
   legalManhuntMoves,
   MANHUNT_SUBPOENA_TOPICS,
   MANHUNT_TAUNTS,
   manhuntHopShape,
   pursuitNeighboursOf,
+  readingWarmth,
+  sonarDistance,
+  sonarRipple,
   stepManhuntCandidates,
   subpoenaTopic,
   type ManhuntSubpoenaTopicId,
 } from '~~/lib/manhunt'
+import { warmthColor } from '~~/lib/warmth'
 import { useAckOnce } from '~~/lib/use-ack-once'
-import { REPLAY_REDRAW_MS } from '~~/lib/motion'
+import { REPLAY_REDRAW_MS, SONAR_HOLD_MS, SONAR_RING_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { sample } from '~~/lib/arrays'
 import { playableCountries, unplayableCountries } from '~~/lib/game-rules'
@@ -315,9 +360,8 @@ const EMPTY_STATE: ManhuntState = {
   moves: [],
   favoursLeft: 0,
   subpoenasLeft: {},
-  candidatesBefore: [],
-  candidates: [],
   claims: {},
+  pings: {},
   despotReady: false,
   dragnets: [],
 }
@@ -355,17 +399,24 @@ const plan = computed(() =>
   position.value?.turn === state.value.turn ? position.value?.plan : undefined
 )
 
-// The position channel is a single-socket emit, so a beat committed while the
-// despot's socket was down never reaches them — re-ask on mount (covers the
-// reveal) and on every reconnect.
-const refetchPosition = () => {
-  if (isDespot.value && !finished.value) update({ event: 'fetch-manhunt-position' })
+/** This detective's own sonar readings — their eyes only. */
+const readings = computed(() =>
+  iAmDetective.value ? (gameStore.manhuntReadings?.readings ?? []) : []
+)
+
+// Private intel is a single-socket emit, so a beat resolved while this socket
+// was down never reaches it — re-ask on mount (covers the reveal) and on
+// every reconnect.
+const refetchIntel = () => {
+  if ((isDespot.value || iAmDetective.value) && !finished.value) {
+    update({ event: 'fetch-manhunt-intel' })
+  }
 }
 onMounted(() => {
-  refetchPosition()
+  refetchIntel()
   const manager = gameStore.socket?.io
-  manager?.on('reconnect', refetchPosition)
-  onUnmounted(() => manager?.off('reconnect', refetchPosition))
+  manager?.on('reconnect', refetchIntel)
+  onUnmounted(() => manager?.off('reconnect', refetchIntel))
 })
 
 const rules = gameStore.game ?? { regions: [], difficulty: 'normal' as const }
@@ -384,15 +435,24 @@ const nameOf = (playerId: string) =>
 // --- What the table knows ---------------------------------------------------
 
 /** Before the analysts land, the map shows only where the despot COULD have
- *  moved; a detective who can apply the leak themselves claims first. */
+ *  moved; a detective who can apply the leak themselves acts first. Each
+ *  detective's map replays the public record with their OWN readings; the
+ *  despot's shows what the whole hunt knows. */
 const analysed = computed(() => now.value >= state.value.analysisAt)
 const analysing = computed(() => live.value && !!challenge.value?.showCandidates && !analysed.value)
+const possibleBefore = computed(() =>
+  challenge.value && live.value
+    ? huntCandidates(challenge.value, rules, readings.value, { latestLeak: false })
+    : []
+)
+const possible = computed(() =>
+  challenge.value && live.value ? huntCandidates(challenge.value, rules, readings.value) : []
+)
 const paintedSet = computed(() =>
-  analysed.value ? state.value.candidates : state.value.candidatesBefore
+  challenge.value?.showCandidates ? (analysed.value ? possible.value : possibleBefore.value) : []
 )
 
 const latestLeak = computed(() => state.value.clues[state.value.clues.length - 1])
-const earlierLeaks = computed(() => state.value.clues.slice(0, -1).reverse())
 const favourThisBeat = computed(() =>
   state.value.moves.some(move => move.hop === state.value.hop && move.kind === 'favour')
 )
@@ -432,53 +492,71 @@ const interstitialTitle = computed(() =>
 const stakes = computed(() => {
   const turnCount = challenge.value?.turnCount ?? 0
   if (isDespot.value) {
-    return `Slip one border every beat and survive ${turnCount} beats. You pick which of two true facts about your hideout leaks — and a vault shelters you for the beat you empty it.`
+    return `Run up to two borders every beat and survive ${turnCount} beats. Every ping and stakeout lands where you can see it — and a vault shelters you for the beat you empty it.`
   }
-  return `Every beat brings one true leak about the Despot's hideout. Stake out a country before the others do — land on the Despot to capture them.`
+  return `Each beat, ping a country to hear how many borders away the Despot is — or stake one out to catch them. Only you hear your pings.`
 })
 
 // --- Detective actions ------------------------------------------------------
 
 const myClaim = computed(() => state.value.claims[gameStore.seatId])
+const myPing = computed(() => state.value.pings[gameStore.seatId])
 const claimsIn = computed(() => Object.keys(state.value.claims).length)
 const claimsPerBeat = computed(() => challenge.value?.claimsPerBeat ?? 0)
-const canClaim = computed(
-  () => live.value && iAmDetective.value && !myClaim.value && claimsIn.value < claimsPerBeat.value
+const stakeoutsLeft = computed(() => Math.max(0, claimsPerBeat.value - claimsIn.value))
+const stakeoutOpen = computed(() => stakeoutsLeft.value > 0)
+const canAct = computed(
+  () => live.value && iAmDetective.value && !hasActed(state.value, gameStore.seatId)
+)
+const actedCount = computed(
+  () => state.value.detectives.filter(playerId => hasActed(state.value, playerId)).length
 )
 
-/** Touch stages a stakeout before sending it — a fat-fingered Slovenia must
- *  not cost the beat. A fine pointer claims on click. */
+/** This beat's one action. A ping is the default: a stakeout should be chosen. */
+const mode = ref<'ping' | 'stakeout'>('ping')
+watch(stakeoutOpen, open => !open && (mode.value = 'ping'))
+
+/** Touch stages an action before sending it — a fat-fingered Slovenia must
+ *  not cost the beat. A fine pointer acts on click. */
 const staged = ref<ISOCountryCode | undefined>()
-const pendingClaim = ref(false)
+const pendingAct = ref(false)
 watch(
   () => state.value.turn,
   () => {
     staged.value = undefined
-    pendingClaim.value = false
+    pendingAct.value = false
     pendingMove.value = undefined
     subpoenaOpen.value = false
     seaFanOpen.value = false
+    mode.value = 'ping'
   }
 )
-watch(canClaim, open => !open && (staged.value = undefined))
+watch(canAct, open => !open && (staged.value = undefined))
 
-const sendClaim = (isoCode: ISOCountryCode) => {
-  if (!canClaim.value || pendingClaim.value) return
-  const holder = claimantOf(state.value, isoCode)
-  if (holder) {
-    announce({
-      hint: `${nameOf(holder)} is already staking out ${countryName(getCountry(isoCode))}`,
-    })
-    return
+const sendAction = (isoCode: ISOCountryCode) => {
+  if (!canAct.value || pendingAct.value) return
+  if (mode.value === 'stakeout') {
+    const holder = claimantOf(state.value, isoCode)
+    if (holder) {
+      announce({
+        hint: `${nameOf(holder)} is already staking out ${countryName(getCountry(isoCode))}`,
+      })
+      return
+    }
   }
   staged.value = undefined
-  pendingClaim.value = true
-  update({ event: 'submit-manhunt-claim', isoCode, turn: state.value.turn })
+  pendingAct.value = true
+  const marker = { isoCode, turn: state.value.turn }
+  update(
+    mode.value === 'stakeout'
+      ? { event: 'submit-manhunt-claim', ...marker }
+      : { event: 'submit-manhunt-ping', ...marker }
+  )
 }
-// A lost race comes back as a snapshot without our claim: free the button.
+// A lost race comes back as a snapshot without our marker: free the button.
 watch(
-  () => state.value.claims,
-  () => (pendingClaim.value = false)
+  () => [state.value.claims, state.value.pings],
+  () => (pendingAct.value = false)
 )
 
 const mySubpoenas = computed(() => state.value.subpoenasLeft[gameStore.seatId] ?? 0)
@@ -571,7 +649,7 @@ const leakWidths = computed(() => {
     active.isoCode === despotAt.value || !legalMoves.value.ground.includes(active.isoCode)
       ? 'favour'
       : 'ground'
-  const stepped = stepManhuntCandidates(state.value.candidates, kind, rules)
+  const stepped = stepManhuntCandidates(possible.value, kind, rules)
   return active.options.map(clue => stepped.filter(isoCode => clueAdmits(clue, isoCode)).length)
 })
 
@@ -579,31 +657,80 @@ const favourTitle = computed(
   () => `${state.value.favoursLeft} of ${challenge.value?.favours} smuggler's favours left`
 )
 
+/** The despot's danger read: the nearest marker landed this beat. */
+const nearestMarker = computed(() => {
+  if (!isDespot.value || !despotAt.value) return undefined
+  const markers = [...Object.values(state.value.claims), ...Object.values(state.value.pings)]
+  const distances = markers
+    .map(marker => sonarDistance(marker, despotAt.value!, rules))
+    .filter((distance): distance is number => distance !== null)
+  return distances.length ? Math.min(...distances) : undefined
+})
+
 const statusLine = computed(() => {
-  const claimLine = `${claimsIn.value}/${claimsPerBeat.value} stakeouts in`
+  const inLine = `${actedCount.value}/${state.value.detectives.length} in`
   if (isDespot.value) {
+    const danger =
+      nearestMarker.value === undefined
+        ? ''
+        : ` · nearest marker ${formatReading(nearestMarker.value)}`
     if (
       despotAt.value &&
       isSheltered(despotAt.value, challenge.value?.vaults ?? [], looted.value)
     ) {
       return lastBeat.value
         ? 'Safe in the vault — the treasury is yours'
-        : 'Safe in the vault this beat — plan your exit'
+        : `Safe in the vault this beat${danger}`
     }
-    if (lastBeat.value) return `Last beat — survive the dragnet · ${claimLine}`
+    if (lastBeat.value) return `Last beat — survive the dragnet${danger}`
     if (state.value.despotReady) {
-      return `Escape planned → ${countryName(getCountry(plan.value?.isoCode ?? despotAt.value!))} · ${claimLine}`
+      return `Escape planned → ${countryName(getCountry(plan.value?.isoCode ?? despotAt.value!))}${danger}`
     }
-    if (plan.value) return 'Now choose the leak'
-    return isPhone.value ? 'Pick your next hideout' : 'Plan your escape — pick your next hideout'
+    if (plan.value) return `Now choose the leak${danger}`
+    return `${isPhone.value ? 'Pick your next hideout' : 'Plan your escape — pick your next hideout'}${danger}`
   }
-  if (!iAmDetective.value) return `${despotName.value} is on the run · ${claimLine}`
-  if (myClaim.value) {
-    return `Staking out ${countryName(getCountry(myClaim.value))} · ${claimLine}`
+  if (!iAmDetective.value) return `${despotName.value} is on the run · ${inLine}`
+  if (myClaim.value) return `Staking out ${countryName(getCountry(myClaim.value))} · ${inLine}`
+  if (myPing.value) {
+    return isPhone.value
+      ? `Pinged ${countryName(getCountry(myPing.value))} · ${inLine}`
+      : `Pinged ${countryName(getCountry(myPing.value))} — it answers when the beat ends · ${inLine}`
   }
-  if (claimsIn.value >= claimsPerBeat.value) return 'Every stakeout is taken — watch this beat'
-  const open = claimsPerBeat.value - claimsIn.value
-  return `${lastBeat.value ? 'Last beat — ' : ''}Stake out the hideout · ${open} of ${claimsPerBeat.value} open`
+  if (lastBeat.value) return 'Last beat — stake out the hideout'
+  return mode.value === 'ping'
+    ? 'Tap a country to ping it'
+    : `Tap a country to stake it out · ${stakeoutsLeft.value} left`
+})
+
+/** The case file: every leak, and this detective's own readings, newest first. */
+const caseRows = computed(() => {
+  const rows = [
+    ...state.value.clues.slice(0, -1).map(clue => ({
+      key: `leak-${clue.text}`,
+      hop: clue.hop,
+      text: clue.text,
+      clue,
+      reading: undefined as number | null | undefined,
+      color: undefined as string | undefined,
+    })),
+    ...readings.value.map(reading => ({
+      key: `ping-${reading.hop}`,
+      hop: reading.hop,
+      text: `${countryName(getCountry(reading.isoCode))}: ${formatReading(reading.distance)}`,
+      clue: undefined,
+      reading: reading.distance,
+      color: warmthColor(readingWarmth(reading.distance)),
+    })),
+  ]
+  return rows.sort((a, b) => b.hop - a.hop || (a.reading === undefined ? 1 : -1))
+})
+const caseSummary = computed(() => {
+  const leaks = Math.max(0, state.value.clues.length - 1)
+  const parts = [`${leaks} earlier ${leaks === 1 ? 'leak' : 'leaks'}`]
+  if (readings.value.length) {
+    parts.push(`${readings.value.length} ${readings.value.length === 1 ? 'ping' : 'pings'}`)
+  }
+  return parts.join(' · ')
 })
 
 // --- The map ----------------------------------------------------------------
@@ -626,12 +753,12 @@ const onMapClick = (event: Event) => {
     return announce({ hint: reason })
   }
 
-  if (!canClaim.value) return
+  if (!canAct.value) return
   if (isCoarse.value) {
     staged.value = isoCode
     return
   }
-  sendClaim(isoCode)
+  sendAction(isoCode)
 }
 onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
 registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
@@ -648,44 +775,117 @@ const onMapHover = (event: Event) => {
 onBeforeMount(() => document.addEventListener('mapHover', onMapHover))
 registerCleanup(() => document.removeEventListener('mapHover', onMapHover))
 
-/** Vaults for everyone, live stakeouts in their detective's colour, and —
- *  for the despot — the numbered trail. Several marks on one country share
- *  one chip. */
+/** The latest beat's own readings — what the sonar just answered. */
+const freshReadings = computed(() =>
+  readings.value.filter(reading => reading.hop === state.value.hop - 1)
+)
+
+/** One chip per country: this detective's fresh readings (warmth-coloured
+ *  sonar marks), the live pings and stakeouts in their detective's colour —
+ *  read as distances from the despot on the despot's own map — the vaults,
+ *  and the despot's numbered trail. */
 const mapChipEntries = computed(() => {
-  const chips = new Map<ISOCountryCode, { labels: string[]; color?: string }>()
-  const add = (isoCode: ISOCountryCode, label: string, color?: string) => {
+  type Chip = { labels: string[]; color?: string; icon?: 'sonar'; pulse?: string }
+  const chips = new Map<ISOCountryCode, Chip>()
+  const add = (isoCode: ISOCountryCode, label: string, extra: Omit<Chip, 'labels'> = {}) => {
     const chip = chips.get(isoCode) ?? { labels: [] }
-    chip.labels.push(label)
-    chip.color ??= color
+    if (label) chip.labels.push(label)
+    chip.color ??= extra.color
+    chip.icon ??= extra.icon
+    chip.pulse ??= extra.pulse
     chips.set(isoCode, chip)
+  }
+  if (!finished.value) {
+    for (const reading of freshReadings.value) {
+      add(reading.isoCode, formatReading(reading.distance, true), {
+        icon: 'sonar',
+        color: warmthColor(readingWarmth(reading.distance)),
+        pulse: `${reading.hop}`,
+      })
+    }
+    for (const [playerId, isoCode] of Object.entries(state.value.pings)) {
+      const distance =
+        isDespot.value && despotAt.value ? sonarDistance(isoCode, despotAt.value, rules) : undefined
+      add(
+        isoCode,
+        distance === undefined
+          ? playerId === gameStore.seatId
+            ? '…'
+            : ''
+          : formatReading(distance, true),
+        {
+          icon: 'sonar',
+          color:
+            distance === undefined ? playerColor(playerId) : warmthColor(readingWarmth(distance)),
+        }
+      )
+    }
+    for (const [playerId, isoCode] of Object.entries(state.value.claims)) {
+      add(isoCode, '✕', { color: playerColor(playerId) })
+    }
+    if (staged.value) {
+      add(staged.value, mode.value === 'ping' ? '?' : '✕?', {
+        color: playerColor(gameStore.seatId),
+        icon: mode.value === 'ping' ? 'sonar' : undefined,
+      })
+    }
+    for (const vault of challenge.value?.vaults ?? []) {
+      add(vault, isDespot.value && looted.value.includes(vault) ? 'Emptied' : 'Vault')
+    }
   }
   trail.value.forEach((isoCode, index) => {
     if (trail.value[index - 1] !== isoCode) add(isoCode, String(index + 1))
   })
-  if (!finished.value) {
-    for (const vault of challenge.value?.vaults ?? []) {
-      add(vault, isDespot.value && looted.value.includes(vault) ? 'Emptied' : 'Vault')
-    }
-    for (const [playerId, isoCode] of Object.entries(state.value.claims)) {
-      add(isoCode, '✕', playerColor(playerId))
-    }
-    if (staged.value) add(staged.value, '?', playerColor(gameStore.seatId))
-    if (planning.value && gameStore.game?.difficulty === 'easy') {
-      for (const option of moveOptions.value) {
-        if (!chips.has(option.isoCode)) add(option.isoCode, option.isoCode)
-      }
+  if (planning.value && gameStore.game?.difficulty === 'easy') {
+    for (const option of moveOptions.value) {
+      if (!chips.has(option.isoCode)) add(option.isoCode, option.isoCode)
     }
   }
   return [...chips].map(([isoCode, chip]) => ({
     isoCode,
     label: chip.labels.join(' '),
     color: chip.color,
+    icon: chip.icon,
+    pulse: chip.pulse,
   }))
 })
 
 const CANDIDATE_FILL = 'hsla(212, 58%, 62%, 0.4)'
 const POSSIBLE_FILL = 'hsla(212, 58%, 62%, 0.18)'
 const PLANNED_FILL = 'hsla(20, 80%, 55%, 0.35)'
+const CLEARED_FILL = 'hsla(212, 20%, 70%, 0.22)'
+
+/** The sonar ripple: when a reading lands, its rings wash out from the ping
+ *  one border at a time — cleared ground, then the ring the despot stood on —
+ *  before the map settles back to the possible set. On hard, where no set is
+ *  painted, the ring itself stays as the signpost. */
+const rippling = ref(false)
+const scheduleRippleEnd = createViewTimer()
+watch(
+  () =>
+    live.value && freshReadings.value.map(reading => `${reading.hop}:${reading.isoCode}`).join('|'),
+  key => {
+    if (!key) return
+    rippling.value = true
+    const depth = Math.max(0, ...freshReadings.value.map(reading => reading.distance ?? 0))
+    scheduleRippleEnd(() => (rippling.value = false), depth * SONAR_RING_MS + SONAR_HOLD_MS)
+  }
+)
+
+/** Fills spaced along the map's own stagger, so each ring lands a beat after
+ *  the last. */
+const RING_SPACING = Math.round(SONAR_RING_MS / 60)
+const rippleGroupings = (rings: boolean): CountryColorGrouping[] =>
+  freshReadings.value.flatMap(reading => {
+    const warmth = warmthColor(readingWarmth(reading.distance), 0.5)
+    const ripple = sonarRipple(reading, rules)
+    if (!rings)
+      return ripple.length ? [{ color: warmth, countries: ripple[ripple.length - 1]! }] : []
+    return ripple.flatMap((countries, ring) => [
+      { color: ring === ripple.length - 1 ? warmth : CLEARED_FILL, countries },
+      ...Array.from({ length: RING_SPACING - 1 }, () => ({ color: CLEARED_FILL, countries: [] })),
+    ])
+  })
 
 /** Replace a map list only when its contents changed — same-content writes
  *  retarget the camera tween and churn every watcher downstream. */
@@ -728,16 +928,18 @@ const paintPursuit = () => {
   const washing =
     favourThisBeat.value && painted.length > 0 && washedTurn !== state.value.turn && live.value
   if (washing) washedTurn = state.value.turn
-  if (painted.length) {
+  if (rippling.value) {
+    groupings.push(...rippleGroupings(true))
+  } else if (painted.length) {
     const fill = analysed.value ? CANDIDATE_FILL : POSSIBLE_FILL
     if (washing)
       for (const isoCode of painted) groupings.push({ color: fill, countries: [isoCode] })
     else groupings.push({ color: fill, countries: [...painted] })
+  } else if (!challenge.value?.showCandidates) {
+    groupings.push(...rippleGroupings(false))
   }
 
-  const knowledge = state.value.candidatesBefore.length
-    ? state.value.candidatesBefore
-    : playableCountries(rules)
+  const knowledge = possibleBefore.value.length ? possibleBefore.value : playableCountries(rules)
 
   if (isDespot.value && despotAt.value) {
     const { routes, sea } = trailLegs(trail.value)
@@ -768,9 +970,10 @@ const paintPursuit = () => {
     writeIfChanged('seaLinks', [...sea, ...fan])
     writeIfChanged('focus', [
       ...new Set([
-        ...(state.value.candidatesBefore.length ? state.value.candidatesBefore : []),
         despotAt.value,
         ...shownMoves.value.map(option => option.isoCode),
+        ...Object.values(state.value.claims),
+        ...Object.values(state.value.pings),
       ]),
     ])
   } else {
@@ -782,12 +985,24 @@ const paintPursuit = () => {
     writeIfChanged('focus', [...knowledge])
   }
 
-  gameStore.map.staggered = washing
+  gameStore.map.staggered = washing || rippling.value
   writeGroupings(groupings)
 }
 
 watch(
-  [challenge, trail, plan, pendingMove, hovered, staged, analysed, live, seaFanOpen],
+  [
+    challenge,
+    trail,
+    plan,
+    pendingMove,
+    hovered,
+    staged,
+    analysed,
+    live,
+    seaFanOpen,
+    readings,
+    rippling,
+  ],
   () => paintPursuit(),
   { immediate: true, deep: true }
 )
@@ -1045,6 +1260,39 @@ header .intel-card {
   }
 }
 
+// This beat's one action, as a two-way switch: a ping by default.
+.action-switch {
+  gap: 0.4rem;
+  display: flex;
+  pointer-events: auto;
+
+  .switch-option {
+    font: inherit;
+    gap: 0.4rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    min-height: 3.8rem;
+    padding: 0.3rem 1.4rem;
+    color: var(--dark-blue);
+
+    small {
+      opacity: 0.7;
+    }
+
+    &.active {
+      font-weight: bold;
+      border-width: 0.18rem;
+      border-color: var(--dark-blue);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+  }
+}
+
 .stage-row {
   gap: 0.6rem;
   display: flex;
@@ -1212,6 +1460,11 @@ header .intel-card {
 
   .row-text {
     flex: 1;
+  }
+
+  .reading {
+    --sonar-color: var(--warmth);
+    box-shadow: inset 0.3rem 0 0 var(--warmth);
   }
 }
 

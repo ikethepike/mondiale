@@ -276,7 +276,7 @@ describe('client timers', () => {
     'components/view/ViewTrendRace.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewTerraIncognita.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewPlayerConfiguration.vue': { count: 1, category: 'cosmetic' },
-    'components/view/ViewManhunt.vue': { count: 2, category: 'local-input' },
+    'components/view/ViewManhunt.vue': { count: 3, category: 'local-input' },
     'components/view/ViewBorderChain.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewAtlas.vue': { count: 1, category: 'cosmetic' },
     'components/view/ViewFinalChallenge.vue': { count: 1, category: 'cosmetic' },

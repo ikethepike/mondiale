@@ -4,7 +4,7 @@
       v-for="chip in chips"
       :key="chip.isoCode"
       class="chip map-caption"
-      :class="{ accented: chip.color }"
+      :class="{ accented: chip.color, sonar: chip.icon === 'sonar' }"
       :style="{
         left: `${chip.left}%`,
         top: `${chip.top}%`,
@@ -12,11 +12,17 @@
         '--chip-accent': chip.color,
       }"
     >
-      {{ chip.label }}
+      <template v-if="chip.pulse">
+        <span :key="`ping-${chip.pulse}`" class="ripple" />
+        <span :key="`echo-${chip.pulse}`" class="ripple echo" />
+      </template>
+      <SonarGlyph v-if="chip.icon === 'sonar'" />
+      <span v-if="chip.label">{{ chip.label }}</span>
     </span>
   </div>
 </template>
 <script lang="ts" setup>
+import SonarGlyph from '~/components/challenge/SonarGlyph.vue'
 import { mapRegionCentre } from '~~/lib/sunset-window'
 import { useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -29,7 +35,15 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 const props = withDefaults(
   defineProps<{
-    entries: { isoCode: ISOCountryCode; label: string; color?: string }[]
+    /** `icon: 'sonar'` marks a ping; a changing `pulse` key ripples the chip
+     *  once (a reading arriving). */
+    entries: {
+      isoCode: ISOCountryCode
+      label: string
+      color?: string
+      icon?: 'sonar'
+      pulse?: string
+    }[]
     /** Collision radius. Sequence users (Border Chain) tighten it — a skipped
      *  number breaks the count where a skipped year is just less clutter. */
     minGapPx?: number
@@ -54,6 +68,8 @@ const chips = computed(() => {
     isoCode: ISOCountryCode
     label: string
     color?: string
+    icon?: 'sonar'
+    pulse?: string
     left: number
     top: number
     index: number
@@ -95,6 +111,27 @@ const chips = computed(() => {
     border-width: 0.2rem;
     border-color: var(--chip-accent);
   }
+
+  &.sonar {
+    --sonar-color: var(--chip-accent);
+    gap: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 0.45rem 0.6rem;
+  }
+}
+
+.ripple {
+  inset: -0.2rem;
+  opacity: 0;
+  position: absolute;
+  border-radius: 1.4rem;
+  border: 0.2rem solid var(--chip-accent, currentColor);
+  animation: probe-ping 0.9s var(--ease-out-expressive) 0.45s forwards;
+
+  &.echo {
+    animation-delay: 0.65s;
+  }
 }
 
 // chip-in comes from rules/_animations.scss
@@ -103,6 +140,10 @@ const chips = computed(() => {
   .chip {
     animation: none;
     opacity: 1;
+  }
+
+  .ripple {
+    display: none;
   }
 }
 </style>

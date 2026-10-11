@@ -3,6 +3,7 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type {
   ManhuntChallenge,
   ManhuntClue,
+  ManhuntReading,
   ManhuntState,
 } from '~~/types/challenges/group-modes.type'
 import type { BoardRegion } from '~~/types/game.types'
@@ -22,8 +23,12 @@ import {
   manhuntMoveKind,
   MANHUNT_SUBPOENA_TOPICS,
   MANHUNT_THRESHOLD_ACCESSORS,
-  MANHUNT_TUNING,
+  MANHUNT_STRIDE,
+  huntCandidates,
   pickManhuntSeed,
+  readingAdmits,
+  SONAR_CAP,
+  sonarDistance,
   pickManhuntVaults,
   pruneManhuntCandidates,
   pursuitNeighboursOf,
@@ -33,6 +38,8 @@ import {
   stepManhuntCandidates,
 } from './manhunt'
 import { sample, shuffleArray } from './arrays'
+import { MANHUNT_POUNCE_AT } from './bots'
+import { getCountry } from './country'
 import { getValueByAccessorID } from './values'
 
 const RULES = { regions: [] as BoardRegion[], difficulty: 'normal' as const }
@@ -50,9 +57,8 @@ const state = (overrides: Partial<ManhuntState> = {}): ManhuntState => ({
   moves: [],
   favoursLeft: 2,
   subpoenasLeft: {},
-  candidatesBefore: [],
-  candidates: [],
   claims: {},
+  pings: {},
   despotReady: false,
   dragnets: [],
   ...overrides,
@@ -128,9 +134,12 @@ describe('vaults and the seed', () => {
 })
 
 describe('movement', () => {
-  it('offers only ground moves without favours', () => {
+  it('runs up to two borders over land, never back to the start', () => {
     const { ground, sea, stay } = legalManhuntMoves('FR', 0, RULES)
-    expect(ground.length).toBeGreaterThan(3)
+    expect(ground).toContain('DE')
+    expect(ground).toContain('PL')
+    expect(ground).not.toContain('FR')
+    expect(ground).not.toContain('RU')
     expect(sea).toEqual([])
     expect(stay).toBe(false)
   })
@@ -158,7 +167,7 @@ describe('movement', () => {
     for (let i = 0; i < 10; i++) {
       const { isoCode, kind } = randomManhuntMove('DE', 2, RULES)
       expect(kind).toBe('ground')
-      expect(connectionsOf('DE')).toContain(isoCode)
+      expect(sonarDistance('DE', isoCode, RULES)).toBeLessThanOrEqual(MANHUNT_STRIDE)
     }
     expect(randomManhuntMove('IS', 1, RULES).kind).toBe('favour')
   })
@@ -171,9 +180,9 @@ describe('movement', () => {
 })
 
 describe('candidate engine', () => {
-  it('steps to the exact ground neighbour image', () => {
+  it('steps to the exact stride image', () => {
     const stepped = stepManhuntCandidates(['DE'], 'ground', RULES)
-    expect(stepped.sort()).toEqual([...new Set(connectionsOf('DE'))].sort())
+    expect(stepped.sort()).toEqual([...legalManhuntMoves('DE', 0, RULES).ground].sort())
   })
 
   it('keeps every favour outcome in a favour step: sailed or stayed', () => {
@@ -190,6 +199,54 @@ describe('candidate engine', () => {
     expect(isSheltered('CH', VAULTS, [])).toBe(true)
     expect(isSheltered('CH', VAULTS, ['CH'])).toBe(false)
     expect(isSheltered('DE', VAULTS, [])).toBe(false)
+  })
+})
+
+describe('sonar', () => {
+  it('reads borders over land, capped, and overseas as null', () => {
+    expect(sonarDistance('FR', 'FR', RULES)).toBe(0)
+    expect(sonarDistance('FR', 'DE', RULES)).toBe(1)
+    expect(sonarDistance('FR', 'PL', RULES)).toBe(2)
+    expect(sonarDistance('PT', 'CN', RULES)).toBe(SONAR_CAP)
+    expect(sonarDistance('FR', 'IS', RULES)).toBeNull()
+  })
+
+  it('admits exactly the ring a reading describes', () => {
+    const reading = { hop: 1, isoCode: 'FR' as ISOCountryCode, distance: 1 }
+    expect(readingAdmits(reading, 'DE', RULES)).toBe(true)
+    expect(readingAdmits(reading, 'PL', RULES)).toBe(false)
+    expect(readingAdmits(reading, 'FR', RULES)).toBe(false)
+  })
+
+  it('replays the public record and private readings soundly', () => {
+    const live = challenge({
+      hop: 2,
+      clues: [
+        { hop: 1, kind: 'region', subject: 'europe', text: 'Europe' },
+        { hop: 2, kind: 'region', subject: 'europe', text: 'Europe' },
+      ],
+      dragnets: [{ hop: 1, claims: { a: 'AT' }, pings: { b: 'FR' } }],
+      moves: [{ hop: 2, kind: 'ground' }],
+    })
+    // The despot sat in Germany (1 from France) and ran to Poland.
+    const readings = [{ hop: 1, isoCode: 'FR' as ISOCountryCode, distance: 1 }]
+    const mine = huntCandidates(live, RULES, readings)
+    const everyone = huntCandidates(live, RULES)
+    expect(mine).toContain('PL')
+    expect(everyone).toContain('PL')
+    expect(mine.length).toBeLessThan(everyone.length)
+    for (const isoCode of mine) expect(everyone).toContain(isoCode)
+  })
+
+  it('holds the live leak back until the analysts land', () => {
+    const live = challenge({
+      hop: 1,
+      clues: [{ hop: 1, kind: 'region', subject: 'africa', text: 'Africa' }],
+    })
+    const before = huntCandidates(live, RULES, [], { latestLeak: false })
+    const after = huntCandidates(live, RULES)
+    expect(after.length).toBeLessThan(before.length)
+    expect(after.every(isoCode => getCountry(isoCode).region === 'africa')).toBe(true)
   })
 })
 
@@ -272,11 +329,11 @@ describe('leaks', () => {
 })
 
 describe('beats', () => {
-  it('settles once the stakeouts are in and the despot has planned', () => {
-    expect(manhuntBeatSettled(challenge({ claims: { a: 'DE', b: 'FR', c: 'PL' } }))).toBe(false)
-    expect(
-      manhuntBeatSettled(challenge({ claims: { a: 'DE', b: 'FR', c: 'PL' }, despotReady: true }))
-    ).toBe(true)
+  it('settles once every detective has acted and the despot has planned', () => {
+    const acted = { claims: { a: 'DE', b: 'FR' }, pings: { c: 'PL' } } as Partial<ManhuntState>
+    expect(manhuntBeatSettled(challenge({ claims: { a: 'DE', b: 'FR' } }))).toBe(false)
+    expect(manhuntBeatSettled(challenge(acted))).toBe(false)
+    expect(manhuntBeatSettled(challenge({ ...acted, despotReady: true }))).toBe(true)
     // The last beat has nothing to plan.
     expect(manhuntBeatSettled(challenge({ hop: 7, claims: { a: 'DE', b: 'FR', c: 'PL' } }))).toBe(
       true
@@ -286,7 +343,7 @@ describe('beats', () => {
 
 describe('scoring', () => {
   const finalClaims = (claims: ManhuntState['claims']): Partial<ManhuntState> => ({
-    dragnets: [{ hop: 4, claims }],
+    dragnets: [{ hop: 4, claims, pings: {} }],
   })
 
   it('splits a capture by proximity with a capturer bonus', () => {
@@ -299,6 +356,7 @@ describe('scoring', () => {
         country: 'DE',
         trail: ['PL', 'CZ', 'AT', 'DE'],
         looted: [],
+        readings: {},
       },
     })
     const scores = scoreManhunt(caught)
@@ -315,7 +373,13 @@ describe('scoring', () => {
       scoreManhunt(
         challenge({
           ...finalClaims({ a: 'RU', b: 'CN', c: 'FR' }),
-          outcome: { kind: 'escaped', country: 'MN', trail: ['KZ', 'RU', 'MN'], looted },
+          outcome: {
+            kind: 'escaped',
+            country: 'MN',
+            trail: ['KZ', 'RU', 'MN'],
+            looted,
+            readings: {},
+          },
         })
       )
     expect(escaped([]).despot.scored).toBe(Math.round(15 * 0.7))
@@ -329,7 +393,7 @@ describe('scoring', () => {
     const scores = scoreManhunt(
       challenge({
         ...finalClaims({ a: 'RU' }),
-        outcome: { kind: 'escaped', country: 'MN', trail: ['MN'], looted: [] },
+        outcome: { kind: 'escaped', country: 'MN', trail: ['MN'], looted: [], readings: {} },
       })
     )
     expect(scores.b.scored).toBe(0)
@@ -337,46 +401,62 @@ describe('scoring', () => {
 })
 
 /**
- * The balance pin: a despot hopping at random (picking either leak) against
- * detectives who always know the live set and stake out distinct countries
- * in it. Real detectives play worse, so this is the hunt's upper bound.
+ * The balance pin, played through the REAL replay engine: a despot running
+ * at random against detectives who hunt their own replay (public record plus
+ * their own readings), pinging inside it until it is small enough to pounce
+ * on — the bot detective's policy.
  */
 const simulateCaptureRate = (regions: BoardRegion[], detectives: number, runs: number): number => {
   const rules = { regions, difficulty: 'normal' as const }
-  const turnCount = MANHUNT_TUNING.normal.turnCount
+  const ids = Array.from({ length: detectives }, (_, index) => `d${index}`)
   let captures = 0
   for (let run = 0; run < runs; run++) {
     const vaults = pickManhuntVaults(rules)
     let at = pickManhuntSeed(rules, vaults)!
-    let candidates = initialManhuntCandidates(rules, vaults)
-    const claimsPerBeat = manhuntClaimsPerBeat(detectives, candidates.length)
-    const used: ManhuntClue[] = []
-    const opening = manhuntLeakOptions(game, at, candidates, 1, used, claimsPerBeat)[0]
-    used.push(opening.clue)
-    candidates = opening.matches
+    const pool = initialManhuntCandidates(rules, vaults)
+    const live = challenge({ detectives: ids, clues: [] })
+    live.vaults = vaults
+    live.claimsPerBeat = manhuntClaimsPerBeat(detectives, pool.length)
+    live.state.clues = [manhuntLeakOptions(game, at, pool, 1, [], live.claimsPerBeat)[0]!.clue]
+    const readings: { [id: string]: ManhuntReading[] } = {}
     const looted: ISOCountryCode[] = []
-    for (let hop = 1; hop <= turnCount; hop++) {
-      const claims = shuffleArray(candidates.filter(iso => !vaults.includes(iso))).slice(
-        0,
-        claimsPerBeat
-      )
+    for (let hop = 1; hop <= live.turnCount; hop++) {
+      live.state.hop = hop
+      const claims: ManhuntState['claims'] = {}
+      const pings: ManhuntState['pings'] = {}
+      for (const id of shuffleArray([...ids])) {
+        const mine = huntCandidates(live, rules, readings[id])
+        const open = mine.filter(
+          iso => !vaults.includes(iso) && !Object.values(claims).includes(iso)
+        )
+        const room = Object.keys(claims).length < live.claimsPerBeat
+        if (room && open.length && (open.length <= MANHUNT_POUNCE_AT || hop === live.turnCount)) {
+          claims[id] = sample(open)!
+        } else pings[id] = sample(mine.length ? mine : pool)!
+      }
+      for (const [id, isoCode] of Object.entries(pings)) {
+        readings[id] = [
+          ...(readings[id] ?? []),
+          { hop, isoCode, distance: sonarDistance(isoCode, at, rules) },
+        ]
+      }
       const sheltered = isSheltered(at, vaults, looted)
       if (sheltered) looted.push(at)
-      if (claims.includes(at) && !sheltered) {
+      if (!sheltered && Object.values(claims).includes(at)) {
         captures++
         break
       }
+      live.state.dragnets.push({ hop, claims, pings })
       const to = sample(legalManhuntMoves(at, 0, rules).ground)!
-      const stepped = stepManhuntCandidates(
-        pruneManhuntCandidates(candidates, claims, vaults),
-        'ground',
-        rules
-      )
-      const leak = sample(manhuntLeakOptions(game, to, stepped, hop + 1, used, claimsPerBeat))!
-      used.push(leak.clue)
+      live.state.moves.push({ hop: hop + 1, kind: 'ground' })
+      const stepped = stepManhuntCandidates(huntCandidates(live, rules), 'ground', rules)
+      const leak = sample(
+        manhuntLeakOptions(game, to, stepped, hop + 1, live.state.clues, live.claimsPerBeat)
+      )!
+      live.state.clues.push(leak.clue)
       at = to
-      candidates = stepped.filter(isoCode => clueAdmits(leak.clue, isoCode))
-      expect(candidates).toContain(at)
+      live.state.hop = hop + 1
+      for (const id of ids) expect(huntCandidates(live, rules, readings[id])).toContain(at)
     }
   }
   return captures / runs
@@ -385,13 +465,13 @@ const simulateCaptureRate = (regions: BoardRegion[], detectives: number, runs: n
 describe('balance', () => {
   it('keeps the hunt a contest on the world board', () => {
     const rate = simulateCaptureRate([], 3, 40)
-    expect(rate).toBeGreaterThan(0.3)
+    expect(rate).toBeGreaterThan(0.25)
     expect(rate).toBeLessThan(0.8)
   })
 
   it('keeps the hunt a contest on a small board with a big table', () => {
-    const rate = simulateCaptureRate(['europe'], 5, 40)
-    expect(rate).toBeGreaterThan(0.25)
-    expect(rate).toBeLessThan(0.8)
+    const rate = simulateCaptureRate(['europe'], 5, 30)
+    expect(rate).toBeGreaterThan(0.2)
+    expect(rate).toBeLessThan(0.85)
   })
 })

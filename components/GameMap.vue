@@ -470,17 +470,13 @@ const props = defineProps({
 })
 
 // Deliberately soft washes — feedback, not verdict-shouting. JS needs the
-// literals; `stray`/`hot` mirror flame() and `endpoint` mirrors ink() in
+// literals; `stray` mirrors flame() and `endpoint` mirrors ink() in
 // rules/_ink.scss — keep the hues in step (the walkColor rule, lib/chain.ts).
 const TINT_COLORS: { [tint in MapTint]: string } = {
   optimal: 'hsla(170.5, 34.7%, 55.1%, 0.65)',
   inefficient: 'hsla(29.7, 79.9%, 66.7%, 0.6)',
   stray: 'hsla(9.8, 81.3%, 60.2%, 0.42)',
   endpoint: 'hsla(215.7, 76.4%, 31.6%, 0.45)',
-  // Hot & cold warmth — hues match the probe-trail chips
-  hot: 'hsla(9.8, 81.3%, 60.2%, 0.55)',
-  warm: 'hsla(29.7, 79.9%, 66.7%, 0.55)',
-  cold: 'hsla(197.6, 51.2%, 55%, 0.4)',
 }
 
 const countryColors = computed(() => {

@@ -3,6 +3,7 @@ import type {
   ManhuntChallenge,
   ManhuntClue,
   ManhuntMoveKind,
+  ManhuntReading,
   ManhuntState,
 } from '~~/types/challenges/group-modes.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -23,8 +24,8 @@ import { REGION_LABELS } from './variant'
 /**
  * The Despot: a hidden-movement chase. The trail is the game's only true
  * secret — it lives under this key, in a redis blob that never enters a
- * broadcast, while everything on the challenge state is safe for the whole
- * table to read.
+ * broadcast, beside each detective's private sonar readings. Everything on the
+ * challenge state is safe for the whole table to read.
  */
 export const manhuntKey = (gameId: string, roundIndex: number) => `${gameId}:manhunt:${roundIndex}`
 
@@ -41,15 +42,14 @@ export interface ManhuntPlan {
 }
 
 export interface ManhuntSecret {
-  /** Countries the despot has passed through; last is the current position.
-   *  A favour spent lying low repeats the country. */
+  /** Countries the despot has stood in, one per beat; last is the current
+   *  position. A favour spent lying low repeats the country. */
   trail: ISOCountryCode[]
-  /** Every country consistent with the public record. Derivable from public
-   *  state, kept here so the engine never recomputes from scratch. */
-  candidates: ISOCountryCode[]
   plan?: ManhuntPlan
   /** Vaults emptied — banked at the end of the sheltered beat. */
   looted: ISOCountryCode[]
+  /** Each detective's sonar readings — only ever sent to their own socket. */
+  readings: { [playerId: string]: ManhuntReading[] }
 }
 
 // --- Graphs -----------------------------------------------------------------
@@ -76,6 +76,28 @@ const seaMovesOf = (isoCode: ISOCountryCode, rules: GameRules): ISOCountryCode[]
     destination => destination !== isoCode && isCountryPlayable(rules, destination)
   )
 
+const rulesKey = (rules: GameRules) =>
+  `${[...rules.regions].sort().join(',')}|${rules.difficulty}|${rules.includeMicroNations ?? ''}`
+
+const distanceCache = new Map<string, Map<ISOCountryCode, number>>()
+
+/** Borders between two countries over land and straits, on this board —
+ *  undefined when no land route exists. Memoised: the candidate engine asks
+ *  for whole rings at a time. */
+export const bordersBetween = (
+  from: ISOCountryCode,
+  to: ISOCountryCode,
+  rules: GameRules
+): number | undefined => {
+  const key = `${rulesKey(rules)}|${from}`
+  let distances = distanceCache.get(key)
+  if (!distances) {
+    distances = distancesFrom(from, isoCode => groundMovesOf(isoCode, rules))
+    distanceCache.set(key, distances)
+  }
+  return distances.get(to)
+}
+
 /** How a hop a→b was made, read off the trail alone. */
 export const manhuntHopShape = (
   from: ISOCountryCode,
@@ -85,7 +107,39 @@ export const manhuntHopShape = (
 
 // --- Movement ---------------------------------------------------------------
 
+/** How far the despot may run over land in one beat. One border a beat can't
+ *  outrun the sonar — measured, the hunt caught a one-border despot nearly
+ *  every time. */
+export const MANHUNT_STRIDE = 2
+
+const strideCache = new Map<string, ISOCountryCode[]>()
+
+/** Every country within the stride, never the start itself — doubling back
+ *  is not a free beat lying low. */
+const strideOf = (isoCode: ISOCountryCode, rules: GameRules): ISOCountryCode[] => {
+  const key = `${rulesKey(rules)}|${isoCode}`
+  const cached = strideCache.get(key)
+  if (cached) return cached
+  const reach = new Set<ISOCountryCode>()
+  let frontier = [isoCode]
+  for (let step = 0; step < MANHUNT_STRIDE; step++) {
+    const next: ISOCountryCode[] = []
+    for (const from of frontier) {
+      for (const to of groundMovesOf(from, rules)) {
+        if (to === isoCode || reach.has(to)) continue
+        reach.add(to)
+        next.push(to)
+      }
+    }
+    frontier = next
+  }
+  const result = [...reach]
+  strideCache.set(key, result)
+  return result
+}
+
 export interface ManhuntMoves {
+  /** Up to MANHUNT_STRIDE borders over land and straits — free. */
   ground: ISOCountryCode[]
   /** Sea passages — each spends a smuggler's favour. */
   sea: ISOCountryCode[]
@@ -94,7 +148,7 @@ export interface ManhuntMoves {
 }
 
 /**
- * The despot's legal moves. A favour (a sea passage or a turn lying low) is
+ * The despot's legal moves. A favour (a sea passage or a beat lying low) is
  * announced only as "a favour was called in", never which. A move that would
  * leave the despot somewhere ground can't leave needs a further favour in
  * reserve, so the forced move always stays satisfiable.
@@ -104,7 +158,7 @@ export const legalManhuntMoves = (
   favoursLeft: number,
   rules: GameRules
 ): ManhuntMoves => {
-  const ground = groundMovesOf(from, rules)
+  const ground = strideOf(from, rules)
   if (favoursLeft < 1) return { ground, sea: [], stay: false }
   const groundSet = new Set(ground)
   const sea = seaMovesOf(from, rules).filter(
@@ -156,11 +210,8 @@ const vaultCount = (rules: GameRules): number =>
   playableCountries(rules).filter(iso => hasOuts(iso, rules)).length >= 60 ? 3 : 2
 /** Vaults sit at least this far apart, so no one stakeout guards two exits. */
 const VAULT_SPACING = 3
-/** The despot starts within this many hops of a vault. */
+/** The despot starts within this many borders of a vault. */
 const VAULT_REACH = 4
-
-const groundDistances = (origin: ISOCountryCode, rules: GameRules) =>
-  distancesFrom(origin, isoCode => groundMovesOf(isoCode, rules))
 
 const hasOuts = (isoCode: ISOCountryCode, rules: GameRules) =>
   groundMovesOf(isoCode, rules).length >= MINIMUM_SEED_MOVES
@@ -177,39 +228,81 @@ export const pickManhuntVaults = (
     random
   )) {
     if (vaults.length === count) break
-    const distances = groundDistances(isoCode, rules)
-    if (vaults.every(vault => (distances.get(vault) ?? Infinity) >= VAULT_SPACING)) {
-      vaults.push(isoCode)
-    }
+    const spaced = vaults.every(
+      vault => (bordersBetween(isoCode, vault, rules) ?? Infinity) >= VAULT_SPACING
+    )
+    if (spaced) vaults.push(isoCode)
   }
   return vaults
 }
 
 /**
- * The detectives' opening knowledge: every country the seed could be. The
- * seed pool is exactly this predicate, so the candidate engine starts sound.
+ * The hunt's opening knowledge: every country the seed could be. The seed
+ * pool is exactly this predicate, so the candidate engine starts sound.
  */
 export const initialManhuntCandidates = (
   rules: GameRules,
   vaults: ISOCountryCode[]
-): ISOCountryCode[] => {
-  const reach = new Map<ISOCountryCode, number>()
-  for (const vault of vaults) {
-    for (const [isoCode, distance] of groundDistances(vault, rules)) {
-      reach.set(isoCode, Math.min(distance, reach.get(isoCode) ?? Infinity))
-    }
-  }
-  return playableCountries(rules).filter(isoCode => {
+): ISOCountryCode[] =>
+  playableCountries(rules).filter(isoCode => {
     if (!hasOuts(isoCode, rules)) return false
-    const distance = reach.get(isoCode)
-    return distance !== undefined && distance >= 1 && distance <= VAULT_REACH
+    const distance = Math.min(
+      ...vaults.map(vault => bordersBetween(vault, isoCode, rules) ?? Infinity)
+    )
+    return distance >= 1 && distance <= VAULT_REACH
   })
-}
 
 export const pickManhuntSeed = (
   rules: GameRules,
   vaults: ISOCountryCode[]
 ): ISOCountryCode | undefined => sample(initialManhuntCandidates(rules, vaults))
+
+// --- Sonar ------------------------------------------------------------------
+
+/** Readings at or beyond this many borders collapse into "this many or more". */
+export const SONAR_CAP = 6
+
+export const sonarDistance = (
+  from: ISOCountryCode,
+  to: ISOCountryCode,
+  rules: GameRules
+): number | null => {
+  const borders = bordersBetween(from, to, rules)
+  return borders === undefined ? null : Math.min(borders, SONAR_CAP)
+}
+
+/** How a reading reads: "here", "1 border", "4 borders", "6+ borders" or
+ *  "overseas"; `short` is the chip's cut ("0", "4", "6+", "sea"). */
+export const formatReading = (distance: number | null, short = false): string => {
+  if (distance === null) return short ? 'sea' : 'overseas'
+  const count = distance >= SONAR_CAP ? `${SONAR_CAP}+` : String(distance)
+  if (short) return count
+  if (distance === 0) return 'right here'
+  return `${count} ${distance === 1 ? 'border' : 'borders'}`
+}
+
+/** A reading's warmth, on the shared ramp (lib/warmth): 0 on top of the
+ *  despot, 1 at the sonar's cap or overseas. */
+export const readingWarmth = (distance: number | null): number =>
+  distance === null ? 1 : Math.min(distance, SONAR_CAP) / SONAR_CAP
+
+/** The sonar's ripple out from a ping: ring k holds the countries k borders
+ *  away, out to the reading's own ring — where the despot stood. */
+export const sonarRipple = (reading: ManhuntReading, rules: GameRules): ISOCountryCode[][] => {
+  if (reading.distance === null) return []
+  const rings: ISOCountryCode[][] = Array.from({ length: reading.distance + 1 }, () => [])
+  for (const isoCode of playableCountries(rules)) {
+    const distance = sonarDistance(reading.isoCode, isoCode, rules)
+    if (distance !== null && distance <= reading.distance) rings[distance]!.push(isoCode)
+  }
+  return rings
+}
+
+export const readingAdmits = (
+  reading: ManhuntReading,
+  isoCode: ISOCountryCode,
+  rules: GameRules
+): boolean => sonarDistance(reading.isoCode, isoCode, rules) === reading.distance
 
 // --- The candidate engine ---------------------------------------------------
 
@@ -225,7 +318,7 @@ export const stepManhuntCandidates = (
       stepped.add(isoCode)
       for (const destination of seaMovesOf(isoCode, rules)) stepped.add(destination)
     } else {
-      for (const destination of groundMovesOf(isoCode, rules)) stepped.add(destination)
+      for (const destination of strideOf(isoCode, rules)) stepped.add(destination)
     }
   }
   return [...stepped]
@@ -249,6 +342,40 @@ export const isSheltered = (
   vaults: ISOCountryCode[],
   looted: ISOCountryCode[]
 ): boolean => vaults.includes(isoCode) && !looted.includes(isoCode)
+
+/**
+ * THE candidate engine: where the despot can be at the live beat, replayed
+ * from the public record (leaks, stakeout misses, announced moves) plus any
+ * private readings the asker holds. The server prices leaks off the public
+ * replay, each detective's map paints their own, and bots hunt with theirs —
+ * one replay, so no two of them can disagree. `latestLeak: false` replays up
+ * to the live beat without its leak (the map before the analysts land).
+ */
+export const huntCandidates = (
+  challenge: Pick<ManhuntChallenge, 'vaults' | 'state'>,
+  rules: GameRules,
+  readings: ManhuntReading[] = [],
+  { latestLeak = true }: { latestLeak?: boolean } = {}
+): ISOCountryCode[] => {
+  const { state, vaults } = challenge
+  let set = initialManhuntCandidates(rules, vaults)
+  for (let hop = 1; hop <= state.hop; hop++) {
+    if (hop < state.hop || latestLeak) {
+      for (const clue of state.clues) {
+        if (clue.hop === hop) set = set.filter(isoCode => clueAdmits(clue, isoCode))
+      }
+    }
+    if (hop === state.hop) break
+    const dragnet = state.dragnets.find(entry => entry.hop === hop)
+    set = pruneManhuntCandidates(set, Object.values(dragnet?.claims ?? {}), vaults)
+    for (const reading of readings) {
+      if (reading.hop === hop) set = set.filter(isoCode => readingAdmits(reading, isoCode, rules))
+    }
+    const move = state.moves.find(entry => entry.hop === hop + 1)
+    set = stepManhuntCandidates(set, move?.kind ?? 'ground', rules)
+  }
+  return set
+}
 
 // --- Clues ------------------------------------------------------------------
 
@@ -611,14 +738,17 @@ export const MANHUNT_TAUNTS = {
 
 // --- Beats ------------------------------------------------------------------
 
-/** Every claim is in and the despot has locked their move — nothing left to
- *  wait for. On the last hop the despot has nothing to plan. */
+/** Every detective has acted and the despot has locked their move — nothing
+ *  left to wait for. On the last hop the despot has nothing to plan. */
 export const manhuntBeatSettled = (challenge: ManhuntChallenge): boolean => {
   const { state } = challenge
   const despotDone = state.despotReady || state.hop >= challenge.turnCount
-  const claimed = Object.keys(state.claims).length
-  return despotDone && claimed >= Math.min(challenge.claimsPerBeat, state.detectives.length)
+  return despotDone && state.detectives.every(playerId => hasActed(state, playerId))
 }
+
+/** Every detective does ONE thing a beat: a ping or a stakeout. */
+export const hasActed = (state: ManhuntState, playerId: string): boolean =>
+  state.claims[playerId] !== undefined || state.pings[playerId] !== undefined
 
 /** Who holds a country this beat, if anyone — claims are one per country. */
 export const claimantOf = (state: ManhuntState, isoCode: ISOCountryCode): string | undefined =>
@@ -627,7 +757,7 @@ export const claimantOf = (state: ManhuntState, isoCode: ISOCountryCode): string
 // --- Scoring ----------------------------------------------------------------
 
 /** The despot banks a share per beat survived and per vault carried away;
- *  the chase pot splits by how close each detective's final claim landed. */
+ *  the chase pot splits by how close each detective's final marker landed. */
 const SURVIVAL_SHARE = 0.7
 const LOOT_SHARE = 0.12
 const CHASE_SHARE = 0.75
@@ -646,7 +776,8 @@ export const scoreManhunt = (
   if (!outcome) return scores
 
   const captured = outcome.kind === 'captured'
-  const finalClaims = state.dragnets[state.dragnets.length - 1]?.claims ?? {}
+  const last = state.dragnets[state.dragnets.length - 1]
+  const finalClaims = { ...last?.pings, ...last?.claims }
   const distances = distancesFrom(outcome.country, pursuitNeighboursOf)
 
   const weights = state.detectives.map(playerId => {

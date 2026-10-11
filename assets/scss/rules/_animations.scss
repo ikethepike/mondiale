@@ -201,3 +201,16 @@
     transform: rotate(360deg);
   }
 }
+
+// A sonar ping's expanding ring — Hot & Cold's probe dials and The Despot's
+// sonar chips speak the same pulse.
+@keyframes probe-ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}

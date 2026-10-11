@@ -17,8 +17,9 @@ import { submitManhuntMoveHandler } from './submit-manhunt-move.handler'
 import { submitGovernmentPickHandler } from './submit-government-pick.handler'
 import { submitManhuntClaimHandler } from './submit-manhunt-claim.handler'
 import { submitManhuntLeakHandler } from './submit-manhunt-leak.handler'
+import { submitManhuntPingHandler } from './submit-manhunt-ping.handler'
 import { submitManhuntSubpoenaHandler } from './submit-manhunt-subpoena.handler'
-import { fetchManhuntPositionHandler } from './fetch-manhunt-position.handler'
+import { fetchManhuntIntelHandler } from './fetch-manhunt-intel.handler'
 import { fetchVintageStoryHandler } from './fetch-vintage-story.handler'
 import { manhuntReadyHandler } from './manhunt-ready.handler'
 import { uniqueReadyHandler } from './unique-ready.handler'
@@ -89,6 +90,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'submit-manhunt-claim': {
     handler: submitManhuntClaimHandler,
   },
+  'submit-manhunt-ping': {
+    handler: submitManhuntPingHandler,
+  },
   'submit-manhunt-subpoena': {
     handler: submitManhuntSubpoenaHandler,
   },
@@ -126,9 +130,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'manhunt-taunt': {
     handler: manhuntTauntHandler,
   },
-  // Reads only the requesting despot's own secret; answers on their socket
-  'fetch-manhunt-position': {
-    handler: fetchManhuntPositionHandler,
+  // Reads only the requester's own secret intel; answers on their socket
+  'fetch-manhunt-intel': {
+    handler: fetchManhuntIntelHandler,
   },
   // Reads one round's story; answers the requesting socket once it is graded
   'fetch-vintage-story': {
@@ -220,7 +224,7 @@ export const UNRECORDED_CLIENT_EVENTS: readonly ClientEvent[] = [
   'player-guessing',
   'player-cheering',
   'manhunt-taunt',
-  'fetch-manhunt-position',
+  'fetch-manhunt-intel',
   'fetch-vintage-story',
 ]
 

@@ -66,6 +66,10 @@ const SHARE_HISTORY_ROUNDS = 5
  *  decay, so the wander is bounded rather than scaled without a ceiling. */
 export const HOT_COLD_MAX_WANDER = 3
 
+/** The Despot: a bot detective pings until its own possible set is this
+ *  small, then pounces — the threshold that kept a simulated hunt a contest. */
+export const MANHUNT_POUNCE_AT = 10
+
 /** Clean Sweep's claim accuracy, floor to ceiling across the share — wide
  *  enough that the three difficulties actually read differently on the board. */
 export const SWEEP_ACCURACY: readonly [number, number] = [0.3, 0.95]

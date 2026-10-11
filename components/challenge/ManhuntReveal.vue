@@ -26,6 +26,10 @@
     <p v-if="capturerName" class="capturer">
       Cornered by <strong>{{ capturerName }}</strong> on beat {{ capturedHop }}.
     </p>
+    <p v-if="sharpest" class="sharpest">
+      Sharpest ping: <strong>{{ nameOf(sharpest.playerId) }}</strong
+      >, {{ formatReading(sharpest.distance) }} out on beat {{ sharpest.hop }}
+    </p>
     <details v-if="clues.length" class="intel-recap" :open="!isPhone && !isShort">
       <summary class="recap-lead">
         The leaks that {{ capturerName ? 'closed the net' : 'never closed it' }}
@@ -50,7 +54,7 @@ import DespotHat from '~/components/challenge/DespotHat.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { attributionFor, datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { isStraitHop } from '~~/lib/chain'
-import { manhuntHopShape } from '~~/lib/manhunt'
+import { formatReading, manhuntHopShape } from '~~/lib/manhunt'
 import { seatLabel } from '~~/lib/player'
 import { countryName, getCountry } from '~~/lib/country'
 import { useChipTrail } from '~~/lib/use-chip-trail'
@@ -139,6 +143,16 @@ const escapeLine = computed(() => {
     parts.push(`${looted.value.length} ${looted.value.length === 1 ? 'vault' : 'vaults'} emptied`)
   }
   return parts.join(' · ')
+})
+
+/** The closest any detective's sonar came — the reveal's near-miss. */
+const sharpest = computed(() => {
+  const all = Object.entries(outcome.value?.readings ?? {}).flatMap(([playerId, readings]) =>
+    readings.flatMap(reading =>
+      reading.distance === null ? [] : [{ playerId, hop: reading.hop, distance: reading.distance }]
+    )
+  )
+  return all.sort((a, b) => a.distance - b.distance)[0]
 })
 
 const capturedHop = computed(() =>
@@ -244,8 +258,13 @@ const capturerName = computed(() =>
   }
 }
 
-.capturer {
+.capturer,
+.sharpest {
   margin: 0;
+}
+
+.sharpest {
+  opacity: 0.8;
 }
 
 .intel-recap {

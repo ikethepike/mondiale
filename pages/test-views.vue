@@ -1039,7 +1039,13 @@ const manhuntChallenge = (
     analysisAt: Date.now() - 1,
     detectives,
     clues: [
-      { hop: 1, kind: 'region', topic: 'geography', text: 'The despot is hiding in Europe' },
+      {
+        hop: 1,
+        kind: 'region',
+        topic: 'geography',
+        subject: 'europe',
+        text: 'The despot is hiding in Europe',
+      },
       {
         hop: 2,
         kind: 'threshold',
@@ -1063,11 +1069,13 @@ const manhuntChallenge = (
     ],
     favoursLeft: 2,
     subpoenasLeft: Object.fromEntries(detectives.map(playerId => [playerId, 1])),
-    candidatesBefore: ['IT', 'AT', 'CH', 'SI', 'HR', 'FR', 'DE', 'SK'],
-    candidates: ['IT', 'AT', 'CH', 'SI', 'HR'],
     claims: {},
+    pings: {},
     despotReady: false,
-    dragnets: [{ hop: 2, claims: { [detectives[0]]: 'DE', [detectives[1]]: 'PL' } }],
+    dragnets: [
+      { hop: 1, claims: {}, pings: { [detectives[0]]: 'ES', [detectives[1]]: 'PL' } },
+      { hop: 2, claims: { [detectives[1]]: 'PL' }, pings: { [detectives[0]]: 'FR' } },
+    ],
     ...state,
   },
 })
@@ -3022,24 +3030,33 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'manhunt-detective',
-    label: 'The Despot (detective, stakeouts landing, the cut painted)',
-    build: () =>
-      mockGame('round', [
+    label: 'The Despot (detective, a fresh sonar reading, markers landing)',
+    build: () => {
+      // Readings arrive over the detective's own socket in real play — the
+      // harness plants them directly.
+      gameStore.manhuntReadings = {
+        turn: 3,
+        readings: [
+          { hop: 1, isoCode: 'ES', distance: 4 },
+          { hop: 2, isoCode: 'FR', distance: 2 },
+        ],
+      }
+      return mockGame('round', [
         groupRound(
           manhuntChallenge(RIVAL, [ME, THIRD], {
             turn: 3,
             hop: 3,
             claims: { [THIRD]: 'DE' },
-            candidatesBefore: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT', 'CH', 'FR', 'SK'],
-            candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
             moves: [
               { hop: 2, kind: 'ground' },
               { hop: 3, kind: 'favour' },
             ],
             favoursLeft: 1,
+            pings: { [THIRD]: 'PL' },
           })
         ),
-      ]),
+      ])
+    },
   },
   {
     id: 'manhunt-analysis',
@@ -3053,8 +3070,7 @@ const scenarios: Scenario[] = [
             analysisAt: Date.now() + 60_000,
             subpoena: { by: THIRD, topic: 'economy' },
             subpoenasLeft: { [ME]: 1, [THIRD]: 0 },
-            candidatesBefore: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT', 'CH', 'FR', 'SK'],
-            candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
+            pings: { [THIRD]: 'IT' },
           })
         ),
       ]),
@@ -3182,8 +3198,8 @@ const scenarios: Scenario[] = [
               { hop: 6, kind: 'ground' },
             ],
             dragnets: [
-              { hop: 5, claims: { [ME]: 'HR', [THIRD]: 'AT' } },
-              { hop: 6, claims: { [ME]: 'SI', [THIRD]: 'HU' } },
+              { hop: 5, claims: { [THIRD]: 'AT' }, pings: { [ME]: 'HR' } },
+              { hop: 6, claims: { [ME]: 'SI' }, pings: { [THIRD]: 'HU' } },
             ],
             outcome: {
               kind: 'captured',
@@ -3192,6 +3208,10 @@ const scenarios: Scenario[] = [
               country: 'SI',
               trail: ['CZ', 'AT', 'CH', 'IT', 'IT', 'SI'],
               looted: ['CH'],
+              readings: {
+                [ME]: [{ hop: 5, isoCode: 'HR', distance: 2 }],
+                [THIRD]: [{ hop: 6, isoCode: 'HU', distance: 2 }],
+              },
             },
             finished: true,
           })

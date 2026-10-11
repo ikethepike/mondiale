@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  huntCandidates,
   initialManhuntCandidates,
   legalManhuntMoves,
   manhuntKey,
   MANHUNT_TUNING,
+  sonarDistance,
   type ManhuntSecret,
 } from '~~/lib/manhunt'
 import { latestChallengeOfType } from '~~/lib/rounds'
@@ -18,6 +20,7 @@ import { createTestTable, type TestTable, uniqueGameId } from './test-table'
 const DESPOT = 'd'
 const DETECTIVES = ['a', 'b', 'c']
 const VAULTS: ISOCountryCode[] = ['CH', 'SG', 'PA']
+const RULES = { regions: [], difficulty: 'normal' as const }
 
 const buildGame = (): Game => {
   const tuning = MANHUNT_TUNING.normal
@@ -45,9 +48,8 @@ const buildGame = (): Game => {
       moves: [],
       favoursLeft: tuning.favours,
       subpoenasLeft: Object.fromEntries(DETECTIVES.map(id => [id, 1])),
-      candidatesBefore: [],
-      candidates: [],
       claims: {},
+      pings: {},
       despotReady: false,
       dragnets: [],
     },
@@ -90,7 +92,7 @@ const openChase = async () => {
 /** Stake out countries that are NOT the hideout (and not vaults). */
 const missEverywhere = async (table: TestTable) => {
   const at = await despotAt(table)
-  const decoys = initialManhuntCandidates({ regions: [], difficulty: 'normal' }, VAULTS).filter(
+  const decoys = initialManhuntCandidates(RULES, VAULTS).filter(
     iso => iso !== at && !VAULTS.includes(iso)
   )
   for (const [index, id] of DETECTIVES.entries()) {
@@ -102,7 +104,7 @@ const missEverywhere = async (table: TestTable) => {
 const planGround = async (table: TestTable) => {
   const at = await despotAt(table)
   const { state } = await manhuntOf(table)
-  const destination = legalManhuntMoves(at, 0, { regions: [], difficulty: 'normal' }).ground[0]!
+  const destination = legalManhuntMoves(at, 0, RULES).ground[0]!
   await table.send(DESPOT, { event: 'submit-manhunt-move', isoCode: destination, turn: state.turn })
   return destination
 }
@@ -124,7 +126,7 @@ describe('the Despot beat engine', () => {
     const secret = await secretOf(table)
     expect(challenge.state.briefing).toBe(false)
     expect(challenge.state.clues).toHaveLength(1)
-    expect(challenge.state.candidates).toContain(secret.trail[0])
+    expect(huntCandidates(challenge, RULES)).toContain(secret.trail[0])
     expect(JSON.stringify(challenge)).not.toContain('"trail"')
   })
 
@@ -144,7 +146,7 @@ describe('the Despot beat engine', () => {
     expect(after.state.hop).toBe(2)
     expect(after.state.dragnets).toHaveLength(1)
     expect(after.state.clues[1]!.text).toBe(plan.options[1]!.text)
-    expect(after.state.candidates).toContain(destination)
+    expect(huntCandidates(after, RULES)).toContain(destination)
     expect(after.state.claims).toEqual({})
     expect(await despotAt(table)).toBe(destination)
   })
@@ -163,13 +165,15 @@ describe('the Despot beat engine', () => {
     const { state } = await manhuntOf(table)
     await table.send('a', { event: 'submit-manhunt-claim', isoCode: at, turn: state.turn })
     await table.send('b', { event: 'submit-manhunt-claim', isoCode: 'JP', turn: state.turn })
-    await table.send('c', { event: 'submit-manhunt-claim', isoCode: 'BR', turn: state.turn })
+    await table.send('c', { event: 'submit-manhunt-ping', isoCode: 'BR', turn: state.turn })
     await planGround(table)
     await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
 
     const caught = await manhuntOf(table)
     expect(caught.state.finished).toBe(true)
     expect(caught.state.outcome).toMatchObject({ kind: 'captured', capturerId: 'a', country: at })
+    // The round's readings go public with the trail, at the reveal.
+    expect(caught.state.outcome!.readings.c).toHaveLength(1)
 
     await vi.advanceTimersByTimeAsync(30_000)
     const settled = await table.read()
@@ -182,7 +186,6 @@ describe('the Despot beat engine', () => {
     table = await openChase()
     const secret = await secretOf(table)
     secret.trail = ['CH']
-    secret.candidates = ['CH', 'DE', 'FR', 'IT', 'AT']
     await table.redis.set(manhuntKey(table.id, 0), secret)
 
     const { state } = await manhuntOf(table)
@@ -195,8 +198,39 @@ describe('the Despot beat engine', () => {
     const after = await manhuntOf(table)
     expect(after.state.finished).toBeFalsy()
     expect((await secretOf(table)).looted).toEqual(['CH'])
-    // A miss on a vault proves nothing, so it never prunes.
-    expect(after.state.candidatesBefore.length).toBeGreaterThan(0)
+  })
+
+  it('answers a ping privately and lets it share a country with a stakeout', async () => {
+    table = await openChase()
+    const at = await despotAt(table)
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-ping', isoCode: 'FR', turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-claim', isoCode: 'FR', turn: state.turn })
+    // One action a beat: a pinger can't also stake out.
+    await table.send('a', { event: 'submit-manhunt-claim', isoCode: 'JP', turn: state.turn })
+    const live = await manhuntOf(table)
+    expect(live.state.pings).toEqual({ a: 'FR' })
+    expect(live.state.claims).toEqual({ b: 'FR' })
+
+    await table.send('c', { event: 'submit-manhunt-ping', isoCode: 'BR', turn: state.turn })
+    await planGround(table)
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+
+    const after = await manhuntOf(table)
+    const { readings } = await secretOf(table)
+    expect(readings.a).toEqual([
+      { hop: 1, isoCode: 'FR', distance: sonarDistance('FR', at, RULES) },
+    ])
+    expect(readings.c).toHaveLength(1)
+    expect(readings.b).toBeUndefined()
+    expect(after.state.pings).toEqual({})
+    expect(after.state.dragnets[0]).toEqual({
+      hop: 1,
+      claims: { b: 'FR' },
+      pings: { a: 'FR', c: 'BR' },
+    })
+    // The reading never rides the snapshot.
+    expect(JSON.stringify(after)).not.toContain('"distance"')
   })
 
   it('binds a served subpoena to the next leak and credits the asker', async () => {
