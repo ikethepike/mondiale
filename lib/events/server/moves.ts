@@ -97,7 +97,7 @@ export const movesForScoredPoints = async ({
             challenge: await getIndividualChallenge({
               accessorId,
               difficulty: game.difficulty,
-              variant: game.variant,
+              regions: game.regions,
               includeMicroNations: game.includeMicroNations,
               challengeOverrides: game.challengeOverrides,
             }),

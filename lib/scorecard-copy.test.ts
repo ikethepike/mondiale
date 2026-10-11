@@ -114,12 +114,16 @@ describe('scorecardLabels', () => {
       _type: 'mother-tongue-challenge',
       language: 'French',
       countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
-      scope: 'europe',
+      scope: ['europe'],
       durationSeconds: 45,
       maximumPoints: 3,
     } as unknown as RoundChallenge
     expect(scorecardLabels({ kind: 'mother-tongue', challenge }).correct).toBe(
       "Where It's Spoken in Europe"
+    )
+    const combined = { ...challenge, scope: ['europe', 'africa'] } as unknown as RoundChallenge
+    expect(scorecardLabels({ kind: 'mother-tongue', challenge: combined }).correct).toBe(
+      "Where It's Spoken in Europe and Africa"
     )
     // A world board keeps the unscoped wording…
     const { scope: _scope, ...world } = challenge as unknown as Record<string, unknown>

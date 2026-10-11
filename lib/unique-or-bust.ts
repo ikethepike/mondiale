@@ -96,7 +96,7 @@ const registersMemo = new Map<string, Promise<Record<UniqueCategoryId, UniqueEnt
 export const uniqueRegisters = (
   rules: GameRules
 ): Promise<Record<UniqueCategoryId, UniqueEntry[]>> => {
-  const key = `${rules.variant}|${rules.difficulty}|${rules.includeMicroNations ?? 'auto'}`
+  const key = `${rules.regions.join('+')}|${rules.difficulty}|${rules.includeMicroNations ?? 'auto'}`
   const memoized = registersMemo.get(key)
   if (memoized) return memoized
   const built = buildRegisters(rules)

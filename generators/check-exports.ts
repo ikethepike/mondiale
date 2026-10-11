@@ -153,7 +153,7 @@ for (const [commodity, entry] of Object.entries(COMMODITY_EXPORTERS)) {
 }
 // The dealer's own pool and band math — a hard world game, the widest board.
 const worldPool = new Set(
-  playableCountries({ variant: 'world', difficulty: 'hard', includeMicroNations: false })
+  playableCountries({ regions: [], difficulty: 'hard', includeMicroNations: false })
 )
 const worldCap = Math.max(MADE_MAX_POOL_FLOOR, Math.ceil(worldPool.size * MADE_MAX_POOL_SHARE))
 const dealable = [...MADE_COMMODITIES].filter(commodity => {

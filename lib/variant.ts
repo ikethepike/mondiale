@@ -1,7 +1,9 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import type { GameVariant } from '~~/types/game.types'
+import type { BoardRegion, GameVariant } from '~~/types/game.types'
 import type { ISOCountryCode, Region } from '~~/types/geography.types'
+import { isWorldBoard } from './board-regions'
+import { listJoin } from './strings'
 
 /** Player-facing region names (regions are stored as kebab-case slugs). */
 export const REGION_LABELS: { [region in Region]: string } = {
@@ -61,3 +63,10 @@ export const variantCountries = (variant: GameVariant = 'world'): ISOCountryCode
   if (variant === 'world') return [...ISOCountryCodes]
   return ISOCountryCodes.filter(isoCode => countryInVariant(isoCode, variant))
 }
+
+export const countryOnBoard = (isoCode: ISOCountryCode, regions: readonly BoardRegion[]): boolean =>
+  isWorldBoard(regions) || regions.some(region => countryInVariant(isoCode, region))
+
+/** The board in words, ready to follow "in": "Europe", "Europe and Africa", "the world". */
+export const boardLabel = (regions: readonly BoardRegion[]): string =>
+  isWorldBoard(regions) ? 'the world' : listJoin(regions.map(region => REGION_LABELS[region]))

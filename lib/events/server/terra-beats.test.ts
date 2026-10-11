@@ -36,7 +36,7 @@ const buildGame = (challenge: TerraIncognitaChallenge): Game =>
     id: 'test-game',
     host: 'ada',
     tiles: [],
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     started: true,
     players: { ada: testSeat('ada'), ben: testSeat('ben') },

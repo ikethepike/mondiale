@@ -21,7 +21,7 @@ import type {
 import type { Game, GameDifficulty, GameRules } from '~~/types/game.types'
 
 // Hard rules keep micro-nations in play — the full event library, as before.
-const WORLD: GameRules = { variant: 'world', difficulty: 'hard' }
+const WORLD: GameRules = { regions: [], difficulty: 'hard' }
 
 const state = (overrides: Partial<TimelineState> = {}): TimelineState => ({
   deck: [],
@@ -412,7 +412,7 @@ describe('dealTimelineDeck', () => {
 
 const game = (difficulty: GameDifficulty, overrides?: object): Game =>
   ({
-    variant: 'world',
+    regions: [],
     difficulty,
     rounds: [{}],
     players: {

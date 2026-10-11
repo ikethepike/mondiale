@@ -51,7 +51,7 @@ import {
 import { rankedBarWidths } from '~~/lib/charts'
 import { countryName } from '~~/lib/country'
 import { formatAmount, formatOrdinal } from '~~/lib/number'
-import { REGION_LABELS } from '~~/lib/variant'
+import { boardLabel } from '~~/lib/variant'
 import type { MaxChallenge, MinChallenge } from '~~/types/challenges/final-challenge.type'
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -70,7 +70,7 @@ const props = defineProps<{
   /** The board's playable countries — the ranking the question was dealt from. */
   pool: ISOCountryCode[]
   /** The board being played — names the scope in the subtitle. */
-  variant?: Game['variant']
+  regions?: Game['regions']
   /** The player's answer, right or wrong. */
   picked?: ISOCountryCode
 }>()
@@ -93,9 +93,8 @@ const source = computed(() =>
 )
 
 const subtitle = computed(() => {
-  const scope = props.variant && props.variant !== 'world' ? REGION_LABELS[props.variant] : 'world'
   const direction = props.challenge._type === 'max-challenge' ? 'highest' : 'lowest'
-  return `the ${direction} in the ${scope} · ${ranking.value.length} countries ranked`
+  return `the ${direction} in ${boardLabel(props.regions ?? [])} · ${ranking.value.length} countries ranked`
 })
 
 const rows = computed(() => {

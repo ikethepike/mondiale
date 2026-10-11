@@ -85,7 +85,7 @@ const mockGame = reactive<Game>({
   rounds: [],
   started: true,
   length: 'medium',
-  variant: 'world',
+  regions: [],
   difficulty: 'normal',
   players: {
     'mock-player-1': mockPlayer('mock-player-1', 'Ada', PLAYER_COLORS[3], 3),

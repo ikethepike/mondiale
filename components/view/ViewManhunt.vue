@@ -310,7 +310,7 @@ onMounted(() => {
 
 // Off-board and benched (micro-nation) countries both fade — the despot can
 // reach neither, so the rule is visible before a hop is attempted.
-const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+const rules = gameStore.game ?? { regions: [], difficulty: 'normal' as const }
 gameStore.map.dimmed = unplayableCountries(rules)
 
 const trailEntries = computed(() =>

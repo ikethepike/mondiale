@@ -1,3 +1,4 @@
+import { syncLegacyBoard } from '~~/lib/board-regions'
 import { hasGame, type ServerEventData } from '~~/types/events.types'
 import type { Game } from '~~/types/game.types'
 
@@ -71,3 +72,14 @@ export const dropsSnapshot = (
   current: Game | undefined,
   payload: ServerEventData
 ): boolean => scope === undefined && hasGame(payload) && isStaleSnapshot(current, payload.game)
+
+/** The socket dispatch gate, run by the plugin and the test mirror alike: a
+ *  snapshot is brought to the current board shape, then a stale one dropped. */
+export const admitsSnapshot = (
+  scope: 'authoritative' | 'seat-slice' | undefined,
+  current: Game | undefined,
+  payload: ServerEventData
+): boolean => {
+  if (hasGame(payload)) syncLegacyBoard(payload.game)
+  return !dropsSnapshot(scope, current, payload)
+}

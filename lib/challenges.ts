@@ -127,6 +127,7 @@ import { countryLedBy, politicalLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
+  isCountryPlayable,
   isHardMode,
   playableCountries,
   playableWorldCountries,
@@ -188,7 +189,8 @@ import {
 } from './trends'
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
-import { REGION_LABELS } from './variant'
+import { isWorldBoard } from './board-regions'
+import { boardLabel, REGION_LABELS } from './variant'
 
 export const MAXIMUM_SCORE_PER_COUNTRY = 3
 
@@ -696,7 +698,7 @@ const getTongueBuzzChallenge = ({
     language,
     clips,
     countries,
-    ...(game.variant !== 'world' ? { scope: game.variant } : {}),
+    ...(isWorldBoard(game.regions) ? {} : { scope: [...game.regions] }),
     durationSeconds: TONGUE_BUZZ_SECONDS,
     maximumPoints: maximumRoundPoints(game),
     // Every difficulty unlocks these as the clip runs, matching the anthem
@@ -1072,7 +1074,7 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
     // A regional board's answer set is only the speakers ON it, so the round
     // has to say which board it means — and credit the off-board speakers a
     // player names instead of calling them wrong.
-    ...(game.variant !== 'world' ? { scope: game.variant } : {}),
+    ...(isWorldBoard(game.regions) ? {} : { scope: [...game.regions] }),
     durationSeconds: Math.min(60, 20 + countries.length * 5),
     maximumPoints: maximumRoundPoints(game),
   }
@@ -1658,7 +1660,10 @@ const getGhostStateChallenge = async (
   game: gameTypes.Game
 ): Promise<GhostStateChallenge | undefined> => {
   const pool = (await recognitionPool('ghost-state')).filter(
-    territory => territory.parent && isValidISOCode(territory.parent)
+    territory =>
+      territory.parent &&
+      isValidISOCode(territory.parent) &&
+      isCountryPlayable(game, territory.parent)
   )
   if (!pool.length) return undefined
 
@@ -1687,7 +1692,13 @@ const getGhostStateChallenge = async (
 const getNoMansLandChallenge = async (
   game: gameTypes.Game
 ): Promise<NoMansLandChallenge | undefined> => {
-  const pool = await recognitionPool('no-mans-land')
+  // A dispute deals where one of its claimants stands on the board; the rest
+  // may answer from off it. Bir Tawil names no claimant, so only the world deals it.
+  const pool = (await recognitionPool('no-mans-land')).filter(territory =>
+    territory.claimants.length
+      ? territory.claimants.some(isoCode => isCountryPlayable(game, isoCode))
+      : isWorldBoard(game.regions)
+  )
   const territory = sample(pool)
   if (!territory) return undefined
 
@@ -2065,7 +2076,7 @@ export const getRoundChallenge = async ({
   // starves — every miss here used to be silent.
   console.warn(
     `Round mix fell back to ranking for ${game.id} after ${spent.length} attempts ` +
-      `[${spent.join(', ')}] (${game.difficulty}/${game.variant}, ${contenders} players, ` +
+      `[${spent.join(', ')}] (${game.difficulty}/${boardLabel(game.regions)}, ${contenders} players, ` +
       `round ${game.rounds.length + 1})`
   )
   return getGroupChallenge({ game })
@@ -2629,14 +2640,14 @@ const dealLandmarkQuiz = (
 const dealOddOneOut = (
   difficulty: gameTypes.GameDifficulty,
   countryPool: ISOCountryCode[],
-  /** Whether this is the world board — the pool alone can't tell once
-   *  benched micro-nations have thinned it below the full roster. */
-  isWorld: boolean
+  /** Whether the board spans several regions (the world, or a combined
+   *  board) — the pool's own regions can't tell: a Europe board holds Russia. */
+  mixedRegions: boolean
 ): { country: ISOCountryCode; oddOneOut: IndividualChallenge['oddOneOut'] } | undefined => {
   // A single-continent board makes "three share a region" unanswerable —
   // everything shares the region. Those games ask about language (and, on
   // hard, alliances) instead.
-  const kinds: ('region' | 'language' | 'organization' | 'party-family')[] = isWorld
+  const kinds: ('region' | 'language' | 'organization' | 'party-family')[] = mixedRegions
     ? ['region', 'language']
     : ['language']
   if (difficulty === 'hard') kinds.push('organization')
@@ -3430,16 +3441,16 @@ const dealAtlas = (
  * resolves at view time through lib/tongue-samples.
  */
 const dealScriptorium = (
-  world: ISOCountryCode[]
+  pool: ISOCountryCode[]
 ): Pick<IndividualChallenge, 'country' | 'scriptorium'> | undefined => {
-  const inPlay = new Set(world)
+  const onBoard = new Set(pool)
   const playable = SCRIPTORIUM_POOL.filter(entry =>
-    scriptoriumAnswers(entry.language).some(isoCode => inPlay.has(isoCode))
+    scriptoriumAnswers(entry.language).some(isoCode => onBoard.has(isoCode))
   )
   const entry = sample(playable)
   if (!entry) return undefined
 
-  const answers = scriptoriumAnswers(entry.language).filter(isoCode => inPlay.has(isoCode))
+  const answers = scriptoriumAnswers(entry.language).filter(isoCode => onBoard.has(isoCode))
   // The reveal zoom's canonical speaker: the most populous in-play answer.
   const country = [...answers].sort(
     (a, b) =>
@@ -3539,20 +3550,20 @@ const pickThemedFindCountry = (
 export const getIndividualChallenge = async ({
   accessorId,
   difficulty = 'normal',
-  variant = 'world',
+  regions = [],
   includeMicroNations,
   challengeOverrides,
 }: {
   accessorId: IndividualChallengeAccessorId
   difficulty?: gameTypes.GameDifficulty
-  variant?: gameTypes.GameVariant
+  regions?: gameTypes.BoardRegion[]
   includeMicroNations?: boolean
   challengeOverrides?: ChallengeOverrides
 }): Promise<IndividualChallenge> => {
-  const rules: gameTypes.GameRules = { difficulty, variant, includeMicroNations }
+  const rules: gameTypes.GameRules = { difficulty, regions, includeMicroNations }
   const pool = playableCountries(rules)
   const world = playableWorldCountries(rules)
-  const isWorld = variant === 'world'
+  const mixedRegions = regions.length !== 1
   const settings = { difficulty, challengeOverrides }
   const base: IndividualChallenge = {
     _type: 'individual-challenge',
@@ -3581,7 +3592,7 @@ export const getIndividualChallenge = async ({
         return dealt ? { ...base, variant: 'money-match', ...dealt } : base
       }
       case 'odd-one-out': {
-        const dealt = dealOddOneOut(difficulty, pool, isWorld)
+        const dealt = dealOddOneOut(difficulty, pool, mixedRegions)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
         break
       }
@@ -3654,7 +3665,7 @@ export const getIndividualChallenge = async ({
         break
       }
       case 'scriptorium': {
-        const dealt = dealScriptorium(world)
+        const dealt = dealScriptorium(pool)
         if (dealt) return { ...base, variant: 'scriptorium', ...dealt }
         break
       }
@@ -3731,7 +3742,7 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
       }
       if (roll < 0.96) {
-        const dealt = dealOddOneOut(difficulty, pool, isWorld)
+        const dealt = dealOddOneOut(difficulty, pool, mixedRegions)
         if (dealt) return { ...base, variant: 'odd-one-out', ...dealt }
       }
       break
@@ -3850,7 +3861,7 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'atlas', ...dealt }
       }
       if (roll < 0.6) {
-        const dealt = dealScriptorium(world)
+        const dealt = dealScriptorium(pool)
         if (dealt) return { ...base, variant: 'scriptorium', ...dealt }
       }
       const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])

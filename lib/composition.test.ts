@@ -16,7 +16,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 
 const game = (difficulty: GameDifficulty) =>
   ({
-    variant: 'world',
+    regions: [],
     difficulty,
     rounds: [{}],
     players: { a: { phase: 'group-challenge' } },

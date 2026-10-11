@@ -171,6 +171,7 @@ import type {
   AtlasChallenge,
   BorderChainChallenge,
   GovernmentChallenge,
+  TongueBuzzChallenge,
 } from '~~/types/challenges/group-modes.type'
 import {
   drawnCard,
@@ -200,7 +201,7 @@ import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
-import type { Game, GameDifficulty, PlayerColor, Round } from '~~/types/game.types'
+import type { Game, GameDifficulty, GameRules, PlayerColor, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { Player } from '~~/types/player.type'
@@ -296,7 +297,7 @@ const simulateTimelineRevealDone = () => {
  * ride one engine on the server: only the link rule differs, and each spec
  * hands back lib/'s own answer rather than reimplementing it.
  */
-const gameRules = () => gameStore.game ?? { variant: 'world', difficulty: 'normal' }
+const gameRules = () => gameStore.game ?? { regions: [], difficulty: 'normal' }
 
 const atlasOf = () => {
   const game = gameStore.game
@@ -764,7 +765,7 @@ const mockGame = (step: SeatStep, rounds: unknown[]): Game => {
     started: true,
     length: 'medium',
     difficulty: 'normal',
-    variant: 'world',
+    regions: [],
     liveGuesses: true,
     rounds,
     players: {
@@ -817,7 +818,7 @@ const settledRound = (
  * Clean Sweep fixtures. The board is the EU as the register resolves it, so
  * the harness can never drift from the set the dealer would actually deal.
  */
-const SWEEP_BOARD = SWEEP_SETS.eu.members({ variant: 'world', difficulty: 'normal' })
+const SWEEP_BOARD = SWEEP_SETS.eu.members({ regions: [], difficulty: 'normal' })
 
 const sweepChallenge = () => ({
   _type: 'clean-sweep-challenge' as const,
@@ -1310,7 +1311,7 @@ const TONGUE_RUNGS: {
     /** Hindi has no anthem sung in it (India's is Bengali), so it seeds. */
     seeded?: boolean
     /** Regional boards scope the answer set — and the copy that describes it. */
-    scope?: 'europe'
+    scope?: TongueBuzzChallenge['scope']
   }
 } = {
   // A Europe board asking for French: buzzing Senegal is right about the world
@@ -1319,7 +1320,7 @@ const TONGUE_RUNGS: {
     language: 'French',
     clipCodes: ['fr-0'],
     countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
-    scope: 'europe',
+    scope: ['europe'],
   },
   swahili: {
     language: 'Swahili',
@@ -1339,11 +1340,11 @@ const TONGUE_RUNGS: {
   },
 }
 
-const GOVERNMENT_RULES = {
+const GOVERNMENT_RULES: GameRules = {
   difficulty: 'normal',
-  variant: 'world',
+  regions: [],
   includeMicroNations: false,
-} as const
+}
 
 /** The chambers the mode can deal — the dealer's own pool, sorted by name so
  *  the picker reads alphabetically rather than in data order. */
@@ -2433,7 +2434,7 @@ const scenarios: Scenario[] = [
           // The Europe board's answer set. Burundi and Senegal speak French
           // but stand off it: they must bounce free, not score as misses.
           countries: ['FR', 'BE', 'LU', 'MC', 'CH'],
-          scope: 'europe',
+          scope: ['europe'],
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -2449,7 +2450,7 @@ const scenarios: Scenario[] = [
           _type: 'mother-tongue-challenge',
           language: 'French',
           countries,
-          scope: 'europe',
+          scope: ['europe'],
           durationSeconds: 45,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -2787,7 +2788,7 @@ const scenarios: Scenario[] = [
               },
             }),
           ])
-          game.variant = 'europe'
+          game.regions = ['europe']
           return game
         },
       },
@@ -2889,7 +2890,7 @@ const scenarios: Scenario[] = [
               },
             }),
           ])
-          game.variant = 'europe'
+          game.regions = ['europe']
           return game
         },
       },
@@ -4596,7 +4597,7 @@ const scenarios: Scenario[] = [
 /** The window a real deal would frame — anchored on `seed` for a pinned
  *  scene, or wherever the dealer lands when no seed is given. */
 const sunsetFixture = (difficulty: GameDifficulty, seed?: ISOCountryCode): FinalChallengeItem => {
-  const pool = playableCountries({ variant: 'world', difficulty, includeMicroNations: false })
+  const pool = playableCountries({ regions: [], difficulty, includeMicroNations: false })
   const window = seed
     ? sunsetWindowAround(pool, difficulty, seed)
     : pickSunsetWindow(pool, difficulty)
@@ -4662,7 +4663,7 @@ const leaderFindGame = (difficulty: GameDifficulty): Game => {
  *  freely picked country is asked among plausible neighbours. */
 const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
   const { region } = getCountry(isoCode)
-  const neighbours = playableWorldCountries({ variant: 'world', difficulty: 'normal' })
+  const neighbours = playableWorldCountries({ regions: [], difficulty: 'normal' })
     .filter(code => code !== isoCode && getCountry(code).region === region)
     .slice(0, 3)
   return [isoCode, ...neighbours]

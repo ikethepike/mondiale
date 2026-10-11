@@ -32,7 +32,7 @@ game = json.loads(value) if isinstance(value, str) else value
 now = int(time.time() * 1000)
 
 print(
-    f"game: {game.get('id')} variant={game.get('variant')} "
+    f"game: {game.get('id')} regions={game.get('regions')} "
     f"difficulty={game.get('difficulty')} started={game.get('started')} "
     f"nextRoundAt={game.get('nextRoundAt')}"
 )

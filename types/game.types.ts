@@ -25,7 +25,9 @@ export interface Game {
   rounds: Round[]
   started: boolean
   length: GameLength
-  variant: GameVariant
+  /** The board's regions; empty is the whole world. Kept in `boardRegions`
+   *  order and free of duplicates — read through lib/variant, never by hand. */
+  regions: BoardRegion[]
   difficulty: GameDifficulty
   /** Show opponents' guesses as they land. Absent on games created before the
    *  setting existed, so read it as `!== false` — never as truthy. */
@@ -63,7 +65,7 @@ export type GameDifficulty = (typeof gameDifficulties)[number]
 
 /** The configuration slice every pool and gate decision reads (lib/game-rules).
  *  A full Game satisfies it, so both ends of the wire share one shape. */
-export type GameRules = Pick<Game, 'variant' | 'difficulty' | 'includeMicroNations'>
+export type GameRules = Pick<Game, 'regions' | 'difficulty' | 'includeMicroNations'>
 
 export interface PlayerMove {
   endTile: Tile
@@ -140,9 +142,18 @@ export const isValidGameVariant = (variant: unknown): variant is GameVariant => 
   return typeof variant === 'string' && gameVariants.includes(variant as GameVariant)
 }
 
+export type BoardRegion = Exclude<GameVariant, 'world'>
+export const boardRegions = gameVariants.filter(
+  (variant): variant is BoardRegion => variant !== 'world'
+)
+export const isValidBoardRegions = (regions: unknown): regions is BoardRegion[] =>
+  Array.isArray(regions) &&
+  new Set(regions).size === regions.length &&
+  regions.every(region => boardRegions.includes(region))
+
 export interface GameConfiguration {
   difficulty: GameDifficulty
-  variant: GameVariant
+  regions: BoardRegion[]
   length: GameLength
   liveGuesses: boolean
   /** Tri-state like the group overrides: absent = auto (difficulty decides). */
@@ -157,7 +168,7 @@ export const isValidGameConfiguration = (data: unknown): data is GameConfigurati
   // Values, not just key presence — game.difficulty indexes
   // DIFFICULTY_CONFIGURATION and drives every challenge gate, so an unknown
   // difficulty from a crafted payload would crash the dealer server-side.
-  if (!isValidGameVariant(configuration.variant)) return false
+  if (!isValidBoardRegions(configuration.regions)) return false
   if (!gameDifficulties.includes(configuration.difficulty)) return false
   if (!gameLengths.includes(configuration.length)) return false
   // FormData hands every field over as a string; the form must coerce first.
@@ -188,7 +199,7 @@ export const isValidGame = (data: unknown): data is Game => {
   if (!data) return false
   if (typeof data !== 'object') return false
 
-  return ['id', 'host', 'tiles', 'rounds', 'variant', 'players'].every(key =>
+  return ['id', 'host', 'tiles', 'rounds', 'regions', 'players'].every(key =>
     Reflect.has(data, key)
   )
 }

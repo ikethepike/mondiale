@@ -74,7 +74,8 @@ import {
 } from '../outline'
 import { getValueByAccessorID } from '../values'
 import { playableCountries } from '../game-rules'
-import { REGION_LABELS } from '../variant'
+import { isWorldBoard } from '../board-regions'
+import { boardLabel } from '../variant'
 
 type FinalChallengeType = FinalChallengeItem['_type']
 
@@ -108,7 +109,7 @@ const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[]
     // Easy-friendly: the frames wear their years and neighbours are accepted
     'change-challenge',
   ]
-  if (game.variant === 'world') types.push('region-challenge')
+  if (isWorldBoard(game.regions)) types.push('region-challenge')
   if (game.difficulty !== 'easy') {
     if (eligibleOrganizations(pool).length) types.push('membership-challenge')
     if (eligibleTreaties(pool).length) types.push('treaty-challenge')
@@ -1384,11 +1385,11 @@ export const isCorrectFinalAnswer = ({
 
 export const getFinalChallengeDetails = ({
   challenge,
-  variant = 'world',
+  regions = [],
 }: {
   challenge: FinalChallengeItem
   /** The board being played — scopes min/max phrasing ("…in Europe"). */
-  variant?: Game['variant']
+  regions?: Game['regions']
 }): { question: string } => {
   switch (challenge._type) {
     case 'language-challenge':
@@ -1408,7 +1409,7 @@ export const getFinalChallengeDetails = ({
       const { accessorId, _type } = challenge
 
       const { max, min } = finalChallengeMinMaxQuestion[accessorId]
-      const scope = variant === 'world' ? 'in the world' : `in ${REGION_LABELS[variant]}`
+      const scope = `in ${boardLabel(regions)}`
 
       return {
         question: `${_type === 'max-challenge' ? max : min} ${scope}`,

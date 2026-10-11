@@ -16,7 +16,7 @@ import {
 import { gameDifficulties } from '~~/types/game.types'
 import type { GameRules } from '~~/types/game.types'
 
-const RULES = { difficulty: 'normal', variant: 'world', length: 'medium' } as unknown as GameRules
+const RULES = { difficulty: 'normal', regions: [], length: 'medium' } as unknown as GameRules
 
 const deal = (isoCode?: Parameters<typeof dealGovernment>[2]): GovernmentDeal => {
   const dealt = dealGovernment(RULES, 'normal', isoCode)
@@ -139,9 +139,9 @@ describe('the dealable pool', () => {
   // round that quietly never appears there, which is what these guard against.
   it('reaches every variant', () => {
     const poolOf = (variant: string) =>
-      governmentPool({ ...RULES, variant } as unknown as GameRules).length
+      governmentPool({ ...RULES, regions: [variant] } as unknown as GameRules).length
 
-    expect(poolOf('world')).toBeGreaterThanOrEqual(POOL_FLOOR)
+    expect(governmentPool(RULES).length).toBeGreaterThanOrEqual(POOL_FLOOR)
     // Every region now deals. South America and the Middle East were both
     // pinned at exactly zero before the swap; the Americas had Canada alone.
     for (const variant of [

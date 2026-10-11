@@ -1,6 +1,7 @@
 import type { Redis } from '@upstash/redis'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
-import { dropsSnapshot } from '~~/lib/events/client/snapshot-revision'
+import { admitsSnapshot } from '~~/lib/events/client/snapshot-revision'
+import { syncLegacyBoard } from '~~/lib/board-regions'
 import type { ClientEventData, ClientEventTarget, ServerEnvelope } from '~~/types/events.types'
 import { hasGame } from '~~/types/events.types'
 import type { Game } from '~~/types/game.types'
@@ -151,8 +152,10 @@ export type TestTable = Awaited<ReturnType<typeof createTestTable>>
  * client can never disagree about what an emit does.
  */
 export const createClientMirror = (playerId: string, joined: Game) => {
+  const initial = clone(joined)
+  syncLegacyBoard(initial)
   const gameStore = {
-    game: clone(joined) as Game | undefined,
+    game: initial as Game | undefined,
     manhunt: undefined,
     playerId,
     board: { notices: [], cheers: [] },
@@ -161,10 +164,11 @@ export const createClientMirror = (playerId: string, joined: Game) => {
   const apply = (emit: CapturedEmit) => {
     if (!hasGame(emit.payload)) return
     const configuration = CLIENT_SIDE_EVENT_HANDLERS[emit.payload.event]
-    if (dropsSnapshot(configuration.snapshotScope, gameStore.game, emit.payload)) return
+    const payload = clone(emit.payload)
+    if (!admitsSnapshot(configuration.snapshotScope, gameStore.game, payload)) return
     void configuration.handler({
       eventKey: emit.payload.event,
-      payload: clone(emit.payload),
+      payload,
       gameStore: gameStore as never,
       eventTarget: emit.target,
       playerId,

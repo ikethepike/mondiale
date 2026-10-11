@@ -82,7 +82,7 @@ const { gameStore } = useClientEvents()
 
 const rule = computed(() => ({ overlaps: !!props.challenge.atlas?.overlaps }))
 const pool = computed(() =>
-  playableWorldCountries(gameStore.game ?? { variant: 'world', difficulty: 'normal' })
+  playableWorldCountries(gameStore.game ?? { regions: [], difficulty: 'normal' })
 )
 
 const head = computed(() => atlasChain.value.at(-1) ?? props.challenge.atlas?.seed)

@@ -38,7 +38,7 @@ const autopilotTable = (): Game => {
     host: human.id,
     started: false,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     liveGuesses: true,
     challengeOverrides: {},

@@ -18,7 +18,7 @@ import {
 } from './sunset-veil'
 import type { MapViewBox } from './use-map-viewbox'
 
-const pool = playableCountries({ variant: 'world', difficulty: 'hard', includeMicroNations: false })
+const pool = playableCountries({ regions: [], difficulty: 'hard', includeMicroNations: false })
 const window = sunsetWindowAround(pool, 'hard', 'HR')!
 
 /** A camera on the window at the screen's aspect, like the map keeps it. */

@@ -62,7 +62,7 @@ describe('prominenceCandidates', () => {
 describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
   const game = (difficulty: Game['difficulty']): Game =>
     ({
-      variant: 'world',
+      regions: [],
       difficulty,
       rounds: [{}],
       players: { a: { phase: 'group-challenge' } },
@@ -121,9 +121,9 @@ describe('the three-country floor and benched micro-nations', () => {
     const { WATER_FEATURES } = await import('~~/data/water.gen')
     for (const id of ['ligurian-sea', 'tyrrhenian-sea']) {
       expect(WATER_FEATURES[id].countries.length).toBeGreaterThanOrEqual(3)
-      expect(shores(id, { variant: 'world', difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
+      expect(shores(id, { regions: [], difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
       expect(
-        shores(id, { variant: 'world', difficulty: 'hard' }, WATER_FEATURES).length
+        shores(id, { regions: [], difficulty: 'hard' }, WATER_FEATURES).length
       ).toBeGreaterThanOrEqual(3)
     }
   })

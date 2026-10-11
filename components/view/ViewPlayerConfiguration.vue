@@ -86,9 +86,9 @@
 
             <form v-if="game" ref="breakdown" class="breakdown" @change="updateConfiguration">
               <div class="configuration-block region-block">
-                <span class="eyebrow config-label">Region</span>
+                <span class="eyebrow config-label">Regions</span>
                 <RegionOrbs
-                  :model-value="game.variant"
+                  :model-value="game.regions"
                   :disabled="!isPlayerHost"
                   @change="updateConfiguration"
                 />
@@ -665,6 +665,7 @@ const updateConfiguration = async () => {
   )
 
   const configuration: { [key: string]: FormDataEntryValue | boolean | object } = {}
+  const regions: FormDataEntryValue[] = []
   for (const [key, value] of entries) {
     const field = key.replace('game-', '')
     // The group tracks carry a hidden input like every SegmentedControl, but
@@ -679,8 +680,14 @@ const updateConfiguration = async () => {
     // The spectator door rides its own event (it must swing mid-game too) —
     // its control sits in this form only for layout.
     if (field === 'spectators') continue
+    // One hidden input per chosen region; none at all is the whole world.
+    if (field === 'regions') {
+      regions.push(value)
+      continue
+    }
     configuration[field] = value
   }
+  configuration.regions = regions
 
   const settingsMounted = !!settingsForm.value
   // The switches drive `overridePreview` directly rather than hidden inputs, so
