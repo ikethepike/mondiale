@@ -27,9 +27,12 @@ import {
   loadVintageRegion,
   sceneAt,
   sceneCount,
+  shapePath,
   slideLine,
+  slideOverrides,
   slideTrack,
   stepScene,
+  type ArcOverrides,
 } from '~~/lib/vintage'
 import { bookends, changelog, clues, dealtRun, vintageVerdict } from '~~/lib/vintage-story'
 import type { Game, GameDifficulty } from '~~/types/game.types'
@@ -105,6 +108,29 @@ describe.each(VINTAGE_REGION_IDS)('vintage data: %s', region => {
         near(slideLine(track, 1)[0]!, toStart)
         near(slideLine(track, 1).at(-1)!, toEnd)
       }
+  })
+
+  it('builds cached and bent fills exactly as the arcs spell them out', () => {
+    const spelled = (shape: number, overrides?: ArcOverrides) =>
+      geometry.shapes[shape].rings
+        .map(ring => {
+          const points = ring.flatMap((signed, index) => {
+            const own = overrides?.get(signed < 0 ? ~signed : signed)
+            const run = own ? (signed < 0 ? [...own].reverse() : own) : arcPoints(geometry, signed)
+            return index ? run.slice(1) : run
+          })
+          return `${points.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join('')}Z`
+        })
+        .join('')
+    geometry.shapes.forEach((_, shape) => expect(shapePath(geometry, shape)).toBe(spelled(shape)))
+    for (const step of geometry.steps) {
+      if (!step.slides.length) continue
+      const overrides: ArcOverrides = new Map()
+      for (const slide of step.slides) slideOverrides(slideTrack(geometry, slide), 0.5, overrides)
+      for (const [, beforeShape] of step.units)
+        if (beforeShape >= 0)
+          expect(shapePath(geometry, beforeShape, overrides)).toBe(spelled(beforeShape, overrides))
+    }
   })
 
   it('changes at least one unit at every step, so every step can be told', () => {

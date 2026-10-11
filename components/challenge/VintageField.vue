@@ -181,21 +181,12 @@ const sceneOf = (index: number) => {
   return scene
 }
 
-/** A shape's outline never changes, so its path string is built once. */
-const shapeCache = new Map<number, string>()
-const shapeD = (shape: number) => {
-  let d = shapeCache.get(shape)
-  if (d === undefined) shapeCache.set(shape, (d = shapePath(props.region, shape)))
-  return d
+const setOpacity = (el: SVGElement, value: number) => {
+  const text = String(value)
+  if (el.style.opacity !== text) el.style.opacity = text
 }
 
-const paintLook = (
-  el: SVGPathElement | undefined,
-  unit: number,
-  shape: number,
-  era: number,
-  overrides?: ArcOverrides
-) => {
+const paintLook = (el: SVGPathElement | undefined, unit: number, shape: number, era: number) => {
   if (!el) return
   if (shape < 0) {
     el.style.display = 'none'
@@ -203,7 +194,7 @@ const paintLook = (
   }
   const wash = props.region.eras[era]?.wash
   el.style.display = ''
-  el.setAttribute('d', overrides ? shapePath(props.region, shape, overrides) : shapeD(shape))
+  el.setAttribute('d', shapePath(props.region, shape))
   el.setAttribute(
     'class',
     `vintage-unit tone-${props.region.units[unit].tone}${wash ? ` wash-${wash}` : ''}`
@@ -212,9 +203,14 @@ const paintLook = (
   else delete el.dataset.wash
 }
 
+/** Each arc's last painted draw, so a held arc costs no style write. */
+const arcDrawn = new Map<number, number>()
 const showArc = (arc: number, drawn: number) => {
   const el = arcEls.get(arc)
   if (!el) return
+  drawn = clamp01(drawn)
+  if (arcDrawn.get(arc) === drawn) return
+  arcDrawn.set(arc, drawn)
   if (drawn >= 1) {
     el.style.opacity = '1'
     el.style.strokeDasharray = ''
@@ -265,7 +261,7 @@ const settleStep = (): Set<number> => {
   if (!inFlight) return new Set()
   const touched = new Set([...inFlight.step.erase, ...inFlight.step.draw])
   for (const [unit] of inFlight.step.units) {
-    if (unitEls[unit]) unitEls[unit].style.opacity = '1'
+    if (unitEls[unit]) setOpacity(unitEls[unit], 1)
     if (incomingEls[unit]) incomingEls[unit].style.display = 'none'
   }
   for (const el of slideEls) if (el) el.style.display = 'none'
@@ -281,7 +277,7 @@ const paintScene = (index: number) => {
     const painted = paintedLooks[unit]
     if (painted && painted[0] === shape && painted[1] === era) return
     paintLook(unitEls[unit], unit, shape, era)
-    if (unitEls[unit]) unitEls[unit].style.opacity = '1'
+    if (unitEls[unit]) setOpacity(unitEls[unit], 1)
     paintedLooks[unit] = [shape, era]
   })
   for (const arc of borderArcs.value) {
@@ -315,7 +311,7 @@ const beginStep = (index: number, next: number): StepInFlight => {
   for (const [unit, , , afterShape, afterEra] of step.units) {
     const incoming = incomingEls[unit]
     paintLook(incoming, unit, afterShape, afterEra)
-    if (incoming) incoming.style.opacity = '0'
+    if (incoming) setOpacity(incoming, 0)
   }
   for (const arc of sliding) showArc(arc, 0)
   return { key: `${index}>${next}`, step, tracks, sliding, bending }
@@ -352,12 +348,13 @@ const paintStep = (index: number, next: number, progress: number) => {
     el.setAttribute('d', polylinePath(slideLine(track, slide)))
   })
 
-  for (const [unit, beforeShape, beforeEra] of step.units) {
+  for (const [unit, beforeShape] of step.units) {
     const base = unitEls[unit]
-    if (bending.has(unit)) paintLook(base, unit, beforeShape, beforeEra, overrides)
-    if (base) base.style.opacity = beforeShape >= 0 ? String(1 - fade * fade) : '0'
+    if (base && bending.has(unit) && beforeShape >= 0)
+      base.setAttribute('d', shapePath(props.region, beforeShape, overrides))
+    if (base) setOpacity(base, beforeShape >= 0 ? 1 - fade * fade : 0)
     const incoming = incomingEls[unit]
-    if (incoming) incoming.style.opacity = String(fade)
+    if (incoming) setOpacity(incoming, fade)
   }
   if (progress >= 0.5) labelScene.value = next
 }
@@ -387,6 +384,7 @@ const restart = () => {
   paintedLooks = []
   paintedBorders = new Set()
   arcLengths.clear()
+  arcDrawn.clear()
   nextTick(() => {
     // Measured and built up front, inside the lead: a first getTotalLength or
     // path string mid-rewind is a dropped frame.
@@ -399,8 +397,8 @@ const restart = () => {
     const high = Math.max(props.pass.from, props.pass.to)
     for (let step = low; step < high; step++)
       for (const [, beforeShape, , afterShape] of props.region.steps[step].units) {
-        if (beforeShape >= 0) shapeD(beforeShape)
-        if (afterShape >= 0) shapeD(afterShape)
+        if (beforeShape >= 0) shapePath(props.region, beforeShape)
+        if (afterShape >= 0) shapePath(props.region, afterShape)
       }
     raf = requestAnimationFrame(tick)
   })

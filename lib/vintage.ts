@@ -110,20 +110,74 @@ const pointsOf = (
   return signed < 0 ? [...override].reverse() : override
 }
 
+const pointText = ([x, y]: OutlinePoint) => `${x.toFixed(2)},${y.toFixed(2)}`
+
+const tailText = (points: OutlinePoint[]) => {
+  let text = ''
+  for (let index = 1; index < points.length; index++) text += `L${pointText(points[index])}`
+  return text
+}
+
 export const polylinePath = (points: OutlinePoint[]) =>
-  points.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join('')
+  points.length ? `M${pointText(points[0])}${tailText(points)}` : ''
 
 export const arcPath = (region: VintageRegion, arc: number, overrides?: ArcOverrides) =>
   polylinePath(pointsOf(region, arc, overrides))
 
+/** Arc outlines never change, so each signed arc's run after its first point
+ *  is formatted once per region; a frame of a slide re-formats only the
+ *  arcs it bends. */
+const pathTexts = new WeakMap<
+  VintageRegion,
+  { tails: Map<number, string>; rings: Map<number, string[]> }
+>()
+const pathTextsOf = (region: VintageRegion) => {
+  let texts = pathTexts.get(region)
+  if (!texts) pathTexts.set(region, (texts = { tails: new Map(), rings: new Map() }))
+  return texts
+}
+
+const ringPath = (
+  region: VintageRegion,
+  ring: number[],
+  tails: Map<number, string>,
+  overrides?: ArcOverrides
+) => {
+  let text = ''
+  ring.forEach((signed, index) => {
+    const override = overrides?.get(signed < 0 ? ~signed : signed)
+    const points = override && (signed < 0 ? [...override].reverse() : override)
+    if (index === 0) text = `M${pointText(points?.[0] ?? arcPoints(region, signed)[0])}`
+    if (points) {
+      text += tailText(points)
+      return
+    }
+    let tail = tails.get(signed)
+    if (tail === undefined) tails.set(signed, (tail = tailText(arcPoints(region, signed))))
+    text += tail
+  })
+  return `${text}Z`
+}
+
 /** A unit's fill: every ring as one even-odd path, so holes (Lesotho in
  *  South Africa) cut through. */
-export const shapePath = (region: VintageRegion, shape: number, overrides?: ArcOverrides) =>
-  region.shapes[shape].rings
-    .map(
-      ring => `${polylinePath(joinArcs(ring.map(signed => pointsOf(region, signed, overrides))))}Z`
+export const shapePath = (region: VintageRegion, shape: number, overrides?: ArcOverrides) => {
+  const { tails, rings } = pathTextsOf(region)
+  let still = rings.get(shape)
+  if (!still)
+    rings.set(
+      shape,
+      (still = region.shapes[shape].rings.map(ring => ringPath(region, ring, tails)))
+    )
+  if (!overrides?.size) return still.join('')
+  return region.shapes[shape].rings
+    .map((ring, index) =>
+      ring.some(signed => overrides.has(signed < 0 ? ~signed : signed))
+        ? ringPath(region, ring, tails, overrides)
+        : still[index]
     )
     .join('')
+}
 
 export const eraOf = (region: VintageRegion, look: VintageUnitLook): VintageEra | undefined =>
   look[0] < 0 ? undefined : region.eras[look[1]]
