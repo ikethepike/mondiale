@@ -4,7 +4,11 @@ import {
   chamberName,
   chamberSeats,
   governingParty,
+  partiesOf,
+  partySpectrum,
+  SPECTRUM_BANDS,
   type Bench,
+  type Spectrum,
 } from './parties'
 import { playableCountries } from './game-rules'
 import { sample, sampleMany, shuffleArray } from './arrays'
@@ -302,6 +306,90 @@ export type BenchSide = 'government' | 'opposition'
 
 /** Seats needed to carry the house. */
 export const majorityOf = (totalSeats: number) => Math.floor(totalSeats / 2) + 1
+
+export interface CoalitionMember {
+  name: string
+  seats: number
+  standing: 'government' | 'backing'
+  spectrum?: Spectrum
+  ideology?: string
+}
+
+export interface CoalitionSummary {
+  /** The governing party first, then its partners largest first. */
+  members: CoalitionMember[]
+  /** Confidence and supply: outside the cabinet, inside the count. */
+  backers: CoalitionMember[]
+  seats: number
+  /** The government's seats plus its backers'. */
+  backedSeats: number
+  majority: number
+  /** `majority` carries the house on its own seats, `backed` only with its backers, `minority` with neither. */
+  kind: 'majority' | 'backed' | 'minority'
+  /** Leftmost and rightmost band among the members the roster places. */
+  span?: [Spectrum, Spectrum]
+}
+
+const PARTY_COUNTS = ['two', 'three', 'four', 'five', 'six', 'seven', 'eight']
+
+/** "single-party government", "three-party coalition". */
+export const coalitionName = (summary: Pick<CoalitionSummary, 'members'>) => {
+  const count = summary.members.length
+  return count <= 1
+    ? 'single-party government'
+    : `${PARTY_COUNTS[count - 2] ?? count}-party coalition`
+}
+
+/** Who governs, as the reveal reads it: the cabinet, its props, and how far either is from carrying the house. */
+export const coalitionSummary = (
+  country: ISOCountryCode,
+  totalSeats: number,
+  governing: string,
+  benches: readonly { name: string; seats: number; standing: GovernmentBench['standing'] }[]
+): CoalitionSummary => {
+  const roster = partiesOf(country)
+  const member = (bench: (typeof benches)[number]): CoalitionMember => {
+    const party = roster.find(entry => entry.name === bench.name)
+    const spectrum = party && partySpectrum(party)
+    const ideology = party?.ideologies?.[0]
+    return {
+      name: bench.name,
+      seats: bench.seats,
+      standing: bench.standing === 'backing' ? 'backing' : 'government',
+      ...(spectrum ? { spectrum } : {}),
+      ...(ideology ? { ideology } : {}),
+    }
+  }
+  const largestFirst = (a: CoalitionMember, b: CoalitionMember) =>
+    Number(b.name === governing) - Number(a.name === governing) || b.seats - a.seats
+  const members = benches
+    .filter(bench => bench.standing === 'government')
+    .map(member)
+    .sort(largestFirst)
+  const backers = benches
+    .filter(bench => bench.standing === 'backing')
+    .map(member)
+    .sort(largestFirst)
+
+  const seats = members.reduce((sum, entry) => sum + entry.seats, 0)
+  const backedSeats = seats + backers.reduce((sum, entry) => sum + entry.seats, 0)
+  const majority = majorityOf(totalSeats)
+  const ranks = members
+    .flatMap(entry => (entry.spectrum ? [SPECTRUM_BANDS.indexOf(entry.spectrum)] : []))
+    .sort((a, b) => a - b)
+
+  return {
+    members,
+    backers,
+    seats,
+    backedSeats,
+    majority,
+    kind: seats >= majority ? 'majority' : backedSeats >= majority ? 'backed' : 'minority',
+    ...(ranks.length
+      ? { span: [SPECTRUM_BANDS[ranks[0]!]!, SPECTRUM_BANDS[ranks[ranks.length - 1]!]!] }
+      : {}),
+  }
+}
 
 /**
  * Where beat 3 grades each sorted bench. Backers file WITH the government:
