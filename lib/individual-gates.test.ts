@@ -386,6 +386,20 @@ describe('scriptorium gate dealing', { timeout: TIMEOUT }, () => {
       expect(isCorrectIndividualAnswer(dealt, wrongTokenFor(dealt))).toBe(false)
     }
   })
+
+  // A Europe board dealt Hindi and zoomed the reveal to India.
+  it('asks about a language spoken on the board, and zooms to a speaker there', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'scriptorium'
+    for (const variant of gameVariants) {
+      const regions = regionsForVariant(variant)
+      const board = new Set(playableCountries({ regions, difficulty: 'normal' }))
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const dealt = await getIndividualChallenge({ accessorId: 'lexicon', regions })
+        if (dealt.variant !== 'scriptorium') continue
+        expect(board.has(dealt.country), `${variant} zoomed to ${dealt.country}`).toBe(true)
+      }
+    }
+  })
 })
 
 describe('chronicle gate dealing', { timeout: TIMEOUT }, () => {
