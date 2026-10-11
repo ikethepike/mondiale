@@ -265,7 +265,7 @@ import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { chamberGroups, parliamentPhase } from '~~/lib/parliament3d/scene'
+import { chamberGroups, parliamentPhase, type StageBand } from '~~/lib/parliament3d/scene'
 import type { GovernmentState } from '~~/types/challenges/group-modes.type'
 
 /**
@@ -539,12 +539,17 @@ const chamber = computed(() =>
 
 const stageLayer = ref<HTMLElement>()
 const stageWindow = ref<HTMLElement>()
-const band = ref<{ top: number; bottom: number }>()
+const band = ref<StageBand>()
 const measureBand = () => {
   const layer = stageLayer.value?.getBoundingClientRect()
   const frame = stageWindow.value?.getBoundingClientRect()
   if (!layer || !frame?.height) return
-  band.value = { top: frame.top - layer.top, bottom: frame.bottom - layer.top }
+  band.value = {
+    top: frame.top - layer.top,
+    bottom: frame.bottom - layer.top,
+    left: frame.left - layer.left,
+    right: frame.right - layer.left,
+  }
 }
 let bandObserver: ResizeObserver | undefined
 onMounted(() => {
@@ -624,6 +629,10 @@ const promptSources = computed(() => datasetAttribution('parties'))
   min-width: min(70vw, 15rem);
   margin: 0 auto 16px;
   padding: 0.45rem 1.1rem;
+
+  @media (max-width: $phone) {
+    margin-bottom: 8px;
+  }
   border: 1px solid ink(0.2);
   border-radius: 999px;
   background: milk(0.85);
@@ -634,6 +643,11 @@ const promptSources = computed(() => datasetAttribution('parties'))
   width: 42px;
   height: 42px;
   object-fit: contain;
+
+  @media (max-width: $phone) {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 // Stands in for a 42px logo, so it is sized like one — at 11px the chip
@@ -1121,6 +1135,11 @@ const promptSources = computed(() => datasetAttribution('parties'))
   margin-inline: auto;
   pointer-events: auto;
 
+  // Four blocks stacked one per row left a 568px phone one option on screen.
+  @media (max-width: $phone) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .block-option {
     display: grid;
     gap: 2px;
@@ -1189,13 +1208,98 @@ const promptSources = computed(() => datasetAttribution('parties'))
 
   .stage-window {
     flex: 1 1 auto;
-    min-height: clamp(120px, 24vh, 360px);
+    // Yields steeply on a short phone, where the controls need the height.
+    min-height: clamp(72px, calc(48vh - 200px), 360px);
   }
 
   .logos,
   .seats-beat,
   .sides-beat {
     flex: 0 1 auto;
+  }
+
+  // The plinth runs under the caption once the chamber opens.
+  .arc-caption {
+    width: fit-content;
+    margin-inline: auto;
+    padding: 0.2rem 1.2rem;
+    border-radius: 999px;
+    background: milk(0.85);
+  }
+
+  // A phone on its side has no height to stack a stage over the controls: the
+  // building takes the left of the screen and the round runs down the right.
+  @media #{$short-landscape} {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+
+    // Not the layer: an absolute grid child takes its grid AREA as its
+    // containing block, which shrank the canvas into the right column.
+    > :not(.parliament-layer) {
+      grid-column: 2;
+    }
+
+    .stage-window {
+      grid-column: 1;
+      grid-row: 1 / -1;
+      min-height: 0;
+    }
+
+    .challenge-prompt {
+      grid-row: 1;
+    }
+
+    .verdict-band {
+      grid-row: 2;
+      height: auto;
+      margin-block: 4px;
+    }
+
+    .logos,
+    .seats-beat,
+    .sides-beat,
+    .government-briefing,
+    .government-reveal {
+      grid-row: 3;
+    }
+
+    .clock-footer {
+      grid-row: 4;
+    }
+
+    // The prompt already names the party; the height goes to the answers.
+    .beat-subject {
+      display: none;
+    }
+
+    .logos {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+
+      .option-logo,
+      .option-swatch {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    .blocks {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  // The stage scales with the screen; the controls are px, so they scale here.
+  @media (min-width: $desktop) and (min-height: $tall) {
+    > :not(.parliament-layer, .stage-window) {
+      zoom: 1.2;
+    }
+  }
+
+  @media (min-width: $wall) and (min-height: $tall) {
+    > :not(.parliament-layer, .stage-window) {
+      zoom: 1.45;
+    }
   }
 }
 

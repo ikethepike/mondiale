@@ -2,7 +2,10 @@
   <article class="coalition">
     <header class="panel-head">
       <span class="eyebrow">The government</span>
-      <SourceInfo :attributions="sources" :item-credit="portraitCredit" />
+      <span class="head-end">
+        <span class="kind" :class="summary.kind">{{ KIND_LABELS[summary.kind] }}</span>
+        <SourceInfo :attributions="sources" :item-credit="portraitCredit" />
+      </span>
     </header>
 
     <div class="head">
@@ -18,7 +21,6 @@
           Led by {{ leader.name }}<template v-if="office">, {{ office }}</template>
         </span>
       </div>
-      <span class="kind" :class="summary.kind">{{ KIND_LABELS[summary.kind] }}</span>
     </div>
 
     <div class="composition">
@@ -220,6 +222,12 @@ const spanLine = computed(() => {
   gap: 0.5rem;
   padding-bottom: 0.4rem;
   border-bottom: $hairline;
+}
+
+.head-end {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .head {

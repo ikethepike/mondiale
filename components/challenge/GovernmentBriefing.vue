@@ -130,7 +130,7 @@ const sidesDemoClass = (index: number) => {
   max-width: min(78rem, calc(100% - 2.4rem));
   color: var(--dark-blue);
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     --briefing-gap: 0.9rem;
     --briefing-pad: 1.6rem 1.4rem;
   }
@@ -151,7 +151,7 @@ const sidesDemoClass = (index: number) => {
   line-height: 1.4;
   opacity: 0.8;
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     display: none;
   }
 }
@@ -166,7 +166,7 @@ const sidesDemoClass = (index: number) => {
   list-style: none;
   text-align: left;
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.8rem;
   }
@@ -193,7 +193,7 @@ const sidesDemoClass = (index: number) => {
     }
   }
 
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     grid-template-columns: 92px minmax(0, 1fr);
     grid-template-rows: auto;
     align-items: center;
@@ -250,7 +250,7 @@ const sidesDemoClass = (index: number) => {
 }
 
 .compact {
-  @media (max-width: $tablet) {
+  @media (max-width: $tablet), #{$short-landscape} {
     .demo {
       display: none;
     }

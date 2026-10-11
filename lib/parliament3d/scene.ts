@@ -198,14 +198,31 @@ export const chamberTones = (dots: number, groups: readonly SeatGroup[]): SeatTo
     groups.map(group => ({ key: group.tone, seats: group.seats }))
   )
 
+/** The part of the canvas the building is framed into, in px from its top-left. */
+export interface StageBand {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
 /**
  * The camera distance at which a sphere of `radius` fits the band of the
- * viewport it is framed in. `bandShare` is the band's height over the canvas
- * height; the narrower of the band and the canvas width decides.
+ * viewport it is framed in. `heightShare`/`widthShare` are the band's share of
+ * the canvas on each axis; whichever is tighter decides.
  */
-export const fitDistance = (radius: number, fovDeg: number, aspect: number, bandShare = 1) => {
+export const fitDistance = (
+  radius: number,
+  fovDeg: number,
+  aspect: number,
+  heightShare = 1,
+  widthShare = 1
+) => {
   const tanHalf = Math.tan((fovDeg * Math.PI) / 360)
-  const tan = Math.min(tanHalf * Math.max(0.05, bandShare), tanHalf * aspect)
+  const tan = Math.min(
+    tanHalf * Math.max(0.05, heightShare),
+    tanHalf * aspect * Math.max(0.05, widthShare)
+  )
   return radius / Math.sin(Math.atan(tan))
 }
 
@@ -221,9 +238,8 @@ export const orbitPosition = (
   target[2] + Math.cos(azimuth) * Math.cos(elevation) * distance,
 ]
 
-/** How far (px) to shift the rendered image down so its centre lands mid-band. */
-export const bandShift = (height: number, band: { top: number; bottom: number }) =>
-  height / 2 - (band.top + band.bottom) / 2
+/** How far (px) to shift the rendered image along one axis so its centre lands mid-band. */
+export const bandShift = (size: number, start: number, end: number) => size / 2 - (start + end) / 2
 
 /** Frame-rate independent approach: the share of the remaining gap a channel closes in `dt` seconds. */
 export const approach = (dt: number, rate: number) => 1 - Math.exp(-rate * dt)

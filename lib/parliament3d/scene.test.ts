@@ -107,6 +107,7 @@ describe('framing', () => {
   it('backs the camera off as its band narrows', () => {
     expect(fitDistance(3, 35, 1.6, 0.5)).toBeGreaterThan(fitDistance(3, 35, 1.6, 1))
     expect(fitDistance(3, 35, 0.5, 1)).toBeGreaterThan(fitDistance(3, 35, 1.6, 1))
+    expect(fitDistance(3, 35, 1.6, 1, 0.4)).toBeGreaterThan(fitDistance(3, 35, 1.6, 1, 1))
   })
 
   it('orbits around its target', () => {
@@ -117,8 +118,9 @@ describe('framing', () => {
   })
 
   it('centres the image on its band', () => {
-    expect(bandShift(800, { top: 0, bottom: 400 })).toBe(200)
-    expect(bandShift(800, { top: 0, bottom: 800 })).toBe(0)
+    expect(bandShift(800, 0, 400)).toBe(200)
+    expect(bandShift(800, 0, 800)).toBe(0)
+    expect(bandShift(1000, 0, 500)).toBe(250)
   })
 })
 

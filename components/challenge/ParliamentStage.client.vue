@@ -45,6 +45,7 @@ import {
   orbitPosition,
   type ParliamentPhase,
   type SeatGroup,
+  type StageBand,
 } from '~~/lib/parliament3d/scene'
 
 /** The Government round's 3D parliament: it builds itself, comes apart to show its chamber, and paints it as the round moves. */
@@ -55,7 +56,7 @@ const props = withDefaults(
     groups: readonly SeatGroup[]
     flagColor?: string
     /** The stretch of the canvas (CSS px from its top) the building is framed in. */
-    band?: { top: number; bottom: number }
+    band?: StageBand
     /** Changes whenever a beat's verdict lands — the camera nods. */
     verdictKey?: string
   }>(),
@@ -128,6 +129,8 @@ const current = {
   sway: pose.drift > 0 ? 1 : 0,
   shift: 0,
   share: 1,
+  shiftX: 0,
+  widthShare: 1,
 }
 const startsAt = { roof: 0, roofGone: 0, camera: 0, facade: 0, walls: 0, seats: 0 }
 let swoopStart = -Infinity
@@ -397,19 +400,23 @@ const placeCamera = (now: number) => {
   if (!width || !height) return
   const sway = Math.sin(elapsed * 0.35) * 0.32 * current.sway
   const fit = current.fit * (1 + swoopAt(now))
-  const distance = fitDistance(fit, FOV, width / height, current.share)
+  const distance = fitDistance(fit, FOV, width / height, current.share, current.widthShare)
   const target: [number, number, number] = [current.tx, current.ty, current.tz]
   camera.position.set(...orbitPosition(target, current.azimuth + sway, current.elevation, distance))
   camera.lookAt(...target)
-  camera.setViewOffset(width, height, 0, current.shift, width, height)
+  camera.setViewOffset(width, height, current.shiftX, current.shift, width, height)
 }
 
 const bandTargets = () => {
   const height = canvas.value?.clientHeight ?? 0
-  if (!props.band || !height) return { shift: 0, share: 1 }
+  const width = canvas.value?.clientWidth ?? 0
+  const band = props.band
+  if (!band || !height || !width) return { shift: 0, share: 1, shiftX: 0, widthShare: 1 }
   return {
-    shift: bandShift(height, props.band),
-    share: Math.max(0.15, (props.band.bottom - props.band.top) / height),
+    shift: bandShift(height, band.top, band.bottom),
+    share: Math.max(0.15, (band.bottom - band.top) / height),
+    shiftX: bandShift(width, band.left, band.right),
+    widthShare: Math.max(0.15, (band.right - band.left) / width),
   }
 }
 
@@ -454,6 +461,8 @@ const tick = (now: number) => {
   const band = bandTargets()
   step('shift', band.shift, 6)
   step('share', band.share, 6)
+  step('shiftX', band.shiftX, 6)
+  step('widthShare', band.widthShare, 6)
   if (swoopAt(now)) changed = true
 
   flagGoal.set(props.flagColor)
