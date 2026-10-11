@@ -23,9 +23,9 @@ export const dealableScenes = (region: VintageRegionId, difficulty: GameDifficul
   const tuning = VINTAGE_TUNING[difficulty]
   const years = VINTAGE_YEARS[region]
   const final = years.spans.length - 1
-  return years.spans.flatMap(([, to], scene) =>
+  return years.spans.flatMap((_, scene) =>
     scene < final &&
-    to >= tuning.earliest &&
+    (scene > 0 || tuning.oldestMap) &&
     years.tells[modeOf(tuning.labelled)][scene] >= tuning.minTells &&
     isFameDealable(years.fame[scene], difficulty)
       ? [scene]

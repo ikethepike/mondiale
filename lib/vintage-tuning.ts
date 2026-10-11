@@ -8,8 +8,9 @@ export const VINTAGE_TUNING: Record<
     labelled: boolean
     /** Units that must look different from 2019 for a scene to be dealt. */
     minTells: number
-    /** Scenes ending before this year are never dealt. */
-    earliest: number
+    /** May deal the oldest map, whose band starts where the data does
+     *  rather than where history changed. */
+    oldestMap: boolean
     /** Years either side of the dealt map's runs that still pay in full. */
     grace: number
     /** Years outside the runs at which a guess pays nothing. */
@@ -21,7 +22,7 @@ export const VINTAGE_TUNING: Record<
   easy: {
     labelled: true,
     minTells: 5,
-    earliest: 1900,
+    oldestMap: false,
     grace: 3,
     zeroAt: 30,
     fameWeights: { major: 1, minor: 0, obscure: 0 },
@@ -29,7 +30,7 @@ export const VINTAGE_TUNING: Record<
   normal: {
     labelled: true,
     minTells: 3,
-    earliest: 1890,
+    oldestMap: false,
     grace: 1,
     zeroAt: 25,
     fameWeights: { major: 1, minor: 0.4, obscure: 0 },
@@ -37,7 +38,7 @@ export const VINTAGE_TUNING: Record<
   hard: {
     labelled: false,
     minTells: 2,
-    earliest: 1886,
+    oldestMap: true,
     grace: 0,
     zeroAt: 20,
     fameWeights: { major: 0.4, minor: 0.7, obscure: 1 },

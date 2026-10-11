@@ -27,6 +27,7 @@ import { VINTAGE_FAME, legibleFame, sceneLegibility } from '../../../lib/vintage
 import {
   VINTAGE_REGION_IDS,
   type VintageEra,
+  type VintageEraSpec,
   type VintageRegion,
   type VintageRegionId,
   type VintageRegionYears,
@@ -37,6 +38,7 @@ import {
 import { FAME_TIERS } from '../../../types/fame.types'
 import { VINTAGE_NOTES } from '../../data/vintage-notes'
 import { VINTAGE_REGION_SPECS, VINTAGE_UNITS } from '../../data/vintage-units'
+import { buildEuropeKeyframes } from './keyframe-europe'
 import {
   asPolygonRings,
   fetchCShapes,
@@ -52,7 +54,10 @@ import {
 const geometryFile = (id: VintageRegionId) => `data/vintage-${id}.gen.ts`
 const OUT_YEARS = 'data/vintage-years.gen.ts'
 const REPORT_FILE = 'generators/data/vintage-report.txt'
-const FIRST_YEAR = 1886
+const OHM_CREDIT = `// Europe before 1886: OpenHistoricalMap contributors (openhistoricalmap.org, CC0 1.0;
+// some boundary ways CC BY 4.0), at the keyframes in generators/data/vintage-keyframes.ts.
+`
+const CSHAPES_FIRST_YEAR = 1886
 const LAST_YEAR = 2019
 /** Islets below this projected area (map units²) are dropped from fills. */
 const MIN_RING_AREA = 0.02
@@ -437,13 +442,19 @@ const toneUnits = (codes: number[], neighbours: Set<string>): Map<number, number
 
 const missingEras = new Set<number>()
 const landedNotes = new Set<string>()
+/** Eras before 1886, read off the curated keyframes rather than the table. */
+let keyframeEras = new Map<number, VintageEraSpec[]>()
 const eraSpecFor = (gwcode: number, year: number): VintageEra | undefined => {
-  const unit = VINTAGE_UNITS[gwcode]
-  if (!unit) {
+  const curated = VINTAGE_UNITS[gwcode]?.eras ?? []
+  const earlier = (keyframeEras.get(gwcode) ?? []).filter(
+    era => era.from < (curated[0]?.from ?? Infinity)
+  )
+  const eras = [...earlier, ...curated]
+  if (!eras.length) {
     missingEras.add(gwcode)
     return undefined
   }
-  const era = [...unit.eras].reverse().find(entry => entry.from <= year)
+  const era = [...eras].reverse().find(entry => entry.from <= year)
   if (!era) throw new Error(`Unit ${gwcode} has no era for ${year}`)
   const { from: _from, ...rest } = era
   return rest
@@ -463,8 +474,9 @@ const aliveOn = (entry: CShapesFeature, year: number) => {
 
 const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput => {
   const spec = VINTAGE_REGION_SPECS[id]
+  const firstYear = spec.firstYear ?? CSHAPES_FIRST_YEAR
   const selected = all
-    .filter(entry => entry.end[0] >= FIRST_YEAR && entry.start[0] <= LAST_YEAR)
+    .filter(entry => entry.end[0] >= firstYear && entry.start[0] <= LAST_YEAR)
     .filter(entry => boxesOverlap(asPolygonRings(entry.feature.geometry), spec.clip))
     .map(entry => ({ entry, clipped: clipFeature(entry.feature, spec.clip) }))
     .filter(
@@ -651,14 +663,14 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
   }
 
   const yearStates: YearState[] = []
-  for (let year = FIRST_YEAR; year <= LAST_YEAR; year++) yearStates.push(stateOf(year))
+  for (let year = firstYear; year <= LAST_YEAR; year++) yearStates.push(stateOf(year))
 
   const tones = toneUnits(unitCodes, neighbours)
 
   // Scenes: runs of years that look identical with labels on.
   const scenes: { from: number; to: number; state: YearState }[] = []
   yearStates.forEach((state, offset) => {
-    const year = FIRST_YEAR + offset
+    const year = firstYear + offset
     const last = scenes[scenes.length - 1]
     if (last && last.state.labelled === state.labelled) last.to = year
     else scenes.push({ from: year, to: year, state })
@@ -819,7 +831,7 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
       weights,
       fame,
       states: yearStates.map(state => state.states),
-      firstYear: FIRST_YEAR,
+      firstYear,
       notes,
     },
   }
@@ -827,10 +839,18 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
 
 const main = async () => {
   const features = applyOverrides(await fetchCShapes())
+  const europe = VINTAGE_REGION_SPECS.europe
+  const keyframes = await buildEuropeKeyframes(features, europe.clip, europe.frame, europe.owns)
+  keyframeEras = keyframes.eras
+  log('europe keyframes (OpenHistoricalMap):')
+  keyframes.report.forEach(log)
   const geometry = {} as Record<VintageRegionId, VintageRegion>
   const years = {} as Record<VintageRegionId, VintageRegionYears>
   for (const id of VINTAGE_REGION_IDS) {
-    const output = buildRegion(id, features)
+    const output = buildRegion(
+      id,
+      id === 'europe' ? [...features, ...keyframes.features] : features
+    )
     geometry[id] = output.geometry
     years[id] = output.years
   }
@@ -850,7 +870,7 @@ const main = async () => {
   for (const id of VINTAGE_REGION_IDS)
     writeFileSync(
       geometryFile(id),
-      `${header}// Projected with the map's fitted Robinson (see data/map.gen.ts). Holds no years.
+      `${header}${id === 'europe' ? OHM_CREDIT : ''}// Projected with the map's fitted Robinson (see data/map.gen.ts). Holds no years.
 // Lazy-import only, from the client view (loadVintageRegion in lib/vintage.ts).
 import type { VintageRegion } from '~~/types/vintage.types'
 
@@ -859,7 +879,7 @@ export const VINTAGE_REGION: VintageRegion = ${jsonParseLiteral(geometry[id])}
     )
   writeFileSync(
     OUT_YEARS,
-    `${header}// The answers: server-only, never imported outside lib/events/server.
+    `${header}${OHM_CREDIT}// The answers: server-only, never imported outside lib/events/server.
 import type { VintageRegionId, VintageRegionYears } from '~~/types/vintage.types'
 
 export const VINTAGE_YEARS: Record<VintageRegionId, VintageRegionYears> = ${JSON.stringify(years)}

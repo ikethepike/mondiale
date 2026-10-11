@@ -50,6 +50,7 @@ export const VINTAGE_WASHES = [
   'za',
   'dk',
   'at-hu',
+  'habsburg',
   'ru',
   'su',
   'tr',

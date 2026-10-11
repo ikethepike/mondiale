@@ -77,6 +77,42 @@ export const VINTAGE_NOTES: Record<string, string> = {
   '290:1921': "The Peace of Riga fixed Poland's eastern border after its war with Soviet Russia.",
   '290:1945':
     'At Potsdam, Poland moved roughly 200 km west; millions of people were expelled or resettled.',
+  // Before 1886 (OpenHistoricalMap keyframes)
+  '290:1793':
+    'Russia and Prussia took most of what remained of Poland-Lithuania in the Second Partition.',
+  '290:1795':
+    'Austria, Prussia and Russia divided the rest of Poland-Lithuania; Poland vanished from the map for 123 years.',
+  '3251:1797':
+    'Napoleon ended the eleven-century Republic of Venice and handed it to Austria at Campo Formio.',
+  '2550:1806':
+    'Francis II dissolved the Holy Roman Empire under pressure from Napoleon, after almost a thousand years.',
+  '290:1807':
+    "At Tilsit Napoleon carved the Duchy of Warsaw out of Prussia's Polish lands, under his ally the King of Saxony.",
+  '2551:1807': 'Napoleon created the Kingdom of Westphalia for his brother Jérôme.',
+  '220:1812':
+    "France had annexed Holland and Germany's North Sea coast: Napoleon's empire at its greatest extent.",
+  '290:1815':
+    'The Congress of Vienna gave most of the Duchy of Warsaw to Russia as the Kingdom of Poland, with the Tsar as its king.',
+  '211:1830': 'Belgium rose against Dutch rule and broke away as an independent kingdom.',
+  '350:1832':
+    'Greece became an independent kingdom after its war of independence from the Ottomans.',
+  '325:1859':
+    'Piedmont-Sardinia won Lombardy from Austria with French help, the first step to a united Italy.',
+  '329:1860':
+    "Garibaldi's Thousand overthrew the Kingdom of the Two Sicilies, which voted to join Piedmont.",
+  '325:1861': 'The Kingdom of Italy was proclaimed, with Victor Emmanuel II as its king.',
+  '390:1864': 'Prussia and Austria took Schleswig, Holstein and Lauenburg from Denmark.',
+  '325:1866': 'Italy gained Venetia for siding with Prussia against Austria.',
+  '240:1866':
+    'Prussia annexed Hanover, Hesse-Kassel, Nassau and Frankfurt after defeating Austria.',
+  '300:1867':
+    'The Compromise of 1867 remade the Austrian Empire as the dual monarchy of Austria-Hungary.',
+  '255:1867': 'Prussia gathered the states north of the Main into the North German Confederation.',
+  '327:1870': 'Italian troops took Rome, and the Papal States came to an end.',
+  '255:1871':
+    'The German Empire was proclaimed at Versailles, taking in the southern states and Alsace-Lorraine.',
+  '340:1878':
+    'The Congress of Berlin recognised the full independence of Serbia, Montenegro and Romania.',
   '300:1908': 'Austria-Hungary annexed Bosnia-Herzegovina, occupied since 1878.',
   '305:1918': 'Austria-Hungary dissolved into national states at the end of the First World War.',
   '255:1918':

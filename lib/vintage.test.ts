@@ -210,6 +210,28 @@ describe('vintage answer key boundary', () => {
   })
 })
 
+describe('vintage Europe before CShapes', () => {
+  const years = () => VINTAGE_YEARS.europe
+  const stepInto = (year: number) => years().spans.findIndex(([from]) => from === year) - 1
+
+  it('reaches back to the First Partition', () => {
+    expect(years().firstYear).toBe(1772)
+  })
+
+  it('joins the 1886 map without redrawing what never moved', () => {
+    const changes = unitChanges(VINTAGE_REGIONS.europe, stepInto(1886))
+    expect(changes.length).toBeLessThanOrEqual(6)
+  })
+
+  it('tells the Partitions and the duchy that followed', () => {
+    const poland = (year: number) =>
+      unitChanges(VINTAGE_REGIONS.europe, stepInto(year)).find(change => change.gwcode === 290)
+    expect(poland(1795)?.kind).toBe('gone')
+    expect(poland(1807)?.kind).toBe('formed')
+    expect(poland(1807)?.after?.name).toBe('Duchy of Warsaw')
+  })
+})
+
 describe('vintage rewind captions', () => {
   it('words every change the rewind can undo', () => {
     for (const id of VINTAGE_REGION_IDS) {

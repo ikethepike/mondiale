@@ -21,6 +21,7 @@ export const WASH_RULERS: Record<VintageWash, string> = {
   za: 'South African',
   dk: 'Danish',
   'at-hu': 'Austro-Hungarian',
+  habsburg: 'Habsburg',
   ru: 'Russian',
   su: 'Soviet',
   tr: 'Ottoman',

@@ -518,6 +518,8 @@ export interface VintageRegionSpec {
   frame: [number, number, number, number]
   clip: [number, number, number, number]
   pointBudget: number
+  /** Where the region's history starts; CShapes alone reaches back to 1886. */
+  firstYear?: number
 }
 
 export const VINTAGE_REGION_SPECS: Record<VintageRegionId, VintageRegionSpec> = {
@@ -533,7 +535,8 @@ export const VINTAGE_REGION_SPECS: Record<VintageRegionId, VintageRegionSpec> = 
       (gwcode >= 200 && gwcode < 400) || gwcode === 640 || (gwcode >= 2000 && gwcode < 4000),
     frame: [-12, 34, 44, 71],
     clip: [-45, 20, 82, 80],
-    pointBudget: 11000,
+    pointBudget: 16000,
+    firstYear: 1772,
   },
   'middle-east': {
     owns: gwcode =>
