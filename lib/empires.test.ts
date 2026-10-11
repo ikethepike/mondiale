@@ -10,6 +10,7 @@ import {
   scoreEmpireExtent,
   subsampleKeyframes,
 } from '~~/lib/empires'
+import { testSeat } from '~~/lib/events/server/test-seat'
 import { variantCountries } from '~~/lib/variant'
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
 import { FAME_BY_DIFFICULTY, FAME_TIERS, isFameDealable } from '~~/types/fame.types'
@@ -193,7 +194,7 @@ const game = (difficulty: GameDifficulty, overrides?: object): Game =>
     variant: 'world',
     difficulty,
     rounds: [{}],
-    players: { a: { phase: 'group-challenge' } },
+    players: { a: testSeat('a') },
     ...(overrides ?? {}),
   }) as unknown as Game
 

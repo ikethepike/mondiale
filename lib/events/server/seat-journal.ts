@@ -1,0 +1,159 @@
+import type { Redis } from '@upstash/redis'
+import type { SeatJournalEntry, SeatRender } from '~~/types/seat.types'
+import { GAME_STATE_TTL_SECONDS } from '../server-side'
+
+/** How many transitions a game's ring keeps — enough for a whole short game. */
+export const SEAT_JOURNAL_RING = 1000
+/** Inbound events and deals kept for replay, per game. */
+export const SEAT_EVENT_RING = 2000
+
+export const journalKey = (gameId: string) => `${gameId}:journal`
+export const eventsKey = (gameId: string) => `${gameId}:events`
+export const rendersKey = (gameId: string) => `${gameId}:renders`
+
+type ListRedis = Pick<Redis, 'rpush' | 'ltrim' | 'expire'> & Partial<Pick<Redis, 'pipeline'>>
+const supportsLists = (redis: unknown): redis is ListRedis =>
+  typeof (redis as Partial<ListRedis>).rpush === 'function' &&
+  typeof (redis as Partial<ListRedis>).ltrim === 'function'
+
+type JournalListener = (entry: SeatJournalEntry) => void
+const listeners = new Set<JournalListener>()
+
+/** Tap every journal line in-process (tests, the replay harness). Returns the unsubscribe. */
+export const onSeatJournal = (listener: JournalListener): (() => void) => {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+const logsQuietly = () =>
+  typeof process !== 'undefined' && !!process.env?.VITEST && !process.env?.SEAT_JOURNAL_LOG
+
+export const logSeatLine = (tag: string, payload: object) => {
+  if (logsQuietly()) return
+  console.log(`${tag} ${JSON.stringify(payload)}`)
+}
+
+const pushRing = async (redis: unknown, key: string, values: object[], keep: number) => {
+  if (!values.length || !supportsLists(redis)) return
+  const encoded = values.map(value => JSON.stringify(value))
+  if (redis.pipeline) {
+    await redis
+      .pipeline()
+      .rpush(key, ...encoded)
+      .ltrim(key, -keep, -1)
+      .expire(key, GAME_STATE_TTL_SECONDS)
+      .exec()
+    return
+  }
+  await redis.rpush(key, ...encoded)
+  await redis.ltrim(key, -keep, -1)
+  await redis.expire(key, GAME_STATE_TTL_SECONDS)
+}
+
+/**
+ * Every seat transition, once saved: one structured log line each (Fly's log
+ * search finds a game's whole sequence), and the non-progress ones into the
+ * game's Redis ring so `/debug/rooms` can show it after the fact.
+ */
+export const recordSeatJournal = async (redis: unknown, entries: SeatJournalEntry[]) => {
+  if (!entries.length) return
+  for (const entry of entries) {
+    logSeatLine('seat-journal', entry)
+    for (const listener of listeners) listener(entry)
+  }
+  const gameId = entries[0].game
+  try {
+    await pushRing(
+      redis,
+      journalKey(gameId),
+      entries.filter(entry => !entry.progress),
+      SEAT_JOURNAL_RING
+    )
+  } catch (error) {
+    console.error(`seat-journal ring write failed for ${gameId}`, error)
+  }
+}
+
+/**
+ * One recorded input for deterministic replay — a client event, a bot act, a
+ * server act or a deal — or a round-start checkpoint. Every record is written
+ * inside its queued task, so the ring's order IS the game's processing order.
+ */
+export type SeatEventRecord =
+  | { kind: 'event'; at: number; actor: string; bot?: true; event: string; data: unknown }
+  | { kind: 'deal'; at: number; label: string; value: unknown }
+  | { kind: 'checkpoint'; at: number; game: unknown; sides: Record<string, unknown> }
+
+type EventListener = (gameId: string, record: SeatEventRecord) => void
+const eventListeners = new Set<EventListener>()
+export const onSeatEvent = (listener: EventListener): (() => void) => {
+  eventListeners.add(listener)
+  return () => eventListeners.delete(listener)
+}
+
+export const recordSeatEvent = async (redis: unknown, gameId: string, record: SeatEventRecord) =>
+  recordSeatEvents(redis, gameId, [record])
+
+const recordSeatEvents = async (redis: unknown, gameId: string, records: SeatEventRecord[]) => {
+  if (!records.length) return
+  for (const record of records) {
+    for (const listener of eventListeners) listener(gameId, record)
+  }
+  try {
+    await pushRing(redis, eventsKey(gameId), records, SEAT_EVENT_RING)
+  } catch (error) {
+    console.error(`seat-events ring write failed for ${gameId}`, error)
+  }
+}
+
+/**
+ * Deals are made inside a task before its save: buffer them on the game and
+ * let the save hook flush them, so a deal is only recorded if the save that
+ * carries it actually lands.
+ */
+const bufferedDeals = new WeakMap<object, SeatEventRecord[]>()
+export const bufferDeal = (game: object, deal: { label: string; value: unknown }) => {
+  const records = bufferedDeals.get(game) ?? []
+  records.push({ kind: 'deal', at: Date.now(), ...deal })
+  bufferedDeals.set(game, records)
+}
+export const flushDeals = async (redis: unknown, game: { id: string }) => {
+  const records = bufferedDeals.get(game) ?? []
+  bufferedDeals.delete(game)
+  await recordSeatEvents(redis, game.id, records)
+}
+
+type RenderRedis = Pick<Redis, 'hset' | 'expire'>
+const supportsHashes = (redis: unknown): redis is RenderRedis =>
+  typeof (redis as Partial<RenderRedis>).hset === 'function'
+
+/** Per-viewer render acks: a side key, never the game, so an ack can't bump `rev`. */
+export const recordSeatRender = async (redis: unknown, gameId: string, render: SeatRender) => {
+  logSeatLine('seat-rendered', { game: gameId, ...render })
+  if (!supportsHashes(redis)) return
+  // Per viewer AND seat: a booth's ack for the seat it follows must never
+  // overwrite the viewer's ack for their own seat.
+  await redis.hset(rendersKey(gameId), {
+    [`${render.viewer}|${render.seat}`]: JSON.stringify(render),
+  })
+  await redis.expire(rendersKey(gameId), GAME_STATE_TTL_SECONDS)
+}
+
+/**
+ * The game as a round opens — plus the round's secret side keys, by their
+ * suffix after the game id — so a replay has a real starting state: every
+ * record after it in the ring reproduces the round through the handlers.
+ */
+export const recordCheckpoint = async (
+  redis: unknown,
+  game: { id: string },
+  sideKeys: readonly string[]
+) => {
+  const read = redis as Partial<Pick<Redis, 'get'>>
+  const sides: Record<string, unknown> = {}
+  for (const key of sideKeys) {
+    const value = await read.get?.(key)
+    if (value !== null && value !== undefined) sides[key.slice(game.id.length)] = value
+  }
+  await recordSeatEvent(redis, game.id, { kind: 'checkpoint', at: Date.now(), game, sides })
+}

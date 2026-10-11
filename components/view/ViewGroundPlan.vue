@@ -145,6 +145,7 @@ const {
   submitOnce,
   stopCountdown,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('ground-plan-challenge')
 
 // A cut is wider than it is tall, so a portrait screen cannot fill without
@@ -228,7 +229,7 @@ const resolve = (correct: boolean, score: number) => {
   resolved.value = true
   wasCorrect.value = correct
   stopCountdown()
-  gameStore.map.status = correct ? 'correct' : undefined
+  previewVerdict(correct ? 'correct' : undefined)
   submitOnce(correct && challenge.value ? [challenge.value.country] : [], score)
 }
 

@@ -1,5 +1,7 @@
 import type { Player } from '~~/types/player.type'
-import type { PlayerMove } from '~~/types/game.types'
+import type { PlayerMove, Tile } from '~~/types/game.types'
+
+export const gateStopTile = (gate: Tile): number => gate.position - 1
 
 /**
  * The tile a move actually parks the pawn on. A challenge move stops one tile
@@ -8,7 +10,7 @@ import type { PlayerMove } from '~~/types/game.types'
  * source for that split; never re-derive `endTile.position - 1` inline.
  */
 export const moveStopTile = (move: PlayerMove): number =>
-  move.challenge ? move.endTile.position - 1 : move.endTile.position
+  move.challenge ? gateStopTile(move.endTile) : move.endTile.position
 
 export interface PlayerStatus {
   /** Short human label, e.g. "Walking · 4 steps left". */
@@ -66,7 +68,7 @@ const stepsRemaining = (player: Player): number => {
 const plural = (count: number, noun: string) => `${count}\u00A0${noun}${count === 1 ? '' : 's'}`
 
 /**
- * Map a player's live phase (and position / current move) to a status shown in
+ * Map a player's live step (and position / current move) to a status shown in
  * the multiplayer waiting panel, so a player parked on the board can see the
  * others are still busy rather than assuming the game froze. Purely derived
  * from already-broadcast state — no server round-trip.
@@ -74,16 +76,18 @@ const plural = (count: number, noun: string) => `${count}\u00A0${noun}${count ==
 export const getPlayerStatus = (player: Player, table: readonly Player[] = []): PlayerStatus => {
   const idle = { busy: false, done: false, gone: false }
 
-  switch (player.phase) {
-    case 'naming':
-      return { label: 'Choosing a name', ...idle }
-    case 'waiting-for-game':
-      return { label: 'Waiting in the lobby', ...idle }
+  switch (player.cursor.step) {
+    case 'lobby':
+      return player.ready
+        ? { label: 'Waiting in the lobby', ...idle }
+        : { label: 'Choosing a name', ...idle }
     case 'tutorial':
       return { label: 'Reading the rules', ...idle, busy: true }
-    case 'group-challenge':
+    case 'round':
+    case 'round-verdict':
       return { label: 'Answering the round', busy: true, done: false, gone: false }
-    case 'individual-challenge': {
+    case 'gate':
+    case 'gate-verdict': {
       const steps = stepsRemaining(player)
       return {
         label:
@@ -96,7 +100,8 @@ export const getPlayerStatus = (player: Player, table: readonly Player[] = []): 
         steps,
       }
     }
-    case 'final-challenge': {
+    case 'final':
+    case 'final-verdict': {
       // The gauntlet is the tensest stretch of the game to watch someone else
       // play — "in the final challenge" for two minutes says nothing about
       // whether they are one question from winning.
@@ -115,7 +120,8 @@ export const getPlayerStatus = (player: Player, table: readonly Player[] = []): 
         final,
       }
     }
-    case 'moving': {
+    case 'walk':
+    case 'arrive': {
       const steps = stepsRemaining(player)
       return {
         label:
@@ -128,9 +134,9 @@ export const getPlayerStatus = (player: Player, table: readonly Player[] = []): 
         steps,
       }
     }
-    case 'group-scores':
+    case 'scores':
       return { label: 'Reviewing scores', ...idle }
-    case 'movement-summary':
+    case 'settled':
       return { label: 'Finished this turn', ...idle }
     case 'victory': {
       // WHERE they finished, not just that they did — a four-player table ends
@@ -146,7 +152,5 @@ export const getPlayerStatus = (player: Player, table: readonly Player[] = []): 
     }
     case 'kicked':
       return { label: 'Knocked out', busy: false, done: false, gone: true }
-    default:
-      return { label: 'Waiting', ...idle }
   }
 }

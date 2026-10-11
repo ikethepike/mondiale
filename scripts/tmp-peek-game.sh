@@ -17,11 +17,12 @@ if not value:
     sys.exit(0)
 game = json.loads(value)
 now = int(time.time() * 1000)
-print(f"game: {game.get(\"id\")} variant={game.get(\"variant\")} difficulty={game.get(\"difficulty\")} started={game.get(\"started\")} pendingRoundStart={game.get(\"pendingRoundStart\")}")
+print(f"game: {game.get(\"id\")} variant={game.get(\"variant\")} difficulty={game.get(\"difficulty\")} started={game.get(\"started\")} nextRoundAt={game.get(\"nextRoundAt\")}")
 rounds = game.get("rounds", [])
 print(f"rounds: {len(rounds)}")
 for player in game.get("players", {}).values():
-    print(f"  seat {player.get(\"name\")!r}: phase={player.get(\"phase\")} pos={player.get(\"currentPosition\")} walkSeq={player.get(\"walkSeq\")} resolving={player.get(\"resolving\")} moves={len(player.get(\"moves\", []))}")
+    cursor = player.get("cursor") or {}
+    print(f"  seat {player.get(\"name\")!r}: step={cursor.get(\"step\")} subject={cursor.get(\"subject\")} seq={cursor.get(\"seq\")} pos={player.get(\"currentPosition\")} moves={len(player.get(\"moves\", []))}")
 if rounds:
     current = rounds[-1]
     challenge = current.get("groupChallenge", {})

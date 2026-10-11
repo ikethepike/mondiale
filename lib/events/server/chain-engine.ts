@@ -18,15 +18,14 @@ import {
   TIMEOUT_SLACK_MS,
   TRAP_HOLD_MS,
 } from '~~/lib/round-beats'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * The turn-chain engine — the shared rhythm behind the seat-by-seat
  * elimination rounds (Border Chain, Atlas). State lives on the challenge
  * payload inside the current round, every mutation runs inside the per-game
- * queue, and the per-turn shot clock follows the timer-outside-the-queue
- * pattern (enter-movement-phase): a setTimeout holds no lock, and the state's
- * `turn` counter is the token that makes a stale timeout a no-op.
+ * queue, and the per-turn shot clock is a timer outside the queue
+ * (`scheduleGameTask`): it holds no lock, and the state's `turn` counter is
+ * the token that makes a stale timeout a no-op.
  *
  * Everything mode-specific — the link rule, the dead-end proof, the fresh
  * seed, the payout — comes in through the spec, so the two modes cannot
@@ -319,7 +318,7 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
       // The reveal follow-up fires exactly once: scoring marks the round.
       if (!round || Object.keys(round.groupAnswers).length) return
 
-      const advanced = await settleRoundScores({
+      await settleRoundScores({
         game: fresh,
         round,
         order: current.state.order,
@@ -332,12 +331,9 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
       })
 
       await freshServer.updateGameState(fresh)
-      // Not 'group-challenge-scored': its client handler applies only the
+      // Not 'seat-advanced': its client handler applies only the
       // target player's slice, and this scoring lands for the whole table.
       freshServer.emit({ event: 'chain-updated', game: fresh }, ctx.eventTarget)
-      // The advanced seats now owe the table a movement request only a click
-      // sends — one cohort cap so a dead tab can't freeze the room here.
-      armGroupScoresCaps(ctx, fresh, advanced)
     })
   }
 

@@ -1,5 +1,6 @@
 import type { Player } from '../types/player.type'
 import { getRandomPlayerColor } from './color'
+import { initialSeatCursor, isTerminalStep } from './seat-transitions'
 
 export const MAX_PLAYER_NAME_LENGTH = 24
 
@@ -97,7 +98,7 @@ export const createPlayer = (playerId: string, takenColors: string[] = []): Play
   name: '',
   id: playerId,
   ready: false,
-  phase: 'naming',
+  cursor: initialSeatCursor(),
   color: getRandomPlayerColor(takenColors),
   currentPosition: 0,
   moves: [],
@@ -137,10 +138,10 @@ export const boardProgress = (position: number, tileCount: number): number => {
  * the round mix pre-filters kinds against its size (MINIMUM_TABLE_BY_KIND).
  */
 export const chainContenders = (game: {
-  players: Partial<Record<string, Pick<Player, 'phase'>>>
+  players: Partial<Record<string, Pick<Player, 'cursor'>>>
 }): string[] =>
   Object.entries(game.players)
-    .filter(([, player]) => !!player && !['kicked', 'victory'].includes(player.phase))
+    .filter(([, player]) => !!player && !isTerminalStep(player.cursor.step))
     .map(([playerId]) => playerId)
 
 /**

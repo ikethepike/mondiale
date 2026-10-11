@@ -1,3 +1,4 @@
+import { drawLabel, recordedDraw } from './draws'
 import type { Redis } from '@upstash/redis'
 import {
   answerManhuntSubpoena,
@@ -27,7 +28,6 @@ import {
   settleRoundScores,
   type RearmOptions,
 } from './round-engine'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * Manhunt's beat engine: chain-turns' single-actor clock (the despot's move
@@ -114,16 +114,18 @@ export const startManhunt = async (ctx: ChainContext, game: Game, challenge: Man
   // first from later closes) — a second run must never re-seed the trail.
   const existing = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
   if (existing) return
-  const seed = pickManhuntSeed(game)
+  const seed = recordedDraw(game, drawLabel.manhuntSeed(), () => pickManhuntSeed(game))
   if (!seed) {
     // The dealer verified the pool, so only drifted data lands here — run the
-    // finish ritual (everyone scores zero, phases advance) rather than strand
+    // finish ritual (everyone scores zero, every seat moves on) rather than strand
     // the room on an unplayable hunt.
     return finishManhunt(ctx, game, challenge)
   }
   const secret: ManhuntSecret = {
     trail: [seed],
-    candidates: initialManhuntCandidates(game),
+    candidates: recordedDraw(game, drawLabel.manhuntCandidates(), () =>
+      initialManhuntCandidates(game)
+    ),
     markers: {},
   }
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
@@ -194,7 +196,7 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
       const secret = await fetchManhuntSecret(ctx.redis, game.id, roundIndexOf(game))
       // A vanished blob is unplayable — this task holds the round's only
       // timer, so bailing silently would strand the table. Run the finish
-      // ritual (everyone scores zero, phases advance) like the no-seed path.
+      // ritual (everyone scores zero, every seat moves on) like the no-seed path.
       if (!secret) {
         console.warn(`Manhunt secret missing for ${game.id} — finishing round`)
         return finishManhunt(ctx, game, current)
@@ -202,7 +204,9 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
       const from = secret.trail[secret.trail.length - 1]
       // The free hop: random, ground where possible — a charge burns only
       // when the despot idles somewhere ground can't leave.
-      const move = randomManhuntMove(from, current.state.seaPassagesLeft, game)
+      const move = recordedDraw(game, drawLabel.manhuntMove(), () =>
+        randomManhuntMove(from, current.state.seaPassagesLeft, game)
+      )
       await commitManhuntMove(ctx, game, current, secret, move.isoCode, move.kind)
     } else {
       await resolveHuntBeat(ctx, game, current)
@@ -252,7 +256,9 @@ const commitManhuntMove = async (
   state.moves.push({ hop: state.hop, kind })
 
   const stepped = stepManhuntCandidates(secret.candidates, kind, game)
-  const pick = pickManhuntClue(game, isoCode, stepped, state.hop, state.clues)
+  const pick = recordedDraw(game, drawLabel.manhuntClue(), () =>
+    pickManhuntClue(game, isoCode, stepped, state.hop, state.clues)
+  )
   secret.candidates = pick.matches
   secret.markers = {}
   await saveManhuntSecret(ctx.redis, game.id, roundIndexOf(game), secret)
@@ -423,7 +429,7 @@ const scheduleManhuntSettle = (ctx: ChainContext) => {
 
     // The final beat's markers are still in the blob — they price proximity.
     const secret = await fetchManhuntSecret(ctx.redis, fresh.id, roundIndexOf(fresh))
-    const advanced = await settleRoundScores({
+    await settleRoundScores({
       game: fresh,
       round,
       order: [...current.state.detectives, current.despotId],
@@ -432,12 +438,9 @@ const scheduleManhuntSettle = (ctx: ChainContext) => {
     })
 
     await freshServer.updateGameState(fresh)
-    // Not 'group-challenge-scored': its client handler applies only the
+    // Not 'seat-advanced': its client handler applies only the
     // target player's slice, and this scoring lands for the whole table.
     freshServer.emit({ event: 'manhunt-updated', game: fresh }, ctx.eventTarget)
-    // The advanced seats now owe the table a movement request only a click
-    // sends — one cohort cap so a dead tab can't freeze the room here.
-    armGroupScoresCaps(ctx, fresh, advanced)
     // The secret has served its round; the trail lives on in the outcome.
     await ctx.redis.del(manhuntKey(fresh.id, roundIndexOf(fresh)))
   })

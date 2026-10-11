@@ -2,7 +2,7 @@
   "name": "mondiale",
   "private": true,
   "scripts": {
-    "build": "NODE_OPTIONS=--max-old-space-size=3584 nuxt build",
+    "build": "NODE_OPTIONS=--max-old-space-size=4608 nuxt build",
     "deploy": "fly deploy --strategy bluegreen --build-arg GIT_SHA=$(git rev-parse --short=7 HEAD)",
     "start": "node .output/server/index.mjs",
     "dev": "NODE_OPTIONS=--max-old-space-size=16384 nuxt dev --host=0.0.0.0",
@@ -79,6 +79,7 @@
     "d3-geo-projection": "^4.0.0",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
+    "fast-check": "4.10.2",
     "fflate": "^0.8.3",
     "he": "^1.2.0",
     "nuxt": "4.4.8",

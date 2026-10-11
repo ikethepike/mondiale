@@ -82,6 +82,7 @@ const {
   entries,
   submitOnce,
   gameStore,
+  previewVerdict,
 } = useGroupChallenge('flag-palette-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -121,7 +122,7 @@ watch(
 const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   if (submitted.value) return
   const active = challenge.value
-  gameStore.map.status = correct ? 'correct' : undefined
+  previewVerdict(correct ? 'correct' : undefined)
   // Name it sooner, keep more of the pot.
   const score = correct && active ? buzzScore(active.maximumPoints, remainingFraction.value) : 0
   submitOnce(correct && active ? [guessed ?? active.country] : [], score)

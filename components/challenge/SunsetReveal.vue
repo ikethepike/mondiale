@@ -28,7 +28,7 @@ import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { sunsetQuota } from '~~/lib/sunset-window'
+import { sunsetQuota } from '~~/lib/sunset-pace'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 

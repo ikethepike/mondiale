@@ -25,7 +25,6 @@ import {
   type ServerSide,
   settleRoundScores,
 } from './round-engine'
-import { armGroupScoresCaps } from './seat-exits'
 
 /**
  * Timeline's turn engine — chain-turns' rotation crossed with heritage-beats'
@@ -128,12 +127,12 @@ export const resolveTimelinePlacement = async (
   scheduleTimelineReveal(ctx, challenge)
 }
 
-/** Arm the story card's own hold: not the shot clock, so scheduleEngineTask
- *  with the reveal's fixed length plus the usual buzzer slack. Idempotent:
- *  the fired task re-reads fresh state and bails once the turn moved on. */
+/** Arm the story card's hold against its persisted end (`state.deadline`
+ *  while revealing), so a rearm resumes the remaining hold rather than
+ *  starting a fresh one. The fired task bails once the turn moved on. */
 const scheduleTimelineReveal = (ctx: ChainContext, challenge: TimelineChallenge) => {
   const revealedTurn = challenge.state.turn
-  scheduleEngineTask(ctx, challenge.revealSeconds * 1000 + TIMEOUT_SLACK_MS, async fresh => {
+  scheduleDeadlineTask(ctx, challenge.state.deadline, async fresh => {
     const current = currentTimeline(fresh)
     if (!current?.state.revealing || current.state.finished) return
     if (current.state.turn !== revealedTurn) return
@@ -202,7 +201,7 @@ const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: Serve
   // The reveal follow-up fires exactly once: scoring marks the round.
   if (!round || Object.keys(round.groupAnswers).length) return
 
-  const advanced = await settleRoundScores({
+  await settleRoundScores({
     game: fresh,
     round,
     order: current.state.order,
@@ -224,12 +223,9 @@ const settleTimeline = async (ctx: ChainContext, fresh: Game, freshServer: Serve
   })
 
   await freshServer.updateGameState(fresh)
-  // Not 'group-challenge-scored': its client handler applies only the
+  // Not 'seat-advanced': its client handler applies only the
   // target player's slice, and this scoring lands for the whole table.
   freshServer.emit({ event: 'timeline-updated', game: fresh }, ctx.eventTarget)
-  // The advanced seats now owe the table a movement request only a click
-  // sends — one cohort cap so a dead tab can't freeze the room here.
-  armGroupScoresCaps(ctx, fresh, advanced)
 }
 
 /** Arm the browse cap's settle backstop against the PERSISTED deadline —

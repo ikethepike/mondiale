@@ -7,7 +7,7 @@ import {
   pickDirectorTarget,
   roundSettled,
   roundStory,
-  stageForPhase,
+  stageForStep,
   type DirectorShot,
   type SpectateStory,
 } from './spectate'
@@ -18,60 +18,54 @@ import {
 import { EVENTS } from '~~/data/events.gen'
 import { curatedPlaces, heritagePlaces } from '~~/lib/places'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
-import type { Player, PlayerPhase } from '~~/types/player.type'
+import { testSeat } from '~~/lib/events/server/test-seat'
+import type { Player } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
 
-const player = (id: string, phase: PlayerPhase, currentPosition = 0): Player => ({
-  id,
-  phase,
-  currentPosition,
-  name: id,
-  ready: true,
-  color: '#000' as Player['color'],
-  moves: [],
-})
+const player = (id: string, step: SeatStep, currentPosition = 0): Player =>
+  testSeat(id, step, { currentPosition })
 
-describe('stageForPhase', () => {
-  it('maps every board phase to the 3D stage', () => {
-    expect(stageForPhase('moving')).toBe('board')
-    expect(stageForPhase('movement-summary')).toBe('board')
+describe('stageForStep', () => {
+  it('maps every board step to the 3D stage', () => {
+    expect(stageForStep('walk')).toBe('board')
+    expect(stageForStep('arrive')).toBe('board')
+    expect(stageForStep('settled')).toBe('board')
   })
 
-  it('maps the challenge phases to their cards', () => {
-    expect(stageForPhase('group-challenge')).toBe('question')
-    expect(stageForPhase('group-scores')).toBe('scores')
-    expect(stageForPhase('individual-challenge')).toBe('gate')
-    expect(stageForPhase('final-challenge')).toBe('final')
+  it('maps the challenge steps and their verdicts to their cards', () => {
+    expect(stageForStep('round')).toBe('question')
+    expect(stageForStep('round-verdict')).toBe('question')
+    expect(stageForStep('scores')).toBe('scores')
+    expect(stageForStep('gate')).toBe('gate')
+    expect(stageForStep('gate-verdict')).toBe('gate')
+    expect(stageForStep('final')).toBe('final')
+    expect(stageForStep('final-verdict')).toBe('final')
   })
 
-  it('parks lobby-ish phases on idle', () => {
-    expect(stageForPhase('tutorial')).toBe('idle')
-    expect(stageForPhase('victory')).toBe('idle')
+  it('parks lobby-ish steps on idle', () => {
+    expect(stageForStep('lobby')).toBe('idle')
+    expect(stageForStep('tutorial')).toBe('idle')
+    expect(stageForStep('victory')).toBe('idle')
   })
 })
 
 describe('pickDirectorTarget', () => {
   it('prefers a walking pawn over everything else', () => {
     const target = pickDirectorTarget([
-      player('thinker', 'group-challenge', 30),
-      player('walker', 'moving', 2),
-      player('gauntlet', 'final-challenge', 40),
+      player('thinker', 'round', 30),
+      player('walker', 'walk', 2),
+      player('gauntlet', 'final', 40),
     ])
     expect(target?.id).toBe('walker')
   })
 
   it('prefers the gauntlet over gates and thinking', () => {
-    const target = pickDirectorTarget([
-      player('gate', 'individual-challenge', 30),
-      player('gauntlet', 'final-challenge', 20),
-    ])
+    const target = pickDirectorTarget([player('gate', 'gate', 30), player('gauntlet', 'final', 20)])
     expect(target?.id).toBe('gauntlet')
   })
 
-  it('breaks phase ties toward the race leader', () => {
-    const target = pickDirectorTarget([
-      player('behind', 'group-challenge', 3),
-      player('ahead', 'group-challenge', 11),
-    ])
+  it('breaks step ties toward the race leader', () => {
+    const target = pickDirectorTarget([player('behind', 'round', 3), player('ahead', 'round', 11)])
     expect(target?.id).toBe('ahead')
   })
 
@@ -89,12 +83,12 @@ describe('nextDirectorShot', () => {
   })
 
   it('cuts to the best candidate with no memory', () => {
-    const shot = nextDirectorShot(undefined, [player('walker', 'moving')], 1000)
+    const shot = nextDirectorShot(undefined, [player('walker', 'walk')], 1000)
     expect(shot).toEqual(at('walker', 0, 1000))
   })
 
   it('cuts immediately when the subject vanishes', () => {
-    const shot = nextDirectorShot(at('gone', 0, 1000), [player('thinker', 'group-challenge')], 1200)
+    const shot = nextDirectorShot(at('gone', 0, 1000), [player('thinker', 'round')], 1200)
     expect(shot?.targetId).toBe('thinker')
     expect(shot?.at).toBe(1200)
   })
@@ -102,22 +96,22 @@ describe('nextDirectorShot', () => {
   // The flicker bug: every ~500ms walk snapshot re-sorted the field and the
   // leader tiebreak re-cut the camera between two walkers mid-stride.
   it('never re-cuts between subjects in the same shot class', () => {
-    const field = [player('walkerA', 'moving', 2), player('walkerB', 'moving', 9)]
+    const field = [player('walkerA', 'walk', 2), player('walkerB', 'walk', 9)]
     const shot = nextDirectorShot(at('walkerA', 0, 1000), field, 1500)
     expect(shot).toEqual(at('walkerA', 0, 1000))
   })
 
-  it('keeps the subject through their own phase changes without restarting the clock', () => {
+  it('keeps the subject through their own step changes without restarting the clock', () => {
     const shot = nextDirectorShot(
       at('runner', 0, 1000),
-      [player('runner', 'movement-summary'), player('idle', 'group-scores')],
+      [player('runner', 'settled'), player('idle', 'scores')],
       6000
     )
     expect(shot).toEqual(at('runner', 0, 1000))
   })
 
   it('lets a better story cut only after the dwell floor', () => {
-    const field = [player('thinker', 'group-challenge'), player('walker', 'moving')]
+    const field = [player('thinker', 'round'), player('walker', 'walk')]
     const previous = at('thinker', 3, 1000)
     expect(nextDirectorShot(previous, field, 1000 + MIN_SHOT_MS - 1)).toEqual(previous)
     const cut = nextDirectorShot(previous, field, 1000 + MIN_SHOT_MS)
@@ -125,14 +119,14 @@ describe('nextDirectorShot', () => {
   })
 
   it('abandons an idle subject after the grace, not instantly', () => {
-    const field = [player('done', 'victory'), player('thinker', 'group-challenge')]
+    const field = [player('done', 'victory'), player('thinker', 'round')]
     const previous = at('done', 5, 1000)
     expect(nextDirectorShot(previous, field, 1000 + IDLE_CUT_GRACE_MS - 1)).toEqual(previous)
     expect(nextDirectorShot(previous, field, 1000 + IDLE_CUT_GRACE_MS)?.targetId).toBe('thinker')
   })
 
   it('holds the board shot against a lower-class candidate indefinitely', () => {
-    const field = [player('summary', 'movement-summary'), player('scores', 'group-scores')]
+    const field = [player('summary', 'settled'), player('scores', 'scores')]
     const previous = at('summary', 0, 1000)
     expect(nextDirectorShot(previous, field, 1000 + MIN_SHOT_MS * 10)).toEqual(previous)
   })
@@ -152,20 +146,19 @@ describe('MOUNTABLE_KINDS', () => {
 
 describe('roundSettled', () => {
   it('is settled once every active racer is past the answering window', () => {
-    const field = [player('a', 'group-scores'), player('b', 'movement-summary')]
-    expect(roundSettled(field, {})).toBe(true)
+    const field = [player('a', 'scores'), player('b', 'settled')]
+    expect(roundSettled(field)).toBe(true)
   })
 
   it('is unsettled while an unanswered racer is still in the round', () => {
-    const field = [player('a', 'group-scores'), player('b', 'group-challenge')]
-    expect(roundSettled(field, {})).toBe(false)
-    expect(roundSettled(field, { b: { submitted: [], correct: [] } })).toBe(true)
+    expect(roundSettled([player('a', 'scores'), player('b', 'round')])).toBe(false)
+    expect(roundSettled([player('a', 'scores'), player('b', 'round-verdict')])).toBe(true)
   })
 
   it('ignores kicked and finished players', () => {
-    const done = { ...player('done', 'group-challenge'), completedAtRound: 2 }
-    const field = [player('gone', 'kicked'), done, player('a', 'group-scores')]
-    expect(roundSettled(field, {})).toBe(true)
+    const done = { ...player('done', 'round'), completedAtRound: 2 }
+    const field = [player('gone', 'kicked'), done, player('a', 'scores')]
+    expect(roundSettled(field)).toBe(true)
   })
 })
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { PlaytestScope } from '~~/lib/playtest-probe'
-import { viewLogViolations } from './view-log'
+import { viewLogViolations, withViewLog } from './view-log'
 
 /**
  * The stuck-after-challenge class, asserted end to end: a classic round's
@@ -20,9 +20,8 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
   await host.getByRole('button', { name: 'Create Game' }).click()
   await host.waitForURL(/\/room\//)
   const roomUrl = host.url()
-  // Arm the transition-grammar recorder before play begins (the created
-  // room's URL already carries `?variant=…`).
-  await host.goto(`${roomUrl}${roomUrl.includes('?') ? '&' : '?'}viewlog=1`)
+  // Arm the transition-grammar recorder before play begins.
+  await host.goto(withViewLog(roomUrl))
 
   await host.locator('.input-text input').fill('Host')
   await host.getByRole('button', { name: 'Save' }).click()

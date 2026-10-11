@@ -11,6 +11,7 @@
       :key="option"
       class="card-option"
       type="button"
+      :disabled="settled"
       @click="answerOrigin(option)"
     >
       <CountryChip tag="span" :country="getCountry(option)" />
@@ -23,7 +24,7 @@
       :key="String(choice)"
       class="card-option"
       type="button"
-      :disabled="answered"
+      :disabled="settled"
       :class="verdictOn(choice === truthOfRuling)"
       @click="answer(choice === truthOfRuling)"
     >
@@ -55,7 +56,7 @@
         min="0"
         max="1000"
         :value="Math.round(slid * 1000)"
-        :disabled="answered"
+        :disabled="settled"
         :aria-label="prompt"
         :aria-valuetext="SPECTRUM_LABELS[spectrumAt(slid)]"
         @input="onSlide"
@@ -71,7 +72,7 @@
          scoring ~1 in 4 for free. The placement has to be a decision. -->
     <ButtonFilled
       v-if="!answered"
-      :disabled="!moved"
+      :disabled="!moved || settled"
       @click="answer(spectrumAt(slid) === challenge.partyLogo?.band)"
     >
       {{ moved ? 'Place them here' : 'Drag to place them' }}
@@ -82,10 +83,9 @@
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { REVEAL_BEAT_MS } from '~~/lib/motion'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
-import { LOGO_POLITICS_SECONDS } from './timing'
+import { LOGO_POLITICS_SECONDS } from '~~/lib/gate-timing'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import {
   logoPoliticsPrompt,
@@ -113,11 +113,11 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  */
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { submitAnswer, giveUp } = useGateChallenge()
+const { submitAnswer, giveUp, status } = useGateChallenge()
 
 // Every timed sibling forfeits on the buzzer; this gate had no clock at all,
 // which also meant it paid the pot whole where the others decay.
-const { secondsLeft, remainingFraction, stop } = useGateClock(LOGO_POLITICS_SECONDS, {
+const { secondsLeft, stop } = useGateClock({
   onExpire: () => giveUp(),
 })
 
@@ -131,6 +131,7 @@ const prompt = computed(() => logoPoliticsPrompt(ask.value, countryName(props.ch
 // `answered` rather than truthiness — a wrong pick is still a pick.
 const picked = ref<boolean | undefined>()
 const answered = computed(() => picked.value !== undefined)
+const settled = computed(() => answered.value || !!status.value)
 
 // The slider starts dead centre: any other resting place is a hint.
 const slid = ref(0.5)
@@ -157,7 +158,7 @@ const thumbColor = computed(() => {
 const moved = ref(false)
 
 const onSlide = (event: Event) => {
-  if (answered.value) return
+  if (settled.value) return
   slid.value = Number((event.target as HTMLInputElement).value) / 1000
   moved.value = true
 }
@@ -170,27 +171,19 @@ const verdictOn = (isTruth: boolean) => {
   return picked.value ? 'was-right' : 'was-truth'
 }
 
-let verdictTimer: ReturnType<typeof setTimeout> | undefined
-onBeforeUnmount(() => clearTimeout(verdictTimer))
-
 /** The origin question answers with a country, so it grades on the wire. */
 const answerOrigin = (isoCode: ISOCountryCode) => {
   stop()
-  submitAnswer(isoCode, { remainingFraction: remainingFraction.value })
+  submitAnswer(isoCode)
 }
 
 const answer = (correct: boolean) => {
-  if (picked.value !== undefined) return
+  if (settled.value) return
   picked.value = correct
-  // Banked at the moment of the answer, not after the hold — the verdict beat
-  // is display-only and must not cost the player the clock they earned.
-  const earned = remainingFraction.value
+  // Sent at the answer: the wash holds on the question for the variant's
+  // verdict lead, which the shell reads off the server clock.
   stop()
-  verdictTimer = setTimeout(() => {
-    submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
-      remainingFraction: earned,
-    })
-  }, REVEAL_BEAT_MS)
+  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge))
 }
 </script>
 

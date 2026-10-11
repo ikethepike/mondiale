@@ -28,6 +28,7 @@
 import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
 import { countryName, getCountry } from '~~/lib/country'
+import { TREND_DUEL_REVEAL_MS } from '~~/lib/gate-timing'
 import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
 import { useGateChallenge } from '~~/lib/use-gate-challenge'
@@ -37,9 +38,8 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 /** Higher-lower's trust model with a pow-reveal beat: pick a flag, both cards
- *  flip to sparklines, hold, then the next pair slides in (or the gate
- *  resolves). */
-const REVEAL_MS = 3200
+ *  flip to sparklines, hold, then the next pair slides in — or, on the
+ *  deciding pick, the gate resolves under the flip. */
 
 const { status, missNote, trendDuelOutcomes, submitAnswer } = useGateChallenge()
 
@@ -82,20 +82,21 @@ const answerDuel = (picked: ISOCountryCode) => {
     correct,
   })
 
+  // The decisive pick is sent at once — a lost duel or the streak's last win;
+  // its flip holds on the question for the variant's verdict lead.
+  if (!correct) {
+    missNote.value = `${countryName(unpicked)} is the one ${duel.seek}`
+    // Any lost duel fails the challenge: submit a token that can't match
+    const wrongToken = props.challenge.country === picked ? unpicked : picked
+    return submitAnswer(wrongToken, { reveal: false })
+  }
+  if (index.value >= total.value - 1) {
+    return submitAnswer(props.challenge.country, { reveal: false })
+  }
   revealTimer = setTimeout(() => {
     reveal.value = undefined
-    if (!correct) {
-      missNote.value = `${countryName(unpicked)} is the one ${duel.seek}`
-      // Any lost duel fails the challenge: submit a token that can't match
-      const wrongToken = props.challenge.country === picked ? unpicked : picked
-      return submitAnswer(wrongToken, { reveal: false })
-    }
-    if (index.value >= total.value - 1) {
-      // Swept the whole streak — submit the winning token
-      return submitAnswer(props.challenge.country, { reveal: false })
-    }
     index.value++
-  }, REVEAL_MS)
+  }, TREND_DUEL_REVEAL_MS)
 }
 </script>
 <style lang="scss" scoped>

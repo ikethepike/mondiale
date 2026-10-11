@@ -1,6 +1,7 @@
 import { PLAYER_COLORS } from '~~/data/palette'
 import { shuffleArray } from '~~/lib/arrays'
 import { defineGameHandler } from '../server-side'
+import { drawLabel, recordedDraw } from './draws'
 
 export const setColorHandler = defineGameHandler(
   'set-color',
@@ -23,7 +24,11 @@ export const setColorHandler = defineGameHandler(
     } else {
       // No direction (pawn click): jump to a random different free colour
       const others = free.filter(color => color !== player.color)
-      player.color = shuffleArray(others.length ? others : free)[0]
+      player.color = recordedDraw(
+        game,
+        drawLabel.color(player.id),
+        () => shuffleArray(others.length ? others : free)[0]
+      )
     }
 
     await server.updateGameState(game)

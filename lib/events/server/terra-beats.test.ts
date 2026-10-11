@@ -10,8 +10,8 @@ import { BRIEFING_CAP_MS } from '~~/lib/round-beats'
 import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
+import { testSeat } from './test-seat'
 
 /**
  * The failing atlas behind its rules card. What matters is the one thing the
@@ -31,9 +31,6 @@ const challengeFixture = (
   state: { briefing: true, ready: [], order: ['ada', 'ben'], ...overrides },
 })
 
-const seat = (id: string, phase: PlayerPhase = 'group-challenge'): Player =>
-  ({ id, name: id, phase, moves: [], currentPosition: 0 }) as unknown as Player
-
 const buildGame = (challenge: TerraIncognitaChallenge): Game =>
   ({
     id: 'test-game',
@@ -42,7 +39,7 @@ const buildGame = (challenge: TerraIncognitaChallenge): Game =>
     variant: 'world',
     difficulty: 'normal',
     started: true,
-    players: { ada: seat('ada'), ben: seat('ben') },
+    players: { ada: testSeat('ada'), ben: testSeat('ben') },
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 

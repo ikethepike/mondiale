@@ -62,6 +62,7 @@ import { YEARBOOK_DIAL_BOUNDS, yearbookYear } from '~~/lib/challenges/final-chal
 import { countryName } from '~~/lib/country'
 import { clamp } from '~~/lib/number'
 import { EVENT_KIND_COPY, formatEventYear } from '~~/lib/timeline'
+import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import type { YearbookChallenge } from '~~/types/challenges/final-challenge.type'
 import { isValidISOCode } from '~~/types/geography.types'
 
@@ -81,14 +82,21 @@ const DIAL_MIN = YEARBOOK_DIAL_BOUNDS.min
 const DIAL_MAX = YEARBOOK_DIAL_BOUNDS.max
 
 const committed = ref(false)
-const shownCount = ref(1)
-const secondsLeft = ref(0)
 const dialYear = ref(Math.round((DIAL_MIN + DIAL_MAX) / 2 / 10) * 10)
 
 const year = computed(() => yearbookYear(props.challenge))
 /** What the needle, readout and commit all agree on — whole years inside the rails. */
 const shownYear = computed(() => clamp(Math.round(dialYear.value), DIAL_MIN, DIAL_MAX))
 const totalSeconds = props.challenge.headlines.length * props.challenge.secondsPerHeadline
+// The question's server clock drives the countdown AND the drip, so the
+// drained arc and the headline count can never drift apart.
+const { elapsedMs, secondsLeft, expired, stop } = useFinalStageClock(totalSeconds)
+const shownCount = computed(() =>
+  Math.min(
+    props.challenge.headlines.length,
+    1 + Math.floor(elapsedMs.value / 1000 / props.challenge.secondsPerHeadline)
+  )
+)
 
 // The reveal shows the WHOLE page — headlines the clock never dripped included
 const stories = computed(() =>
@@ -111,47 +119,17 @@ const stories = computed(() =>
     })
 )
 
-// One 1s ticker drives the countdown AND the drip, stat-detective style — the
-// drained arc and the headline count can never drift apart.
-let ticker: ReturnType<typeof setInterval> | undefined
-
 const commit = () => {
   if (committed.value) return
   committed.value = true
-  if (ticker) clearInterval(ticker)
-  ticker = undefined
+  stop()
   // The dial unmounts with the console and kills its own tweens on the way out
   dialYear.value = shownYear.value
   emit('finished', dialYear.value)
 }
 
-const start = () => {
-  if (ticker || committed.value) return
-  secondsLeft.value = totalSeconds
-  ticker = setInterval(() => {
-    secondsLeft.value = Math.max(0, secondsLeft.value - 1)
-    const elapsed = totalSeconds - secondsLeft.value
-    shownCount.value = Math.min(
-      props.challenge.headlines.length,
-      1 + Math.floor(elapsed / props.challenge.secondsPerHeadline)
-    )
-    if (secondsLeft.value > 0) return
-    commit()
-  }, 1000)
-}
-
-const paused = toRef(props, 'paused')
-
-watch(
-  paused,
-  isPaused => {
-    if (!isPaused) start()
-  },
-  { immediate: true }
-)
-
-onBeforeUnmount(() => {
-  if (ticker) clearInterval(ticker)
+watch(expired, ran => {
+  if (ran) commit()
 })
 </script>
 <style lang="scss" scoped>

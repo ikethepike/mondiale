@@ -2,16 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { playableCountries } from '~~/lib/game-rules'
 import {
-  pickSunsetWindow,
-  SUNSET_FRAME_ASPECT,
   SUNSET_LEAD_SECONDS,
   SUNSET_TUNING,
   sunsetDarkCount,
-  sunsetDuskCoordinate,
   sunsetOutcome,
   sunsetQuota,
   sunsetSchedule,
   sunsetSeconds,
+} from './sunset-pace'
+import {
+  pickSunsetWindow,
+  SUNSET_FRAME_ASPECT,
+  sunsetDuskCoordinate,
   sunsetSweep,
   sunsetWindowAround,
   sunsetWindows,

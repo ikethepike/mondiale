@@ -1,3 +1,4 @@
+import { drawLabel, recordedDraw } from './draws'
 import { chainHead, closedDoors, openMoves, pickChainSeed, scoreChainRound } from '~~/lib/chain'
 import { isChallengeOfType, latestChallengeOfType } from '~~/lib/rounds'
 import type { BorderChainChallenge } from '~~/types/challenges/group-modes.type'
@@ -44,7 +45,11 @@ const engine = (): ChainEngine<BorderChainChallenge> =>
     }),
     // Fresh ground for the survivors — never a country already walked.
     reseed: (challenge, game) =>
-      pickChainSeed(game, new Set(challenge.state.chains.flat())) ?? pickChainSeed(game),
+      recordedDraw(
+        game,
+        drawLabel.chainSeed(),
+        () => pickChainSeed(game, new Set(challenge.state.chains.flat())) ?? pickChainSeed(game)
+      ),
     scores: scoreChainRound,
   }))
 

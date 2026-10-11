@@ -73,6 +73,7 @@ import { latestRound } from '~~/lib/rounds'
 import { useGameStore } from '~~/store/game.store'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import type { SeatStep } from '~~/types/seat.types'
 
 const props = defineProps({
   game: {
@@ -422,7 +423,7 @@ const syncClimbs = () => {
 
   const atSummit = (player: Player) => {
     if (displayPositionFor(player) !== finalIndex) return false
-    if (player.phase === 'victory') return true
+    if (player.cursor.step === 'victory') return true
     const gauntlet = gauntletFor(player)
     return Boolean(gauntlet && gauntlet.answeredCorrect >= gauntlet.totalCount)
   }
@@ -458,7 +459,7 @@ const syncClimbs = () => {
       continue
     }
     const gauntlet = gauntletFor(player)
-    const victor = player.phase === 'victory'
+    const victor = player.cursor.step === 'victory'
     if (!gauntlet && !victor) continue
 
     const target = victor
@@ -508,7 +509,7 @@ watch(
     Object.values(props.game.players)
       .map(player => {
         const gauntlet = gauntletFor(player)
-        if (player.phase === 'victory') return `${player.id}:peak`
+        if (player.cursor.step === 'victory') return `${player.id}:peak`
         return gauntlet ? `${player.id}:${gauntlet.answeredCorrect}/${gauntlet.totalCount}` : ''
       })
       .filter(Boolean)
@@ -527,7 +528,7 @@ const removePawns = () => {
 }
 
 const crownVariantFor = (player: Player): CrownVariant | undefined => {
-  if (player.phase !== 'victory') return undefined
+  if (player.cursor.step !== 'victory') return undefined
   const champion = Object.values(props.game.players).sort(compareStandings)[0]
   return champion.id === player.id ? 'champion' : 'finisher'
 }
@@ -673,11 +674,11 @@ watch(
   syncPawns
 )
 
-// Crowns pop in the moment a player's phase flips to victory
+// Crowns pop in the moment a player's step flips to victory
 watch(
   () =>
     Object.values(props.game.players)
-      .map(player => `${player.id}:${player.phase}`)
+      .map(player => `${player.id}:${player.cursor.step === 'victory'}`)
       .join('|'),
   () => syncCrowns(true)
 )
@@ -705,16 +706,13 @@ let hasFramed = false
 let framedAnnounce: string | undefined
 
 /**
- * Subject + walk generation + LEGS LEFT: stable across a walk's steps (a
- * moveset only changes at a gate boundary) and different for every announce,
- * so the sync can re-run on the show pass without replaying a beat and can
- * never re-fire mid-walk. `currentPosition` must stay OUT of it — a gauntlet
- * knockout descends with an empty moveset and would re-frame on every step.
+ * Subject + walk subject: stable across a walk's steps (the subject only
+ * changes per announce) and different for every announce, so the sync can
+ * re-run on the show pass without replaying a beat and can never re-fire
+ * mid-walk.
  */
 const announceTokenFor = (subject: Player | undefined) =>
-  subject?.phase === 'moving'
-    ? `${subject.id}:${subject.walkSeq ?? 0}:${subject.moves.length}`
-    : undefined
+  subject?.cursor.step === 'walk' ? `${subject.id}:${subject.cursor.subject}` : undefined
 
 const subjectTile = () => {
   const subject = props.game.players[cameraTargetId.value]
@@ -759,16 +757,14 @@ const syncCameraFraming = () => {
 
   return frameSubject({
     tiles: FRAME_TILES,
-    durationMs: subject?.walkIntro ? WALK_FRAME_MS : WALK_RESUME_FRAME_MS,
+    durationMs: subject?.cursor.leg === 0 ? WALK_FRAME_MS : WALK_RESUME_FRAME_MS,
   })
 }
 
 watch(
   () => {
     const subject = props.game.players[cameraTargetId.value]
-    return subject
-      ? `${subject.id}:${subject.phase}:${subject.walkSeq ?? 0}:${subject.moves.length}`
-      : ''
+    return subject ? `${subject.id}:${subject.cursor.step}:${subject.cursor.subject}` : ''
   },
   () => syncCameraFraming(),
   { immediate: true }
@@ -882,7 +878,7 @@ watch(
 
 // Spectate lifecycle: fly to the chosen pawn on set, back to the own pawn on
 // clear, and auto-release when the target finishes, disappears, or we unmount.
-const SPECTATE_RELEASE_PHASES = ['movement-summary', 'victory']
+const SPECTATE_RELEASE_STEPS: readonly SeatStep[] = ['settled', 'victory']
 
 watch(
   () => gameStore.board.spectateTargetId,
@@ -899,7 +895,7 @@ watch(
     // stageActive itself (ViewSpectate) and only raises it when the WATCHED
     // seat is on the board, so a director cut to a seat mid-challenge lands
     // here with nothing on screen. (The roster rail can't: it renders only on
-    // BOARD_PHASES.) Framing now would sweep off screen and consume the very
+    // BOARD_STEPS.) Framing now would sweep off screen and consume the very
     // shot this beat exists to hold; retire the latch and let the show pass
     // frame the new subject when the board returns.
     if (!props.active) {
@@ -916,20 +912,20 @@ watch(
     if (!targetId) return ''
     const target = props.game.players[targetId]
     if (!target) return 'gone'
-    return SPECTATE_RELEASE_PHASES.includes(target.phase) ? 'done' : 'active'
+    return SPECTATE_RELEASE_STEPS.includes(target.cursor.step) ? 'done' : 'active'
   },
   state => {
     if (state === 'gone') {
       gameStore.board.spectateTargetId = undefined
     } else if (state === 'done' && !boothMode.value) {
       // A racer's camera hands back to their own pawn once the show is over.
-      // The booth never auto-releases: movement-summary is still the board
+      // The booth never auto-releases: a settled seat is still the board
       // beat, and there is no own pawn to return to — releasing here aimed
       // the camera at a pawnless id (the between-walks jump cut).
       schedule(() => {
         const targetId = gameStore.board.spectateTargetId
-        const phase = targetId ? props.game.players[targetId]?.phase : undefined
-        if (phase && SPECTATE_RELEASE_PHASES.includes(phase)) {
+        const step = targetId ? props.game.players[targetId]?.cursor.step : undefined
+        if (step && SPECTATE_RELEASE_STEPS.includes(step)) {
           gameStore.board.spectateTargetId = undefined
         }
       }, 1000)
@@ -937,13 +933,13 @@ watch(
   }
 )
 
-// A racer's pin ends with their own next walk (walkSeq bumps once per walk):
-// held across it, the camera opened on the rival and hid the own pawn's
-// blocked banner.
+// A racer's pin ends with their own next walk (the walk count bumps once per
+// moveset): held across it, the camera opened on the rival and hid the own
+// pawn's blocked banner.
 watch(
-  () => props.game.players[gameStore.seatId]?.walkSeq,
-  (walkSeq, previous) => {
-    if (boothMode.value || walkSeq === undefined || previous === undefined) return
+  () => props.game.players[gameStore.seatId]?.cursor.walk,
+  (walk, previous) => {
+    if (boothMode.value || walk === undefined || previous === undefined) return
     gameStore.board.spectateTargetId = undefined
   }
 )
@@ -1051,7 +1047,7 @@ const syncBlockedBeats = () => {
 
   for (const player of Object.values(props.game.players)) {
     const blockedAt = round.playerTurns[player.id]?.blocked?.atTile
-    if (blockedAt === undefined || player.phase !== 'movement-summary') continue
+    if (blockedAt === undefined || player.cursor.step !== 'settled') continue
     const key = `${player.id}:${roundKey}`
     if (blockedBeatsPlayed.has(key) || !pawns.get(player.id)) continue
 
@@ -1073,7 +1069,7 @@ const syncBlockedBeats = () => {
 watch(
   () =>
     Object.values(props.game.players)
-      .map(player => `${player.id}:${player.phase}`)
+      .map(player => `${player.id}:${player.cursor.step}`)
       .join('|'),
   () => {
     if (!props.active) return

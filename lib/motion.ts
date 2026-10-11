@@ -25,13 +25,6 @@ export const DWELL = {
   taunt: 5200,
 } as const
 
-/**
- * How long a reveal holds its first act before the second, in ms. Long enough
- * for the caption fades (--motion-base) to finish and a sparkline to read, so
- * the follow-up settles the cards rather than colliding with them.
- */
-export const REVEAL_BEAT_MS = 700
-
 /** The beat a chain or trail reveal holds blank before its replay redraws, in ms. */
 export const REPLAY_REDRAW_MS = 400
 

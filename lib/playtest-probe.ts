@@ -1,3 +1,5 @@
+import type { SeatCursor } from '~~/types/seat.types'
+
 /**
  * Test instrumentation for the e2e playtest driver, armed only by the room
  * page's `?viewlog=1`. Everything here is read by `e2e/playtest.spec.ts`
@@ -17,20 +19,20 @@ export interface TransitionTrace {
 }
 
 export interface GameProbe {
+  /** Server time per the client's clock estimate. */
   at: number
+  /** The client's own clock offset estimate. */
+  clockOffset: number
   playerId?: string
   rev?: number
-  phase?: string
-  active?: string
-  presented?: string
+  /** The seat's cursor as this client holds it. */
+  cursor?: Pick<SeatCursor, 'seq' | 'step' | 'subject'>
+  /** The view key on screen. */
+  view?: string
+  /** The last cursor this client acked as rendered. */
+  rendered?: Pick<SeatCursor, 'seq' | 'step' | 'subject'>
   rounds?: number
   position?: number
-  moveChallenge?: string
-  /** Which question is live: the gate's tile, or the gauntlet's turn. */
-  questionKey?: string
-  /** The seat graded its own answer to the live question (map.status). */
-  localVerdict?: boolean
-  resolving?: boolean
   connected?: boolean
   transition: TransitionTrace
   /** What is actually painted: prompt headings, verdict cards, the layout's
@@ -76,23 +78,6 @@ export interface PlaytestScope {
   __viewLog?: ViewLogEntry[]
   __gameProbe?: () => GameProbe
   __longTasks?: { at: number; duration: number }[]
-}
-
-/** The live question's identity for the driver's stale-verdict check. */
-export const questionKeyOf = (
-  move: { endTile: { position: number }; challenge?: { _type: string } } | undefined,
-  walkSeq: number | undefined
-): string | undefined => {
-  const challenge = move?.challenge as
-    { _type: string; turn?: number; challenges?: unknown[] } | undefined
-  if (challenge?._type === 'final-challenge') {
-    return `final:${walkSeq}:${challenge.turn ?? 0}:${challenge.challenges?.length ?? 0}`
-  }
-  // The walk is part of a gate's identity: a blocked seat lands on the same
-  // tile next round, and that re-landing is a fresh question.
-  if (challenge?._type === 'individual-challenge')
-    return `gate:${walkSeq}:${move!.endTile.position}`
-  return undefined
 }
 
 export const playtestScope = (): PlaytestScope => window as unknown as PlaytestScope

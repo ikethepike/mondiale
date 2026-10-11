@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { settleGroupRound } from './settle-group-round'
 import { getCorrectRanking, scoreChallengeSubmission } from '~~/lib/challenges'
+import { testSeat } from '~~/lib/events/server/test-seat'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -16,8 +17,8 @@ const gameWith = (round: Round): Game =>
     tiles: [],
     rounds: [round],
     players: {
-      [ME]: { id: ME, phase: 'group-challenge', currentPosition: 0, moves: [] },
-      [RIVAL]: { id: RIVAL, phase: 'group-challenge', currentPosition: 0, moves: [] },
+      [ME]: testSeat(ME),
+      [RIVAL]: testSeat(RIVAL),
     },
   }) as unknown as Game
 
@@ -61,8 +62,8 @@ describe('settleGroupRound', () => {
     expect(Object.keys(round.groupAnswers).sort()).toEqual([ME, RIVAL].sort())
     expect(Object.keys(round.playerTurns).sort()).toEqual([ME, RIVAL].sort())
     // A ranking round has no reveal hold, so the flip is synchronous.
-    expect(game.players[ME]!.phase).toBe('group-scores')
-    expect(game.players[RIVAL]!.phase).toBe('group-scores')
+    expect(game.players[ME]!.cursor.step).toBe('scores')
+    expect(game.players[RIVAL]!.cursor.step).toBe('scores')
   })
 
   it('pays a dealt-in rival more than nothing, so the scorecard reads', async () => {
@@ -80,8 +81,10 @@ describe('settleGroupRound', () => {
 
     await settleGroupRound({ game, round, submission: { ranking: DEALT }, meId: ME })
     const banked = round.playerTurns[ME]!.points.scored
+    const seq = game.players[ME]!.cursor.seq
     await settleGroupRound({ game, round, submission: { ranking: [] }, meId: ME })
 
     expect(round.playerTurns[ME]!.points.scored).toBe(banked)
+    expect(game.players[ME]!.cursor.seq).toBe(seq)
   })
 })

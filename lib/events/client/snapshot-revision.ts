@@ -1,3 +1,4 @@
+import { hasGame, type ServerEventData } from '~~/types/events.types'
 import type { Game } from '~~/types/game.types'
 
 /**
@@ -32,3 +33,41 @@ export const isStaleSnapshot = (current: Game | undefined, incoming: Game): bool
 export const adoptRevision = (current: Game, incoming: Game): void => {
   if (incoming.rev !== undefined) current.rev = incoming.rev
 }
+
+/**
+ * A seat slice may never move a seat's cursor backwards: an older slice for
+ * that seat is a reordered or replayed emit, and applying it would put a
+ * spent subject back on screen.
+ */
+export const isStaleSeat = (current: Game | undefined, incoming: Game, seatId: string): boolean => {
+  const held = current?.players[seatId]?.cursor
+  const offered = incoming.players[seatId]?.cursor
+  return !!held && !!offered && current?.id === incoming.id && offered.seq < held.seq
+}
+
+/**
+ * A seat slice is only safe when both sides agree which round is live. A
+ * rejoin race (a reveal the payload predates, or vice versa) makes indexing
+ * one side with the other's length silent cross-round corruption — so across
+ * a round change the payload is taken whole, unless it is itself the stale
+ * side. True when the slice must not be applied.
+ */
+export const takeWholeAcrossRounds = (store: { game?: Game }, incoming: Game): boolean => {
+  const current = store.game
+  if (!current || current.rounds.length === incoming.rounds.length) return false
+  if (!isStaleSnapshot(current, incoming)) store.game = incoming
+  return true
+}
+
+/**
+ * The dispatch gate: a FULL-REPLACE snapshot older than the one on screen is
+ * dropped. The registry's `snapshotScope` exempts the two shapes that must
+ * never be: the join full-sync (the recovery moment, and the one emit that can
+ * carry a recreated room whose rev restarted) and seat slices (gated by the
+ * seat's own `cursor.seq` instead).
+ */
+export const dropsSnapshot = (
+  scope: 'authoritative' | 'seat-slice' | undefined,
+  current: Game | undefined,
+  payload: ServerEventData
+): boolean => scope === undefined && hasGame(payload) && isStaleSnapshot(current, payload.game)

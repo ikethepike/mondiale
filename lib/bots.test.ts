@@ -21,7 +21,7 @@ describe('bot identity', () => {
     expect(bot.id.startsWith(BOT_ID_PREFIX)).toBe(true)
     expect(bot.bot).toBe(true)
     expect(bot.ready).toBe(true)
-    expect(bot.phase).toBe('waiting-for-game')
+    expect(bot.cursor.step).toBe('lobby')
     expect(BOT_NAMES).toContain(bot.name)
   })
 

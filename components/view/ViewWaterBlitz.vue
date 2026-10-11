@@ -78,6 +78,7 @@ const {
   submitOnce,
   gameStore,
   isDisposed,
+  previewVerdict,
 } = useGroupChallenge('water-blitz-challenge', { solo: false })
 
 /** One view, three moods — the feature kind decides the copy. */
@@ -144,7 +145,7 @@ const {
   start: begin,
   onGuess,
 } = useCollectSetRound(
-  { submitted, started, announce, submitOnce, begin: beginRound, gameStore },
+  { submitted, started, announce, submitOnce, begin: beginRound, gameStore, previewVerdict },
   {
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country => `${countryName(country)} isn't one of them`,

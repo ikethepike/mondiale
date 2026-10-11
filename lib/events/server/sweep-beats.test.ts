@@ -16,8 +16,9 @@ import {
 import { SWEEP_STRAY_CAP } from '~~/lib/clean-sweep'
 import type { CleanSweepChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
+import { dropArmedTimersForTests } from './seat-cursor'
+import { testSeat } from './test-seat'
 
 /**
  * Clean Sweep's engine, on the same fake-timer rig as its siblings. The
@@ -48,9 +49,6 @@ const challengeFixture = (
   },
 })
 
-const seat = (id: string, phase: PlayerPhase = 'group-challenge'): Player =>
-  ({ id, name: id, phase, moves: [], currentPosition: 0 }) as unknown as Player
-
 const buildGame = (challenge: CleanSweepChallenge): Game =>
   ({
     id: 'test-game',
@@ -59,7 +57,7 @@ const buildGame = (challenge: CleanSweepChallenge): Game =>
     variant: 'world',
     difficulty: 'normal',
     started: true,
-    players: { ada: seat('ada'), ben: seat('ben') },
+    players: { ada: testSeat('ada'), ben: testSeat('ben') },
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
@@ -95,6 +93,7 @@ const openBoard = () => {
 
 beforeEach(() => {
   vi.useFakeTimers()
+  dropArmedTimersForTests()
   store.clear()
   emitted.length = 0
 })
@@ -232,7 +231,8 @@ describe('resolving the board', () => {
     // A swept board pays every seat, so nobody walks away with nothing.
     expect(round.playerTurns.ada.points.scored).toBeGreaterThan(0)
     expect(round.playerTurns.ben.points.scored).toBeGreaterThan(0)
-    expect(store.get(game.id)!.players.ada.phase).toBe('group-scores')
+    expect(store.get(game.id)!.players.ada.cursor.step).toBe('scores')
+    expect(store.get(game.id)!.players.ben.cursor.step).toBe('scores')
   })
 
   it('resolves a board the clock ran out on', async () => {

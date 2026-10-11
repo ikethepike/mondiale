@@ -11,8 +11,8 @@
 <script lang="ts" setup>
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
-import { useGateChallenge } from '~~/lib/use-gate-challenge'
-import { ZOOM_OUT_SECONDS } from './timing'
+import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
+import { ZOOM_OUT_SECONDS } from '~~/lib/gate-timing'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Country } from '~~/types/geography.types'
 
@@ -22,7 +22,8 @@ const { gameStore } = useClientEvents()
 const { status, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
 
 const footerReady = ref(false)
-let missTimer: ReturnType<typeof setTimeout> | undefined
+// The window is the server's: the full zoom plus a last-guess grace.
+useGateClock({ onExpire: () => giveUp() })
 
 onMounted(() => {
   footerReady.value = true
@@ -31,30 +32,17 @@ onMounted(() => {
 watch(
   showInterstitial,
   value => {
-    if (value || missTimer) return
+    if (value || gameStore.map.zoomOut) return
     gameStore.map.zoomOut = {
       isoCode: props.challenge.country,
       durationSeconds: ZOOM_OUT_SECONDS,
     }
-    // Safety: if they never guess, resolve as a miss a beat after full
-    // zoom-out so the pawn doesn't stall.
-    missTimer = setTimeout(
-      () => {
-        if (!status.value) giveUp()
-      },
-      (ZOOM_OUT_SECONDS + 6) * 1000
-    )
   },
   { immediate: true }
 )
 
-onBeforeUnmount(() => {
-  if (missTimer) clearTimeout(missTimer)
-})
-
 const onGuess = (country: Country) => {
   if (status.value) return
-  if (missTimer) clearTimeout(missTimer)
   gameStore.map.zoomOut = undefined // stop the reveal; the result zoom takes over
   submitAnswer(country.isoCode)
 }

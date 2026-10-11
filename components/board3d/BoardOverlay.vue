@@ -45,7 +45,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { MOVE_INTERSTITIAL_HOLD_MS } from '~~/lib/round-beats'
 
-// The dispatched view for the board phases. The persistent stage
+// The dispatched view for the board steps. The persistent stage
 // (BoardStage, in the layout) does the actual rendering — this host only
 // carries what's drawn OVER the board: the move interstitial, the blocked
 // banner, the booth HUD, the cold-start pane and the 2D fallback. It must
@@ -67,26 +67,29 @@ const blockedTurn = computed(() => {
   // wrong id for anything that speaks to the player.
   const seatId = gameStore.seatId
   if (!seatId) return undefined
-  if (game.value?.players[seatId]?.phase !== 'movement-summary') return undefined
+  if (game.value?.players[seatId]?.cursor.step !== 'settled') return undefined
   const blocked = currentRound.value?.round.playerTurns[seatId]?.blocked
   return blocked && blocked.forfeitedSteps > 0 ? blocked : undefined
 })
 
-// The "On the move!" beat plays once per walk: only over a turn-OPENING walk
-// (walkIntro, stamped by startWalk; the first step clears it) and remembered
-// per seat+generation so an overlay remount mid-lead can't replay it. Its
-// total fits inside the server's announce lead by construction (round-beats'
-// fit test) — it never gates anything.
+// The "On the move!" beat plays once per walk: only over a turn-OPENING
+// walk's announce (leg 0, before its first step) and remembered per seat and
+// walk subject so an overlay remount mid-lead can't replay it. Its total fits
+// inside the server's announce lead by construction (round-beats' fit test)
+// — it never gates anything.
 const introKey = computed(() =>
-  subject.value ? `${subjectId.value}:${subject.value.walkSeq ?? 0}` : undefined
+  subject.value ? `${subjectId.value}:${subject.value.cursor.subject}` : undefined
 )
-const showMoveInterstitial = computed(
-  () =>
-    subject.value?.phase === 'moving' &&
-    !!subject.value.walkIntro &&
+const showMoveInterstitial = computed(() => {
+  const cursor = subject.value?.cursor
+  return (
+    cursor?.step === 'walk' &&
+    cursor.leg === 0 &&
+    cursor.cause !== 'timer:walk-step' &&
     !!introKey.value &&
     gameStore.board.introSeenKey !== introKey.value
-)
+  )
+})
 const markIntroSeen = () => {
   gameStore.board.introSeenKey = introKey.value
 }

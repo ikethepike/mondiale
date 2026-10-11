@@ -127,7 +127,8 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import TimelineDossier from '~/components/challenge/TimelineDossier.vue'
 import { getCountry } from '~~/lib/country'
-import { prefersReducedMotion, REVEAL_BEAT_MS } from '~~/lib/motion'
+import { prefersReducedMotion } from '~~/lib/motion'
+import { REVEAL_BEAT_MS } from '~~/lib/round-beats'
 import { seatLabel } from '~~/lib/player'
 import {
   EVENT_KIND_COPY,

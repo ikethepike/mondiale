@@ -4,8 +4,9 @@ import { submitChainMoveHandler } from './submit-chain-move.handler'
 import { BRIEFING_CAP_MS, REVEAL_HOLD_MS, TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { BorderChainChallenge, BorderChainState } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import type { Player } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
+import { dropArmedTimersForTests } from './seat-cursor'
+import { testCursor, testSeat } from './test-seat'
 
 /**
  * The dead-end trap: the one elimination nobody sees coming, because the
@@ -30,17 +31,6 @@ const trapState = (): BorderChainState => ({
   missedOuts: {},
 })
 
-const seat = (id: string): Player =>
-  ({
-    id,
-    name: id,
-    ready: true,
-    color: 'blue',
-    phase: 'group-challenge',
-    moves: [],
-    currentPosition: 0,
-  }) as unknown as Player
-
 const buildGame = (stateOverrides: Partial<BorderChainState> = {}): Game => {
   const challenge: BorderChainChallenge = {
     _type: 'border-chain-challenge',
@@ -56,7 +46,7 @@ const buildGame = (stateOverrides: Partial<BorderChainState> = {}): Game => {
     tiles: [],
     variant: 'world',
     difficulty: 'hard',
-    players: { a: seat('a'), b: seat('b'), c: seat('c') },
+    players: { a: testSeat('a'), b: testSeat('b'), c: testSeat('c') },
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
   } as unknown as Game
 }
@@ -83,6 +73,7 @@ const chainOf = (gameId: string) => currentBorderChain(store.get(gameId)!)!
 
 beforeEach(() => {
   vi.useFakeTimers()
+  dropArmedTimersForTests()
   store.clear()
   emitted.length = 0
 })
@@ -299,7 +290,8 @@ describe('rearmBorderChain — rejoin recovery', () => {
     expect(Object.keys(round.groupAnswers)).toHaveLength(3)
     expect(round.playerTurns.a).toBeDefined()
     for (const id of ['a', 'b', 'c']) {
-      expect(fresh.players[id].phase).toBe('group-scores')
+      expect(fresh.players[id].cursor.step).toBe('scores')
+      expect(fresh.players[id].cursor.deadline).toBeGreaterThan(Date.now())
     }
   })
 
@@ -339,7 +331,7 @@ describe('rearmBorderChain — rejoin recovery', () => {
     const game = buildGame({ finished: true, outcomes: { a: 'won' } })
     // Scoring already marked the round — the latch every settle task checks.
     game.rounds[0].groupAnswers = { a: { submitted: [], correct: [] } }
-    game.players.a.phase = 'movement-summary'
+    game.players.a.cursor = testCursor('settled')
     const ctx = context(game)
 
     rearmBorderChain(ctx, game)
@@ -348,6 +340,7 @@ describe('rearmBorderChain — rejoin recovery', () => {
 
     const fresh = store.get(game.id)!
     expect(Object.keys(fresh.rounds[0].groupAnswers)).toEqual(['a'])
-    expect(fresh.players.a.phase).toBe('movement-summary')
+    expect(fresh.players.a.cursor.step).toBe('settled')
+    expect(fresh.players.a.cursor.seq).toBe(1)
   })
 })

@@ -43,6 +43,7 @@ import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName, normalizeCountryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useNocturne } from '~~/lib/use-nocturne'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
@@ -65,12 +66,9 @@ const emit = defineEmits<{ finished: [namedCities: string[]] }>()
 
 const { gameStore } = useClientEvents()
 
-const TICK_MS = 80
-
 const field = ref<HTMLInputElement>()
 const entry = ref('')
 const named = ref(new Set<string>())
-const elapsedMs = ref(0)
 const finished = ref(false)
 
 // The framed country stays visible above the console (and the keyboard)
@@ -87,8 +85,7 @@ const { nightfall } = useNocturne(() => [props.challenge.country], { held: true 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
 const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
 
-const durationMs = props.challenge.durationSeconds * 1000
-const secondsLeft = computed(() => Math.max(0, Math.ceil((durationMs - elapsedMs.value) / 1000)))
+const { secondsLeft, running, expired, stop } = useFinalStageClock(props.challenge.durationSeconds)
 
 const lights = computed<NightLight[]>(() => {
   // Dot area tracks population (sqrt for area-proportionality), so the
@@ -112,28 +109,27 @@ const lights = computed<NightLight[]>(() => {
     })
 })
 
-let ticker: ReturnType<typeof setInterval> | undefined
-let startedAt = 0
-
 const finish = () => {
   if (finished.value) return
   finished.value = true
-  if (ticker) clearInterval(ticker)
+  stop()
   emit('finished', [...named.value])
 }
+watch(expired, ran => {
+  if (ran) finish()
+})
 
+let begun = false
 const start = () => {
-  if (ticker || finished.value) return
+  if (begun || finished.value) return
+  begun = true
   gameStore.map.focus = [props.challenge.country]
   nightfall()
-  startedAt = performance.now()
-  // Round-start autofocus is desktop-only, same policy as the input homes
-  if (!isCoarsePointer.value) field.value?.focus()
-  ticker = setInterval(() => {
-    elapsedMs.value = performance.now() - startedAt
-    if (elapsedMs.value >= durationMs) finish()
-  }, TICK_MS)
 }
+// Round-start autofocus is desktop-only, same policy as the input homes
+watch(running, live => {
+  if (live && !isCoarsePointer.value) field.value?.focus()
+})
 
 const onEntry = () => {
   const typed = normalizeCountryName(entry.value)
@@ -157,11 +153,6 @@ watch(
   },
   { immediate: true }
 )
-
-// Daybreak is `useNocturne`'s, bound to this component's own unmount.
-onBeforeUnmount(() => {
-  if (ticker) clearInterval(ticker)
-})
 </script>
 <!-- The night skin is templates/_nocturne-night.scss and the dots are
      NightLights — both shared with the Star Chart. -->

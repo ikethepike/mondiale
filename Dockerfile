@@ -23,7 +23,7 @@ ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 # Bundling the generated country/water data needs more heap than the container
 # default, and the ceiling has moved BOTH ways as the tree changed: 1536, then
-# 3584, then 5120, then back down to 3072 — and now up again to 3584.
+# 3584, then 5120, then back down to 3072, up again to 3584 — and now 4608.
 #
 # The history matters, because the two failures look alike and want opposite
 # fixes:
@@ -46,9 +46,15 @@ ENV GIT_SHA=$GIT_SHA
 # cap passed straight to `nuxt build` (see the note on package.json below):
 #   3072 → OOM at 4611 MB   ← the old value; fails outright
 #   3328 → 4739 MB, exit 0  ← passes, but only 256 MB clear of the cliff
-#   3584 → 4943 MB, exit 0  ← chosen
+#   3584 → 4943 MB, exit 0  ← chosen then (2026-08)
 #   4096 → 4843 MB, exit 0
 #   5120 → 5180 MB, exit 0
+#
+# 2026-10-11, Linux (node 20, the CI runner's), V8's own heap message again —
+# GitHub's e2e/playtest builds died in the Nitro step, main included:
+#   3584 → OOM, live heap 3527 MB at death (main and the seat-cursor branch alike)
+#   4096 → exit 0, live heap peaked at 3486 MB — ~600 MB clear, too thin
+#   4608 → exit 0, live heap peaked at 3361 MB  ← chosen
 #
 # Note what the numbers say: peak RSS runs ~1.4 GB ABOVE the JS heap cap. That
 # gap is everything outside V8's heap — source text held by rollup, esbuild's
@@ -57,7 +63,7 @@ ENV GIT_SHA=$GIT_SHA
 # sourcemapped, several representations live at once.
 #
 # The builder is Depot (16 GB), not the 4 GB machine the 2026-08 note assumed,
-# so 3584 is not close to any kernel limit. If this fails again as SIGKILL
+# so 4608 (peak RSS ~1.4 GB above it) is not close to any kernel limit. If this fails again as SIGKILL
 # rather than a V8 message, the answer is to shrink the data, not to raise
 # this.
 #
@@ -66,7 +72,7 @@ ENV GIT_SHA=$GIT_SHA
 # still runs at the script's value. Keep the two numbers identical, and when
 # measuring a new ceiling call `npx nuxt build` directly or the experiment
 # measures nothing.
-ENV NODE_OPTIONS="--max-old-space-size=3584"
+ENV NODE_OPTIONS="--max-old-space-size=4608"
 RUN bun run build
 
 # ---- Runtime stage ----

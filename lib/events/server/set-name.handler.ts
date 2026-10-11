@@ -10,10 +10,14 @@ export const setNameHandler = defineGameHandler(
     if (!name) {
       return console.warn(`Rejected blank name for player: ${eventTarget.playerId}`)
     }
+    // Names are a lobby edit: a redelivered set-name after the start must
+    // never touch a seat that is racing.
+    if (player.cursor.step !== 'lobby') {
+      return console.warn(`Ignoring set-name outside the lobby for ${eventTarget.playerId}`)
+    }
 
     player.ready = true
     player.name = name
-    player.phase = 'waiting-for-game'
 
     await server.updateGameState(game)
 

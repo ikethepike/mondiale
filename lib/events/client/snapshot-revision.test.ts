@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { CLIENT_SIDE_EVENT_HANDLERS } from '~~/lib/events/client-registry'
+import { testCursor } from '~~/lib/events/server/test-seat'
 import type { Game } from '~~/types/game.types'
-import { adoptRevision, isStaleSnapshot } from './snapshot-revision'
+import {
+  adoptRevision,
+  isStaleSeat,
+  isStaleSnapshot,
+  takeWholeAcrossRounds,
+} from './snapshot-revision'
 
 const game = (fields: Record<string, unknown>) => fields as unknown as Game
+
+const seated = (id: string, seqs: Record<string, number>) =>
+  game({
+    id,
+    players: Object.fromEntries(
+      Object.entries(seqs).map(([seat, seq]) => [
+        seat,
+        { id: seat, cursor: testCursor('walk', { seq }) },
+      ])
+    ),
+  })
 
 describe('isStaleSnapshot', () => {
   it('drops a strictly older snapshot of the same game', () => {
@@ -36,23 +53,81 @@ describe('adoptRevision', () => {
   })
 })
 
+describe('isStaleSeat', () => {
+  it('drops a slice that would move the seat’s cursor backwards', () => {
+    expect(isStaleSeat(seated('g', { a: 5 }), seated('g', { a: 4 }), 'a')).toBe(true)
+  })
+
+  it('applies an equal or newer cursor — a redelivered slice re-applies harmlessly', () => {
+    expect(isStaleSeat(seated('g', { a: 5 }), seated('g', { a: 5 }), 'a')).toBe(false)
+    expect(isStaleSeat(seated('g', { a: 5 }), seated('g', { a: 6 }), 'a')).toBe(false)
+  })
+
+  it('reads only the named seat, never another seat’s cursor', () => {
+    const held = seated('g', { a: 5, b: 9 })
+    expect(isStaleSeat(held, seated('g', { a: 6, b: 1 }), 'a')).toBe(false)
+    expect(isStaleSeat(held, seated('g', { a: 6, b: 1 }), 'b')).toBe(true)
+  })
+
+  it('never blocks a different game, an empty store or a seat either side lacks', () => {
+    expect(isStaleSeat(seated('a', { a: 9 }), seated('b', { a: 1 }), 'a')).toBe(false)
+    expect(isStaleSeat(undefined, seated('g', { a: 1 }), 'a')).toBe(false)
+    expect(isStaleSeat(seated('g', {}), seated('g', { a: 1 }), 'a')).toBe(false)
+    expect(isStaleSeat(seated('g', { a: 9 }), seated('g', {}), 'a')).toBe(false)
+  })
+})
+
 describe('the gate’s registry exemptions', () => {
   it('never gates the join full-sync or the seat slices', () => {
     // The join sync is the recovery moment — and the ONE emit that can carry
     // a recreated room whose rev restarted at 1; gating it wedges every
     // rejoining client forever. Slices are FIFO per seat on the socket, and
     // dropping an older slice for another seat after adopting a newer rev
-    // could discard that seat's only phase flip.
+    // could discard that seat's only cursor move.
     expect(CLIENT_SIDE_EVENT_HANDLERS['player-joined'].snapshotScope).toBe('authoritative')
-    for (const event of [
-      'update',
-      'name-set',
-      'color-set',
-      'group-challenge-scored',
-      'individual-challenge-checked',
-      'final-challenge-checked',
-    ] as const) {
+    for (const event of ['update', 'name-set', 'color-set', 'seat-advanced'] as const) {
       expect(CLIENT_SIDE_EVENT_HANDLERS[event].snapshotScope, event).toBe('seat-slice')
+    }
+  })
+})
+
+describe('takeWholeAcrossRounds', () => {
+  const rounds = (count: number, rev?: number) =>
+    game({ id: 'g', rev, rounds: Array.from({ length: count }, () => ({})), players: {} })
+
+  it('leaves a same-round slice to its applier', () => {
+    const store = { game: rounds(2, 5) }
+    const held = store.game
+    expect(takeWholeAcrossRounds(store, rounds(2, 6))).toBe(false)
+    expect(store.game).toBe(held)
+  })
+
+  it('takes a payload from another round whole', () => {
+    const store = { game: rounds(2, 5) }
+    const incoming = rounds(3, 6)
+    expect(takeWholeAcrossRounds(store, incoming)).toBe(true)
+    expect(store.game).toBe(incoming)
+  })
+
+  it('never takes the stale side whole, and never slices it either', () => {
+    const store = { game: rounds(3, 9) }
+    const held = store.game
+    expect(takeWholeAcrossRounds(store, rounds(2, 4))).toBe(true)
+    expect(store.game).toBe(held)
+  })
+
+  it('both seat-slice appliers route through it', () => {
+    for (const event of ['update', 'seat-advanced'] as const) {
+      const store = { game: rounds(2, 5) }
+      const incoming = rounds(3, 6)
+      void CLIENT_SIDE_EVENT_HANDLERS[event].handler({
+        eventKey: event,
+        payload: { event, game: incoming } as never,
+        gameStore: store as never,
+        eventTarget: { gameId: 'g', playerId: 'a' },
+        playerId: 'a',
+      })
+      expect(store.game, event).toBe(incoming)
     }
   })
 })

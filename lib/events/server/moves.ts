@@ -1,32 +1,50 @@
-import { getIndividualChallenge } from '~~/lib/challenges'
+import { getIndividualChallenge, getRoundChallenge } from '~~/lib/challenges'
 import {
   individualChallengeAccessors,
   isValidIndividualChallengeAccessorId,
 } from '~~/types/challenges/individual-challenge.type'
-import type { Game, PlayerMove } from '~~/types/game.types'
+import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
+import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
+import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { drawLabel, recordedDrawAsync } from './draws'
+
+/** THE moveset deal: every scored seat's walk is dealt (and recorded) here. */
+export const dealMoves = (args: {
+  game: Game
+  player: Player
+  scored: number
+  /** A fixed moveset (the FORCE_FINAL_CHALLENGE hook) — still recorded. */
+  moves?: PlayerMove[]
+}): Promise<PlayerMove[]> =>
+  recordedDrawAsync(args.game, drawLabel.moves(args.player.id), async () =>
+    args.moves ? args.moves : movesForScoredPoints(args)
+  )
+
+/** A missed LAST gauntlet question is replaced, never skipped. Null: nothing left to deal. */
+export const dealFinalReplacement = (
+  game: Game,
+  exclude: FinalChallengeItem['_type'][]
+): Promise<FinalChallengeItem | null> =>
+  recordedDrawAsync(game, drawLabel.finalReplacement(), async () => {
+    // Deferred module: final-challenge carries ~1.2MB of endgame data (#110).
+    const { dealReplacementChallenge } = await import('~~/lib/challenges/final-challenge')
+    return dealReplacementChallenge({ game, exclude }) ?? null
+  })
+
+/** THE round deal, at the reveal. */
+export const dealRound = (game: Game): Promise<RoundChallenge> =>
+  recordedDrawAsync(game, drawLabel.round(), () => getRoundChallenge({ game }))
+
+/** A tile a walk must stop short of: a gate, or the final gauntlet. */
+export const isChallengeTile = (tile: Tile): boolean =>
+  [...individualChallengeAccessors, 'final'].includes(tile.type)
 
 /**
  * The scored points ARE the tiles to walk: the slice starts one past the tile
  * the player stands on and runs `scored` tiles forward, split into one move
- * per challenge gate along the way. Shared by the per-player submit path
- * (submit-group-challenge-answers) and the server-resolved rounds
- * (Border Chain), so the two can never drift.
+ * per challenge gate along the way.
  */
-/**
- * Hand a player a fresh moveset and open a new walk generation. Every dealer
- * goes through this: the bumped `walkSeq` is what kills movement continuations
- * still in flight from the previous walk (see enterMovementPhaseHandler).
- */
-export const startWalk = (player: Player, moves: PlayerMove[]) => {
-  player.moves = moves
-  player.walkSeq = (player.walkSeq ?? 0) + 1
-  // The one moveset dealer, so every turn-OPENING walk carries the intro
-  // marker by construction; the walk's first step (or a zero-tile arrival)
-  // clears it. Between-gates resumes never pass here and stay intro-less.
-  player.walkIntro = true
-}
-
 export const movesForScoredPoints = async ({
   game,
   player,
@@ -40,13 +58,11 @@ export const movesForScoredPoints = async ({
   const potentialTiles = game.tiles.slice(player.currentPosition + 1, potentialProgress + 1)
 
   // Each move is executed sequentially; challenge moves stop one tile
-  // before their gate (see enterMovementPhaseHandler).
+  // before their gate (see `gateStopTile`).
   const moves: PlayerMove[] = []
   while (potentialTiles.length) {
     // Identify any special tiles in the moveset
-    const specialTileIndex = potentialTiles.findIndex(tile =>
-      [...individualChallengeAccessors, 'final'].includes(tile.type)
-    )
+    const specialTileIndex = potentialTiles.findIndex(isChallengeTile)
     const specialTile = potentialTiles[specialTileIndex]
 
     const spliceCount = specialTileIndex === -1 ? potentialTiles.length : specialTileIndex

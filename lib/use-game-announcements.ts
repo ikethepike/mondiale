@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { useGameStore } from '~~/store/game.store'
-import type { PlayerPhase } from '~~/types/player.type'
+import { seatViewFamily } from '~~/lib/seat-view'
+import type { SeatViewFamily } from '~~/lib/seat-transitions'
 
 export interface GameAnnouncement {
   kicker: string
@@ -12,13 +13,14 @@ export interface GameAnnouncement {
 /**
  * The room is otherwise silent about the two biggest moments in a game: nobody
  * but the player themselves learns that someone reached the final gauntlet, or
- * cleared it and won. Both are already server truth on `player.phase`, carried
- * to every client on the game snapshot, so this needs no event of its own.
+ * cleared it and won. Both are already server truth on the seat's cursor,
+ * carried to every client on the game snapshot, so this needs no event of its
+ * own.
  *
  * Always on — never gated by the `liveGuesses` setting, which covers the guess
  * ticker alone.
  *
- * Fires on the TRANSITION into a phase, not on the phase itself: `victory` stays
+ * Fires on the TRANSITION into a step, not on the step itself: `victory` stays
  * true for the rest of the game, so testing the value would re-announce on every
  * later snapshot. A rejoining client seeds from its first snapshot and announces
  * nothing for it, or it would replay a gauntlet entry from ten minutes ago.
@@ -26,8 +28,8 @@ export interface GameAnnouncement {
 export const useGameAnnouncements = () => {
   const gameStore = useGameStore()
   const announcement = ref<GameAnnouncement>()
-  /** Where every player stood on the previous snapshot. */
-  const previousPhases = new Map<string, PlayerPhase>()
+  /** Which view family every player stood in on the previous snapshot. */
+  const previousFamilies = new Map<string, SeatViewFamily>()
   let seeded = false
   /** The approach announces once per game, for whoever arrives first. */
   let gauntletAnnounced = false
@@ -44,24 +46,24 @@ export const useGameAnnouncements = () => {
       // announce nothing, or a mid-game refresh replays what it already missed.
       if (!seeded) {
         for (const [playerId, player] of Object.entries(current)) {
-          previousPhases.set(playerId, player.phase)
-          if (player.phase === 'final-challenge' || player.phase === 'victory') {
-            gauntletAnnounced = true
-          }
+          const family = seatViewFamily(player.cursor)
+          previousFamilies.set(playerId, family)
+          if (family === 'final' || family === 'victory') gauntletAnnounced = true
         }
         seeded = true
         return
       }
 
       for (const [playerId, player] of Object.entries(current)) {
-        const previous = previousPhases.get(playerId)
-        previousPhases.set(playerId, player.phase)
-        if (previous === player.phase) continue
+        const family = seatViewFamily(player.cursor)
+        const previous = previousFamilies.get(playerId)
+        previousFamilies.set(playerId, family)
+        if (previous === family) continue
 
         // The acting player already sees their own gauntlet or victory screen.
         if (playerId === gameStore.playerId) continue
 
-        if (player.phase === 'final-challenge' && !gauntletAnnounced) {
+        if (family === 'final' && !gauntletAnnounced) {
           gauntletAnnounced = true
           announcement.value = {
             kicker: 'The final gauntlet',
@@ -69,7 +71,7 @@ export const useGameAnnouncements = () => {
             stakes: 'Clear it and the game is theirs. Catch up before they do.',
             tone: 'alert',
           }
-        } else if (player.phase === 'victory') {
+        } else if (family === 'victory') {
           announcement.value = {
             kicker: 'Gauntlet cleared',
             title: `${nameOf(playerId)} won`,

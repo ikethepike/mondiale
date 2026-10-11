@@ -119,7 +119,7 @@ const headline = computed(() => {
 
 const rail = computed(() =>
   gameStore.standings
-    .filter(player => player.phase !== 'kicked')
+    .filter(player => player.cursor.step !== 'kicked')
     .map(player => ({
       player,
       status: getPlayerStatus(player),

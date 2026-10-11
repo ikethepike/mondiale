@@ -38,6 +38,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { io, type Socket } from 'socket.io-client'
 
+interface SeatCursor {
+  seq: number
+  step: string
+  subject: string
+}
+
 interface ClientEventTarget {
   gameId: string
   playerId: string
@@ -310,28 +316,33 @@ const runRoom = (roomIndex: number, stopAt: number, ackLatencies: number[]): Pro
     let handle = connectPlayer(gameId, playerId, secret)
     let roundsSeen = 0
 
+    const acted = new Set<string>()
     const wire = (h: PlayerHandle) => {
-      const answerRound = (payload: { game?: { rounds?: unknown[] } }) => {
-        const roundIndex = (payload.game?.rounds?.length ?? 1) - 1
-        roundsSeen++
-        // Answer after a human-ish think, wrong answers welcome — the full
-        // grade/settle path runs either way.
-        setTimeout(
-          () =>
-            emitWithAck(h, {
+      // Every seat event echoes the cursor it answers; act once per subject.
+      h.socket.onAny(
+        (
+          _event: string,
+          payload?: { game?: { players?: Record<string, { cursor?: SeatCursor }> } }
+        ) => {
+          const cursor = payload?.game?.players?.[playerId]?.cursor
+          if (!cursor || acted.has(`${cursor.step}:${cursor.subject}`)) return
+          const echo = { subject: cursor.subject, seq: cursor.seq }
+          const act = (delayMs: number, eventData: Record<string, unknown>) => {
+            acted.add(`${cursor.step}:${cursor.subject}`)
+            setTimeout(() => emitWithAck(h, { ...eventData, ...echo }), delayMs)
+          }
+          if (cursor.step === 'round') {
+            roundsSeen++
+            // Wrong answers welcome — the full grade/settle path runs either way.
+            act(3000 + Math.random() * 5000, {
               event: 'submit-group-challenge-answers',
               ranking: RANKING_GUESS.slice(0, 3 + (seatIndex % 3)),
-              roundIndex,
-            }),
-          3000 + Math.random() * 5000
-        )
-      }
-      // Round 1 rides the start-game payload — 'new-round' only fires later.
-      h.socket.on('game-started', answerRound)
-      h.socket.on('new-round', answerRound)
-      h.socket.on('group-challenge-scored', () => {
-        setTimeout(() => emitWithAck(h, { event: 'enter-movement-phase' }), 1500)
-      })
+            })
+          }
+          if (cursor.step === 'scores') act(1500, { event: 'enter-movement-phase' })
+          if (cursor.step === 'tutorial') act(1000, { event: 'close-tutorial' })
+        }
+      )
     }
 
     wire(handle)
@@ -341,8 +352,6 @@ const runRoom = (roomIndex: number, stopAt: number, ackLatencies: number[]): Pro
       await sleep(playersPerRoom * 400 + 500)
       await emitWithAck(handle, { event: 'start-game' })
     }
-    await sleep(1000)
-    await emitWithAck(handle, { event: 'close-tutorial' })
 
     while (Date.now() < stopAt) {
       await sleep(2000 + Math.random() * 1000)

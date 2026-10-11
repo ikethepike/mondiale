@@ -22,7 +22,7 @@
 import { useEphemeralTicker } from '~~/lib/use-ephemeral-ticker'
 import { useGameStore } from '~~/store/game.store'
 import type { CheerEmoji } from '~~/types/events.types'
-import { BOARD_PHASES } from '~~/types/player.type'
+import { BOARD_STEPS } from '~~/lib/seat-transitions'
 
 // Cheers aimed at the local player while they're OFF the board (mid-challenge,
 // reading scores…) — on the board the floating pawn sprite covers it.
@@ -56,8 +56,8 @@ const visible = computed<CheerChip[]>(() => {
   // this is the audience senderFallback below was written for. For racers
   // the two ids are identical.
   const me = gameStore.seatId
-  const phase = gameStore.game?.players[me]?.phase
-  if (!phase || BOARD_PHASES.includes(phase)) return []
+  const step = gameStore.game?.players[me]?.cursor.step
+  if (!step || BOARD_STEPS.includes(step)) return []
 
   const groups = new Map<string, CheerChip>()
   for (const cheer of gameStore.board.cheers) {

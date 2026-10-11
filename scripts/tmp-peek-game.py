@@ -34,16 +34,17 @@ now = int(time.time() * 1000)
 print(
     f"game: {game.get('id')} variant={game.get('variant')} "
     f"difficulty={game.get('difficulty')} started={game.get('started')} "
-    f"pendingRoundStart={game.get('pendingRoundStart')}"
+    f"nextRoundAt={game.get('nextRoundAt')}"
 )
 rounds = game.get('rounds', [])
 print(f'rounds: {len(rounds)}')
 names = {pid: p.get('name') for pid, p in game.get('players', {}).items()}
 for player in game.get('players', {}).values():
+    cursor = player.get('cursor') or {}
     print(
-        f"  seat {player.get('name')!r}: phase={player.get('phase')} "
-        f"pos={player.get('currentPosition')} walkSeq={player.get('walkSeq')} "
-        f"resolving={player.get('resolving')} moves={len(player.get('moves') or [])}"
+        f"  seat {player.get('name')!r}: step={cursor.get('step')} subject={cursor.get('subject')} "
+        f"seq={cursor.get('seq')} pos={player.get('currentPosition')} "
+        f"moves={len(player.get('moves') or [])}"
     )
 if rounds:
     current = rounds[-1]

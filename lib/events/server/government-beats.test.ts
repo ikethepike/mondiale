@@ -10,8 +10,9 @@ import { BEAT_POINTS, BEAT_SECONDS } from '~~/lib/government'
 import { BEAT_VERDICT_HOLD_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
-import type { Player, PlayerPhase } from '~~/types/player.type'
 import type { EngineContext } from './round-engine'
+import { dropArmedTimersForTests } from './seat-cursor'
+import { testSeat } from './test-seat'
 
 /**
  * The Government engine, on the same fake-timer rig as its siblings.
@@ -59,9 +60,6 @@ const challengeFixture = (
   },
 })
 
-const seat = (id: string, phase: PlayerPhase = 'group-challenge'): Player =>
-  ({ id, name: id, phase, moves: [], currentPosition: 0 }) as unknown as Player
-
 const buildGame = (challenge: GovernmentChallenge): Game =>
   ({
     id: 'test-game',
@@ -70,7 +68,7 @@ const buildGame = (challenge: GovernmentChallenge): Game =>
     variant: 'world',
     difficulty: 'normal',
     started: true,
-    players: { ada: seat('ada'), ben: seat('ben') },
+    players: { ada: testSeat('ada'), ben: testSeat('ben') },
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
@@ -111,6 +109,7 @@ const rideVerdict = async () => {
 
 beforeEach(() => {
   vi.useFakeTimers()
+  dropArmedTimersForTests()
   store.clear()
   emitted.length = 0
 })
@@ -178,6 +177,9 @@ describe('the beat sequence', () => {
     // in power, not who holds ministries.
     expect(round.playerTurns.ada!.points.scored).toBe(BEAT_POINTS.sides)
     expect(round.playerTurns.ben!.points.scored).toBeLessThan(BEAT_POINTS.sides)
+    const players = (store.get(game.id) as Game).players
+    expect(players.ada.cursor.step).toBe('scores')
+    expect(players.ben.cursor.step).toBe('scores')
   })
 })
 

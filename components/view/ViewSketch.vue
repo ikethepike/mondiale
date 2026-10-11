@@ -53,8 +53,17 @@ import {
 
 // The shared scaffolding blanks the map (no reference material while
 // sketching), runs the interstitial, and owns the submit latch + redelivery.
-const { gameStore, challenge, showInterstitial, submitted, begin, submitOnce, announce, entries } =
-  useGroupChallenge('sketch-challenge')
+const {
+  gameStore,
+  challenge,
+  showInterstitial,
+  submitted,
+  begin,
+  submitOnce,
+  announce,
+  entries,
+  previewVerdict,
+} = useGroupChallenge('sketch-challenge')
 
 const canvas = ref<HTMLCanvasElement>()
 const points = ref<OutlinePoint[]>([])
@@ -137,7 +146,7 @@ const submitSketch = () => {
     ([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as OutlinePoint
   )
 
-  gameStore.map.status = clientScore > active.maximumPoints * 0.4 ? 'correct' : 'incorrect'
+  previewVerdict(clientScore > active.maximumPoints * 0.4 ? 'correct' : 'incorrect')
   // Pencils-down is the only beat worth telling the room — never the drawing.
   announce({ kind: 'presence' })
   submitOnce([active.country], clientScore, undefined, { sketch: normalized })

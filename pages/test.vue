@@ -57,6 +57,7 @@ import type { FinalChallenge, FinalChallengeItem } from '~~/types/challenges/fin
 import { generateTiles } from '~~/lib/tiles'
 import { gameLengths, type Game, type GameLength, type Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { mockSeatCursor } from '~~/lib/harness/mock-cursor'
 
 // Dev harness for the 3D board: a mock game with a fixed seed so terrain,
 // path and tiles can be iterated on without a multiplayer session.
@@ -65,12 +66,9 @@ const mockPlayer = (id: string, name: string, color: string, position: number): 
   name,
   color: color as Player['color'],
   ready: true,
-  phase: 'moving',
+  cursor: mockSeatCursor('walk'),
   moves: [],
   currentPosition: position,
-  // Every real player is on a dealt walk; leaving this unset would pin the
-  // harness to generation 0 and hide the cross-round replay path entirely.
-  walkSeq: 1,
 })
 
 // `?seed=` forces a board — the track archetype, terrain and pond all derive
@@ -168,21 +166,15 @@ const winGate = () => {
 }
 
 /**
- * A new round deals a fresh walk, as startWalk does — bumping the generation
- * is what retires the previous walk's display memory. Walking after this is
- * the cross-round path; without a generation bump the harness could only ever
- * exercise movement inside a single walk.
+ * A new round deals a fresh walk, as the server does — a new walk subject is
+ * what retires the previous walk's display memory and opens the announce the
+ * camera's framing beat keys off. Walking after this is the cross-round path.
  */
 const dealWalk = (steps: number) => {
   const player = mockGame.players['mock-player-1']
   const end = mockGame.tiles[Math.min(player.currentPosition + steps, mockGame.tiles.length - 1)]
   player.moves = [{ endTile: end }]
-  player.walkSeq = (player.walkSeq ?? 0) + 1
-  // The ANNOUNCE, as the walk protocol opens every walk with: the phase flip
-  // is what the camera's framing beat keys off, so without it the harness
-  // could only ever exercise the stepping half.
-  player.phase = 'moving'
-  player.walkIntro = true
+  player.cursor = mockSeatCursor('walk', { walk: player.cursor.walk + 1 })
 }
 
 // --- Final-gauntlet climb demo --------------------------------------------
@@ -194,7 +186,7 @@ const startGauntlet = () => {
   const player = mockGame.players['mock-player-1']
   const finalTile = mockGame.tiles[mockGame.tiles.length - 1]
   player.currentPosition = finalTile.position - 1
-  player.phase = 'final-challenge'
+  player.cursor = mockSeatCursor('final')
   player.moves = [
     {
       endTile: finalTile,
@@ -223,7 +215,7 @@ const clearStage = () => {
   gauntlet.challenges.shift()
   if (!gauntlet.challenges.length) {
     const player = mockGame.players['mock-player-1']
-    player.phase = 'victory'
+    player.cursor = mockSeatCursor('victory')
     player.completedAtRound = ++winCount
   }
 }
@@ -235,7 +227,7 @@ let climbTimer: ReturnType<typeof setInterval> | undefined
 const climbMassif = () => {
   if (climbTimer) clearInterval(climbTimer)
   const player = mockGame.players['mock-player-1']
-  player.phase = 'moving'
+  player.cursor = mockSeatCursor('walk')
   player.moves = []
   startGauntlet()
   climbTimer = setInterval(() => {
@@ -258,7 +250,7 @@ const missStage = () => {
   if (gauntlet.lives < 0) {
     const player = mockGame.players['mock-player-1']
     player.moves = []
-    player.phase = 'moving'
+    player.cursor = mockSeatCursor('settled')
   }
 }
 
@@ -266,8 +258,8 @@ const missStage = () => {
 let winCount = 0
 const win = (playerId: string) => {
   const player = mockGame.players[playerId]
-  if (player.phase === 'victory') return
-  player.phase = 'victory'
+  if (player.cursor.step === 'victory') return
+  player.cursor = mockSeatCursor('victory')
   player.completedAtRound = ++winCount
 }
 

@@ -2,7 +2,7 @@
   <div class="player-configuration-wrapper">
     <article v-if="player" class="player-configuration pane tl decorator-bottom">
       <section class="information pane-content">
-        <template v-if="player.phase === 'naming'">
+        <template v-if="!player.ready">
           <div class="content">
             <!-- Host player -->
             <header v-if="isPlayerHost">
@@ -54,7 +54,7 @@
             </form>
           </div>
         </template>
-        <template v-if="player.phase === 'waiting-for-game'">
+        <template v-if="player.ready">
           <div class="content">
             <header v-if="playersByPhase.all.length === 1">
               <h1>It's a bit lonely here...</h1>
@@ -609,7 +609,7 @@ const isEveryoneReady = computed(() => {
  */
 const OPEN_SEATS_SHOWN = 2
 const openSeats = computed(() => {
-  if (!isPlayerHost.value || player.value?.phase === 'naming') return 0
+  if (!isPlayerHost.value || !player.value?.ready) return 0
   const seated = playersByPhase.value.all.length
   // Hold the list's HEIGHT steady as seats fill: each arrival takes a chair's
   // place rather than appearing under both and letting the block collapse.
@@ -622,10 +622,7 @@ const openSeats = computed(() => {
  *  seated player until they have a name — otherwise round one deals to a
  *  nameless chair sitting above a row of ready bots. */
 const canAddBot = computed(
-  () =>
-    isPlayerHost.value &&
-    player.value?.phase !== 'naming' &&
-    playersByPhase.value.all.length < MAX_PLAYERS
+  () => isPlayerHost.value && !!player.value?.ready && playersByPhase.value.all.length < MAX_PLAYERS
 )
 
 const name = ref('')
@@ -749,7 +746,7 @@ const armInviteNudge = () => {
 }
 
 watch(
-  () => player.value?.phase === 'waiting-for-game',
+  () => !!player.value?.ready,
   async waiting => {
     if (!waiting) return
     await nextTick()

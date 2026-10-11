@@ -22,7 +22,7 @@ payload = json.loads(urllib.request.urlopen(request).read())['result']
 game = json.loads(payload)
 
 for pid, player in game['players'].items():
-    line = f"seat '{player.get('name', pid)}': phase={player['phase']} pos={player['currentPosition']}"
+    line = f"seat '{player.get('name', pid)}': step={player['cursor']['step']} subject={player['cursor']['subject']} pos={player['currentPosition']}"
     move = (player.get('moves') or [None])[0]
     challenge = (move or {}).get('challenge') or {}
     if challenge.get('_type') == 'final-challenge':
