@@ -10,24 +10,9 @@
       v-if="fieldBox"
       :viewBox="`${fieldBox.x} ${fieldBox.y} ${fieldBox.w} ${fieldBox.h}`"
       preserveAspectRatio="none"
-      :style="boxStyle"
+      :style="[boxStyle, featherStyle]"
     >
-      <defs>
-        <filter :id="`${uid}-feather`" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur :stdDeviation="feather.blur" />
-        </filter>
-        <mask
-          :id="`${uid}-fade`"
-          maskUnits="userSpaceOnUse"
-          :x="fieldBox.x"
-          :y="fieldBox.y"
-          :width="fieldBox.w"
-          :height="fieldBox.h"
-        >
-          <rect v-bind="feather.rect" fill="white" :filter="`url(#${uid}-feather)`" />
-        </mask>
-      </defs>
-      <g :mask="`url(#${uid}-fade)`">
+      <g>
         <g>
           <path
             v-for="(_, unit) in region.units"
@@ -87,7 +72,7 @@
 <script lang="ts" setup>
 import gsap from 'gsap'
 import { clamp01 } from '~~/lib/number'
-import { EASE, prefersReducedMotion } from '~~/lib/motion'
+import { prefersReducedMotion } from '~~/lib/motion'
 import { readServerNow } from '~~/lib/use-server-now'
 import { bleedBox, useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -108,7 +93,7 @@ import {
   type VintagePass,
   type VintageScene,
 } from '~~/lib/vintage'
-import type { VintageRegion } from '~~/types/vintage.types'
+import type { VintageRegion, VintageStep, VintageUnitLook } from '~~/types/vintage.types'
 
 /** Vintage's map: a region's units, borders and names at one scene, or
  *  mid-way through a pass between two — seeked off the server clock. */
@@ -132,21 +117,28 @@ const isPhone = useIsPhone()
 const fieldBox = computed(() => (viewBox.value?.w ? bleedBox(viewBox.value) : undefined))
 
 /** The data is clipped to a box around the region; the field fades out well
- *  inside that clip so its straight edges never show. */
-const uid = useId()
-const feather = computed(() => {
+ *  inside that clip so its straight edges never show. A CSS mask, not an SVG
+ *  one: an SVG mask with a blur re-rasterizes with every animated frame. */
+const featherStyle = computed(() => {
+  const field = fieldBox.value
+  if (!field) return {}
   const [x, y, w, h] = props.region.frame
-  const margin = 0.12
+  const span = (from: number, length: number, origin: number, extent: number, frame: number) => {
+    const at = (value: number) => `${(((value - origin) / extent) * 100).toFixed(2)}%`
+    const margin = frame * FEATHER_MARGIN
+    const soft = frame * FEATHER_SOFTNESS
+    return `transparent ${at(from - margin - soft)}, #000 ${at(from - margin + soft)}, #000 ${at(from + length + margin - soft)}, transparent ${at(from + length + margin + soft)}`
+  }
+  const mask = `linear-gradient(to right, ${span(x, w, field.x, field.w, w)}), linear-gradient(to bottom, ${span(y, h, field.y, field.h, h)})`
   return {
-    blur: w * 0.05,
-    rect: {
-      x: x - w * margin,
-      y: y - h * margin,
-      width: w * (1 + 2 * margin),
-      height: h * (1 + 2 * margin),
-    },
+    maskImage: mask,
+    WebkitMaskImage: mask,
+    maskComposite: 'intersect',
+    WebkitMaskComposite: 'source-in',
   }
 })
+const FEATHER_MARGIN = 0.1
+const FEATHER_SOFTNESS = 0.07
 const stroke = computed(() => `${(viewBox.value?.w ?? 600) * 0.0016}px`)
 
 const unitEls: SVGPathElement[] = []
@@ -187,6 +179,14 @@ const sceneOf = (index: number) => {
   return scene
 }
 
+/** A shape's outline never changes, so its path string is built once. */
+const shapeCache = new Map<number, string>()
+const shapeD = (shape: number) => {
+  let d = shapeCache.get(shape)
+  if (d === undefined) shapeCache.set(shape, (d = shapePath(props.region, shape)))
+  return d
+}
+
 const paintLook = (
   el: SVGPathElement | undefined,
   unit: number,
@@ -201,7 +201,7 @@ const paintLook = (
   }
   const wash = props.region.eras[era]?.wash
   el.style.display = ''
-  el.setAttribute('d', shapePath(props.region, shape, overrides))
+  el.setAttribute('d', overrides ? shapePath(props.region, shape, overrides) : shapeD(shape))
   el.setAttribute(
     'class',
     `vintage-unit tone-${props.region.units[unit].tone}${wash ? ` wash-${wash}` : ''}`
@@ -241,48 +241,105 @@ const placedLabels = computed(() => {
   })
 })
 
+/** What the DOM shows right now, so a new scene repaints only what differs. */
 let shownScene: number | undefined
-let stepInFlight = false
-const trackCache = new Map<string, SlideTrack[]>()
+let paintedLooks: VintageUnitLook[] = []
+let paintedBorders = new Set<number>()
+
+interface StepInFlight {
+  key: string
+  step: VintageStep
+  tracks: SlideTrack[]
+  sliding: Set<number>
+  /** Units whose before-outline runs along a sliding border — their fill
+   *  bends with the line every frame. */
+  bending: Set<number>
+}
+let inFlight: StepInFlight | undefined
+
+/** Ends the step in flight; returns the arcs it touched, which the next
+ *  scene must repaint whatever state the last frame left them in. */
+const settleStep = (): Set<number> => {
+  if (!inFlight) return new Set()
+  const touched = new Set([...inFlight.step.erase, ...inFlight.step.draw])
+  for (const [unit] of inFlight.step.units) {
+    if (unitEls[unit]) unitEls[unit].style.opacity = '1'
+    if (incomingEls[unit]) incomingEls[unit].style.display = 'none'
+  }
+  for (const el of slideEls) if (el) el.style.display = 'none'
+  for (const [unit] of inFlight.step.units) paintedLooks[unit] = [-2, -2]
+  inFlight = undefined
+  return touched
+}
 
 const paintScene = (index: number) => {
+  const touched = settleStep()
   const scene = sceneOf(index)
   scene.looks.forEach(([shape, era], unit) => {
+    const painted = paintedLooks[unit]
+    if (painted && painted[0] === shape && painted[1] === era) return
     paintLook(unitEls[unit], unit, shape, era)
-    const base = unitEls[unit]
-    if (base) base.style.opacity = '1'
-    if (incomingEls[unit]) incomingEls[unit].style.display = 'none'
+    if (unitEls[unit]) unitEls[unit].style.opacity = '1'
+    paintedLooks[unit] = [shape, era]
   })
-  for (const arc of borderArcs.value) showArc(arc, scene.borders.has(arc) ? 1 : 0)
-  for (const el of slideEls) if (el) el.style.display = 'none'
+  for (const arc of borderArcs.value) {
+    const want = scene.borders.has(arc)
+    if (touched.has(arc) || want !== paintedBorders.has(arc)) showArc(arc, want ? 1 : 0)
+  }
+  paintedBorders = new Set(scene.borders)
   labelScene.value = index
   shownScene = index
-  stepInFlight = false
   emit('scene', index)
 }
 
-const ease = gsap.parseEase(EASE.cross)
-const phase = (progress: number, from: number, to: number) =>
-  ease(clamp01((progress - from) / (to - from)))
-
-const paintStep = (index: number, next: number, progress: number) => {
+const beginStep = (index: number, next: number): StepInFlight => {
   const step = stepToward(props.region, index, next)
-  const key = `${index}>${next}`
-  let tracks = trackCache.get(key)
-  if (!tracks)
-    trackCache.set(key, (tracks = step.slides.map(slide => slideTrack(props.region, slide))))
-
-  const erase = phase(progress, 0, 0.45)
-  const slide = phase(progress, 0.2, 0.8)
-  const draw = phase(progress, 0.45, 1)
-  const fade = phase(progress, 0.25, 0.85)
-
+  const tracks = step.slides.map(slide => slideTrack(props.region, slide))
   const sliding = new Set(
     step.slides.flatMap(({ from, to }) => [...from, ...to].map(a => (a < 0 ? ~a : a)))
   )
+  const fromArcs = new Set(step.slides.flatMap(({ from }) => from.map(a => (a < 0 ? ~a : a))))
+  const bending = new Set(
+    step.units
+      .filter(
+        ([, beforeShape]) =>
+          beforeShape >= 0 &&
+          props.region.shapes[beforeShape].rings.some(ring =>
+            ring.some(a => fromArcs.has(a < 0 ? ~a : a))
+          )
+      )
+      .map(([unit]) => unit)
+  )
+  for (const [unit, , , afterShape, afterEra] of step.units) {
+    const incoming = incomingEls[unit]
+    paintLook(incoming, unit, afterShape, afterEra)
+    if (incoming) incoming.style.opacity = '0'
+  }
+  for (const arc of sliding) showArc(arc, 0)
+  return { key: `${index}>${next}`, step, tracks, sliding, bending }
+}
+
+/** A time-lapse, not a sequence of beats: every part of a step runs at a
+ *  steady rate and overlaps its neighbours, so the map never stops to start. */
+const linear = (progress: number, from: number, to: number) =>
+  clamp01((progress - from) / (to - from))
+const glide = gsap.parseEase('sine.inOut')
+
+const paintStep = (index: number, next: number, progress: number) => {
+  const key = `${index}>${next}`
+  if (inFlight?.key !== key) {
+    settleStep()
+    inFlight = beginStep(index, next)
+  }
+  const { step, tracks, sliding, bending } = inFlight
+
+  const erase = linear(progress, 0, 0.7)
+  const draw = linear(progress, 0.3, 1)
+  const fade = linear(progress, 0.1, 0.9)
+  const slide = glide(linear(progress, 0.05, 0.95))
+
   for (const arc of step.erase) if (!sliding.has(arc)) showArc(arc, 1 - erase)
   for (const arc of step.draw) if (!sliding.has(arc)) showArc(arc, draw)
-  for (const arc of sliding) showArc(arc, 0)
 
   const overrides: ArcOverrides = new Map()
   tracks.forEach((track, slot) => {
@@ -293,16 +350,14 @@ const paintStep = (index: number, next: number, progress: number) => {
     el.setAttribute('d', polylinePath(slideLine(track, slide)))
   })
 
-  for (const [unit, beforeShape, beforeEra, afterShape, afterEra] of step.units) {
+  for (const [unit, beforeShape, beforeEra] of step.units) {
     const base = unitEls[unit]
-    if (tracks.length) paintLook(base, unit, beforeShape, beforeEra, overrides)
-    if (base) base.style.opacity = String(beforeShape >= 0 ? 1 - fade : 0)
+    if (bending.has(unit)) paintLook(base, unit, beforeShape, beforeEra, overrides)
+    if (base) base.style.opacity = beforeShape >= 0 ? String(1 - fade * fade) : '0'
     const incoming = incomingEls[unit]
-    paintLook(incoming, unit, afterShape, afterEra)
     if (incoming) incoming.style.opacity = String(fade)
   }
   if (progress >= 0.5) labelScene.value = next
-  stepInFlight = true
 }
 
 const frameNow = (): PassFrame => {
@@ -318,8 +373,7 @@ const tick = () => {
   raf = 0
   if (!unitEls.length) return
   const frame = frameNow()
-  if (shownScene !== frame.scene || (stepInFlight && frame.next === undefined))
-    paintScene(frame.scene)
+  if (shownScene !== frame.scene || (inFlight && frame.next === undefined)) paintScene(frame.scene)
   if (frame.next !== undefined) paintStep(frame.scene, frame.next, frame.progress)
   if (!frame.done) raf = requestAnimationFrame(tick)
 }
@@ -327,9 +381,27 @@ const tick = () => {
 const restart = () => {
   if (raf) cancelAnimationFrame(raf)
   shownScene = undefined
-  trackCache.clear()
+  inFlight = undefined
+  paintedLooks = []
+  paintedBorders = new Set()
   arcLengths.clear()
-  nextTick(() => (raf = requestAnimationFrame(tick)))
+  nextTick(() => {
+    // Measured and built up front, inside the lead: a first getTotalLength or
+    // path string mid-rewind is a dropped frame.
+    for (const arc of borderArcs.value) {
+      showArc(arc, 0)
+      const el = arcEls.get(arc)
+      if (el) arcLengths.set(arc, el.getTotalLength())
+    }
+    const low = Math.min(props.pass.from, props.pass.to)
+    const high = Math.max(props.pass.from, props.pass.to)
+    for (let step = low; step < high; step++)
+      for (const [, beforeShape, , afterShape] of props.region.steps[step].units) {
+        if (beforeShape >= 0) shapeD(beforeShape)
+        if (afterShape >= 0) shapeD(afterShape)
+      }
+    raf = requestAnimationFrame(tick)
+  })
 }
 
 watch(() => [props.pass, props.startsAt, fieldBox.value !== undefined], restart, {
@@ -406,7 +478,6 @@ const showTip = (unit: number, event: PointerEvent) => {
   transform: translate(-50%, -50%);
   text-shadow:
     0 0 2px var(--background-color),
-    0 0 3px var(--background-color),
     0 0 4px var(--background-color);
 
   &.empire {

@@ -278,11 +278,53 @@ const chainsOf = (arcIds: number[], arcs: Point[][]): Chain[] => {
 
 const reverseChain = (chain: number[]) => [...chain].reverse().map(id => ~id)
 
+/** A border pair this close (mean gap, map units) morphs rather than one
+ *  erasing while the other draws — a frontier moving, not a new one. */
+const MORPH_REACH = 9
+const MORPH_SAMPLES = 24
+
+const chainPoints = (chain: number[], arcs: Point[][]): Point[] => {
+  const points: Point[] = []
+  for (const signed of chain) {
+    const arc = decodeArc(signed, arcs)
+    points.push(...(points.length ? arc.slice(1) : arc))
+  }
+  return points
+}
+
+const resample = (points: Point[], count: number): Point[] => {
+  const lengths = points
+    .slice(1)
+    .map((point, index) => Math.hypot(point[0] - points[index][0], point[1] - points[index][1]))
+  const total = lengths.reduce((sum, length) => sum + length, 0)
+  if (!total) return Array.from({ length: count }, () => points[0])
+  const output: Point[] = []
+  let segment = 0
+  let travelled = 0
+  for (let index = 0; index < count; index++) {
+    const target = (total * index) / (count - 1)
+    while (segment < lengths.length - 1 && travelled + lengths[segment] < target)
+      travelled += lengths[segment++]
+    const t = lengths[segment] ? (target - travelled) / lengths[segment] : 0
+    const [x1, y1] = points[segment]
+    const [x2, y2] = points[segment + 1] ?? points[segment]
+    output.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t])
+  }
+  return output
+}
+
+const meanGap = (a: Point[], b: Point[]) =>
+  a.reduce(
+    (sum, point, index) => sum + Math.hypot(point[0] - b[index][0], point[1] - b[index][1]),
+    0
+  ) / a.length
+
 const pairSlides = (erase: number[], draw: number[], arcs: Point[][]) => {
   const before = chainsOf(erase, arcs).filter(chain => chain.ends[0] !== chain.ends[1])
   const after = chainsOf(draw, arcs).filter(chain => chain.ends[0] !== chain.ends[1])
   const slides: VintageStep['slides'] = []
   const taken = new Set<Chain>()
+  const paired = new Set<Chain>()
   for (const from of before) {
     const match = after.find(
       to =>
@@ -292,10 +334,34 @@ const pairSlides = (erase: number[], draw: number[], arcs: Point[][]) => {
     )
     if (!match) continue
     taken.add(match)
+    paired.add(from)
     slides.push({
       from: from.arcs,
       to: match.ends[0] === from.ends[0] ? match.arcs : reverseChain(match.arcs),
     })
+  }
+
+  // The rest pair by shape: every candidate scored in both orientations,
+  // closest pairs first, so two frontiers never fight over one replacement.
+  const candidates: { from: Chain; to: Chain; reversed: boolean; gap: number }[] = []
+  for (const from of before) {
+    if (paired.has(from)) continue
+    const fromLine = resample(chainPoints(from.arcs, arcs), MORPH_SAMPLES)
+    for (const to of after) {
+      if (taken.has(to)) continue
+      const toLine = resample(chainPoints(to.arcs, arcs), MORPH_SAMPLES)
+      const forward = meanGap(fromLine, toLine)
+      const backward = meanGap(fromLine, [...toLine].reverse())
+      const gap = Math.min(forward, backward)
+      if (gap <= MORPH_REACH) candidates.push({ from, to, reversed: backward < forward, gap })
+    }
+  }
+  candidates.sort((a, b) => a.gap - b.gap)
+  for (const { from, to, reversed } of candidates) {
+    if (paired.has(from) || taken.has(to)) continue
+    paired.add(from)
+    taken.add(to)
+    slides.push({ from: from.arcs, to: reversed ? reverseChain(to.arcs) : to.arcs })
   }
   return slides
 }

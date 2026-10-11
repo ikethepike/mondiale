@@ -306,6 +306,8 @@ export const groundPlanSeconds = (layers: number, hints = 0): number =>
 
 /** Vintage holds on 2019's map this long before the rewind starts. */
 export const VINTAGE_LEAD_MS = 1800
+/** The big rewind sign that opens the round, inside the lead. */
+export const VINTAGE_FLASH_MS = 2200
 /** What a rewind is budgeted, shared across its steps by how much each one
  *  changes — never by the years between them, which would leak the date. */
 export const VINTAGE_REWIND_BUDGET_MS = 18000
@@ -313,7 +315,7 @@ export const VINTAGE_REWIND_BUDGET_MS = 18000
  *  verdict has had a beat on the dealt map. */
 export const VINTAGE_REPLAY_BUDGET_MS = 6000
 export const VINTAGE_REPLAY_LEAD_MS = 1600
-export const VINTAGE_STEP_MIN_MS = 350
+export const VINTAGE_STEP_MIN_MS = 420
 export const VINTAGE_STEP_MAX_MS = 2600
 /** How far past its budget a crowded pass may run before every step shrinks. */
 const VINTAGE_BUDGET_STRETCH = 1.25
@@ -327,10 +329,13 @@ export const vintageSchedule = (
   weights: readonly number[],
   budgetMs = VINTAGE_REWIND_BUDGET_MS
 ): [number, number][] => {
-  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  // Square roots keep the pace even, a time-lapse rather than long holds
+  // between bursts, while a big change still takes longer than a small one.
+  const shares = weights.map(weight => Math.sqrt(weight))
+  const total = shares.reduce((sum, share) => sum + share, 0)
   if (!total) return weights.map(() => [0, 0])
-  let lengths = weights.map(weight =>
-    weight ? clamp((budgetMs * weight) / total, VINTAGE_STEP_MIN_MS, VINTAGE_STEP_MAX_MS) : 0
+  let lengths = shares.map(share =>
+    share ? clamp((budgetMs * share) / total, VINTAGE_STEP_MIN_MS, VINTAGE_STEP_MAX_MS) : 0
   )
   const spent = lengths.reduce((sum, length) => sum + length, 0)
   const cap = budgetMs * VINTAGE_BUDGET_STRETCH

@@ -25,7 +25,7 @@ import {
   finalScene,
   sceneAt,
   sceneCount,
-  slideOverrides,
+  slideLine,
   slideTrack,
   stepScene,
 } from '~~/lib/vintage'
@@ -73,23 +73,22 @@ describe.each(VINTAGE_REGION_IDS)('vintage data: %s', region => {
     sameScene(scene, sceneAt(geometry, finalScene(geometry)))
   })
 
-  it('pins every slide to its junctions at both ends', () => {
+  it('slides start on the old border and land exactly on the new one', () => {
+    const near = (a: [number, number], b: [number, number]) => {
+      expect(a[0]).toBeCloseTo(b[0], 1)
+      expect(a[1]).toBeCloseTo(b[1], 1)
+    }
     for (const step of geometry.steps)
       for (const slide of step.slides) {
         const track = slideTrack(geometry, slide)
-        const first = arcPoints(geometry, slide.from[0])[0]
-        const toLast = arcPoints(geometry, slide.to[slide.to.length - 1]).at(-1)!
-        for (const t of [0, 1]) {
-          const overrides = slideOverrides(track, t)
-          const lead = slide.from[0]
-          const leadPoints = overrides.get(lead < 0 ? ~lead : lead)!
-          const start = lead < 0 ? leadPoints.at(-1)! : leadPoints[0]
-          expect(start[0]).toBeCloseTo(first[0], 1)
-          expect(start[1]).toBeCloseTo(first[1], 1)
-        }
-        const end = track.to.at(-1)!
-        expect(end[0]).toBeCloseTo(toLast[0], 1)
-        expect(end[1]).toBeCloseTo(toLast[1], 1)
+        const fromStart = arcPoints(geometry, slide.from[0])[0]!
+        const fromEnd = arcPoints(geometry, slide.from[slide.from.length - 1]).at(-1)!
+        const toStart = arcPoints(geometry, slide.to[0])[0]!
+        const toEnd = arcPoints(geometry, slide.to[slide.to.length - 1]).at(-1)!
+        near(slideLine(track, 0)[0]!, fromStart)
+        near(slideLine(track, 0).at(-1)!, fromEnd)
+        near(slideLine(track, 1)[0]!, toStart)
+        near(slideLine(track, 1).at(-1)!, toEnd)
       }
   })
 

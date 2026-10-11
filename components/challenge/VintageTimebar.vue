@@ -1,6 +1,13 @@
 <template>
   <div class="vintage-timebar" :class="{ interactive, disabled, marked: !!marker }">
-    <div class="track">
+    <div
+      ref="track"
+      class="track"
+      @pointerdown="startDrag"
+      @pointermove="moveDrag"
+      @pointerup="endDrag"
+      @pointercancel="endDrag"
+    >
       <svg
         v-if="curve"
         class="curve"
@@ -30,9 +37,32 @@
       <span
         v-if="interactive && modelValue !== undefined"
         class="needle"
-        :style="{ left: `${at(modelValue)}%` }"
+        :class="{ dragging: dragAt !== undefined }"
+        :style="{ left: `${dragAt ?? at(modelValue)}%` }"
       >
-        <span class="readout">{{ modelValue }}</span>
+        <span class="readout">
+          <button
+            type="button"
+            class="nudge"
+            aria-label="One year earlier"
+            :disabled="disabled"
+            @pointerdown.stop
+            @click="nudge(-1)"
+          >
+            ‹
+          </button>
+          {{ modelValue }}
+          <button
+            type="button"
+            class="nudge"
+            aria-label="One year later"
+            :disabled="disabled"
+            @pointerdown.stop
+            @click="nudge(1)"
+          >
+            ›
+          </button>
+        </span>
       </span>
       <span
         v-else-if="marker"
@@ -97,6 +127,36 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ 'update:modelValue': [year: number]; select: [year: number] }>()
+
+const track = ref<HTMLElement>()
+/** Where the needle stands mid-drag, in percent — it follows the finger
+ *  continuously and only the readout snaps to whole years. */
+const dragAt = ref<number>()
+const pick = (year: number) => {
+  const next = clamp(Math.round(year), props.range[0], props.range[1])
+  if (next !== props.modelValue) emit('update:modelValue', next)
+}
+const dragTo = (event: PointerEvent) => {
+  const box = track.value?.getBoundingClientRect()
+  if (!box?.width) return
+  const share = clamp((event.clientX - box.left) / box.width, 0, 1)
+  dragAt.value = share * 100
+  pick(props.range[0] + share * (props.range[1] - props.range[0]))
+}
+const startDrag = (event: PointerEvent) => {
+  if (!props.interactive || props.disabled) return
+  track.value?.setPointerCapture(event.pointerId)
+  dragTo(event)
+}
+const moveDrag = (event: PointerEvent) => {
+  if (dragAt.value !== undefined) dragTo(event)
+}
+const endDrag = () => {
+  dragAt.value = undefined
+}
+const nudge = (by: number) => {
+  if (props.modelValue !== undefined && !props.disabled) pick(props.modelValue + by)
+}
 
 const at = (year: number) =>
   clamp(((year - props.range[0]) / Math.max(1, props.range[1] - props.range[0])) * 100, 0, 100)
@@ -218,7 +278,19 @@ const curve = computed(() => {
   pointer-events: none;
   transition: left var(--motion-quick) var(--ease-smooth);
 
+  &.dragging {
+    transition: none;
+
+    .readout {
+      transform: translate(-50%, -0.4rem) scale(1.12);
+    }
+  }
+
   .readout {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    transition: transform var(--motion-quick) var(--ease-smooth);
     position: absolute;
     bottom: 100%;
     left: 50%;
@@ -247,6 +319,30 @@ const curve = computed(() => {
   }
 }
 
+.nudge {
+  padding: 0 0.4rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.7;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.interactive .track {
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+// Keyboard and screen readers only: the track owns the pointer, so the
+// needle can follow a finger between whole years.
 input[type='range'] {
   position: absolute;
   inset: 0;
@@ -254,8 +350,7 @@ input[type='range'] {
   height: 100%;
   margin: 0;
   opacity: 0;
-  cursor: ew-resize;
-  touch-action: none;
+  pointer-events: none;
 }
 
 .disabled {

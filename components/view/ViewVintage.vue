@@ -19,6 +19,13 @@
         @scene="scene => (shownScene = scene)"
       />
 
+      <Transition name="rewind-flash">
+        <div v-if="flashing" class="rewind-flash" aria-hidden="true">
+          <RewindGlyph class="flash-glyph" />
+          <span class="flash-word">Rewind</span>
+        </div>
+      </Transition>
+
       <ChallengePrompt
         ref="promptHost"
         :hint="hint"
@@ -36,7 +43,10 @@
           <p>{{ because }}</p>
           <p class="held">This map held {{ heldLine }}.</p>
         </ChallengeResult>
-        <span v-if="!outcome" class="map-caption sub">{{ subline }}</span>
+        <span v-if="!outcome" class="map-caption sub" :class="{ rewinding: phase === 'rewind' }">
+          <RewindGlyph v-if="phase === 'rewind'" class="sub-glyph" />
+          {{ subline }}
+        </span>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </ChallengePrompt>
 
@@ -47,7 +57,7 @@
         </li>
       </ul>
 
-      <footer ref="consoleFooter" class="console">
+      <footer ref="consoleFooter" class="console" :class="{ lowered: phase === 'rewind' }">
         <VintageTimebar
           v-model="guess"
           class="timebar"
@@ -88,6 +98,7 @@
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import RewindGlyph from '~/components/challenge/RewindGlyph.vue'
 import VintageField from '~/components/challenge/VintageField.vue'
 import VintageTimebar from '~/components/challenge/VintageTimebar.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
@@ -96,6 +107,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { useClientEvents } from '~~/lib/events/client-side'
 import {
+  VINTAGE_FLASH_MS,
   VINTAGE_GUESS_SECONDS,
   VINTAGE_LEAD_MS,
   VINTAGE_REPLAY_BUDGET_MS,
@@ -219,6 +231,15 @@ const phase = computed<'rewind' | 'guess' | 'answered'>(() => {
   return playWindow.elapsedMs.value >= passLengthMs(rewind.value) ? 'guess' : 'rewind'
 })
 
+/** The opening sign, while the round's first beats tick by — a seat that
+ *  arrives mid-rewind never sees it. */
+const flashing = computed(
+  () =>
+    phase.value === 'rewind' &&
+    playWindow.running.value &&
+    playWindow.elapsedMs.value < VINTAGE_FLASH_MS
+)
+
 const guess = ref(
   challenge.value ? Math.round((challenge.value.range[0] + challenge.value.range[1]) / 2) : 1950
 )
@@ -246,7 +267,7 @@ const headline = computed(() =>
 )
 const subline = computed(() =>
   phase.value === 'rewind'
-    ? 'Watch what changes — the clock is hidden.'
+    ? 'Rewinding — watch what changes'
     : challenge.value?.labelled
       ? 'Any name or border can date it. Tap a country to read its name.'
       : 'No names this time — the lines and the colours of rule are your clues.'
@@ -348,6 +369,70 @@ onBeforeUnmount(() => {
   }
 }
 
+.rewind-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 2.4rem 4rem 2rem;
+  color: ink(0.95);
+  border-radius: $cardRadius;
+  border: 1px solid ink(0.2);
+  background: color-mix(in srgb, var(--background-color) 88%, transparent);
+  box-shadow: 0 1.2rem 4rem ink(0.18);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+
+  .flash-glyph {
+    font-size: 6.4rem;
+    animation: rewind-blink 0.7s steps(2, jump-none) 2;
+  }
+
+  .flash-word {
+    font-size: 1.6rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+  }
+}
+
+@keyframes rewind-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.rewind-flash-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-slow) var(--ease-out-expressive);
+}
+.rewind-flash-leave-active {
+  transition:
+    opacity var(--motion-slow) var(--ease-in-soft),
+    transform var(--motion-slow) var(--ease-in-soft);
+}
+.rewind-flash-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8);
+}
+.rewind-flash-leave-to {
+  opacity: 0;
+  transform: translate(-30%, -50%) scale(0.96);
+}
+
+.rewinding {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  .sub-glyph {
+    animation: rewind-blink 1.4s ease-in-out infinite;
+  }
+}
+
 .console {
   display: flex;
   flex-direction: column;
@@ -356,6 +441,15 @@ onBeforeUnmount(() => {
   width: min(76rem, 92vw);
   margin: 0 auto;
   pointer-events: auto;
+  transition:
+    transform var(--motion-slow) var(--ease-out-expressive),
+    opacity var(--motion-base) var(--ease-smooth);
+
+  &.lowered {
+    opacity: 0;
+    transform: translateY(calc(100% + 3rem));
+    pointer-events: none;
+  }
 
   @media (min-width: $tablet) {
     flex-direction: row;
