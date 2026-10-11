@@ -1238,6 +1238,7 @@ const promptSources = computed(() => datasetAttribution('parties'))
     // containing block, which shrank the canvas into the right column.
     > :not(.parliament-layer) {
       grid-column: 2;
+      min-width: 0;
     }
 
     .stage-window {

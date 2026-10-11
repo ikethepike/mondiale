@@ -287,7 +287,7 @@ const scoreboard = computed(() =>
   display: grid;
   align-content: start;
   gap: 0.75rem;
-  width: min(94vw, 46rem);
+  width: min(calc(100% - 2.4rem), 46rem);
   max-height: 100%;
   margin: auto;
   padding-block: 1.2rem;
@@ -297,7 +297,7 @@ const scoreboard = computed(() =>
   @media (min-width: $laptop) {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     grid-template-rows: auto auto 1fr;
-    width: min(94vw, 100rem);
+    width: min(calc(100% - 2.4rem), 100rem);
 
     .take {
       grid-column: 1 / -1;
