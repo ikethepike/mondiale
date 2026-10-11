@@ -210,31 +210,6 @@
             </g>
           </g>
         </g>
-        <!-- Pin-landmark: the guess, then on reveal the truth and a line between. -->
-        <line
-          v-if="pinPoint && pinAnswerPoint"
-          class="map-pin-link"
-          :x1="pinPoint.x"
-          :y1="pinPoint.y"
-          :x2="pinAnswerPoint.x"
-          :y2="pinAnswerPoint.y"
-        />
-        <g v-if="pinPoint" class="map-pin" :transform="`translate(${pinPoint.x} ${pinPoint.y})`">
-          <g class="map-pin-scale">
-            <circle class="map-pin-halo" r="13" />
-            <circle class="map-pin-dot" r="4.5" />
-          </g>
-        </g>
-        <g
-          v-if="pinAnswerPoint"
-          class="map-pin answer"
-          :transform="`translate(${pinAnswerPoint.x} ${pinAnswerPoint.y})`"
-        >
-          <g class="map-pin-scale">
-            <circle class="map-pin-halo" r="13" />
-            <circle class="map-pin-dot" r="4.5" />
-          </g>
-        </g>
       </template>
     </svg>
   </div>
@@ -814,12 +789,6 @@ onMounted(() => {
 const showSailChips = computed(() => seaLinkArcs.value.length <= 3)
 
 // Evaluated lazily, so reading `gameStore` (declared further down) is safe.
-const pinPoint = computed(() =>
-  gameStore.map.pin ? projectRobinson(gameStore.map.pin, MAP_PROJECTION) : undefined
-)
-const pinAnswerPoint = computed(() =>
-  gameStore.map.pinAnswer ? projectRobinson(gameStore.map.pinAnswer, MAP_PROJECTION) : undefined
-)
 
 // --- Camera: one viewBox drives everything ----------------------------------
 // Gestures and reveal tweens all write the viewBox directly, repainting one
@@ -1730,7 +1699,7 @@ const updateEffectiveZoom = () => {
   //                  which should never grow with the camera.
   //   --marker-unit  screen pixels that still grow with the camera (capped).
   //                  Anything the eye must FIND: the no-man's-land marker,
-  //                  the map pin, the sea chip.
+  //                  the sea chip.
   //
   // The trap: --stroke-zoom is `1` at world view, so a frame-sized element
   // comes out `r * cssWidth / 2000` — fine on the 1280px desktop it was tuned
@@ -1738,7 +1707,7 @@ const updateEffectiveZoom = () => {
   svg.value.style.setProperty('--stroke-zoom', String(1 / Math.max(1, effectiveZoom)))
   svg.value.style.setProperty('--screen-unit', String(userUnitsPerPixel()))
   // The third register, for anything the eye must FIND (the no-man's-land
-  // marker, the map pin, the sea chip): a screen-pixel floor that still grows
+  // marker, the sea chip): a screen-pixel floor that still grows
   // with the camera, so zooming in feels like approaching the thing rather
   // than watching it hold still. Capped — past MARKER_MAX_GROWTH the ring
   // would swallow the nine-metre rock it points at.
@@ -2508,39 +2477,6 @@ path[id],
   50% {
     fill: hsla(45, 85%, 55%, 0.92);
   }
-}
-
-// The guess wears the accent orange; the revealed answer takes the map's own
-// blue, the hue the feature markers already use.
-.map-pin {
-  pointer-events: none;
-  color: var(--hior-ange);
-
-  &.answer {
-    color: ink(1, 41%);
-  }
-}
-
-.map-pin-scale {
-  transform: scale(var(--marker-unit, 1));
-}
-
-.map-pin-halo {
-  fill: var(--background-color);
-  stroke: currentColor;
-  stroke-width: 3px;
-}
-
-.map-pin-dot {
-  fill: currentColor;
-}
-
-.map-pin-link {
-  fill: none;
-  pointer-events: none;
-  stroke: ink(1, 41%);
-  stroke-width: calc(2.5px * var(--stroke-zoom, 1));
-  stroke-dasharray: calc(9px * var(--stroke-zoom, 1)) calc(7px * var(--stroke-zoom, 1));
 }
 
 // The action ring: a stroke, never a fill — "you may act here". Ember, the
