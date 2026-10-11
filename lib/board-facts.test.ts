@@ -13,7 +13,7 @@ import { isCountryPlayable } from '~~/lib/game-rules'
 import { seededRandom } from '~~/lib/random'
 import type { GameRules } from '~~/types/game.types'
 
-const WORLD: GameRules = { variant: 'world', difficulty: 'normal', includeMicroNations: true }
+const WORLD: GameRules = { regions: [], difficulty: 'normal', includeMicroNations: true }
 const DERIVED = new Set<BoardFactFamily>(['record', 'borders', 'clock'])
 
 describe('tidyFactbookText', () => {
@@ -122,7 +122,7 @@ describe('pickBoardFact', async () => {
   })
 
   it('only tells a regional board about countries on it', () => {
-    const europe: GameRules = { variant: 'europe', difficulty: 'normal' }
+    const europe: GameRules = { regions: ['europe'], difficulty: 'normal' }
     for (const fact of dealableBoardFacts(deck, europe, new Set())) {
       expect(
         fact.countries.some(isoCode => isCountryPlayable(europe, isoCode)),
