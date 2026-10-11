@@ -1,3 +1,4 @@
+import type { Fame } from './fame.types'
 import type { GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 
@@ -134,6 +135,9 @@ export interface VintageRegionYears {
   tells: { labelled: number[]; bare: number[] }
   /** How much each step changes, which paces its share of the rewind. */
   weights: { labelled: number[]; bare: number[] }
+  /** How datable each scene is with its names on (`sceneLegibility`) —
+   *  easy and normal gate on it; hard deals every tier. */
+  fame: Fame[]
   /** Sovereign states in the region, per year from `firstYear`. */
   states: number[]
   firstYear: number

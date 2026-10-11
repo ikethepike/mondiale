@@ -2,7 +2,9 @@ import { VINTAGE_YEARS } from '~~/data/vintage-years.gen'
 import { sample } from '~~/lib/arrays'
 import { vintageSeconds } from '~~/lib/round-beats'
 import { taperScore } from '~~/lib/scoring'
+import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import type { VintageChallenge, VintageOutcome } from '~~/types/challenges/group-modes.type'
+import { isFameDealable } from '~~/types/fame.types'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import { VINTAGE_REGIONS_BY_VARIANT, type VintageRegionId } from '~~/types/vintage.types'
 
@@ -12,28 +14,10 @@ import { VINTAGE_REGIONS_BY_VARIANT, type VintageRegionId } from '~~/types/vinta
  * names a scene, and its years reach a seat only on that seat's graded answer.
  */
 
-export const VINTAGE_TUNING: Record<
-  GameDifficulty,
-  {
-    labelled: boolean
-    /** Units that must look different from 2019 for a scene to be dealt. */
-    minTells: number
-    /** Scenes ending before this year are never dealt. */
-    earliest: number
-    /** Years either side of the dealt map's runs that still pay in full. */
-    grace: number
-    /** Years outside the runs at which a guess pays nothing. */
-    zeroAt: number
-  }
-> = {
-  easy: { labelled: true, minTells: 5, earliest: 1900, grace: 3, zeroAt: 30 },
-  normal: { labelled: true, minTells: 3, earliest: 1890, grace: 1, zeroAt: 25 },
-  hard: { labelled: false, minTells: 2, earliest: 1886, grace: 0, zeroAt: 20 },
-}
-
 const modeOf = (labelled: boolean) => (labelled ? 'labelled' : 'bare')
 
-/** The scenes a region may deal at this difficulty. */
+/** The scenes a region may deal at this difficulty: old enough to be worth
+ *  dating, and datable enough for the table (`fame`, stamped per scene). */
 export const dealableScenes = (region: VintageRegionId, difficulty: GameDifficulty): number[] => {
   const tuning = VINTAGE_TUNING[difficulty]
   const years = VINTAGE_YEARS[region]
@@ -41,7 +25,8 @@ export const dealableScenes = (region: VintageRegionId, difficulty: GameDifficul
   return years.spans.flatMap(([, to], scene) =>
     scene < final &&
     to >= tuning.earliest &&
-    years.tells[modeOf(tuning.labelled)][scene] >= tuning.minTells
+    years.tells[modeOf(tuning.labelled)][scene] >= tuning.minTells &&
+    isFameDealable(years.fame[scene], difficulty)
       ? [scene]
       : []
   )

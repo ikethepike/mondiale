@@ -1,4 +1,5 @@
-import { VINTAGE_TUNING, vintageRuns } from './vintage-grade'
+import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
+import { vintageRuns } from './vintage-grade'
 import type {
   GovernmentAnswers,
   UniqueCategoryId,

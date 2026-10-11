@@ -841,8 +841,8 @@ const VINTAGE_DEALS: Record<
   'middle-east-1930': { region: 'middle-east', year: 1930, difficulty: 'normal' },
   'south-asia-1946': { region: 'south-asia', year: 1946, difficulty: 'normal' },
   'east-asia-1935': { region: 'east-asia', year: 1935, difficulty: 'normal' },
-  'north-america-1930': { region: 'north-america', year: 1930, difficulty: 'normal' },
-  'south-america-1930': { region: 'south-america', year: 1930, difficulty: 'normal' },
+  'north-america-1940': { region: 'north-america', year: 1940, difficulty: 'normal' },
+  'south-america-1930-hard': { region: 'south-america', year: 1930, difficulty: 'hard' },
 }
 
 const vintageChallengeOf = (id: string) => {
@@ -1450,8 +1450,8 @@ const scenarios: Scenario[] = [
       { id: 'middle-east-1930', label: 'Middle East — the mandates (normal)' },
       { id: 'south-asia-1946', label: 'South Asia — the Raj before Partition (normal)' },
       { id: 'east-asia-1935', label: 'East Asia — Imperial Japan (normal)' },
-      { id: 'north-america-1930', label: 'North America — Newfoundland apart (normal)' },
-      { id: 'south-america-1930', label: 'South America — before the Chaco War (normal)' },
+      { id: 'north-america-1940', label: 'North America — Newfoundland apart (normal)' },
+      { id: 'south-america-1930-hard', label: 'South America — before the Chaco War (hard)' },
     ],
     build: variant => vintageGame(variant?.id ?? 'africa-1955', 'round'),
   },

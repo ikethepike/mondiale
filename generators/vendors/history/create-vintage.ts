@@ -23,6 +23,7 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import { jsonParseLiteral } from '../../lib/emit'
 import { balancedAnchor, ringArea } from '../../../lib/outline'
+import { VINTAGE_FAME, legibleFame, sceneLegibility } from '../../../lib/vintage-tuning'
 import {
   VINTAGE_REGION_IDS,
   type VintageEra,
@@ -33,6 +34,7 @@ import {
   type VintageStep,
   type VintageUnitLook,
 } from '../../../types/vintage.types'
+import { FAME_TIERS } from '../../../types/fame.types'
 import { VINTAGE_NOTES } from '../../data/vintage-notes'
 import { VINTAGE_REGION_SPECS, VINTAGE_UNITS } from '../../data/vintage-units'
 import {
@@ -519,6 +521,8 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
 
   // Shapes, deduped on their visible rings.
   const shapes: VintageShape[] = []
+  /** Land each shape shows inside the frame, holes cut out. */
+  const shapeAreas: number[] = []
   const shapeKeys = new Map<string, number>()
   const shapeOfFeature = new Map<number, number>()
   const shapeFor = (feature: number): number => {
@@ -559,6 +563,15 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
         })
       )
       index = shapes.length
+      shapeAreas.push(
+        featurePolygons[feature].reduce(
+          (total, [shell, ...holes]) =>
+            total +
+            ringArea(clippedRing(shell)) -
+            holes.reduce((cut, hole) => cut + ringArea(clippedRing(hole)), 0),
+          0
+        )
+      )
       shapes.push({
         rings,
         anchor: pole ? [roundTo(pole.point[0]), roundTo(pole.point[1])] : [0, 0],
@@ -700,6 +713,31 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
     weights.bare.push(weigh(false))
   }
 
+  // What a step visibly changes, as a share of the frame: recolours and
+  // arrivals count whole, a moved border the land it moves, a rename half.
+  const salience = steps.map(step => {
+    let changed = 0
+    for (const [, beforeShape, beforeEra, afterShape, afterEra] of step.units) {
+      if (beforeShape < 0 && afterShape < 0) continue
+      if (beforeShape < 0 || afterShape < 0) {
+        changed += shapeAreas[Math.max(beforeShape, afterShape)]
+        continue
+      }
+      if ((eras[beforeEra].wash ?? '') !== (eras[afterEra].wash ?? '')) {
+        changed += shapeAreas[afterShape]
+        continue
+      }
+      changed += Math.abs(shapeAreas[beforeShape] - shapeAreas[afterShape])
+      if (eras[beforeEra].name !== eras[afterEra].name)
+        changed += VINTAGE_FAME.rename * shapeAreas[afterShape]
+    }
+    return changed / (frameW * frameH)
+  })
+  const spans = scenes.map(scene => [scene.from, scene.to] as [number, number])
+  const labelledClasses = classesBy(state => state.labelled)
+  const legibility = sceneLegibility({ spans, classes: labelledClasses, salience })
+  const fame = legibility.map(legibleFame)
+
   // Notes must land on a step that touches their unit in their year.
   const notes: Record<string, string> = {}
   for (const [key, note] of Object.entries(VINTAGE_NOTES)) {
@@ -735,6 +773,18 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
       .map(scene => scene.from)
       .join(' ')}`
   )
+  for (const tier of FAME_TIERS)
+    log(
+      `  ${tier}: ${scenes
+        .flatMap((scene, index) =>
+          fame[index] === tier && index < scenes.length - 1
+            ? [
+                `${scene.from === scene.to ? scene.from : `${scene.from}–${scene.to}`}(${Math.round(legibility[index] * 100)})`,
+              ]
+            : []
+        )
+        .join(' ')}`
+    )
   log(
     `  slides at: ${steps
       .map((step, index) =>
@@ -760,13 +810,14 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
       steps,
     },
     years: {
-      spans: scenes.map(scene => [scene.from, scene.to]),
+      spans,
       classes: {
-        labelled: classesBy(state => state.labelled),
+        labelled: labelledClasses,
         bare: classesBy(state => state.bare),
       },
       tells,
       weights,
+      fame,
       states: yearStates.map(state => state.states),
       firstYear: FIRST_YEAR,
       notes,

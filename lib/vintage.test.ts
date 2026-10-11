@@ -3,7 +3,6 @@ import { join } from 'path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { VINTAGE_YEARS } from '~~/data/vintage-years.gen'
 import {
-  VINTAGE_TUNING,
   dealableScenes,
   pickVintage,
   vintageChallengeFor,
@@ -35,6 +34,8 @@ import {
   type ArcOverrides,
 } from '~~/lib/vintage'
 import { bookends, changelog, clues, dealtRun, vintageVerdict } from '~~/lib/vintage-story'
+import { VINTAGE_TUNING, legibleFame, sceneLegibility } from '~~/lib/vintage-tuning'
+import { isFameDealable } from '~~/types/fame.types'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import {
   VINTAGE_REGION_IDS,
@@ -190,6 +191,38 @@ describe('vintage answer key boundary', () => {
   })
 })
 
+describe('vintage legibility', () => {
+  const spans: [number, number][] = [
+    [1900, 1949],
+    [1950, 1959],
+    [1960, 2019],
+  ]
+  const classes = [0, 1, 2]
+
+  it('pays a scene bracketed by landmarks in full', () => {
+    const [, middle] = sceneLegibility({ spans, classes, salience: [0.2, 0.2] })
+    expect(legibleFame(middle)).toBe('major')
+    expect(middle).toBeCloseTo(1, 5)
+  })
+
+  it('sinks a scene whose only tells are too small to see', () => {
+    const [, middle] = sceneLegibility({ spans, classes, salience: [0.001, 0.001] })
+    expect(legibleFame(middle)).toBe('obscure')
+  })
+
+  it('lets a faint edge widen the window on one side only', () => {
+    const [, sharp] = sceneLegibility({ spans, classes, salience: [0.2, 0.2] })
+    const [, faint] = sceneLegibility({ spans, classes, salience: [0.2, 0.001] })
+    expect(faint).toBeLessThan(sharp)
+    expect(faint).toBeGreaterThan(sceneLegibility({ spans, classes, salience: [0.001, 0.001] })[1])
+  })
+
+  it('stamps a tier on every scene of every region', () => {
+    for (const region of VINTAGE_REGION_IDS)
+      expect(VINTAGE_YEARS[region].fame).toHaveLength(VINTAGE_YEARS[region].spans.length)
+  })
+})
+
 describe('vintage dealer and grader', () => {
   it.each(['easy', 'normal', 'hard'] as const)(
     'never deals below the %s tell floor',
@@ -199,6 +232,7 @@ describe('vintage dealer and grader', () => {
       for (const region of VINTAGE_REGION_IDS)
         for (const scene of dealableScenes(region, difficulty)) {
           expect(VINTAGE_YEARS[region].tells[mode][scene]).toBeGreaterThanOrEqual(tuning.minTells)
+          expect(isFameDealable(VINTAGE_YEARS[region].fame[scene], difficulty)).toBe(true)
           expect(scene).toBeLessThan(VINTAGE_YEARS[region].spans.length - 1)
           const challenge = vintageChallengeFor(region, scene, difficulty, 10)
           expect(challenge.durationSeconds).toBe(vintageSeconds(challenge.stepWeights))
@@ -206,9 +240,18 @@ describe('vintage dealer and grader', () => {
     }
   )
 
-  it('gives every region something to deal on normal', () => {
+  it('gives every region something to deal on hard', () => {
     for (const region of VINTAGE_REGION_IDS)
-      expect(dealableScenes(region, 'normal').length, region).toBeGreaterThan(0)
+      expect(dealableScenes(region, 'hard').length, region).toBeGreaterThan(0)
+  })
+
+  it('keeps every board but the sparse ones dealing at every difficulty', () => {
+    for (const variant of Object.keys(VINTAGE_REGIONS_BY_VARIANT) as Game['variant'][])
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        const dealt = pickVintage(gameOn(difficulty, variant), 10)
+        if (variant === 'south-america' && difficulty !== 'hard') expect(dealt).toBeUndefined()
+        else expect(dealt, `${variant} ${difficulty}`).toBeDefined()
+      }
   })
 
   it('deals only the board’s own regions', () => {
@@ -221,7 +264,7 @@ describe('vintage dealer and grader', () => {
 
   it('deals every region somewhere on a world board', () => {
     const regions = new Set(
-      Array.from({ length: 300 }, () => pickVintage(gameOn('normal', 'world'), 10)!.region)
+      Array.from({ length: 300 }, () => pickVintage(gameOn('hard', 'world'), 10)!.region)
     )
     expect(regions.size).toBe(VINTAGE_REGION_IDS.length)
   })
