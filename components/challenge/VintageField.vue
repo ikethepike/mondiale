@@ -33,7 +33,7 @@
             class="vintage-unit"
           />
         </g>
-        <g class="borders" :style="{ strokeWidth: stroke }">
+        <g class="borders">
           <path
             v-for="arc in borderArcs"
             :key="arc"
@@ -142,7 +142,6 @@ const featherStyle = computed(() => {
 })
 const FEATHER_MARGIN = 0.1
 const FEATHER_SOFTNESS = 0.07
-const stroke = computed(() => `${(viewBox.value?.w ?? 600) * 0.0016}px`)
 
 const unitEls: SVGPathElement[] = []
 const incomingEls: SVGPathElement[] = []
@@ -426,6 +425,7 @@ const showTip = (unit: number, event: PointerEvent) => {
 }
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 // Both boxes come inline from useMapPanTrack, pinned to the map's painted
@@ -472,6 +472,8 @@ const showTip = (unit: number, event: PointerEvent) => {
 .border {
   fill: none;
   stroke: ink(0.78);
+  // Screen pixels at every zoom; never derive this from the camera.
+  stroke-width: 1px;
   stroke-linejoin: round;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
@@ -479,6 +481,7 @@ const showTip = (unit: number, event: PointerEvent) => {
 
 .slide {
   stroke: ink(0.95);
+  stroke-width: 1.3px;
 }
 
 .labels {
@@ -526,5 +529,15 @@ const showTip = (unit: number, event: PointerEvent) => {
   white-space: nowrap;
   transform: translate(-50%, calc(-100% - 1.2rem));
   pointer-events: none;
+}
+
+@media (max-width: $tablet) {
+  .border {
+    stroke-width: 0.8px;
+  }
+
+  .slide {
+    stroke-width: 1.1px;
+  }
 }
 </style>
