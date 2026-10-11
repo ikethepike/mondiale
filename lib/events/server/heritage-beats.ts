@@ -7,7 +7,7 @@ import type { Game } from '~~/types/game.types'
 import { useServerSideEvents } from '../server-side'
 import type { ChainContext } from './chain-turns'
 import { scheduleDeadlineTask, scheduleRevealTask, settleRoundScores } from './round-engine'
-import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS } from '~~/lib/round-beats'
+import { FIRST_TURN_GRACE_MS as FIRST_BEAT_GRACE_MS, REVEAL_HOLD_MS } from '~~/lib/round-beats'
 
 /**
  * Heritage Hunt's beat engine, the pattern sibling of chain-turns: one photo
@@ -114,17 +114,21 @@ const resolveHeritageBeat = async (
   }
 
   state.revealing = true
+  state.revealUntil = Date.now() + REVEAL_HOLD_MS
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
   server.emit({ event: 'heritage-updated', game }, ctx.eventTarget)
 
-  scheduleHeritageReveal(ctx, state.beat)
+  scheduleHeritageReveal(ctx, state)
 }
 
-/** Arm the beat reveal's follow-up. Idempotent: the fired task re-reads fresh
- *  state and bails once the beat moved on. */
-const scheduleHeritageReveal = (ctx: ChainContext, revealedBeat: number) => {
-  scheduleRevealTask(ctx, async fresh => {
+/** Arm the beat reveal's follow-up against its stamped end. Idempotent: the
+ *  fired task re-reads fresh state and bails once the beat moved on. */
+const scheduleHeritageReveal = (
+  ctx: ChainContext,
+  { beat: revealedBeat, revealUntil }: HeritageHuntChallenge['state']
+) => {
+  scheduleDeadlineTask(ctx, revealUntil ?? Date.now() + REVEAL_HOLD_MS, async fresh => {
     const current = currentHeritageHunt(fresh)
     if (!current?.state.revealing || current.state.beat !== revealedBeat) return
     await advanceHeritageBeat(ctx, fresh, current)
@@ -141,6 +145,7 @@ const advanceHeritageBeat = async (
 
   if (state.beat < challenge.slugs.length - 1) {
     state.revealing = false
+    delete state.revealUntil
     state.beat++
     stampDeadline(challenge)
     await server.updateGameState(game)
@@ -153,6 +158,7 @@ const advanceHeritageBeat = async (
   // preserving the beat rhythm (the last reveal hold IS the basking beat).
   state.finished = true
   state.revealing = false
+  delete state.revealUntil
   await settleHeritageRound(ctx, game, challenge)
 }
 
@@ -217,7 +223,7 @@ export const rearmHeritageHunt = (ctx: ChainContext, game: Game) => {
   // re-run the settle behind a reveal beat. The groupAnswers latch makes it
   // a no-op when the round DID settle.
   if (challenge.state.finished) return scheduleHeritageSettle(ctx)
-  if (challenge.state.revealing) return scheduleHeritageReveal(ctx, challenge.state.beat)
+  if (challenge.state.revealing) return scheduleHeritageReveal(ctx, challenge.state)
   // A zero deadline is the staged-but-unrevealed shape (the clock stamps at
   // the reveal) — arming against it would resolve beat 0 before anyone saw it.
   if (challenge.state.deadline === 0) return

@@ -18,6 +18,8 @@ import { rearmUniqueOrBust } from './unique-beats'
  *  live until they fire, so unbounded sweeps are unbounded timer churn. */
 const REARM_DEBOUNCE_MS = 5000
 const lastRearmedAt = new Map<string, number>()
+/** Test seam: a restart forgets its debounce along with its timers. */
+export const forgetRearmsForTests = () => lastRearmedAt.clear()
 
 /**
  * The clocked round engines pace themselves with in-process timers, so a

@@ -188,7 +188,7 @@ export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): Sea
     if (settleAt !== undefined && now > settleAt) {
       add(
         'round-overdue',
-        `${waiting.length} seat(s) still on round ${game.rounds.length - 1}, ${now - settleAt}ms past its clock`
+        `${waiting.length} seat(s) still on round ${game.rounds.length - 1} (${challenge._type}${engineStateNote(challenge)}), ${now - settleAt}ms past its clock`
       )
     }
   }
@@ -213,8 +213,21 @@ export const seatInvariantViolations = (game: Game, evidence: SeatEvidence): Sea
 }
 
 const engineDeadline = (challenge: unknown): number | undefined => {
-  const state = (challenge as { state?: { deadline?: unknown; finished?: unknown } } | undefined)
-    ?.state
+  const state = (
+    challenge as
+      | {
+          state?: {
+            deadline?: unknown
+            finished?: unknown
+            revealing?: unknown
+            revealUntil?: unknown
+          }
+        }
+      | undefined
+  )?.state
+  if (state?.revealing && typeof state.revealUntil === 'number' && !state.finished) {
+    return state.revealUntil
+  }
   // Engines park at deadline 0 through a briefing: unstamped, not overdue.
   return state && !state.finished && typeof state.deadline === 'number' && state.deadline > 0
     ? state.deadline
@@ -255,3 +268,12 @@ export const subjectStallMs = (step: SeatStep): number | undefined =>
     : step === 'round'
       ? ROUND_STALL_MS
       : undefined
+
+const engineStateNote = (challenge: unknown): string => {
+  const state = (challenge as { state?: Record<string, unknown> } | undefined)?.state
+  if (!state) return ''
+  const flags = ['turn', 'beat', 'revealing', 'briefing', 'finished']
+    .filter(key => key in state)
+    .map(key => `${key}=${String(state[key])}`)
+  return flags.length ? ` ${flags.join(' ')}` : ''
+}

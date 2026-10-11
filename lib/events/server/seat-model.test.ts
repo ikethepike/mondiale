@@ -19,9 +19,15 @@ import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { SEAT_STEPS, type SeatCursor, type SeatStep } from '~~/types/seat.types'
 import { enqueueGameTask, useServerSideEvents } from '../server-side'
-import { armAfkTakeover, armBotPump, composeClassicSubmission, finalAnswerFor } from './bot-brain'
+import {
+  armAfkTakeover,
+  armBotPump,
+  composeClassicSubmission,
+  finalAnswerFor,
+  forgetBotStateForTests,
+} from './bot-brain'
 import { joinEventHandler } from './join.event'
-import { rearmLiveRound } from './rearm-round'
+import { forgetRearmsForTests, rearmLiveRound } from './rearm-round'
 import { dropArmedTimersForTests } from './seat-cursor'
 import { retireSeat } from './seat-exits'
 import { createTestTable, type TestTable, uniqueGameId, warmDeferredModules } from './test-table'
@@ -369,6 +375,8 @@ const runScenario = async (scenario: Scenario) => {
       case 'restart': {
         const downAt = Date.now()
         dropArmedTimersForTests()
+        forgetRearmsForTests()
+        forgetBotStateForTests()
         vi.clearAllTimers()
         vi.setSystemTime(downAt + RESTART_DOWNTIME_MS)
         rearmLiveRound(table.ctx(game.host), await table.read())

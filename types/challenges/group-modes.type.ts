@@ -799,6 +799,8 @@ export interface HeritageHuntState {
   pins: { [playerId: string]: { [beat: number]: HeritagePin } }
   /** The live beat has resolved — clients show distances during the hold. */
   revealing?: boolean
+  /** When that hold ends: a rearm resumes it rather than starting a fresh one. */
+  revealUntil?: number
   finished?: boolean
 }
 

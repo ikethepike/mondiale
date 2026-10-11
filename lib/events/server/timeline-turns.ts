@@ -127,12 +127,12 @@ export const resolveTimelinePlacement = async (
   scheduleTimelineReveal(ctx, challenge)
 }
 
-/** Arm the story card's own hold: not the shot clock, so scheduleEngineTask
- *  with the reveal's fixed length plus the usual buzzer slack. Idempotent:
- *  the fired task re-reads fresh state and bails once the turn moved on. */
+/** Arm the story card's hold against its persisted end (`state.deadline`
+ *  while revealing), so a rearm resumes the remaining hold rather than
+ *  starting a fresh one. The fired task bails once the turn moved on. */
 const scheduleTimelineReveal = (ctx: ChainContext, challenge: TimelineChallenge) => {
   const revealedTurn = challenge.state.turn
-  scheduleEngineTask(ctx, challenge.revealSeconds * 1000 + TIMEOUT_SLACK_MS, async fresh => {
+  scheduleDeadlineTask(ctx, challenge.state.deadline, async fresh => {
     const current = currentTimeline(fresh)
     if (!current?.state.revealing || current.state.finished) return
     if (current.state.turn !== revealedTurn) return

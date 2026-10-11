@@ -115,6 +115,11 @@ interface PumpRecord {
   acts: Map<string, number>
 }
 const pumps = new Map<string, PumpRecord>()
+/** Test seam: a restart forgets every pump and presence stamp along with its timers. */
+export const forgetBotStateForTests = () => {
+  pumps.clear()
+  seatPresenceAt.clear()
+}
 
 const PUMP_STALE_MS = BOT_PUMP_MS * 4
 /** Dead-chain registry entries (ownership moved, fetch blew up) get swept
