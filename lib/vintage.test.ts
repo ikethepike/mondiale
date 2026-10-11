@@ -57,7 +57,7 @@ import {
 import { isFameDealable } from '~~/types/fame.types'
 import { withArticle } from '~~/lib/strings'
 import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 import {
   VINTAGE_REGION_IDS,
   VINTAGE_REGIONS_BY_VARIANT,

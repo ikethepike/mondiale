@@ -10,7 +10,7 @@ import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/
 import { mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
 import { gameVariants } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { readFileSync } from 'node:fs'

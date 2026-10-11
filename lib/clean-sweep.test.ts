@@ -22,7 +22,7 @@ import { DATASETS } from '~~/lib/attribution'
 import { playableCountries } from '~~/lib/game-rules'
 import type { CleanSweepChallenge, SweepClaim } from '~~/types/challenges/group-modes.type'
 import type { GameDifficulty, GameRules, GameVariant } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const RULES: GameRules = { regions: [], difficulty: 'normal' }

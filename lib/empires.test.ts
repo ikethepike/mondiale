@@ -11,7 +11,8 @@ import {
   subsampleKeyframes,
 } from '~~/lib/empires'
 import { testSeat } from '~~/lib/events/server/test-seat'
-import { regionsForVariant, variantCountries } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
+import { variantCountries } from '~~/lib/variant'
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
 import { FAME_BY_DIFFICULTY, FAME_TIERS, isFameDealable } from '~~/types/fame.types'
 import { gameDifficulties, type Game, type GameDifficulty } from '~~/types/game.types'

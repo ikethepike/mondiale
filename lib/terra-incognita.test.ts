@@ -39,7 +39,7 @@ import {
 } from '~~/lib/terra-incognita'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const rules = (difficulty: GameDifficulty = 'normal', variant: GameVariant = 'world') =>

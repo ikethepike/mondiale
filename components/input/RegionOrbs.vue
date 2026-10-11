@@ -35,7 +35,7 @@
 <script lang="ts" setup>
 import RegionMap from '~/components/map/RegionMap.vue'
 import { titleCase } from '~~/lib/strings'
-import { isWorldBoard, toggleBoardRegion } from '~~/lib/variant'
+import { isWorldBoard, toggleBoardRegion } from '~~/lib/board-regions'
 import { type BoardRegion, type GameVariant, gameVariants } from '~~/types/game.types'
 
 const props = defineProps({

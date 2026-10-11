@@ -7,7 +7,8 @@ import { noteSeatPresence, releaseAutopilot } from './bot-brain'
 
 import { fetchSecrets, saveSecrets, useServerSideEvents } from '../server-side'
 import { rearmLiveRound } from './rearm-round'
-import { boardLabel, regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
+import { boardLabel } from '~~/lib/variant'
 import { isValidGameVariant } from '~~/types/game.types'
 
 export const joinEventHandler: EventHandler = async ({

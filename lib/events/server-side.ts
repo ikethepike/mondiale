@@ -10,7 +10,7 @@ import { type Game, isValidGame } from '../../types/game.types'
 import type { Player } from '../../types/player.type'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { secretsKey } from '~~/lib/player-secret'
-import { upgradeLegacyBoard } from '~~/lib/variant'
+import { syncLegacyBoard } from '~~/lib/board-regions'
 import type { Redis } from '@upstash/redis'
 
 /** Game-state artifacts (game, secrets, hidden seeds) all expire together. */
@@ -167,6 +167,7 @@ export const useServerSideEvents = ({
     },
     async updateGameState(game: Game) {
       seatSaveHooks?.beforeSave(game)
+      syncLegacyBoard(game)
       // The one save home stamps the snapshot revision: every emit reuses the
       // just-saved object, so the rev rides every wire snapshot for free. The
       // per-game queue serializes saves on the owning machine; a handover race
@@ -182,7 +183,7 @@ export const useServerSideEvents = ({
       if (!gameId) throw new EvalError('Blank string passed')
       const game = await redis.get<Game>(gameId)
       if (!game) return undefined
-      upgradeLegacyBoard(game)
+      syncLegacyBoard(game)
       if (!isValidGame(game)) {
         console.warn('Invalid game', game)
         return undefined

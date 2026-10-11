@@ -7,7 +7,7 @@ import { placedCount } from '~~/lib/events/server/player-guessing.handler'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { pairFraction } from '~~/lib/scoring'
 import type { Game, GameDifficulty, GameVariant, Round } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 
 const game = (difficulty: GameDifficulty, variant: GameVariant = 'world') =>
   ({

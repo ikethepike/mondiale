@@ -74,7 +74,8 @@ import {
 } from '../outline'
 import { getValueByAccessorID } from '../values'
 import { playableCountries } from '../game-rules'
-import { boardLabel, isWorldBoard } from '../variant'
+import { isWorldBoard } from '../board-regions'
+import { boardLabel } from '../variant'
 
 type FinalChallengeType = FinalChallengeItem['_type']
 

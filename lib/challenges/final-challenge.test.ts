@@ -36,7 +36,7 @@ import { TREATY_FAMILIES, TREATY_META } from '~~/types/treaty.type'
 import { resolveGlyph } from '~~/lib/stat-glyphs'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
 import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
   BORDER_STORIES,

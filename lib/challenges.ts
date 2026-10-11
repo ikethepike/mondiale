@@ -188,7 +188,8 @@ import {
 } from './trends'
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
-import { boardLabel, isWorldBoard, REGION_LABELS } from './variant'
+import { isWorldBoard } from './board-regions'
+import { boardLabel, REGION_LABELS } from './variant'
 
 export const MAXIMUM_SCORE_PER_COUNTRY = 3
 

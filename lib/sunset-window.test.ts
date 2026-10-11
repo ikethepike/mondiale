@@ -20,7 +20,7 @@ import {
   windowCountries,
 } from './sunset-window'
 import type { GameDifficulty, GameVariant } from '~~/types/game.types'
-import { regionsForVariant } from '~~/lib/variant'
+import { regionsForVariant } from '~~/lib/board-regions'
 
 const poolFor = (variant: GameVariant, difficulty: GameDifficulty) =>
   playableCountries({ regions: regionsForVariant(variant), difficulty, includeMicroNations: false })
