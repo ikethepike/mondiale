@@ -1,5 +1,12 @@
 <template>
-  <section class="terra-briefing briefing-card pane tr decorator-bottom">
+  <BriefingCard
+    class="terra-briefing"
+    :participants="participants"
+    :ready="ready"
+    cta="I'm ready"
+    :sent="sent"
+    @ready="emit('ready')"
+  >
     <span class="eyebrow">Terra Incognita</span>
     <h2>The atlas is failing</h2>
 
@@ -37,33 +44,10 @@
       <li>A name still on the map costs a point.</li>
       <li>{{ challenge.collapseThreshold }} missing at once and the world starts to come apart.</li>
     </ul>
-
-    <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
-         reading. The clock starts for everyone when the row is full. -->
-    <div class="ready-row">
-      <div
-        v-for="playerId in participants"
-        :key="playerId"
-        class="ready-seat"
-        :class="{ waiting: !ready.includes(playerId) }"
-      >
-        <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
-        <span class="seat-name">{{ seatName(playerId) }}</span>
-      </div>
-    </div>
-
-    <ButtonFilled v-if="!sent && !spectating" @click="emit('ready')">I'm ready</ButtonFilled>
-    <p v-else class="briefing-waiting">
-      {{ spectating ? 'The table is reading the rules…' : 'Waiting for the rest of the table…' }}
-    </p>
-  </section>
+  </BriefingCard>
 </template>
 <script lang="ts" setup>
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
-import { seatLabel } from '~~/lib/player'
-import { useKeyboardSkip } from '~~/lib/use-keyboard-skip'
-import { useGameStore } from '~~/store/game.store'
+import BriefingCard from '~/components/challenge/BriefingCard.vue'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
 
 /**
@@ -79,20 +63,10 @@ const props = defineProps<{
   participants: string[]
   /** This seat has already clicked. */
   sent: boolean
-  /** The booth: no click to offer, only the row to watch. */
-  spectating: boolean
 }>()
 const emit = defineEmits<{ ready: [] }>()
 
-const gameStore = useGameStore()
 const cadenceSeconds = computed(() => Math.round(props.challenge.cadenceMs / 1000))
-const seatName = (playerId: string) =>
-  seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
-
-useKeyboardSkip(
-  () => !props.sent,
-  () => emit('ready')
-)
 
 /** A deterministic jitter, so the border is the same on every seat and every
  *  render — random enough to read as a real simplified boundary, never a
@@ -152,10 +126,6 @@ const BRANCHES = [
 .terra-briefing {
   color: var(--dark-blue);
   border-color: var(--dark-blue);
-
-  h2 {
-    margin: 0;
-  }
 
   .briefing-points {
     gap: 0.3rem;

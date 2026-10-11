@@ -49,7 +49,14 @@
     <!-- The briefing: a rules card each player dismisses explicitly (The
          Despot's gate). The opening shot clock only starts when the whole
          table is ready — or the server's reading cap forces it. -->
-    <section v-if="briefing" class="briefing briefing-card pane tr decorator-bottom">
+    <BriefingCard
+      v-if="briefing"
+      :participants="state!.order"
+      :ready="state!.ready"
+      cta="Link me in"
+      :sent="sentReady"
+      @ready="sendReady"
+    >
       <!-- Two linked rings — the mode's mark, in the stroke language the
            stat glyphs speak (The Despot's hat, Unique's letter badge). -->
       <svg class="briefing-mark" viewBox="0 0 48 24" aria-hidden="true">
@@ -71,20 +78,7 @@
         <li v-else>A wrong name or a dead clock puts you out — sudden death.</li>
         <li>Dead ends trap whoever holds them. Outlast the table.</li>
       </ul>
-      <div class="ready-row">
-        <div
-          v-for="playerId in state!.order"
-          :key="playerId"
-          class="ready-seat"
-          :class="{ waiting: !state!.ready.includes(playerId) }"
-        >
-          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
-          <span class="seat-name">{{ seatName(playerId) }}</span>
-        </div>
-      </div>
-      <ButtonFilled v-if="!iAmReady" @click="sendReady">Link me in</ButtonFilled>
-      <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
-    </section>
+    </BriefingCard>
 
     <ChainReveal
       v-if="finished"
@@ -132,10 +126,9 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import MapYearLabels from '~/components/challenge/MapYearLabels.vue'
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import BriefingCard from '~/components/challenge/BriefingCard.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
-import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import {
   activePlayerId,
@@ -178,8 +171,7 @@ const {
 
 const state = computed(() => challenge.value?.state)
 const briefing = computed(() => !!state.value?.briefing)
-const iAmReady = computed(() => !!state.value?.ready.includes(gameStore.seatId))
-const { send: sendReady } = useAckOnce(() => ({ event: 'chain-ready' }))
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'chain-ready' }))
 const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
@@ -408,10 +400,6 @@ watch(
   stroke: var(--dark-blue);
   stroke-width: 2;
   stroke-linecap: round;
-}
-
-.briefing h2 {
-  margin: 0;
 }
 
 .turn-line {

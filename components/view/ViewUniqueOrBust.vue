@@ -34,7 +34,14 @@
     <!-- The briefing: a rules card each player dismisses explicitly (The
          Despot's gate). No clock runs until the whole table is ready — or the
          server's reading cap forces it. -->
-    <section v-if="briefing" class="briefing briefing-card pane tr decorator-bottom">
+    <BriefingCard
+      v-if="briefing"
+      :participants="state.order"
+      :ready="state.ready"
+      cta="Pencils up"
+      :sent="sentReady"
+      @ready="sendReady"
+    >
       <UniqueLetterBadge class="banner" letter="?" />
       <h2>Unique or Bust</h2>
       <ul class="briefing-points">
@@ -44,22 +51,7 @@
         <li>A word counts once — no repeating an answer across blanks.</li>
         <li>Each pick locks its blank — commit with care.</li>
       </ul>
-      <!-- The table, pawn by pawn: colour = briefed and ready, faded = still
-           reading. The gate's state at a glance, no counting required. -->
-      <div class="ready-row">
-        <div
-          v-for="playerId in state.order"
-          :key="playerId"
-          class="ready-seat"
-          :class="{ waiting: !state.ready.includes(playerId) }"
-        >
-          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
-          <span class="seat-name">{{ seatName(playerId) }}</span>
-        </div>
-      </div>
-      <ButtonFilled v-if="!iAmReady" @click="sendReady">Pencils up</ButtonFilled>
-      <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
-    </section>
+    </BriefingCard>
 
     <section v-else-if="!finished && !showInterstitial" class="guess-box board">
       <ul class="slot-list">
@@ -146,13 +138,12 @@ import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import SuggestInput, { type SuggestOption } from '~/components/challenge/SuggestInput.vue'
 import UniqueLetterBadge from '~/components/challenge/UniqueLetterBadge.vue'
 import UniqueRevealGrid from '~/components/challenge/UniqueRevealGrid.vue'
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import BriefingCard from '~/components/challenge/BriefingCard.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { getCountry } from '~~/lib/country'
-import { seatLabel } from '~~/lib/player'
 import {
   UNIQUE_CATEGORIES,
   nextOpenCategory,
@@ -203,11 +194,7 @@ const beginRound = () => {
   started.value = true
 }
 
-const seatName = (playerId: string) =>
-  seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
-
-const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
-const { send: sendReady } = useAckOnce(() => ({ event: 'unique-ready' }))
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'unique-ready' }))
 
 const boardLine = computed(() =>
   (challenge.value?.categories ?? [])
@@ -376,17 +363,6 @@ const verdictLine = computed(() => {
   display: inline-flex;
   align-items: center;
 }
-
-// The rules card wears The Despot's briefing recipe — same pane classes, same
-// ready-row grammar — so the tutorial gate reads identically across modes.
-// Layout and scrolling come from the shared .briefing-card template.
-.briefing {
-  h2 {
-    margin: 0;
-  }
-}
-
-// The points list and ready row come from the shared .briefing-card template.
 
 .board {
   // Centred in the space under the prompt: the suggestion list opens downward

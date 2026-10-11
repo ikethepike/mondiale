@@ -503,7 +503,7 @@ export const revealNextRound = async (ctx: EngineContext, game: Game, server: Se
     scheduleManhuntTimeout(ctx, revealed)
   }
   if (isGovernmentChallenge(revealed) && !revealed.state.finished) {
-    scheduleGovernmentTimeout(ctx, revealed)
+    scheduleGovernmentTimeout(ctx, game, revealed)
   }
   // The briefed kinds open on their rules card: these arm the reading caps.
   if (isUniqueOrBustChallenge(revealed)) scheduleUniqueTimeout(ctx, game, revealed)
