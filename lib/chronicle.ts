@@ -119,3 +119,30 @@ export const chronicleSpanYears = (slugs: string[]): number => {
   if (years.length < 2) return 0
   return Math.max(...years) - Math.min(...years)
 }
+
+/**
+ * The cards a locked-in order already had in history's relative order — the
+ * longest run that needs no correction. Every other card is the one the
+ * reveal lifts out and re-files, so a single misplaced chapter reads as one
+ * move rather than as every card it shoved along.
+ */
+export const chronicleKeptInOrder = (order: string[]): Set<string> => {
+  const years = order.map(slug => EVENTS[slug]?.year ?? 0)
+  const run = years.map(() => 1)
+  const previous = years.map(() => -1)
+  for (let index = 0; index < years.length; index++) {
+    for (let before = 0; before < index; before++) {
+      if (years[before] <= years[index] && run[before] + 1 > run[index]) {
+        run[index] = run[before] + 1
+        previous[index] = before
+      }
+    }
+  }
+  const kept = new Set<string>()
+  let cursor = run.indexOf(Math.max(...run, 0))
+  while (cursor >= 0) {
+    kept.add(order[cursor])
+    cursor = previous[cursor]
+  }
+  return kept
+}

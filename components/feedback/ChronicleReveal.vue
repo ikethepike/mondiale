@@ -6,59 +6,63 @@
   >
     <p class="record-head">
       <span class="eyebrow">History's order</span>
-      <span v-if="known" class="tally">{{ rightCount }} of {{ rows.length }} in place</span>
+      <span v-if="known" class="tally">{{ keptCount }} of {{ rows.length }} kept in order</span>
     </p>
 
-    <!-- The slots hold still while the chapters trade places through them, so
-         the correction reads as re-dating rather than re-listing. -->
     <div
       ref="scroller"
       class="record scrollport"
       :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
       @scroll.passive="syncScrollEdges"
     >
-      <div class="record-grid">
-        <ol class="slots" aria-hidden="true">
-          <li v-for="slot in rows.length" :key="slot" class="slot">{{ slot }}</li>
-        </ol>
-        <TransitionGroup
-          tag="ol"
-          name="shuffle"
-          class="chapters"
-          aria-label="The record, earliest first"
+      <TransitionGroup tag="ol" name="shuffle" class="chapters" aria-label="The record">
+        <li
+          v-for="item in items"
+          :key="item.key"
+          :class="
+            item.ghost
+              ? 'ghost'
+              : [
+                  'chapter',
+                  {
+                    settled,
+                    kept: settled && known && !item.row.moved,
+                    moved: settled && item.row.moved,
+                  },
+                ]
+          "
+          :style="item.ghost ? undefined : { '--row-index': item.row.number - 1 }"
+          :aria-label="item.ghost ? `Card ${item.row.number} was filed here` : undefined"
         >
-          <li
-            v-for="row in shown"
-            :key="row.slug"
-            class="chapter"
-            :class="{
-              settled,
-              right: settled && known && row.right,
-              missed: settled && known && !row.right,
-            }"
-            :style="{ '--row-index': row.chosen }"
-          >
+          <template v-if="item.ghost">
+            <span class="badge missed ghost-badge">{{ item.row.number }}</span>
+            <span class="ghost-label">filed here</span>
+          </template>
+          <template v-else>
+            <span class="badge" :class="{ missed: settled && item.row.moved }">
+              {{ item.row.number }}
+            </span>
             <button
               type="button"
               class="chapter-open"
-              :aria-label="`${row.year}: read the story of ${row.name}`"
-              @click="openDossier(row.slug)"
+              :aria-label="`${item.row.year}: read the story of ${item.row.name}`"
+              @click="openDossier(item.row.slug)"
             >
-              <img v-if="row.image" class="chapter-photo" :src="row.image" alt="" />
+              <img v-if="item.row.image" class="chapter-photo" :src="item.row.image" alt="" />
               <span v-else class="chapter-photo initial" aria-hidden="true">{{
-                row.name.charAt(0)
+                item.row.name.charAt(0)
               }}</span>
               <span class="chapter-body">
-                <span class="chapter-year">{{ row.year }}</span>
-                <span class="chapter-name">{{ row.name }}</span>
+                <span class="chapter-year">{{ item.row.year }}</span>
+                <span class="chapter-name">{{ item.row.name }}</span>
               </span>
-              <span v-if="known" class="chapter-mark">
-                {{ row.right ? '✓' : `was ${formatOrdinal(row.chosen + 1)}` }}
+              <span v-if="known && !item.row.moved" class="chapter-mark" aria-hidden="true">
+                ✓
               </span>
             </button>
-          </li>
-        </TransitionGroup>
-      </div>
+          </template>
+        </li>
+      </TransitionGroup>
     </div>
 
     <p class="span-line">
@@ -71,7 +75,7 @@
       v-model:open="dossierOpen"
       :slug="dossierSlug"
       :placer-line="dossierRow?.placerLine"
-      :missed="known && dossierRow ? !dossierRow.right : undefined"
+      :missed="dossierRow?.moved"
     />
   </div>
 </template>
@@ -79,7 +83,7 @@
 import TimelineDossier from '~/components/challenge/TimelineDossier.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
-import { chronicleSolution, chronicleSpanYears } from '~~/lib/chronicle'
+import { chronicleKeptInOrder, chronicleSolution, chronicleSpanYears } from '~~/lib/chronicle'
 import { countryName } from '~~/lib/country'
 import { formatNumber, formatOrdinal } from '~~/lib/number'
 import { REVEAL_BEAT_MS } from '~~/lib/round-beats'
@@ -100,41 +104,79 @@ const ROW_STAGGER_MS = 90
 const dealt = computed(() => props.challenge.chronicle?.events ?? [])
 // The truth comes from the SAME module that graded the submit — the record
 // shown and the verdict scored cannot disagree.
-const solution = computed(() => chronicleSolution(dealt.value))
-const known = computed(() => props.order.length === solution.value.length)
+const solution = computed(() =>
+  chronicleSolution(dealt.value).filter(slug => !!timelineEvent(slug))
+)
+const known = computed(
+  () =>
+    props.order.length === solution.value.length &&
+    solution.value.every(slug => props.order.includes(slug))
+)
+const kept = computed(() =>
+  known.value ? chronicleKeptInOrder(props.order) : new Set(solution.value)
+)
 
 const rows = computed(() =>
-  solution.value.flatMap((slug, index) => {
-    const event = timelineEvent(slug)
-    if (!event) return []
-    const chosen = known.value ? props.order.indexOf(slug) : index
-    const right = props.order[index] === slug
-    return [
-      {
-        slug,
-        chosen,
-        right,
-        name: event.name,
-        year: formatEventYear(event.year),
-        image: event.image,
-        placerLine: right
-          ? 'You put it in its place.'
-          : `You had it ${formatOrdinal(chosen + 1)} — it belongs ${formatOrdinal(index + 1)}.`,
-      },
-    ]
+  solution.value.map((slug, index) => {
+    const event = timelineEvent(slug)!
+    const filed = known.value ? props.order.indexOf(slug) : index
+    const moved = !kept.value.has(slug)
+    return {
+      slug,
+      moved,
+      number: filed + 1,
+      name: event.name,
+      year: formatEventYear(event.year),
+      image: event.image,
+      placerLine: moved
+        ? `You filed it ${formatOrdinal(filed + 1)} — history puts it ${formatOrdinal(index + 1)}.`
+        : 'You had it in order.',
+    }
   })
 )
+type Row = (typeof rows.value)[number]
 
-const rightCount = computed(() => rows.value.filter(row => row.right).length)
+const keptCount = computed(() => rows.value.filter(row => !row.moved).length)
 
-/** Opens on the player's own order, then the misplaced chapters move. */
+/** Each moved card's gap on the finished line: just after the nearest kept
+ *  card the player filed ahead of it. */
+const gapOf = (slug: string): number => {
+  for (let at = props.order.indexOf(slug) - 1; at >= 0; at--) {
+    const before = props.order[at]
+    if (kept.value.has(before)) return solution.value.indexOf(before) + 1
+  }
+  return 0
+}
+
+/** The line opens as the player filed it, then the moved cards lift out to
+ *  where history put them and leave a ghost in the gap they came from. */
 const { settled } = useRevealSettle(
-  () => known.value && rightCount.value < rows.value.length,
+  () => keptCount.value < rows.value.length,
   () => REVEAL_BEAT_MS + rows.value.length * ROW_STAGGER_MS
 )
-const shown = computed(() =>
-  settled.value || !known.value ? rows.value : [...rows.value].sort((a, b) => a.chosen - b.chosen)
-)
+
+const items = computed(() => {
+  const moved = props.order
+    .map(slug => rows.value.find(row => row.slug === slug))
+    .filter((row): row is Row => !!row?.moved)
+    .map(row => ({ row, gap: gapOf(row.slug) }))
+  const items: { key: string; row: Row; ghost?: true }[] = []
+  const atGap = (gap: number) => {
+    for (const entry of moved.filter(candidate => candidate.gap === gap)) {
+      items.push(
+        settled.value
+          ? { key: `ghost-${entry.row.slug}`, row: entry.row, ghost: true }
+          : { key: entry.row.slug, row: entry.row }
+      )
+    }
+  }
+  rows.value.forEach((row, index) => {
+    atGap(index)
+    if (settled.value || !row.moved) items.push({ key: row.slug, row })
+  })
+  atGap(rows.value.length)
+  return items
+})
 
 const spanYears = computed(() => chronicleSpanYears(dealt.value))
 const sources = datasetAttribution('events')
@@ -157,8 +199,9 @@ const openDossier = (slug: string) => {
 
 .chronicle-reveal {
   --row-height: 6.4rem;
+  --ghost-height: 3.2rem;
   --row-gap: 0.8rem;
-  --slot-size: 2.8rem;
+  --badge-size: 2.6rem;
 
   gap: 1rem;
   width: min(48rem, 100%);
@@ -192,59 +235,103 @@ const openDossier = (slug: string) => {
   @include scroll-fade($top: 1.6rem, $bottom: 2.4rem);
 }
 
-.record-grid {
-  gap: 0 1rem;
-  display: grid;
-  grid-template-columns: var(--slot-size) minmax(0, 1fr);
-}
-
-.slots,
 .chapters {
   gap: var(--row-gap);
   margin: 0;
-  padding: 0;
-  display: grid;
-  list-style: none;
-  grid-auto-rows: var(--row-height);
-}
-
-.slots {
+  padding: 0.2rem 0.4rem 0.4rem 0;
+  display: flex;
   position: relative;
+  list-style: none;
+  flex-flow: column nowrap;
 
+  // The rail the badges hang on; it holds still while the cards move.
   &::before {
     content: '';
     top: calc(var(--row-height) / 2);
     bottom: calc(var(--row-height) / 2);
-    left: calc(var(--slot-size) / 2 - 0.1rem);
+    left: calc(var(--badge-size) / 2 - 0.1rem);
     position: absolute;
     border-left: 0.2rem dashed ink(0.3);
   }
 }
 
-.slot {
-  z-index: 1;
-  display: grid;
-  align-self: center;
-  place-items: center;
-  box-sizing: border-box;
-  width: var(--slot-size);
-  height: var(--slot-size);
-  font-size: 1.3rem;
-  font-weight: bold;
-  border-radius: 50%;
-  color: var(--dark-blue);
-  background: milk(1);
-  border: 0.2rem solid ink(0.45);
-}
-
-.shuffle-move {
-  z-index: 1;
-  transition: transform calc(var(--motion-slow) * 1.6) var(--ease-out-expressive);
+.chapter,
+.ghost {
+  gap: 1rem;
+  flex: none;
+  display: flex;
+  min-width: 0;
+  position: relative;
+  align-items: center;
 }
 
 .chapter {
-  min-width: 0;
-  position: relative;
+  height: var(--row-height);
+}
+
+.ghost {
+  height: var(--ghost-height);
+}
+
+.badge {
+  flex: none;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50%;
+  color: var(--background-color);
+  background: var(--dark-blue);
+  border: 0.15rem solid var(--dark-blue);
+  box-shadow: 0 0 0 0.3rem var(--background-color);
+  transition:
+    color var(--motion-base),
+    background-color var(--motion-base),
+    border-color var(--motion-base);
+
+  &.missed {
+    color: flame(0.95);
+    background: var(--background-color);
+    border-color: flame(0.85);
+  }
+}
+
+.ghost-badge {
+  border-style: dashed;
+}
+
+.ghost-label {
+  font-size: 1.2rem;
+  font-style: italic;
+  color: flame(0.9);
+}
+
+.shuffle-move {
+  transition: transform calc(var(--motion-slow) * 1.6) var(--ease-out-expressive);
+}
+
+.chapter.moved.shuffle-move {
+  z-index: 2;
+
+  .chapter-open {
+    box-shadow: 0 0.8rem 1.6rem ink(0.25);
+  }
+}
+
+.shuffle-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-smooth),
+    transform var(--motion-base) var(--ease-out-expressive);
+  transition-delay: var(--motion-slow);
+}
+
+.shuffle-enter-from {
+  opacity: 0;
+  transform: scale(0.6);
 }
 
 // The entrance rides the button: a held keyframe transform on the <li> would
@@ -252,7 +339,8 @@ const openDossier = (slug: string) => {
 .chapter-open {
   all: unset;
   gap: 1.2rem;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   height: 100%;
   display: flex;
   cursor: pointer;
@@ -269,6 +357,11 @@ const openDossier = (slug: string) => {
   animation: row-land var(--motion-base) var(--ease-out-expressive) both;
   animation-delay: calc(var(--row-index) * var(--row-stagger));
 
+  // A reorder re-inserts the node, which would replay the entrance mid-move.
+  .settled & {
+    animation: none;
+  }
+
   &:hover {
     box-shadow: 0 0.4rem 1.2rem ink(0.16);
   }
@@ -278,17 +371,14 @@ const openDossier = (slug: string) => {
     outline-offset: 0.2rem;
   }
 
-  .shuffle-move & {
-    box-shadow: 0 0.8rem 1.6rem ink(0.25);
-  }
-
-  .right & {
+  .kept & {
     border-color: var(--soft-blue);
   }
 
-  .missed & {
+  .moved & {
     border-color: flame(0.85);
-    box-shadow: inset 0.4rem 0 0 flame(0.75);
+    outline: 0.15rem solid flame(0.75);
+    outline-offset: 0.1rem;
   }
 }
 
@@ -330,7 +420,7 @@ const openDossier = (slug: string) => {
     opacity: 1;
   }
 
-  .missed & {
+  .moved & {
     color: flame(0.9);
   }
 }
@@ -349,23 +439,13 @@ const openDossier = (slug: string) => {
   flex: none;
   opacity: 0;
   margin-right: 1.2rem;
-  font-size: 1.2rem;
+  font-size: 1.6rem;
   font-weight: bold;
-  white-space: nowrap;
   color: var(--soft-blue);
   transition: opacity var(--motion-base);
 
-  .right &,
-  .missed & {
+  .kept & {
     opacity: 1;
-  }
-
-  .right & {
-    font-size: 1.6rem;
-  }
-
-  .missed & {
-    color: flame(0.9);
   }
 }
 
@@ -393,12 +473,14 @@ const openDossier = (slug: string) => {
 @media screen and (max-width: $tablet) {
   .chronicle-reveal {
     --row-height: 5.2rem;
+    --ghost-height: 2.8rem;
     --row-gap: 0.6rem;
-    --slot-size: 2.4rem;
+    --badge-size: 2.4rem;
   }
 
-  .record-grid {
-    gap: 0 0.8rem;
+  .chapter,
+  .ghost {
+    gap: 0.8rem;
   }
 
   .chapter-open {
