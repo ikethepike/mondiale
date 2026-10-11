@@ -174,7 +174,7 @@ describe('the dealt round', () => {
     }
   })
 
-  it('stamps every region of a combined board, and vetoes only off all of them', async () => {
+  it('stamps every region of a combined board and deals every speaker on it', async () => {
     process.env.FORCE_ROUND_TYPE = 'mother-tongue'
     const game = {
       difficulty: 'normal',
@@ -182,7 +182,9 @@ describe('the dealt round', () => {
       rounds: [],
     } as unknown as Game
     const challenge = await getRoundChallenge({ game })
-    if (!isChallengeOfType(challenge, 'mother-tongue-challenge')) return
+    if (!isChallengeOfType(challenge, 'mother-tongue-challenge')) {
+      throw new Error(`fell back to ${challenge._type}`)
+    }
     expect(challenge.scope).toEqual(['europe', 'africa'])
     const onBoard = boardSpeakers(playableCountries(game)).get(challenge.language) ?? []
     expect([...challenge.countries].sort()).toEqual([...onBoard].sort())

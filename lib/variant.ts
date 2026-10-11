@@ -63,7 +63,6 @@ export const variantCountries = (variant: GameVariant = 'world'): ISOCountryCode
   return ISOCountryCodes.filter(isoCode => countryInVariant(isoCode, variant))
 }
 
-/** The board a home-page template opens: its one continent, or the whole world. */
 export const regionsForVariant = (variant: GameVariant): BoardRegion[] =>
   variant === 'world' ? [] : [variant]
 
@@ -85,7 +84,6 @@ export const toggleBoardRegion = (
     : normalizeBoardRegions([...regions, picked])
 }
 
-/** Does a country belong to a board — on any one of its regions? */
 export const countryOnBoard = (isoCode: ISOCountryCode, regions: readonly BoardRegion[]): boolean =>
   isWorldBoard(regions) || regions.some(region => countryInVariant(isoCode, region))
 

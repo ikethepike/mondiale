@@ -142,7 +142,6 @@ export const isValidGameVariant = (variant: unknown): variant is GameVariant => 
   return typeof variant === 'string' && gameVariants.includes(variant as GameVariant)
 }
 
-/** The continents a board can combine — every variant but the whole world. */
 export type BoardRegion = Exclude<GameVariant, 'world'>
 export const boardRegions = gameVariants.filter(
   (variant): variant is BoardRegion => variant !== 'world'
