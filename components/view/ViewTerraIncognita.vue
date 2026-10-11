@@ -16,8 +16,7 @@
       :challenge="challenge"
       :ready="state.ready"
       :participants="state.order"
-      :sent="iAmReady"
-      :spectating="gameStore.watching"
+      :sent="sentReady"
       @ready="sendReady"
     />
 
@@ -232,8 +231,7 @@ const {
  */
 const revealed = computed(() => submitted.value)
 const briefing = computed(() => briefingOpen.value && !showInterstitial.value && !revealed.value)
-const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
-const { send: sendReady } = useAckOnce(() => ({ event: 'terra-ready' }))
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'terra-ready' }))
 
 const startRound = () => {
   // The booth began on mount, before the stamp existed: re-enter so the

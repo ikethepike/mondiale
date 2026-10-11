@@ -1,18 +1,9 @@
 <template>
   <section class="challenge-shell government">
-    <Interstitial
-      v-if="showInterstitial"
-      tone="info"
-      kind="government"
-      title="Who governs here?"
-      stakes="Three questions about one chamber: the party in charge, the seats it holds, and who sits with it. Each beat scores on its own."
-      @done="begin()"
-    />
-
     <!-- The chamber is the round; the subject line and "Which party governs?"
          are a caption on it, so the prompt steps down and the beats take the
          column (the logo grid overflowed by 72px on a 560px phone). -->
-    <ChallengePrompt :attributions="promptSources" :compact="!finished">
+    <ChallengePrompt v-if="!briefing" :attributions="promptSources" :compact="!finished">
       <h1 class="map-caption">{{ heading }}</h1>
       <span v-if="!finished" class="map-caption sub">{{ prompt }}</span>
       <GuessTicker v-if="!finished" :entries="entries" :players="gameStore.game?.players ?? {}" />
@@ -22,7 +13,7 @@
          by the roll it is background the round no longer asks about — while
          the roll itself is the tallest thing the round puts on a phone. -->
     <p
-      v-if="challenge && !finished && beat !== 'party'"
+      v-if="challenge && !finished && !briefing && beat !== 'party'"
       class="chamber-facts"
       :class="{ stowed: beat === 'sides' }"
     >
@@ -50,7 +41,7 @@
          nothing to measure, nothing to keep in sync, and the beat below never
          moves. What the answer WAS is the reveal's job, and the subject chip
          under this already names the governing party. -->
-    <div v-if="!finished" class="verdict-band">
+    <div v-if="!finished && !briefing" class="verdict-band">
       <Transition name="verdict">
         <p
           v-if="verdict"
@@ -67,8 +58,16 @@
 
     <!-- Beat 1: the logos rise, one governs. -->
     <Transition name="beat" mode="out-in">
+      <GovernmentBriefing
+        v-if="briefing && challenge"
+        key="briefing"
+        :challenge="challenge"
+        :sent="sentReady"
+        @ready="sendReady"
+      />
+
       <GovernmentReveal
-        v-if="finished && challenge && answers"
+        v-else-if="finished && challenge && answers"
         key="reveal"
         :challenge="challenge"
         :answers="answers"
@@ -258,7 +257,7 @@
          jumped to beat 3's lock row at the next beat. In the footer it is
          centred, inherits `--bottom-clearance`, and sits where beat 3's dial
          sits — one place for the clock all round. -->
-    <footer v-if="!finished && beat !== 'sides'" class="clock-footer">
+    <footer v-if="!finished && !briefing && beat !== 'sides'" class="clock-footer">
       <ChallengeTimerRadial
         class="footer-clock"
         :value="secondsOnClock"
@@ -272,15 +271,16 @@
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
+import GovernmentBriefing from '~/components/challenge/GovernmentBriefing.vue'
 import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import SegmentedControl from '~/components/input/SegmentedControl.vue'
 import { hemicycleSeats } from '~/components/challenge/individual/ring'
 import { datasetAttribution } from '~~/lib/attribution'
-import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { BEAT_SECONDS, MAX_SEAT_DOTS } from '~~/lib/government'
 import { placedTotalFor } from '~~/lib/live-guess-policy'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -296,12 +296,14 @@ import type { GovernmentState } from '~~/types/challenges/group-modes.type'
  * timer here would eventually disagree with the grade.
  */
 
-const { challenge, showInterstitial, begin, gameStore, update, announce, entries } =
+const { challenge, begin, gameStore, update, announce, entries } =
   useGroupChallenge('government-challenge')
+begin()
 
 // Timers keep evaluating for a beat after the round advances, so the state
 // must never dereference undefined.
 const EMPTY_STATE: GovernmentState = {
+  ready: [],
   beat: 'party',
   turn: 0,
   deadline: 0,
@@ -311,6 +313,8 @@ const EMPTY_STATE: GovernmentState = {
 const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
 const beat = computed(() => state.value.beat)
 const finished = computed(() => !!state.value.finished)
+const briefing = computed(() => !!state.value.briefing && !finished.value)
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'government-ready' }))
 
 const { secondsOnClock } = useDeadlineClock(() => state.value.deadline)
 

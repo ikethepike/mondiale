@@ -159,10 +159,11 @@ describe('critical client events', () => {
       'unique-ready',
       'chain-ready',
       'sweep-ready',
+      'government-ready',
       'terra-ready',
     ] as const) {
       expect(isCriticalClientEvent(ready)).toBe(true)
     }
-    expect(CRITICAL_CLIENT_EVENTS.filter(event => event.endsWith('-ready'))).toHaveLength(5)
+    expect(CRITICAL_CLIENT_EVENTS.filter(event => event.endsWith('-ready'))).toHaveLength(6)
   })
 })

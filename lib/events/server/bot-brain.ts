@@ -508,7 +508,15 @@ const planGroupChallenge = ({
   const government = currentGovernment(game)
   if (government) {
     const { state } = government
-    if (state.finished || state.verdict) return
+    if (state.finished) return
+    if (state.briefing) {
+      if (state.ready.includes(seat.id)) return
+      if (due(`government-ready:${roundIndex}:${seat.id}`, readyBeat)) {
+        dispatchGovernmentReady(ctx, seat.id)
+      }
+      return
+    }
+    if (state.verdict) return
     if (state.picks[state.beat][seat.id] !== undefined) return
     if (due(`government:${roundIndex}:${state.turn}:${seat.id}`, think)) {
       dispatchGovernmentPick(ctx, seat.id, state.turn)
@@ -999,6 +1007,13 @@ const dispatchSweepReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
     if (currentCleanSweep(fresh)) await botAct(ctx, { event: 'sweep-ready' })
+  })
+}
+
+const dispatchGovernmentReady = (ctx: EngineContext, playerId: string) => {
+  scheduleEngineTask(ctx, 0, async fresh => {
+    if (!brainSeat(fresh, playerId)) return
+    if (currentGovernment(fresh)) await botAct(ctx, { event: 'government-ready' })
   })
 }
 

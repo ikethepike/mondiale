@@ -31,6 +31,16 @@
   pointer-events: auto;
   max-width: min(34rem, calc(100% - 2.4rem));
 
+  // A scrolling flex column shrinks its children before it scrolls — the
+  // dismiss button squashed to half height on a 667px phone.
+  > * {
+    flex-shrink: 0;
+  }
+
+  h2 {
+    margin: 0;
+  }
+
   // The card's standard furniture: the rules list, and the table pawn by
   // pawn — colour = briefed and ready, faded = still reading. The gate's
   // state at a glance, no counting required.

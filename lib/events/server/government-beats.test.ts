@@ -1,13 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   applyGovernmentPick,
+  applyGovernmentReady,
   currentGovernment,
   rearmGovernment,
   scheduleGovernmentTimeout,
   startGovernment,
 } from './government-beats'
 import { BEAT_POINTS, BEAT_SECONDS } from '~~/lib/government'
-import { BEAT_VERDICT_HOLD_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import {
+  BEAT_VERDICT_HOLD_MS,
+  BRIEFING_CAP_MS,
+  GOVERNMENT_RECAP_CAP_MS,
+  TIMEOUT_SLACK_MS,
+} from '~~/lib/round-beats'
 import type { GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { EngineContext } from './round-engine'
@@ -39,6 +45,7 @@ const challengeFixture = (
   sorted: ['Sweden Democrats', 'Left Party'],
   maximumPoints: 10,
   state: {
+    ready: [],
     beat: 'party',
     turn: 0,
     deadline: 0,
@@ -150,7 +157,7 @@ describe('the beat sequence', () => {
 
   it('runs the clock out when nobody answers, and still advances', async () => {
     const { challenge, game, ctx } = await openRound()
-    scheduleGovernmentTimeout(ctx, challenge)
+    scheduleGovernmentTimeout(ctx, game, challenge)
     await vi.advanceTimersByTimeAsync(BEAT_SECONDS.party * 1000 + TIMEOUT_SLACK_MS + 10)
     await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
@@ -321,7 +328,7 @@ describe('staleness', () => {
   // resolves beat 3, skipping a question the table never saw.
   it('ignores a timer armed for a beat that already resolved', async () => {
     const { challenge, game, ctx } = await openRound()
-    scheduleGovernmentTimeout(ctx, challenge)
+    scheduleGovernmentTimeout(ctx, game, challenge)
 
     // The table answers early — beat 1 resolves and `turn` moves.
     await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
@@ -408,5 +415,61 @@ describe('rearm', () => {
     rearmGovernment(ctx, game, { armBriefingCaps: true })
     await vi.advanceTimersByTimeAsync(60_000)
     expect(live(game.id).state.beat).toBe('sides')
+  })
+})
+
+describe('the briefing', () => {
+  const briefedRound = async (overrides: Partial<GovernmentChallenge['state']> = {}) => {
+    const challenge = challengeFixture({ briefing: true, ...overrides })
+    const game = buildGame(challenge)
+    const ctx = context(game)
+    await startGovernment(ctx, game, challenge)
+    scheduleGovernmentTimeout(ctx, game, challenge)
+    return { challenge, game, ctx }
+  }
+
+  it('seals the answers but holds the clock while the rules are up', async () => {
+    const { challenge, game } = await briefedRound()
+    expect(challenge.state.answers).toBeUndefined()
+    expect(challenge.state.deadline).toBe(0)
+    expect(store.get(`${game.id}:government:0`)).toBeDefined()
+  })
+
+  it('refuses a pick until the table is ready', async () => {
+    const { challenge, game, ctx } = await briefedRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    expect(challenge.state.picks.party.ada).toBeUndefined()
+  })
+
+  it('starts beat 1 on the last ready', async () => {
+    const { challenge, game, ctx } = await briefedRound()
+    await applyGovernmentReady(ctx, game, challenge, 'ada')
+    expect(challenge.state.briefing).toBe(true)
+
+    await applyGovernmentReady(ctx, game, challenge, 'ben')
+    expect(challenge.state.briefing).toBe(false)
+    expect(challenge.state.deadline).toBe(Date.now() + BEAT_SECONDS.party * 1000)
+  })
+
+  it('force-starts a table that never finishes reading', async () => {
+    const { game } = await briefedRound()
+    await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 10)
+    expect(live(game.id).state.briefing).toBe(false)
+    expect(live(game.id).state.deadline).toBeGreaterThan(0)
+  })
+
+  it('caps a recap far sooner than a first briefing', async () => {
+    const { game } = await briefedRound({ recap: true })
+    await vi.advanceTimersByTimeAsync(GOVERNMENT_RECAP_CAP_MS + 10)
+    expect(live(game.id).state.briefing).toBe(false)
+  })
+
+  it('leaves the cap to the closing tutorial', async () => {
+    const challenge = challengeFixture({ briefing: true })
+    const game = buildGame(challenge)
+    const ctx = context(game)
+    rearmGovernment(ctx, game, { armBriefingCaps: false })
+    await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 10)
+    expect(live(game.id).state.briefing).toBe(true)
   })
 })

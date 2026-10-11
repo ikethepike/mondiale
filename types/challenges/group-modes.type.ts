@@ -470,6 +470,12 @@ export interface GovernmentAnswers {
 }
 
 export interface GovernmentState {
+  /** The rules card is up; no beat clock runs until the table is ready. */
+  briefing?: boolean
+  /** Seats that have dismissed the rules card. */
+  ready: string[]
+  /** The table has already played a chamber this game: the card is a recap. */
+  recap?: boolean
   /** Which question is live — what the view renders. */
   beat: 'party' | 'seats' | 'sides'
   /** Monotonic beat counter — timeout token AND submit idempotency key.

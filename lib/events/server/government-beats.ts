@@ -10,10 +10,11 @@ import {
 } from '~~/lib/government'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { chainContenders } from '~~/lib/player'
-import { BEAT_VERDICT_HOLD_MS } from '~~/lib/round-beats'
+import { BEAT_VERDICT_HOLD_MS, BRIEFING_CAP_MS, GOVERNMENT_RECAP_CAP_MS } from '~~/lib/round-beats'
 import type { GovernmentAnswers, GovernmentChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { setWithGameTtl, useServerSideEvents } from '../server-side'
+import { applyBriefingReady } from './briefing-gate'
 import {
   scheduleDeadlineTask,
   scheduleEngineTask,
@@ -62,9 +63,9 @@ const stampDeadline = (challenge: GovernmentChallenge, beat: GovernmentBeat) => 
 }
 
 /**
- * Open the round on its first question. The deal already stamped the state;
- * this only starts the clock, so the caller saves and emits around it exactly
- * as the other engines do.
+ * Seal the dealt round: move the answers off the snapshot and hide the seat
+ * counts. The beat clock waits for the briefing, but this cannot — the rules
+ * card is on screen with the challenge already broadcast.
  */
 export const startGovernment = async (
   ctx: EngineContext,
@@ -81,7 +82,34 @@ export const startGovernment = async (
     delete challenge.state.answers
   }
   hideBenchSeats(challenge)
+  if (!challenge.state.briefing) stampDeadline(challenge, challenge.state.beat)
+}
+
+/** A player dismissed the rules card. */
+export const applyGovernmentReady = async (
+  ctx: EngineContext,
+  game: Game,
+  challenge: GovernmentChallenge,
+  playerId: string
+) =>
+  applyBriefingReady({
+    ctx,
+    game,
+    state: challenge.state,
+    playerId,
+    participants: seatedPlayers(game),
+    event: 'government-updated',
+    begin: () => beginGovernment(ctx, game, challenge),
+  })
+
+/** Briefing over: beat 1's clock starts for the whole table. */
+const beginGovernment = async (ctx: EngineContext, game: Game, challenge: GovernmentChallenge) => {
+  challenge.state.briefing = false
   stampDeadline(challenge, challenge.state.beat)
+  const server = useServerSideEvents(ctx)
+  await server.updateGameState(game)
+  server.emit({ event: 'government-updated', game }, ctx.eventTarget)
+  scheduleGovernmentTimeout(ctx, game, challenge)
 }
 
 /**
@@ -272,7 +300,7 @@ const advanceBeat = async (ctx: EngineContext, game: Game, challenge: Government
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
   server.emit({ event: 'government-updated', game }, ctx.eventTarget)
-  scheduleGovernmentTimeout(ctx, challenge)
+  scheduleGovernmentTimeout(ctx, game, challenge)
 }
 
 /**
@@ -343,11 +371,28 @@ export const finishGovernment = async (
 }
 
 /**
- * Arm the beat clock. Call AFTER the save — the fired task re-reads fresh
+ * Arm the round's clock. Call AFTER the save — the fired task re-reads fresh
  * state and dies on a stale `turn`, which is what makes arming twice safe and
- * lets `rearmGovernment` revive the round after a restart.
+ * lets `rearmGovernment` revive the round after a restart. During the
+ * briefing that clock is the reading cap; the round index is its token, since
+ * every chamber opens on `turn` 0.
  */
-export const scheduleGovernmentTimeout = (ctx: EngineContext, challenge: GovernmentChallenge) => {
+export const scheduleGovernmentTimeout = (
+  ctx: EngineContext,
+  game: Game,
+  challenge: GovernmentChallenge
+) => {
+  if (challenge.state.briefing) {
+    const armedRound = roundIndexOf(game)
+    const cap = challenge.state.recap ? GOVERNMENT_RECAP_CAP_MS : BRIEFING_CAP_MS
+    scheduleEngineTask(ctx, cap, async fresh => {
+      if (roundIndexOf(fresh) !== armedRound) return
+      const current = currentGovernment(fresh)
+      if (!current || current.state.finished || !current.state.briefing) return
+      await beginGovernment(ctx, fresh, current)
+    })
+    return
+  }
   const { turn, deadline } = challenge.state
   scheduleDeadlineTask(ctx, deadline, async game => {
     const current = currentGovernment(game)
@@ -375,7 +420,7 @@ export const applyGovernmentPick = async (
   pick: GovernmentAnswer
 ) => {
   const { state } = challenge
-  if (state.finished || state.turn !== turn) return
+  if (state.briefing || state.finished || state.turn !== turn) return
   // The beat is over and its verdict is on screen — a pick arriving now is a
   // late tap on a question already graded.
   if (state.verdict) return
@@ -411,9 +456,10 @@ export const applyGovernmentPick = async (
  * persisted state alone: the deadline is on the state and `turn` guards the
  * task, so re-arming one that never fired is harmless.
  */
-export const rearmGovernment = (ctx: EngineContext, game: Game, _options: RearmOptions) => {
+export const rearmGovernment = (ctx: EngineContext, game: Game, options: RearmOptions) => {
   const challenge = currentGovernment(game)
   if (!challenge || challenge.state.finished) return
+  if (challenge.state.briefing && !options.armBriefingCaps) return
   // A verdict hold that was in flight when the machine went away: re-arm the
   // advance rather than the beat clock, or the round freezes on the verdict.
   if (challenge.state.verdict) {
@@ -428,5 +474,5 @@ export const rearmGovernment = (ctx: EngineContext, game: Game, _options: RearmO
   // A deadline that already passed while the machine was down still resolves —
   // scheduleDeadlineTask floors its delay at zero, so the ordinary arm covers
   // the overdue case too rather than needing a second path.
-  scheduleGovernmentTimeout(ctx, challenge)
+  scheduleGovernmentTimeout(ctx, game, challenge)
 }

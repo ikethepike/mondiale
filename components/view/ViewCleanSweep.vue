@@ -53,7 +53,14 @@
     <!-- The briefing: a rules card each player dismisses explicitly. In a mode
          where tempo is the currency, nobody starts typing while another still
          reads. -->
-    <section v-if="briefing" class="briefing briefing-card pane tr decorator-bottom">
+    <BriefingCard
+      v-if="briefing"
+      :participants="state.order"
+      :ready="state.ready"
+      cta="Ready"
+      :sent="sentReady"
+      @ready="sendReady"
+    >
       <h2>Clean Sweep</h2>
       <ul class="briefing-points">
         <li>One list drops when everyone's ready. Name as much of it as you can.</li>
@@ -64,20 +71,7 @@
         <li>A wrong name benches you for a few seconds while the rest keep going.</li>
         <li>Clear the whole board and every seat banks the sweep bonus.</li>
       </ul>
-      <div class="ready-row">
-        <div
-          v-for="playerId in state.order"
-          :key="playerId"
-          class="ready-seat"
-          :class="{ waiting: !state.ready.includes(playerId) }"
-        >
-          <PlayerPawn class="ready-pawn" :player="gameStore.game?.players[playerId]" />
-          <span class="seat-name">{{ seatName(playerId) }}</span>
-        </div>
-      </div>
-      <ButtonFilled v-if="!iAmReady" @click="sendReady">Ready</ButtonFilled>
-      <p v-else class="briefing-waiting">Waiting for the rest of the table…</p>
-    </section>
+    </BriefingCard>
 
     <!-- The board. The question is the shape of the empty slots, so unclaimed
          ones stay blank and nothing ever re-sorts under a racing eye. -->
@@ -144,7 +138,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import BriefingCard from '~/components/challenge/BriefingCard.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
@@ -234,8 +228,7 @@ const beginRound = () => {
 const seatName = (playerId: string) =>
   seatLabel(gameStore.game?.players, playerId, gameStore.seatId)
 
-const iAmReady = computed(() => state.value.ready.includes(gameStore.seatId))
-const { send: sendReady } = useAckOnce(() => ({ event: 'sweep-ready' }))
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'sweep-ready' }))
 
 const claimedBy = computed(() => (challenge.value ? sweepClaimedBy(challenge.value) : {}))
 const standings = computed(() => (challenge.value ? sweepStandings(challenge.value) : []))
@@ -396,11 +389,6 @@ useFooterBerth(consoleFooter)
 @use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/scroll-fade' as *;
-
-// The briefing card's layout comes from the shared .briefing-card template.
-.briefing h2 {
-  margin: 0;
-}
 
 // The live scoreboard: pawns and counts, nothing else. Small on purpose — it
 // must be readable at a glance without competing with the board.
