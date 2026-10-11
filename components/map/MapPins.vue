@@ -64,26 +64,25 @@
 </template>
 <script lang="ts" setup>
 import { MAP_PROJECTION } from '~~/data/map.gen'
-import { WORLD_BOX, projectRobinson } from '~~/lib/geo'
+import { projectRobinson } from '~~/lib/geo'
 import { clamp } from '~~/lib/number'
 import { useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import { useGameStore } from '~~/store/game.store'
 
 /** The pin-drop marks: the player's glass-head pin and the truth's, tip-anchored in screen space. */
+
 const PIN_GROWTH_EXPONENT = 0.3
 const PIN_MAX_GROWTH = 1.6
 
 const gameStore = useGameStore()
 const uid = useId()
-const { viewBox, toScreenPercent } = useMapViewBox()
+const { viewBox, toScreenPercent, cameraScale } = useMapViewBox()
 const root = ref<HTMLElement>()
 const { frameStyle } = useMapPanTrack(root)
 
-const growth = computed(() => {
-  const width = viewBox.value?.w
-  if (!width) return 1
-  return clamp((WORLD_BOX.width / width) ** PIN_GROWTH_EXPONENT, 1, PIN_MAX_GROWTH)
-})
+const growth = computed(() =>
+  clamp((1 / cameraScale.value) ** PIN_GROWTH_EXPONENT, 1, PIN_MAX_GROWTH)
+)
 
 const anchored = computed(() =>
   (

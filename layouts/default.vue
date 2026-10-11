@@ -269,6 +269,10 @@ onMounted(() => {
   mix-blend-mode: difference;
 }
 
+.map-pins {
+  transition: opacity var(--motion-slow) var(--ease-smooth);
+}
+
 .game-map {
   top: 0;
   left: 0;
@@ -346,6 +350,10 @@ onMounted(() => {
     visibility: visible;
     pointer-events: auto;
     transition: opacity var(--motion-slow) var(--ease-smooth);
+  }
+
+  .map-pins {
+    opacity: 0;
   }
 
   .game-map {

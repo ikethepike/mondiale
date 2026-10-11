@@ -788,8 +788,6 @@ onMounted(() => {
  *  arc is chart junk. */
 const showSailChips = computed(() => seaLinkArcs.value.length <= 3)
 
-// Evaluated lazily, so reading `gameStore` (declared further down) is safe.
-
 // --- Camera: one viewBox drives everything ----------------------------------
 // Gestures and reveal tweens all write the viewBox directly, repainting one
 // viewport's worth of culled base-tier geometry per frame — measured well
