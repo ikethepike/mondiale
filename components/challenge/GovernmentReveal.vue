@@ -15,7 +15,7 @@
 
       <!-- The arc, painted by STANDING rather than by party: the shape of who
            rules is the thing the round has been circling for three beats. -->
-      <div class="arc">
+      <div v-if="withArc" class="arc">
         <span
           v-for="(seat, index) in paintedSeats"
           :key="index"
@@ -101,10 +101,10 @@
 <script setup lang="ts">
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
-import { hemicycleSeats } from '~/components/challenge/individual/ring'
+import { hemicycleSeats, seatDots, seatRun } from '~~/lib/hemicycle'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
-import { MAX_SEAT_DOTS, majorityOf, type GovernmentBeat } from '~~/lib/government'
+import { majorityOf, type GovernmentBeat } from '~~/lib/government'
 import { seatLabel } from '~~/lib/player'
 import { formatNumber } from '~~/lib/number'
 import type { GovernmentAnswers, GovernmentChallenge } from '~~/types/challenges/group-modes.type'
@@ -120,14 +120,19 @@ import type { Player } from '~~/types/player.type'
  * has been circling.
  */
 
-const props = defineProps<{
-  challenge: GovernmentChallenge
-  answers: GovernmentAnswers
-  players: Partial<Record<string, Player>>
-  playerId: string
-  scores: Record<string, { scored: number; maximum: number }>
-  groupAnswers: Record<string, GroupChallengeAnswer>
-}>()
+const props = withDefaults(
+  defineProps<{
+    challenge: GovernmentChallenge
+    answers: GovernmentAnswers
+    players: Partial<Record<string, Player>>
+    playerId: string
+    scores: Record<string, { scored: number; maximum: number }>
+    groupAnswers: Record<string, GroupChallengeAnswer>
+    /** Draw the 2D arc — off when the 3D chamber already shows it. */
+    withArc?: boolean
+  }>(),
+  { withArc: true }
+)
 
 const BEAT_LABELS: { [beat in GovernmentBeat]: string } = {
   party: 'Which party governs',
@@ -192,20 +197,13 @@ const sides = computed(() => {
  * the government's block reads as one mass against the rest of the house.
  */
 const paintedSeats = computed(() => {
-  const total = props.challenge.totalSeats
-  if (!total) return []
-  const scale = Math.min(1, MAX_SEAT_DOTS / total)
-  const run: ('government' | 'backing' | 'opposition')[] = []
-  for (const side of sides.value) {
-    for (const bench of side.benches) {
-      const dots = Math.max(1, Math.round(seatsOf(bench.name) * scale))
-      for (let index = 0; index < dots; index += 1) run.push(side.key)
-    }
-  }
-  return hemicycleSeats(run.length).map((seat, index) => ({
-    ...seat,
-    standing: run[index] ?? 'opposition',
-  }))
+  const run = seatRun(
+    seatDots(props.challenge.totalSeats),
+    sides.value.flatMap(side =>
+      side.benches.map(bench => ({ key: side.key, seats: seatsOf(bench.name) }))
+    )
+  )
+  return hemicycleSeats(run.length).map((seat, index) => ({ ...seat, standing: run[index]! }))
 })
 
 /** Where the majority line falls across the arc, as a percentage of its width. */

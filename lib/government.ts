@@ -28,13 +28,6 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 /** A chamber under this many benches has no shape worth reading. */
 export const MIN_BENCHES = 3
 
-/**
- * Seats the arc draws. Real chambers run from 51 (Suriname) to 630 (Germany),
- * and drawing one dot per seat would be a wall of dots on a phone at the top
- * of that range. The arc is scaled to this and each dot stands for a share.
- */
-export const MAX_SEAT_DOTS = 180
-
 export const GOVERNMENT_BEATS = ['party', 'seats', 'sides'] as const
 export type GovernmentBeat = (typeof GOVERNMENT_BEATS)[number]
 

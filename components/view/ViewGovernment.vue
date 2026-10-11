@@ -1,5 +1,19 @@
 <template>
-  <section class="challenge-shell government">
+  <section class="challenge-shell government" :class="{ staged: stageOn }">
+    <div v-if="stageOn && challenge" ref="stageLayer" class="parliament-layer">
+      <ClientOnly>
+        <ParliamentStage
+          :phase="stagePhase"
+          :total-seats="challenge.totalSeats"
+          :groups="chamber"
+          :flag-color="flagColor"
+          :band="band"
+          :verdict-key="verdictKey"
+          @failed="stageOn = false"
+        />
+      </ClientOnly>
+    </div>
+
     <!-- The chamber is the round; the subject line and "Which party governs?"
          are a caption on it, so the prompt steps down and the beats take the
          column (the logo grid overflowed by 72px on a 560px phone). -->
@@ -32,6 +46,8 @@
       </Transition>
     </div>
 
+    <div v-if="stageOn" ref="stageWindow" class="stage-window" />
+
     <!-- Beat 1: the logos rise, one governs. -->
     <Transition name="beat" mode="out-in">
       <GovernmentBriefing
@@ -39,6 +55,7 @@
         key="briefing"
         :challenge="challenge"
         :sent="sentReady"
+        :compact="stageOn"
         @ready="sendReady"
       />
 
@@ -51,6 +68,7 @@
         :player-id="gameStore.seatId"
         :scores="revealScores"
         :group-answers="revealAnswers"
+        :with-arc="!stageOn"
       />
 
       <!-- The two beats that scroll as a whole share one wiring: they are
@@ -78,6 +96,10 @@
           :disabled="!!myParty || !!verdict"
           :style="{ '--rise-delay': `${index * 70}ms` }"
           @click="pickParty(option.name)"
+          @mouseenter="hoveredParty = option.name"
+          @mouseleave="hoveredParty = undefined"
+          @focus="hoveredParty = option.name"
+          @blur="hoveredParty = undefined"
         >
           <img v-if="option.logo" class="option-logo" :src="option.logo" alt="" />
           <span v-else class="option-swatch" :style="{ background: option.color }" />
@@ -103,7 +125,11 @@
           <span v-else class="subject-swatch" :style="{ background: subject.color }" />
           <span class="subject-name">{{ subject.name }}</span>
         </header>
-        <div class="arc" :class="verdict ? (myScore > 0 ? 'right' : 'wrong') : undefined">
+        <div
+          v-if="!stageOn"
+          class="arc"
+          :class="verdict ? (myScore > 0 ? 'right' : 'wrong') : undefined"
+        >
           <span
             v-for="(seat, index) in arcSeats"
             :key="index"
@@ -229,16 +255,17 @@ import GovernmentBriefing from '~/components/challenge/GovernmentBriefing.vue'
 import GovernmentReveal from '~/components/challenge/GovernmentReveal.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import GovernmentSides from '~/components/challenge/GovernmentSides.vue'
-import { hemicycleSeats } from '~/components/challenge/individual/ring'
+import { hemicycleSeats, seatDots } from '~~/lib/hemicycle'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
-import { BEAT_POINTS, BEAT_SECONDS, MAX_SEAT_DOTS, majorityOf } from '~~/lib/government'
+import { BEAT_POINTS, BEAT_SECONDS, majorityOf } from '~~/lib/government'
 import { placedTotalFor } from '~~/lib/live-guess-policy'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { chamberGroups, parliamentPhase } from '~~/lib/parliament3d/scene'
 import type { GovernmentState } from '~~/types/challenges/group-modes.type'
 
 /**
@@ -250,6 +277,10 @@ import type { GovernmentState } from '~~/types/challenges/group-modes.type'
  * `useDeadlineClock`. The server's beat flip is what ends a beat — a local
  * timer here would eventually disagree with the grade.
  */
+
+const ParliamentStage = defineAsyncComponent(
+  () => import('~/components/challenge/ParliamentStage.client.vue')
+)
 
 const { challenge, begin, gameStore, update, announce, entries } =
   useGroupChallenge('government-challenge')
@@ -452,7 +483,7 @@ const shareLabels = computed<Record<number, string>>(() => {
 const arcSeats = computed(() => {
   const total = challenge.value?.totalSeats ?? 0
   if (!total) return []
-  const dots = Math.min(MAX_SEAT_DOTS, total)
+  const dots = seatDots(total)
   // Whichever block the player is considering lights that share of the house.
   // The arc was drawn inert (`lit: false` for every seat), which made it a
   // decorative rainbow — the whole point of a hemicycle is that a number like
@@ -468,9 +499,69 @@ const arcSeats = computed(() => {
  */
 const hoveredBlock = ref<number | undefined>()
 const previewBlock = computed(() => {
-  if (verdict.value) return answers.value?.governingSeats
+  if (verdict.value?.beat === 'seats') return Number(verdict.value.truth)
   return mySeats.value ?? pendingBlock.value ?? hoveredBlock.value
 })
+
+const stageOn = ref(true)
+const stagePhase = computed(() => parliamentPhase(state.value))
+const verdictKey = computed(() =>
+  verdict.value ? `${verdict.value.beat}:${state.value.turn}` : undefined
+)
+
+const optionColor = (name?: string) =>
+  challenge.value?.options.find(option => option.name === name)?.color
+const hoveredParty = ref<string | undefined>()
+const flagColor = computed(() =>
+  optionColor(
+    subject.value?.name ??
+      (verdict.value?.beat === 'party'
+        ? verdict.value.truth
+        : (myParty.value ?? hoveredParty.value))
+  )
+)
+
+const chamber = computed(() =>
+  chamberGroups({
+    phase: stagePhase.value,
+    totalSeats: challenge.value?.totalSeats ?? 0,
+    preview: previewBlock.value,
+    verdict: verdict.value?.beat === 'seats' ? verdictTone.value : undefined,
+    benches: challenge.value?.benches ?? [],
+    governing: subject.value?.name,
+    sorted: challenge.value?.sorted ?? [],
+    filed: filedSides.value,
+    truth: verdict.value?.beat === 'sides' ? verdict.value.sides : undefined,
+    standings: answers.value?.standings,
+    benchSeats: answers.value?.benchSeats,
+  })
+)
+
+const stageLayer = ref<HTMLElement>()
+const stageWindow = ref<HTMLElement>()
+const band = ref<{ top: number; bottom: number }>()
+const measureBand = () => {
+  const layer = stageLayer.value?.getBoundingClientRect()
+  const frame = stageWindow.value?.getBoundingClientRect()
+  if (!layer || !frame?.height) return
+  band.value = { top: frame.top - layer.top, bottom: frame.bottom - layer.top }
+}
+let bandObserver: ResizeObserver | undefined
+onMounted(() => {
+  bandObserver = new ResizeObserver(measureBand)
+  watch(
+    [stageLayer, stageWindow],
+    ([layer, frame]) => {
+      bandObserver?.disconnect()
+      if (layer) bandObserver?.observe(layer)
+      if (frame) bandObserver?.observe(frame)
+      measureBand()
+    },
+    { immediate: true }
+  )
+})
+watch([stagePhase, verdict], () => nextTick(measureBand))
+onBeforeUnmount(() => bandObserver?.disconnect())
 
 /**
  * Whether a block would carry the house. Said alongside the share rather than
@@ -728,6 +819,11 @@ const promptSources = computed(() => datasetAttribution('parties'))
   transition:
     opacity var(--motion-base) var(--ease-out-expressive),
     transform var(--motion-base) var(--ease-out-expressive);
+}
+
+// The building leads every phase change; the controls follow it in.
+.staged .beat-enter-active {
+  transition-delay: var(--motion-quick);
 }
 .beat-leave-active {
   transition:
@@ -1076,6 +1172,30 @@ const promptSources = computed(() => datasetAttribution('parties'))
     letter-spacing: 0.04em;
     text-transform: uppercase;
     opacity: 0.75;
+  }
+}
+
+.parliament-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+// The building is framed into `.stage-window`: whatever height the prompt and
+// the controls leave. The controls hug their content beneath it.
+.government.staged {
+  isolation: isolate;
+
+  .stage-window {
+    flex: 1 1 auto;
+    min-height: clamp(120px, 24vh, 360px);
+  }
+
+  .logos,
+  .seats-beat,
+  .sides-beat {
+    flex: 0 1 auto;
   }
 }
 
