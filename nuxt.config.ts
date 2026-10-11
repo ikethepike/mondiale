@@ -56,6 +56,11 @@ export default defineNuxtConfig({
     ignore: ['public/**', '.claude/**', '.output/**', 'screenshots/**', 'reveal-screenshots/**'],
   },
   vite: {
+    // PR previews bundle Vintage's answer key so /test-views can deal it;
+    // production builds never set this, and the chunk folds away.
+    define: {
+      'import.meta.env.HARNESS_ANSWERS': JSON.stringify(process.env.HARNESS_ANSWERS === '1'),
+    },
     // CJS-only, so Vite must pre-bundle it — without this the dev server
     // re-optimises mid-session and reloads the page under whoever is playing.
     optimizeDeps: { include: ['qrcode-generator'] },
