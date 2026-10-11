@@ -1,6 +1,6 @@
 import type { LatLng } from '~~/lib/geo'
 import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
-import type { UniqueCategoryId } from './challenges/group-modes.type'
+import type { UniqueCategoryId, VintageOutcome } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 import { SEAT_STEPS, type SeatStep } from './seat.types'
@@ -187,6 +187,12 @@ export type ClientEventData =
        *  path). Answered with a targeted 'manhunt-position' emit; ignored for
        *  anyone but the despot. */
       event: 'fetch-manhunt-position'
+    }
+  | {
+      /** Vintage: a graded seat (or a spectator) asks for a round's story.
+       *  Answered with a targeted 'vintage-story' emit. */
+      event: 'fetch-vintage-story'
+      round: number
     }
   | {
       /** Unique or Bust: a player dismissed their briefing card. The writing
@@ -445,6 +451,9 @@ export type ServerEventData =
   /** Manhunt: the despot's own trail, emitted ONLY to the despot's socket —
    *  never broadcast. `turn` stamps which beat the trail was current at. */
   | { event: 'manhunt-position'; trail: ISOCountryCode[]; turn: number }
+  /** Vintage: a round's answer and story, emitted ONLY to a socket whose
+   *  seat has been graded — the years never ride a snapshot. */
+  | { event: 'vintage-story'; round: number; story: VintageOutcome }
   /** Manhunt: a relayed taunt. `role` picks the phrase list; `index` the
    *  line. The sender id is the socket's authenticated id. */
   | {

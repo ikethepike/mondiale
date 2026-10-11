@@ -1260,8 +1260,8 @@ export interface PyramidSchemeChallenge {
 /**
  * Vintage: a region's political map rewinds from 2019 to a dealt scene, and
  * the table dates it. The challenge carries the scene and never its years;
- * each graded answer carries the story (`GroupChallengeAnswer.vintage`),
- * because a seat's own slice is all its verdict and scorecard ever receive.
+ * the story reaches each socket over a targeted 'vintage-story' emit once its
+ * seat is graded (`useVintageStory`), since every snapshot reaches the room.
  */
 export interface VintageChallenge {
   _type: 'vintage-challenge'

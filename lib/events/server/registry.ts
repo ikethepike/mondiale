@@ -18,6 +18,7 @@ import { submitGovernmentPickHandler } from './submit-government-pick.handler'
 import { submitManhuntMarkerHandler } from './submit-manhunt-marker.handler'
 import { submitManhuntSubpoenaHandler } from './submit-manhunt-subpoena.handler'
 import { fetchManhuntPositionHandler } from './fetch-manhunt-position.handler'
+import { fetchVintageStoryHandler } from './fetch-vintage-story.handler'
 import { manhuntReadyHandler } from './manhunt-ready.handler'
 import { uniqueReadyHandler } from './unique-ready.handler'
 import { chainReadyHandler } from './chain-ready.handler'
@@ -121,6 +122,10 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'fetch-manhunt-position': {
     handler: fetchManhuntPositionHandler,
   },
+  // Reads one round's story; answers the requesting socket once it is graded
+  'fetch-vintage-story': {
+    handler: fetchVintageStoryHandler,
+  },
   'submit-timeline-placement': {
     handler: submitTimelinePlacementHandler,
   },
@@ -208,6 +213,7 @@ export const UNRECORDED_CLIENT_EVENTS: readonly ClientEvent[] = [
   'player-cheering',
   'manhunt-taunt',
   'fetch-manhunt-position',
+  'fetch-vintage-story',
 ]
 
 /**

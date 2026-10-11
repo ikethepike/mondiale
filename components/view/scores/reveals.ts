@@ -171,10 +171,9 @@ export const SCORECARD_REVEALS: Partial<Record<RoundChallengeKind, ScorecardReve
     {
       component: VintageScorecard,
       mode: 'replace',
-      props: ({ challenge, roundAnswers, players, playerId, viewerId }) =>
-        isChallengeOfType(challenge, 'vintage-challenge') &&
-        Object.values(roundAnswers).some(answer => answer.vintage)
-          ? { challenge, roundAnswers, players, playerId, viewerId }
+      props: ({ challenge, roundAnswers, players, playerId, viewerId, round }) =>
+        isChallengeOfType(challenge, 'vintage-challenge')
+          ? { challenge, roundAnswers, players, playerId, viewerId, round }
           : undefined,
     },
   ],

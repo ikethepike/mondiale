@@ -1,4 +1,3 @@
-import type { VintageOutcome } from './challenges/group-modes.type'
 import type { PLAYER_COLORS } from '~~/data/palette'
 import type { LatLng } from '~~/lib/geo'
 import {
@@ -126,8 +125,6 @@ export interface GroupChallengeAnswer {
   buzzAt?: number
   /** Vintage rounds: the year the player dated the map to. */
   year?: number
-  /** Vintage rounds: what the dealt map was and what has changed since. */
-  vintage?: VintageOutcome
 }
 
 export const gameVariants = [

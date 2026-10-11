@@ -3,7 +3,7 @@ import { sample, weightedPick } from '~~/lib/arrays'
 import { vintageSeconds } from '~~/lib/round-beats'
 import { taperScore } from '~~/lib/scoring'
 import { isChallengeOfType } from '~~/lib/rounds'
-import { VINTAGE_TUNING, vintageFameWeight } from '~~/lib/vintage-tuning'
+import { VINTAGE_TUNING, vintageFameWeight, yearsOff } from '~~/lib/vintage-tuning'
 import type { VintageChallenge, VintageOutcome } from '~~/types/challenges/group-modes.type'
 import { isFameDealable } from '~~/types/fame.types'
 import type { Game, GameDifficulty } from '~~/types/game.types'
@@ -61,23 +61,25 @@ export const vintageSceneAt = (region: VintageRegionId, year: number): number =>
     VINTAGE_YEARS[region].spans.findIndex(([from, to]) => year >= from && year <= to)
   )
 
-/** A fresh region while the board has one, never a scene twice a game, and
- *  a lean toward the tiers the difficulty favours. */
+/** A region at most once a game — its scorecard has just shown every year
+ *  its map ever changed — leaning toward the tiers the difficulty favours. */
 export const pickVintage = (game: Game, maximumPoints: number): VintageChallenge | undefined => {
-  const dealt = game.rounds.flatMap(({ groupChallenge }) =>
-    isChallengeOfType(groupChallenge, 'vintage-challenge') ? [groupChallenge] : []
-  )
-  const fresh = (region: VintageRegionId) =>
-    dealableScenes(region, game.difficulty).filter(
-      scene => !dealt.some(prior => prior.region === region && prior.scene === scene)
+  const dealt = new Set(
+    game.rounds.flatMap(({ groupChallenge }) =>
+      isChallengeOfType(groupChallenge, 'vintage-challenge') ? [groupChallenge.region] : []
     )
-  const open = VINTAGE_REGIONS_BY_VARIANT[game.variant].filter(region => fresh(region).length)
-  const unvisited = open.filter(region => !dealt.some(prior => prior.region === region))
-  const region = sample(unvisited.length ? unvisited : open)
+  )
+  const region = sample(
+    VINTAGE_REGIONS_BY_VARIANT[game.variant].filter(
+      region => !dealt.has(region) && dealableScenes(region, game.difficulty).length
+    )
+  )
   if (!region) return undefined
   const fame = VINTAGE_YEARS[region].fame
   const scene = weightedPick(
-    fresh(region).map(scene => [scene, vintageFameWeight(fame[scene], game.difficulty)] as const)
+    dealableScenes(region, game.difficulty).map(
+      scene => [scene, vintageFameWeight(fame[scene], game.difficulty)] as const
+    )
   )!
   return vintageChallengeFor(region, scene, game.difficulty, maximumPoints)
 }
@@ -95,10 +97,6 @@ export const vintageRuns = (challenge: VintageChallenge): [number, number][] => 
   })
   return runs
 }
-
-/** Years from the guess to the nearest year showing this map; 0 inside. */
-export const yearsOff = (runs: readonly [number, number][], year: number): number =>
-  Math.min(...runs.map(([from, to]) => (year < from ? from - year : year > to ? year - to : 0)))
 
 export const scoreVintage = ({
   challenge,

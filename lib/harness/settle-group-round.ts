@@ -11,10 +11,11 @@ import {
   SERVER_CONTROLLED_CAPS,
   stampClassicClock,
 } from '~~/lib/round-beats'
+import { isChallengeOfType } from '~~/lib/rounds'
 import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
+import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import type { VintageOutcome } from '~~/types/challenges/group-modes.type'
 
 /**
  * The preview harness's stand-in for the classic group-round settle.
@@ -58,11 +59,11 @@ const RIVAL_SHARES = [0.6, 0.3]
 const rivalSubmission = (
   correct: readonly ISOCountryCode[],
   seat: number,
-  vintage?: VintageOutcome
+  runs?: [number, number][]
 ): GroupSubmission => {
   // A year round: one rival dates it inside the band, the next a decade late.
-  if (vintage?.runs[0]) {
-    const [from, to] = vintage.runs[0]
+  if (runs?.[0]) {
+    const [from, to] = runs[0]
     return { ranking: [], year: seat % 2 ? to + 10 : from }
   }
   const share = RIVAL_SHARES[seat % RIVAL_SHARES.length] ?? 0.5
@@ -97,6 +98,9 @@ export const settleGroupRound = async ({
   // The correct set the mode just graded against — the rivals' answers are
   // sliced from it, so they can never contain a country the round never had.
   const correct = mine.answer.correct ?? []
+  const vintageRuns = isChallengeOfType(round.groupChallenge, 'vintage-challenge')
+    ? (await loadVintageAnswers())?.vintageRuns(round.groupChallenge)
+    : undefined
 
   let rivalSeat = 0
   for (const playerId of seats) {
@@ -111,7 +115,7 @@ export const settleGroupRound = async ({
         game,
         round,
         playerId,
-        submission: rivalSubmission(correct, rivalSeat++, mine.answer.vintage),
+        submission: rivalSubmission(correct, rivalSeat++, vintageRuns),
       })
     } catch {
       graded = await gradeGroupAnswer({
