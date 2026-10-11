@@ -127,7 +127,6 @@
 import CountryChip from '~/components/country/CountryChip.vue'
 import TimelineDossier from '~/components/challenge/TimelineDossier.vue'
 import { getCountry } from '~~/lib/country'
-import { prefersReducedMotion } from '~~/lib/motion'
 import { REVEAL_BEAT_MS } from '~~/lib/round-beats'
 import { seatLabel } from '~~/lib/player'
 import {
@@ -138,6 +137,7 @@ import {
   timelineCardPoints,
   timelineEvent,
 } from '~~/lib/timeline'
+import { useRevealSettle } from '~~/lib/use-reveal-settle'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { Player } from '~~/types/player.type'
@@ -256,20 +256,11 @@ const STOP_STAGGER_MS = 60
 
 /** The line opens as the player filed it, then misfiled cards shuffle to
  *  where history put them and leave a ghost in the gap they came from. */
-const settled = ref(false)
-let settleTimer: ReturnType<typeof setTimeout> | undefined
-const replayShuffle = () => {
-  clearTimeout(settleTimer)
-  settled.value = prefersReducedMotion() || !misfiled.value.length
-  if (settled.value) return
-  settleTimer = setTimeout(
-    () => (settled.value = true),
-    REVEAL_BEAT_MS + stops.value.length * STOP_STAGGER_MS
-  )
-}
-onMounted(replayShuffle)
+const { settled, replay: replayShuffle } = useRevealSettle(
+  () => misfiled.value.length > 0,
+  () => REVEAL_BEAT_MS + stops.value.length * STOP_STAGGER_MS
+)
 watch(() => props.playerId, replayShuffle)
-onBeforeUnmount(() => clearTimeout(settleTimer))
 
 const stripItems = computed(() => {
   const moved = new Set(misfiled.value.map(({ card }) => card.slug))
