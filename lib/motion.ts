@@ -23,6 +23,16 @@ export const DWELL = {
   hint: 2200,
   /** A taunt is a sentence, not a verdict — it lingers long enough to land. */
   taunt: 5200,
+  /** The board caption's own setback ("Gate held") before it gives way to the wait. */
+  setback: 4000,
+  /** Your turn's recap, the first thing the wait says. */
+  recap: 7000,
+  /** Another seat's news (a cleared gate, a finish) in the caption's aside. */
+  tableNews: 4500,
+  /** One fun fact — a sentence or two, read at leisure. */
+  fact: 10000,
+  /** The least an aside line is held before news may cut it short. */
+  asideFloor: 2500,
 } as const
 
 /** How long the reveal card waits, once the keyboard is down, before it slides in, in ms. */

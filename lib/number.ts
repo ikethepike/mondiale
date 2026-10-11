@@ -60,6 +60,21 @@ const COMPACT_USD = new Intl.NumberFormat('en', {
 export const formatCompact = (amount: number, options: { currency?: boolean } = {}): string =>
   (options.currency ? COMPACT_USD : COMPACT).format(amount)
 
+const PROSE_SCALES = [
+  [1e9, 'billion'],
+  [1e6, 'million'],
+] as const
+
+/** "26,145", "94 million", "1.3 billion" — a figure as a sentence says it. */
+export const formatProseNumber = (value: number, fractionDigits = 0): string => {
+  for (const [scale, word] of PROSE_SCALES) {
+    if (Math.abs(value) < scale) continue
+    const scaled = value / scale
+    return `${new Intl.NumberFormat('en', { maximumFractionDigits: Math.abs(scaled) < 10 ? 1 : 0 }).format(scaled)} ${word}`
+  }
+  return new Intl.NumberFormat('en', { maximumFractionDigits: fractionDigits }).format(value)
+}
+
 /** "1,234 km" — the one distance formatter for pin drops, probes and standings. */
 export const formatKm = (distanceKm: number): string =>
   `${Math.round(distanceKm).toLocaleString()} km`

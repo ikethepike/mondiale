@@ -266,7 +266,7 @@ watch(
 // next view's setup reads seatId — that ordering is what keeps a returning
 // finisher's views off the followed seat. The 3D follow target must clear
 // too: it outlives the booth otherwise and hijacks the finisher's own board
-// camera, HUD and blocked-banner on their next walk.
+// camera, HUD and caption on their next walk.
 onBeforeUnmount(() => {
   gameStore.spectateFollowId = undefined
   gameStore.spectateSeatId = undefined

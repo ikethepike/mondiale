@@ -1,6 +1,7 @@
 import { isGroupChallenge, type RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { Game, Round } from '~~/types/game.types'
+import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 /** Every round challenge that carries a `_type` discriminant. The legacy
  *  ranking `GroupChallenge` has none, so `Extract` drops it automatically. */
@@ -40,6 +41,14 @@ export const latestChallengeOfType = <T extends TypedRoundChallenge['_type']>(
 export const rankingAccessorId = (
   challenge: RoundChallenge | undefined
 ): GroupChallengeAccessorId | undefined => (isGroupChallenge(challenge) ? challenge.id : undefined)
+
+/** The one country a round was about, for the kinds built around one (a silhouette, an anthem, a capital…). */
+export const roundFeaturedCountry = (
+  challenge: RoundChallenge | undefined
+): ISOCountryCode | undefined =>
+  challenge && 'country' in challenge && isValidISOCode(challenge.country)
+    ? challenge.country
+    : undefined
 
 /** Narrow or throw — the answers handler's per-kind guard. */
 export const expectChallengeType = <T extends TypedRoundChallenge['_type']>(

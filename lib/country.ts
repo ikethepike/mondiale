@@ -1,12 +1,16 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
-import { baseEncode, editDistance, normalizeAnswer } from './strings'
+import { baseEncode, editDistance, normalizeAnswer, withArticle } from './strings'
 
 export const getCountry = (isoCode: ISOCountryCode): Country => COUNTRIES[isoCode]
 
 export const countryName = (country: ISOCountryCode | Country): string =>
   typeof country === 'string' ? COUNTRIES[country].name.english : country.name.english
+
+/** The name mid-sentence: "the Netherlands", "the Gambia", "Chad". */
+export const countryInProse = (country: ISOCountryCode | Country): string =>
+  withArticle(countryName(country).replace(/^The /, 'the '))
 
 // The inline flag SVGs are a ~1.3MB generated artifact split out of
 // countries.gen, loaded lazily (like flags-wide below) so COUNTRIES — which
