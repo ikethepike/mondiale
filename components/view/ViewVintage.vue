@@ -41,7 +41,11 @@
         </ChallengeResult>
         <span v-if="!outcome" class="map-caption sub" :class="{ rewinding: phase === 'rewind' }">
           <RewindGlyph v-if="phase === 'rewind'" class="sub-glyph" />
-          {{ subline }}
+          <Transition name="caption" mode="out-in">
+            <span :key="caption?.key ?? phase" class="sub-line" aria-live="polite">
+              {{ caption?.line ?? subline }}
+            </span>
+          </Transition>
         </span>
         <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
       </ChallengePrompt>
@@ -104,6 +108,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { useClientEvents } from '~~/lib/events/client-side'
 import {
+  VINTAGE_CAPTION_MS,
   VINTAGE_FLASH_MS,
   VINTAGE_GUESS_SECONDS,
   VINTAGE_LEAD_MS,
@@ -120,7 +125,9 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import {
   finalScene,
   loadVintageRegion,
+  passCaptions,
   passLengthMs,
+  passStep,
   sceneAt,
   type VintagePass,
 } from '~~/lib/vintage'
@@ -128,8 +135,11 @@ import {
   WASH_RULERS,
   dealtRun,
   describeChange,
+  describeRewind,
   formatRuns,
   formatYears,
+  leadChange,
+  unitChanges,
   vintageVerdict,
 } from '~~/lib/vintage-story'
 import { VINTAGE_REGION_NAMES, type VintageRegion, type VintageWash } from '~~/types/vintage.types'
@@ -241,6 +251,27 @@ const flashing = computed(
     playWindow.running.value &&
     playWindow.elapsedMs.value < VINTAGE_FLASH_MS
 )
+
+const captions = computed(() =>
+  rewind.value && challenge.value?.labelled ? passCaptions(rewind.value, VINTAGE_CAPTION_MS) : []
+)
+/** What the rewind is undoing right now, in words — named maps only, since a
+ *  hard table's map carries no names to read the line against. */
+const caption = computed(() => {
+  if (phase.value !== 'rewind' || flashing.value || !region.value || !rewind.value) return
+  const elapsed = playWindow.elapsedMs.value
+  let current: (typeof captions.value)[number] | undefined
+  for (const entry of captions.value) if (entry.atMs <= elapsed) current = entry
+  if (!current) return
+  const changes = unitChanges(region.value, passStep(rewind.value, current.crossing))
+  const lead = leadChange(changes)
+  if (!lead) return
+  const more = changes.length - 1
+  return {
+    key: current.crossing,
+    line: `${describeRewind(lead)}${more ? ` · +${more} more` : ''}`,
+  }
+})
 
 const guess = ref(
   challenge.value ? Math.round((challenge.value.range[0] + challenge.value.range[1]) / 2) : 1950
@@ -383,10 +414,46 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
+  max-width: min(64rem, calc(100vw - 3.2rem));
 
   .sub-glyph {
+    flex: none;
     animation: rewind-pulse 1.6s ease-in-out infinite;
   }
+
+  // The prompt's height is the map's berth: a line that wrapped mid-rewind
+  // would re-frame the camera with every caption.
+  .sub-line {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: $tablet) {
+    .sub-line {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      white-space: normal;
+      min-height: 2lh;
+    }
+  }
+}
+
+.caption-enter-active,
+.caption-leave-active {
+  transition:
+    opacity var(--motion-quick) var(--ease-smooth),
+    transform var(--motion-quick) var(--ease-smooth);
+}
+.caption-enter-from {
+  opacity: 0;
+  transform: translateX(0.6rem);
+}
+.caption-leave-to {
+  opacity: 0;
+  transform: translateX(-0.6rem);
 }
 
 .console {

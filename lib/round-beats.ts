@@ -317,6 +317,8 @@ export const VINTAGE_REPLAY_BUDGET_MS = 6000
 export const VINTAGE_REPLAY_LEAD_MS = 1600
 export const VINTAGE_STEP_MIN_MS = 420
 export const VINTAGE_STEP_MAX_MS = 2600
+/** The shortest a rewind caption stays up — steps outrun reading. */
+export const VINTAGE_CAPTION_MS = 1500
 /** How far past its budget a crowded pass may run before every step shrinks. */
 const VINTAGE_BUDGET_STRETCH = 1.25
 /** Thinking time once the map stops. */

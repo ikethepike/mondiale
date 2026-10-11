@@ -1,3 +1,4 @@
+import { sentenceCase, withArticle as the } from '~~/lib/strings'
 import type { VintageOutcome } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { VintageEra, VintageRegion, VintageWash } from '~~/types/vintage.types'
@@ -74,14 +75,17 @@ const kindOf = (
   return moved ? 'moved' : undefined
 }
 
+/** A change as the yearless client can know it — mid-rewind, before any
+ *  answer has been published. */
+export type VintageUnitChange = Omit<VintageChange, 'year' | 'note'>
+
 /** Every unit a step changes, in words. `labelled` drops what a bare map
  *  cannot show — a rename alone is invisible without names. */
-export const stepChanges = (
+export const unitChanges = (
   region: VintageRegion,
-  outcome: VintageOutcome,
   step: number,
   labelled = true
-): VintageChange[] =>
+): VintageUnitChange[] =>
   region.steps[step].units.flatMap(([unit, beforeShape, beforeEra, afterShape, afterEra]) => {
     const before = beforeShape >= 0 ? region.eras[beforeEra] : undefined
     const after = afterShape >= 0 ? region.eras[afterEra] : undefined
@@ -90,51 +94,92 @@ export const stepChanges = (
     if (!labelled && kind === 'renamed') kind = moved ? 'moved' : undefined
     if (!kind) return []
     const { gwcode, iso } = region.units[unit]
-    const year = outcome.stepYears[step]
-    const note = outcome.notes[`${gwcode}:${year}`]
-    return [
-      {
-        step,
-        year,
-        unit,
-        gwcode,
-        ...(iso ? { iso } : {}),
-        kind,
-        before,
-        after,
-        ...(note ? { note } : {}),
-      },
-    ]
+    return [{ step, unit, gwcode, ...(iso ? { iso } : {}), kind, before, after }]
   })
 
-const byLegibility = (a: VintageChange, b: VintageChange) =>
-  LEGIBILITY.indexOf(a.kind) - LEGIBILITY.indexOf(b.kind) || (b.note ? 1 : 0) - (a.note ? 1 : 0)
+export const stepChanges = (
+  region: VintageRegion,
+  outcome: VintageOutcome,
+  step: number,
+  labelled = true
+): VintageChange[] =>
+  unitChanges(region, step, labelled).map(change => {
+    const year = outcome.stepYears[step]
+    const note = outcome.notes[`${change.gwcode}:${year}`]
+    return { ...change, year, ...(note ? { note } : {}) }
+  })
 
-export const leadChange = (changes: VintageChange[]) => [...changes].sort(byLegibility)[0]
+const byLegibility = (
+  a: VintageUnitChange & { note?: string },
+  b: VintageUnitChange & { note?: string }
+) => LEGIBILITY.indexOf(a.kind) - LEGIBILITY.indexOf(b.kind) || (b.note ? 1 : 0) - (a.note ? 1 : 0)
 
-/** One change as a sentence, in the past tense. */
-export const describeChange = ({ kind, before, after }: VintageChange): string => {
+export const leadChange = <Change extends VintageUnitChange & { note?: string }>(
+  changes: Change[]
+): Change | undefined => [...changes].sort(byLegibility)[0]
+
+/** One change as a clause, in the past tense — it may open with "the", so a
+ *  line that starts with it wraps it in `sentenceCase`. */
+export const describeChange = ({ kind, before, after }: VintageUnitChange): string => {
   switch (kind) {
     case 'independence':
       return before && after && before.name !== after.name
-        ? `${before.name} became independent as ${after.name}`
+        ? `${the(before.name)} became independent as ${the(after.name)}`
         : before?.wash && before.wash !== 'contested'
-          ? `${after!.name} won independence from ${WASH_RULERS[before.wash]} rule`
-          : `${after!.name} became independent`
+          ? `${the(after!.name)} won independence from ${WASH_RULERS[before.wash]} rule`
+          : `${the(after!.name)} became independent`
     case 'renamed':
-      return `${before!.name} became ${after!.name}`
+      return `${the(before!.name)} became ${the(after!.name)}`
     case 'formed':
-      return `${after!.name} appeared on the map`
+      return `${the(after!.name)} appeared on the map`
     case 'gone':
-      return `${before!.name} vanished from the map`
+      return `${the(before!.name)} vanished from the map`
     case 'ruler':
       return after!.wash
         ? after!.wash === 'contested'
-          ? `${after!.name} fell under occupation or dispute`
-          : `${after!.name} came under ${WASH_RULERS[after!.wash]} rule`
-        : `${after!.name} threw off ${WASH_RULERS[before!.wash!]} rule`
+          ? `${the(after!.name)} fell under occupation or dispute`
+          : `${the(after!.name)} came under ${WASH_RULERS[after!.wash]} rule`
+        : `${the(after!.name)} threw off ${WASH_RULERS[before!.wash!]} rule`
     case 'moved':
-      return `${after!.name}'s borders moved`
+      return `${the(after!.name)}'s borders moved`
+  }
+}
+
+/** The same change undone, as the rewind plays it: present tense, named the
+ *  way the map is about to read. */
+export const describeRewind = (change: VintageUnitChange): string => sentenceCase(rewound(change))
+
+const rewound = ({ kind, before, after }: VintageUnitChange): string => {
+  const ruler = (wash: VintageWash | undefined) =>
+    wash && wash !== 'contested' ? WASH_RULERS[wash] : undefined
+  switch (kind) {
+    case 'independence': {
+      const renamed = before!.name !== after!.name
+      const under = ruler(before!.wash)
+      if (under)
+        return renamed
+          ? `${the(after!.name)} is ${the(before!.name)} again, under ${under} rule`
+          : `${the(after!.name)} returns to ${under} rule`
+      return renamed
+        ? `${the(after!.name)} is ${the(before!.name)} again`
+        : `${the(after!.name)} is not yet independent`
+    }
+    case 'renamed':
+      return `${the(after!.name)} is ${the(before!.name)} again`
+    case 'formed':
+      return `${the(after!.name)} disappears from the map`
+    case 'gone':
+      return `${the(before!.name)} returns to the map`
+    case 'ruler': {
+      if (before!.wash === 'contested') return `${the(before!.name)} is occupied or disputed again`
+      const was = ruler(before!.wash)
+      if (was) return `${the(before!.name)} returns to ${was} rule`
+      return after!.wash === 'contested'
+        ? `${the(before!.name)} is no longer occupied or disputed`
+        : `${the(before!.name)} leaves ${ruler(after!.wash)} rule`
+    }
+    case 'moved':
+      return `${the(before!.name)}'s borders shift`
   }
 }
 

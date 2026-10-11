@@ -1,8 +1,9 @@
 import { VINTAGE_YEARS } from '~~/data/vintage-years.gen'
-import { sample } from '~~/lib/arrays'
+import { sample, weightedPick } from '~~/lib/arrays'
 import { vintageSeconds } from '~~/lib/round-beats'
 import { taperScore } from '~~/lib/scoring'
-import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
+import { isChallengeOfType } from '~~/lib/rounds'
+import { VINTAGE_TUNING, vintageFameWeight } from '~~/lib/vintage-tuning'
 import type { VintageChallenge, VintageOutcome } from '~~/types/challenges/group-modes.type'
 import { isFameDealable } from '~~/types/fame.types'
 import type { Game, GameDifficulty } from '~~/types/game.types'
@@ -60,13 +61,24 @@ export const vintageSceneAt = (region: VintageRegionId, year: number): number =>
     VINTAGE_YEARS[region].spans.findIndex(([from, to]) => year >= from && year <= to)
   )
 
+/** A fresh region while the board has one, never a scene twice a game, and
+ *  a lean toward the tiers the difficulty favours. */
 export const pickVintage = (game: Game, maximumPoints: number): VintageChallenge | undefined => {
-  const regions = VINTAGE_REGIONS_BY_VARIANT[game.variant].filter(
-    region => dealableScenes(region, game.difficulty).length
+  const dealt = game.rounds.flatMap(({ groupChallenge }) =>
+    isChallengeOfType(groupChallenge, 'vintage-challenge') ? [groupChallenge] : []
   )
-  const region = sample(regions)
+  const fresh = (region: VintageRegionId) =>
+    dealableScenes(region, game.difficulty).filter(
+      scene => !dealt.some(prior => prior.region === region && prior.scene === scene)
+    )
+  const open = VINTAGE_REGIONS_BY_VARIANT[game.variant].filter(region => fresh(region).length)
+  const unvisited = open.filter(region => !dealt.some(prior => prior.region === region))
+  const region = sample(unvisited.length ? unvisited : open)
   if (!region) return undefined
-  const scene = sample(dealableScenes(region, game.difficulty))!
+  const fame = VINTAGE_YEARS[region].fame
+  const scene = weightedPick(
+    fresh(region).map(scene => [scene, vintageFameWeight(fame[scene], game.difficulty)] as const)
+  )!
   return vintageChallengeFor(region, scene, game.difficulty, maximumPoints)
 }
 

@@ -54,7 +54,7 @@
           >
             <span class="badge">{{ row.n }}</span>
             <CountryChip v-if="row.country" tag="span" compact :country="row.country" />
-            <span class="sentence">{{ describeChange(row.clue.change) }}</span>
+            <span class="sentence">{{ sentenceCase(describeChange(row.clue.change)) }}</span>
             <span class="bound">{{
               row.clue.bound === 'after'
                 ? `since ${row.clue.change.year}`

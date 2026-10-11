@@ -12,6 +12,7 @@ import {
   yearsOff,
 } from '~~/lib/events/server/vintage-grade'
 import {
+  VINTAGE_CAPTION_MS,
   VINTAGE_GUESS_SECONDS,
   VINTAGE_LEAD_MS,
   VINTAGE_REWIND_BUDGET_MS,
@@ -24,6 +25,9 @@ import {
   arcPoints,
   finalScene,
   loadVintageRegion,
+  passCaptions,
+  passLengthMs,
+  passStep,
   sceneAt,
   sceneCount,
   shapePath,
@@ -33,9 +37,24 @@ import {
   stepScene,
   type ArcOverrides,
 } from '~~/lib/vintage'
-import { bookends, changelog, clues, dealtRun, vintageVerdict } from '~~/lib/vintage-story'
-import { VINTAGE_TUNING, legibleFame, sceneLegibility } from '~~/lib/vintage-tuning'
+import {
+  bookends,
+  changelog,
+  clues,
+  dealtRun,
+  describeRewind,
+  leadChange,
+  unitChanges,
+  vintageVerdict,
+} from '~~/lib/vintage-story'
+import {
+  VINTAGE_TUNING,
+  legibleFame,
+  sceneLegibility,
+  vintageFameWeight,
+} from '~~/lib/vintage-tuning'
 import { isFameDealable } from '~~/types/fame.types'
+import { withArticle } from '~~/lib/strings'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import {
   VINTAGE_REGION_IDS,
@@ -55,7 +74,7 @@ const sameScene = (a: ReturnType<typeof sceneAt>, b: ReturnType<typeof sceneAt>)
 }
 
 const gameOn = (difficulty: GameDifficulty, variant: Game['variant']) =>
-  ({ difficulty, variant }) as Game
+  ({ difficulty, variant, rounds: [] }) as unknown as Game
 
 describe.each(VINTAGE_REGION_IDS)('vintage data: %s', region => {
   let geometry: VintageRegion
@@ -191,6 +210,54 @@ describe('vintage answer key boundary', () => {
   })
 })
 
+describe('vintage rewind captions', () => {
+  it('words every change the rewind can undo', () => {
+    for (const id of VINTAGE_REGION_IDS) {
+      const region = VINTAGE_REGIONS[id]
+      region.steps.forEach((_, step) => {
+        const lead = leadChange(unitChanges(region, step))
+        expect(lead, `${id} step ${step}`).toBeDefined()
+        const line = describeRewind(lead!)
+        expect(line).not.toMatch(/undefined|null/)
+      })
+    }
+  })
+
+  it('names a polity the way prose does', () => {
+    expect(withArticle('Soviet Union')).toBe('the Soviet Union')
+    expect(withArticle('Gold Coast')).toBe('the Gold Coast')
+    expect(withArticle('Empire of Japan')).toBe('the Empire of Japan')
+    expect(withArticle('Ghana')).toBe('Ghana')
+    expect(withArticle('Allied-occupied Germany')).toBe('Allied-occupied Germany')
+  })
+
+  it('holds each line long enough to read and never runs ahead of its step', () => {
+    for (const id of VINTAGE_REGION_IDS) {
+      const region = VINTAGE_REGIONS[id]
+      const pass = {
+        from: finalScene(region),
+        to: 0,
+        weights: VINTAGE_YEARS[id].weights.labelled.slice().reverse(),
+        budgetMs: VINTAGE_REWIND_BUDGET_MS,
+        leadMs: VINTAGE_LEAD_MS,
+      }
+      const schedule = vintageSchedule(pass.weights, pass.budgetMs)
+      const captions = passCaptions(pass, VINTAGE_CAPTION_MS)
+      expect(captions.length).toBeGreaterThan(0)
+      captions.forEach(({ atMs, crossing }, index) => {
+        expect(atMs).toBeGreaterThanOrEqual(pass.leadMs + schedule[crossing][0])
+        expect(atMs).toBeLessThan(passLengthMs(pass))
+        if (index) {
+          expect(atMs - captions[index - 1].atMs).toBeGreaterThanOrEqual(VINTAGE_CAPTION_MS)
+          expect(crossing).toBeGreaterThan(captions[index - 1].crossing)
+        }
+        const step = passStep(pass, crossing)
+        expect(step).toBe(pass.from - crossing - 1)
+      })
+    }
+  })
+})
+
 describe('vintage legibility', () => {
   const spans: [number, number][] = [
     [1900, 1949],
@@ -267,6 +334,33 @@ describe('vintage dealer and grader', () => {
       Array.from({ length: 300 }, () => pickVintage(gameOn('hard', 'world'), 10)!.region)
     )
     expect(regions.size).toBe(VINTAGE_REGION_IDS.length)
+  })
+
+  it('visits every region of a board before revisiting one, never a scene twice', () => {
+    for (const difficulty of ['normal', 'hard'] as const) {
+      const game = gameOn(difficulty, 'world')
+      const seen: string[] = []
+      for (let round = 0; round < 12; round++) {
+        const challenge = pickVintage(game, 10)!
+        if (round < VINTAGE_REGION_IDS.length && difficulty === 'hard')
+          expect(seen.map(key => key.split(':')[0])).not.toContain(challenge.region)
+        const key = `${challenge.region}:${challenge.scene}`
+        expect(seen).not.toContain(key)
+        seen.push(key)
+        game.rounds.push({ groupChallenge: challenge } as Game['rounds'][number])
+      }
+    }
+  })
+
+  it('leans toward the tiers each difficulty favours', () => {
+    expect(VINTAGE_TUNING.normal.fameWeights.major).toBeGreaterThan(
+      VINTAGE_TUNING.normal.fameWeights.minor
+    )
+    expect(VINTAGE_TUNING.hard.fameWeights.obscure).toBeGreaterThan(
+      VINTAGE_TUNING.hard.fameWeights.major
+    )
+    expect(vintageFameWeight('minor', 'easy')).toBe(0)
+    expect(vintageFameWeight('obscure', 'normal')).toBe(0)
   })
 
   it('pays in full inside the runs and tapers monotonically outside', () => {

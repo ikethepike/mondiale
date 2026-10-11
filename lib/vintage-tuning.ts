@@ -1,5 +1,5 @@
-import type { Fame } from '~~/types/fame.types'
 import type { GameDifficulty } from '~~/types/game.types'
+import { isFameDealable, type Fame } from '~~/types/fame.types'
 import { taperScore } from './scoring'
 
 export const VINTAGE_TUNING: Record<
@@ -14,12 +14,39 @@ export const VINTAGE_TUNING: Record<
     grace: number
     /** Years outside the runs at which a guess pays nothing. */
     zeroAt: number
+    /** How the dealer leans across the tiers the difficulty may deal. */
+    fameWeights: { [fame in Fame]: number }
   }
 > = {
-  easy: { labelled: true, minTells: 5, earliest: 1900, grace: 3, zeroAt: 30 },
-  normal: { labelled: true, minTells: 3, earliest: 1890, grace: 1, zeroAt: 25 },
-  hard: { labelled: false, minTells: 2, earliest: 1886, grace: 0, zeroAt: 20 },
+  easy: {
+    labelled: true,
+    minTells: 5,
+    earliest: 1900,
+    grace: 3,
+    zeroAt: 30,
+    fameWeights: { major: 1, minor: 0, obscure: 0 },
+  },
+  normal: {
+    labelled: true,
+    minTells: 3,
+    earliest: 1890,
+    grace: 1,
+    zeroAt: 25,
+    fameWeights: { major: 1, minor: 0.4, obscure: 0 },
+  },
+  hard: {
+    labelled: false,
+    minTells: 2,
+    earliest: 1886,
+    grace: 0,
+    zeroAt: 20,
+    fameWeights: { major: 0.4, minor: 0.7, obscure: 1 },
+  },
 }
+
+/** A tier the difficulty may not deal weighs nothing, whatever the table says. */
+export const vintageFameWeight = (fame: Fame, difficulty: GameDifficulty): number =>
+  isFameDealable(fame, difficulty) ? VINTAGE_TUNING[difficulty].fameWeights[fame] : 0
 
 export const VINTAGE_FAME = {
   /** Share of the camera frame a step must visibly change to be a landmark a

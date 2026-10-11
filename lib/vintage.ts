@@ -378,6 +378,41 @@ export const passFrameAt = (pass: VintagePass, elapsedMs: number): PassFrame => 
   }
 }
 
+/** The step a pass crosses `crossing`-th. */
+export const passStep = (pass: VintagePass, crossing: number) =>
+  pass.to >= pass.from ? pass.from + crossing : pass.from - crossing - 1
+
+/**
+ * When each caption goes up, in ms from the pass's start: a crossing gets its
+ * own line if the last one has stood `dwellMs`; otherwise the heaviest step
+ * that started meanwhile waits its turn and the lighter ones go unsaid.
+ */
+export const passCaptions = (
+  pass: VintagePass,
+  dwellMs: number
+): { atMs: number; crossing: number }[] => {
+  const schedule = vintageSchedule(pass.weights, pass.budgetMs)
+  const captions: { atMs: number; crossing: number }[] = []
+  let freeAt = 0
+  let waiting: number | undefined
+  schedule.forEach(([start], crossing) => {
+    const at = pass.leadMs + start
+    if (waiting !== undefined && freeAt <= at) {
+      captions.push({ atMs: freeAt, crossing: waiting })
+      freeAt += dwellMs
+      waiting = undefined
+    }
+    if (at >= freeAt) {
+      captions.push({ atMs: at, crossing })
+      freeAt = at + dwellMs
+    } else if (waiting === undefined || pass.weights[crossing] > pass.weights[waiting])
+      waiting = crossing
+  })
+  if (waiting !== undefined && freeAt < passLengthMs(pass))
+    captions.push({ atMs: freeAt, crossing: waiting })
+  return captions
+}
+
 export const passLengthMs = (pass: VintagePass) => {
   const schedule = vintageSchedule(pass.weights, pass.budgetMs)
   const last = schedule[schedule.length - 1]
