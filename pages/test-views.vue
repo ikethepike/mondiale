@@ -838,6 +838,11 @@ const VINTAGE_DEALS: Record<
   'europe-1900': { region: 'europe', year: 1900, difficulty: 'normal' },
   'europe-1930': { region: 'europe', year: 1930, difficulty: 'normal' },
   'africa-1975-hard': { region: 'africa', year: 1975, difficulty: 'hard' },
+  'middle-east-1930': { region: 'middle-east', year: 1930, difficulty: 'normal' },
+  'south-asia-1946': { region: 'south-asia', year: 1946, difficulty: 'normal' },
+  'east-asia-1935': { region: 'east-asia', year: 1935, difficulty: 'normal' },
+  'north-america-1930': { region: 'north-america', year: 1930, difficulty: 'normal' },
+  'south-america-1930': { region: 'south-america', year: 1930, difficulty: 'normal' },
 }
 
 const vintageChallengeOf = (id: string) => {
@@ -1442,6 +1447,11 @@ const scenarios: Scenario[] = [
       { id: 'europe-1900', label: 'Europe — Poland partitioned (normal)' },
       { id: 'europe-1930', label: 'Europe — between the wars (normal)' },
       { id: 'africa-1975-hard', label: 'Africa 1975 — hard, no names' },
+      { id: 'middle-east-1930', label: 'Middle East — the mandates (normal)' },
+      { id: 'south-asia-1946', label: 'South Asia — the Raj before Partition (normal)' },
+      { id: 'east-asia-1935', label: 'East Asia — Imperial Japan (normal)' },
+      { id: 'north-america-1930', label: 'North America — Newfoundland apart (normal)' },
+      { id: 'south-america-1930', label: 'South America — before the Chaco War (normal)' },
     ],
     build: variant => vintageGame(variant?.id ?? 'africa-1955', 'round'),
   },

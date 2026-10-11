@@ -124,7 +124,7 @@ import VintageTimebar from '~/components/challenge/VintageTimebar.vue'
 import { getCountry } from '~~/lib/country'
 import { seatLabel } from '~~/lib/player'
 import { sentenceCase } from '~~/lib/strings'
-import { REGION_LABELS } from '~~/lib/variant'
+import { loadVintageRegion } from '~~/lib/vintage'
 import {
   bookends,
   changelog,
@@ -141,7 +141,7 @@ import {
 import type { VintageChallenge } from '~~/types/challenges/group-modes.type'
 import type { GroupChallengeAnswer } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
-import type { VintageRegion } from '~~/types/vintage.types'
+import { VINTAGE_REGION_NAMES, type VintageRegion } from '~~/types/vintage.types'
 
 /** Vintage's scorecard: how close the table came, how the map could have
  *  been dated, and everything that changed since. */
@@ -166,8 +166,7 @@ const CHANGELOG_CAP = 6
 
 const region = shallowRef<VintageRegion>()
 onMounted(async () => {
-  const { VINTAGE_REGIONS } = await import('~~/data/vintage.gen')
-  region.value = VINTAGE_REGIONS[props.challenge.region]
+  region.value = await loadVintageRegion(props.challenge.region)
 })
 
 const outcome = computed(
@@ -178,7 +177,7 @@ const outcome = computed(
 const run = computed(() =>
   outcome.value ? dealtRun(outcome.value, props.challenge.scene) : undefined
 )
-const regionName = computed(() => REGION_LABELS[props.challenge.region])
+const regionName = computed(() => VINTAGE_REGION_NAMES[props.challenge.region])
 const year = computed(() => props.roundAnswers[props.playerId]?.year)
 const who = computed(() => seatLabel(props.players, props.playerId, props.viewerId))
 

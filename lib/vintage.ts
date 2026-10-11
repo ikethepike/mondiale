@@ -3,6 +3,7 @@ import { vintageSchedule } from './round-beats'
 import type {
   VintageEra,
   VintageRegion,
+  VintageRegionId,
   VintageStep,
   VintageUnitLook,
 } from '~~/types/vintage.types'
@@ -12,6 +13,20 @@ import type {
  * stream into a scene, and turning arcs into paths. Nothing here knows a year
  * — the years, and so the answers, live server-side.
  */
+
+/** One chunk per region, so a round downloads only the map it plays. */
+const REGION_LOADERS: Record<VintageRegionId, () => Promise<{ VINTAGE_REGION: VintageRegion }>> = {
+  africa: () => import('~~/data/vintage-africa.gen'),
+  europe: () => import('~~/data/vintage-europe.gen'),
+  'middle-east': () => import('~~/data/vintage-middle-east.gen'),
+  'south-asia': () => import('~~/data/vintage-south-asia.gen'),
+  'east-asia': () => import('~~/data/vintage-east-asia.gen'),
+  'north-america': () => import('~~/data/vintage-north-america.gen'),
+  'south-america': () => import('~~/data/vintage-south-america.gen'),
+}
+
+export const loadVintageRegion = async (id: VintageRegionId): Promise<VintageRegion> =>
+  (await REGION_LOADERS[id]()).VINTAGE_REGION
 
 export interface VintageScene {
   borders: Set<number>

@@ -121,4 +121,70 @@ export const VINTAGE_NOTES: Record<string, string> = {
   '291:1919': 'Danzig became a free city under the League of Nations.',
   '352:1960': 'Cyprus became independent of Britain.',
   '338:1964': 'Malta became independent of Britain.',
+
+  // --- Middle East ------------------------------------------------------------
+  '630:1935': 'Reza Shah asked the world to call Persia by its own name, Iran.',
+  '645:1932': "Iraq became the first of the League of Nations' mandates to win independence.",
+  '666:1948': 'Israel declared independence as the British mandate in Palestine ended.',
+  '652:1946': 'The last French troops left and Syria became fully independent.',
+  '660:1943': 'Lebanon declared independence from France; the last troops left in 1946.',
+  '663:1946':
+    'Transjordan won independence from Britain, renaming itself Jordan three years later.',
+  '670:1932': 'Ibn Saud unified the Hejaz and Nejd as the Kingdom of Saudi Arabia.',
+  '690:1961': 'Kuwait ended its British protectorate and became independent.',
+  '696:1971':
+    'Six of the Trucial States federated as the United Arab Emirates as Britain withdrew east of Suez.',
+  '678:1990': 'North and South Yemen unified, months after the Berlin Wall fell.',
+  '698:1970': 'Sultan Qaboos took power and Muscat and Oman became simply Oman.',
+
+  // --- South & Central Asia ---------------------------------------------------
+  '700:1919':
+    'After a brief war with Britain, Afghanistan took full control of its foreign affairs.',
+  '750:1947':
+    'British India was partitioned into India and Pakistan, uprooting some 15 million people.',
+  '770:1947': 'Pakistan was created in two wings, West and East, 1,600 km apart.',
+  '771:1971': 'East Pakistan broke away after a brutal war and became Bangladesh.',
+  '775:1948': 'Burma left the British Empire as an independent republic.',
+  '775:1989': 'The military government renamed Burma as Myanmar.',
+  '780:1972': 'Ceylon became a republic and took the name Sri Lanka.',
+  '704:1991':
+    'The Soviet Union dissolved, and five Central Asian republics became independent states.',
+
+  // --- East & Southeast Asia --------------------------------------------------
+  '710:1912':
+    'The Qing dynasty fell, ending more than two thousand years of imperial rule in China.',
+  '710:1949': 'The Communists won the civil war; the Nationalist government retreated to Taiwan.',
+  '713:1949': "Taiwan became the Republic of China's last stronghold after the civil war.",
+  '730:1910': 'Japan annexed Korea, ruling it as a colony until 1945.',
+  '731:1948': 'The Soviet and American occupation zones hardened into North and South Korea.',
+  '740:1945':
+    "Japan's surrender stripped it of an empire stretching from Sakhalin to the South Seas.",
+  '800:1939': 'Siam renamed itself Thailand, "land of the free".',
+  '811:1953': 'Cambodia won independence from France.',
+  '811:1975': 'The Khmer Rouge took power and renamed the country Democratic Kampuchea.',
+  '816:1975': 'North Vietnam took Saigon; the country was reunified the next year.',
+  '817:1954': 'The Geneva Accords split Vietnam at the 17th parallel.',
+  '820:1963': 'Malaya joined Singapore, Sabah and Sarawak to form Malaysia.',
+  '830:1965': 'Singapore was expelled from Malaysia and became an independent city-state.',
+  '840:1946': 'The Philippines became independent of the United States.',
+  '850:1949': 'The Netherlands recognised Indonesia after four years of revolution.',
+  '851:1962': 'Dutch New Guinea passed to the UN, then to Indonesia.',
+  '860:2002': 'East Timor became independent after a UN-run vote and transition.',
+
+  // --- North America & the Caribbean ------------------------------------------
+  '3:1959': 'Alaska and Hawaii became the 49th and 50th US states.',
+  '21:1948': 'Newfoundland voted narrowly to join Canada as its tenth province.',
+  '20:1931': 'The Statute of Westminster made Canada fully sovereign within the Commonwealth.',
+  '40:1902': 'The US military government ended and Cuba became independent.',
+  '41:1915': 'US Marines occupied Haiti, staying for nineteen years.',
+  '51:1962': 'Jamaica won independence from Britain.',
+  '80:1981': 'Belize became independent; Guatemala long claimed it.',
+  '95:1903': 'Panama broke away from Colombia with US backing, clearing the way for the canal.',
+
+  // --- South America ----------------------------------------------------------
+  '110:1966': 'British Guiana became independent as Guyana.',
+  '115:1975': 'Suriname became independent of the Netherlands.',
+  '145:1903': 'Bolivia ceded the rubber-rich Acre region to Brazil.',
+  '150:1938': 'After the Chaco War, Paraguay gained most of the disputed Chaco from Bolivia.',
+  '130:1942': 'After a short war, Ecuador lost much of its Amazon claim to Peru.',
 }

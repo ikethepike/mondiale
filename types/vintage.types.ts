@@ -1,12 +1,41 @@
+import type { GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
 
-export const VINTAGE_REGION_IDS = ['africa', 'europe'] as const
+export const VINTAGE_REGION_IDS = [
+  'africa',
+  'europe',
+  'middle-east',
+  'south-asia',
+  'east-asia',
+  'north-america',
+  'south-america',
+] as const
 export type VintageRegionId = (typeof VINTAGE_REGION_IDS)[number]
+
+export const VINTAGE_REGION_NAMES: Record<VintageRegionId, string> = {
+  africa: 'Africa',
+  europe: 'Europe',
+  'middle-east': 'the Middle East',
+  'south-asia': 'South Asia',
+  'east-asia': 'East Asia',
+  'north-america': 'North America',
+  'south-america': 'South America',
+}
+
+/** Which regions a board deals: its own continent, and the world every one. */
+export const VINTAGE_REGIONS_BY_VARIANT: Record<GameVariant, readonly VintageRegionId[]> = {
+  world: VINTAGE_REGION_IDS,
+  europe: ['europe'],
+  africa: ['africa'],
+  asia: ['middle-east', 'south-asia', 'east-asia'],
+  'north-america': ['north-america'],
+  'south-america': ['south-america'],
+}
 
 /**
  * Whose wash a unit wears: a colony takes its ruler's, and the land empires
  * that dissolved inside the timeline (Germany to 1918, Austria-Hungary, the
- * Russian Empire, the Soviet Union, the Ottomans) wear their own. Every other
+ * Russian Empire, the Soviet Union, the Ottomans, Imperial Japan, the Qing) wear their own. Every other
  * independent state is bare paper.
  */
 export const VINTAGE_WASHES = [
@@ -23,6 +52,10 @@ export const VINTAGE_WASHES = [
   'ru',
   'su',
   'tr',
+  'us',
+  'nl',
+  'jp',
+  'qing',
   'contested',
 ] as const
 export type VintageWash = (typeof VINTAGE_WASHES)[number]

@@ -4,7 +4,7 @@ import { vintageSeconds } from '~~/lib/round-beats'
 import { taperScore } from '~~/lib/scoring'
 import type { VintageChallenge, VintageOutcome } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty } from '~~/types/game.types'
-import { VINTAGE_REGION_IDS, type VintageRegionId } from '~~/types/vintage.types'
+import { VINTAGE_REGIONS_BY_VARIANT, type VintageRegionId } from '~~/types/vintage.types'
 
 /**
  * Vintage's answers. The years live only here and in `vintage-years.gen`,
@@ -33,10 +33,19 @@ export const VINTAGE_TUNING: Record<
 
 const modeOf = (labelled: boolean) => (labelled ? 'labelled' : 'bare')
 
-const regionFor = (game: Game): VintageRegionId =>
-  (VINTAGE_REGION_IDS as readonly string[]).includes(game.variant)
-    ? (game.variant as VintageRegionId)
-    : sample(VINTAGE_REGION_IDS)!
+/** The scenes a region may deal at this difficulty. */
+export const dealableScenes = (region: VintageRegionId, difficulty: GameDifficulty): number[] => {
+  const tuning = VINTAGE_TUNING[difficulty]
+  const years = VINTAGE_YEARS[region]
+  const final = years.spans.length - 1
+  return years.spans.flatMap(([, to], scene) =>
+    scene < final &&
+    to >= tuning.earliest &&
+    years.tells[modeOf(tuning.labelled)][scene] >= tuning.minTells
+      ? [scene]
+      : []
+  )
+}
 
 /** The challenge for one scene — what the dealer deals and the harness pins. */
 export const vintageChallengeFor = (
@@ -67,19 +76,12 @@ export const vintageSceneAt = (region: VintageRegionId, year: number): number =>
   )
 
 export const pickVintage = (game: Game, maximumPoints: number): VintageChallenge | undefined => {
-  const tuning = VINTAGE_TUNING[game.difficulty]
-  const mode = modeOf(tuning.labelled)
-  const region = regionFor(game)
-  const years = VINTAGE_YEARS[region]
-  const final = years.spans.length - 1
-  const dealable = years.spans
-    .map((span, scene) => ({ span, scene }))
-    .filter(
-      ({ span, scene }) =>
-        scene < final && span[1] >= tuning.earliest && years.tells[mode][scene] >= tuning.minTells
-    )
-  const scene = sample(dealable)?.scene
-  if (scene === undefined) return undefined
+  const regions = VINTAGE_REGIONS_BY_VARIANT[game.variant].filter(
+    region => dealableScenes(region, game.difficulty).length
+  )
+  const region = sample(regions)
+  if (!region) return undefined
+  const scene = sample(dealableScenes(region, game.difficulty))!
   return vintageChallengeFor(region, scene, game.difficulty, maximumPoints)
 }
 

@@ -10,7 +10,7 @@ import { isChallengeOfType } from '~~/lib/rounds'
 import { starChartStars } from '~~/lib/star-chart'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import { sentenceCase } from '~~/lib/strings'
-import { REGION_LABELS } from '~~/lib/variant'
+import { VINTAGE_REGION_NAMES } from '~~/types/vintage.types'
 import {
   isTraversalChallenge,
   roundChallengeKind,
@@ -152,7 +152,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
         : ''
     case 'vintage': {
       if (!isChallengeOfType(challenge, 'vintage-challenge')) return ''
-      return `An old map of ${REGION_LABELS[challenge.region]}`
+      return `An old map of ${VINTAGE_REGION_NAMES[challenge.region]}`
     }
     case 'pyramid-scheme': {
       if (!isChallengeOfType(challenge, 'pyramid-scheme-challenge')) return ''

@@ -23,6 +23,10 @@ export const WASH_RULERS: Record<VintageWash, string> = {
   ru: 'Russian',
   su: 'Soviet',
   tr: 'Ottoman',
+  us: 'American',
+  nl: 'Dutch',
+  jp: 'Japanese',
+  qing: 'Qing',
   contested: 'disputed',
 }
 

@@ -1,7 +1,7 @@
 // A Vintage unit's fill — its paper tone, washed with its ruler's hue — shared
 // by the live field, the scorecard's lens and the legend swatches.
 
-$vintage-washes: gb, fr, pt, be, es, it, de, za, dk, at-hu, ru, su, tr, contested;
+$vintage-washes: gb, fr, pt, be, es, it, de, za, dk, at-hu, ru, su, tr, us, nl, jp, qing, contested;
 
 @each $wash in $vintage-washes {
   .wash-#{$wash} {

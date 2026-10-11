@@ -306,6 +306,208 @@ export const VINTAGE_UNITS: Record<number, VintageUnitSpec> = {
   640: { iso: 'TR', eras: [empire(1886, 'Ottoman Empire', 'tr'), ind(1923, 'Turkey')] },
   3461: { eras: [ruled(1886, 'Bosnia', 'at-hu')] },
   3462: { eras: [ruled(1886, 'Herzegovina', 'at-hu')] },
+
+  // --- Middle East ------------------------------------------------------------
+  630: { iso: 'IR', eras: [ind(1886, 'Persia'), ind(1935, 'Iran')] },
+  645: { iso: 'IQ', eras: [ruled(1886, 'Iraq', 'gb'), ind(1932, 'Iraq')] },
+  652: {
+    iso: 'SY',
+    eras: [
+      ruled(1886, 'Syria', 'fr'),
+      ind(1946, 'Syria'),
+      ind(1958, 'United Arab Republic'),
+      ind(1961, 'Syria'),
+    ],
+  },
+  660: { iso: 'LB', eras: [ruled(1886, 'Greater Lebanon', 'fr'), ind(1943, 'Lebanon')] },
+  663: {
+    iso: 'JO',
+    eras: [ruled(1886, 'Transjordan', 'gb'), ind(1946, 'Transjordan'), ind(1949, 'Jordan')],
+  },
+  665: { eras: [ruled(1886, 'Mandatory Palestine', 'gb')] },
+  666: { iso: 'IL', eras: [ind(1886, 'Israel')] },
+  6511: { iso: 'PS', eras: [ruled(1886, 'Gaza Strip', 'contested')] },
+  6631: { iso: 'PS', eras: [ruled(1886, 'West Bank', 'contested')] },
+  670: { iso: 'SA', eras: [ind(1886, 'Saudi Arabia')] },
+  678: {
+    iso: 'YE',
+    eras: [ind(1886, 'Kingdom of Yemen'), ind(1962, 'North Yemen'), ind(1990, 'Yemen')],
+  },
+  680: { eras: [ind(1886, 'South Yemen')] },
+  681: { eras: [ruled(1886, 'Aden', 'gb')] },
+  6801: { eras: [ruled(1886, 'Federation of South Arabia', 'gb')] },
+  6812: { eras: [ruled(1886, 'Aden Protectorate', 'gb')] },
+  690: { iso: 'KW', eras: [ind(1886, 'Kuwait')] },
+  692: { iso: 'BH', eras: [ind(1886, 'Bahrain')] },
+  694: { iso: 'QA', eras: [ruled(1886, 'Qatar', 'gb'), ind(1971, 'Qatar')] },
+  696: {
+    iso: 'AE',
+    eras: [ruled(1886, 'Trucial States', 'gb'), ind(1971, 'United Arab Emirates')],
+  },
+  698: { iso: 'OM', eras: [ind(1886, 'Muscat and Oman'), ind(1970, 'Oman')] },
+
+  // --- South & Central Asia ---------------------------------------------------
+  700: { iso: 'AF', eras: [ruled(1886, 'Afghanistan', 'gb'), ind(1919, 'Afghanistan')] },
+  701: { iso: 'TM', eras: [ind(1886, 'Turkmenistan')] },
+  702: { iso: 'TJ', eras: [ind(1886, 'Tajikistan')] },
+  703: { iso: 'KG', eras: [ind(1886, 'Kyrgyzstan')] },
+  704: { iso: 'UZ', eras: [ind(1886, 'Uzbekistan')] },
+  705: { iso: 'KZ', eras: [ind(1886, 'Kazakhstan')] },
+  7020: { eras: [ruled(1886, 'Emirate of Bukhara', 'ru')] },
+  7030: { eras: [ruled(1886, 'Khanate of Khiva', 'ru')] },
+  750: { iso: 'IN', eras: [ruled(1886, 'British India', 'gb'), ind(1947, 'India')] },
+  7506: { eras: [ruled(1886, 'Jammu and Kashmir', 'contested')] },
+  7708: { eras: [ruled(1886, 'Azad Kashmir', 'contested')] },
+  760: { iso: 'BT', eras: [ind(1886, 'Bhutan')] },
+  770: { iso: 'PK', eras: [ind(1886, 'Pakistan')] },
+  771: { iso: 'BD', eras: [ind(1886, 'Bangladesh')] },
+  775: {
+    iso: 'MM',
+    eras: [ruled(1886, 'Burma', 'gb'), ind(1948, 'Burma'), ind(1989, 'Myanmar')],
+  },
+  780: {
+    iso: 'LK',
+    eras: [ruled(1886, 'Ceylon', 'gb'), ind(1948, 'Ceylon'), ind(1972, 'Sri Lanka')],
+  },
+  781: { iso: 'MV', eras: [ruled(1886, 'Maldives', 'gb'), ind(1965, 'Maldives')] },
+  790: { iso: 'NP', eras: [ind(1886, 'Nepal')] },
+
+  // --- East & Southeast Asia --------------------------------------------------
+  710: {
+    iso: 'CN',
+    eras: [empire(1886, 'Qing Empire', 'qing'), ind(1912, 'Republic of China'), ind(1949, 'China')],
+  },
+  711: { eras: [ruled(1886, 'Tibet', 'contested')] },
+  712: { iso: 'MN', eras: [ind(1886, 'Mongolia')] },
+  713: { iso: 'TW', eras: [ruled(1886, 'Formosa', 'jp'), ind(1949, 'Taiwan')] },
+  730: { eras: [ind(1886, 'Korea'), ruled(1910, 'Korea', 'jp')] },
+  731: {
+    iso: 'KP',
+    eras: [ruled(1886, 'Soviet-occupied Korea', 'contested'), ind(1948, 'North Korea')],
+  },
+  732: {
+    iso: 'KR',
+    eras: [ruled(1886, 'US-occupied Korea', 'contested'), ind(1948, 'South Korea')],
+  },
+  740: { iso: 'JP', eras: [empire(1886, 'Empire of Japan', 'jp'), ind(1945, 'Japan')] },
+  7351: { eras: [ruled(1886, 'Karafuto', 'jp')] },
+  800: { iso: 'TH', eras: [ind(1886, 'Siam'), ind(1939, 'Thailand')] },
+  811: {
+    iso: 'KH',
+    eras: [
+      ruled(1886, 'Cambodia', 'fr'),
+      ind(1953, 'Cambodia'),
+      ind(1975, 'Democratic Kampuchea'),
+      ind(1979, 'Kampuchea'),
+      ind(1989, 'Cambodia'),
+    ],
+  },
+  812: { iso: 'LA', eras: [ruled(1886, 'Laos', 'fr'), ind(1953, 'Laos')] },
+  815: { eras: [ruled(1886, 'Tonkin, Annam and Cochinchina', 'fr')] },
+  816: { iso: 'VN', eras: [ind(1886, 'North Vietnam'), ind(1975, 'Vietnam')] },
+  817: { eras: [ind(1886, 'South Vietnam')] },
+  820: {
+    iso: 'MY',
+    eras: [
+      ruled(1886, 'Malayan Union', 'gb'),
+      ruled(1948, 'Federation of Malaya', 'gb'),
+      ind(1957, 'Malaya'),
+      ind(1963, 'Malaysia'),
+    ],
+  },
+  821: { eras: [ruled(1886, 'Federated Malay States', 'gb')] },
+  822: { eras: [ruled(1886, 'Unfederated Malay States', 'gb')] },
+  823: { eras: [ruled(1886, 'North Borneo', 'gb')] },
+  824: { eras: [ruled(1886, 'Sarawak', 'gb')] },
+  827: { eras: [ruled(1886, 'Straits Settlements', 'gb')] },
+  8201: { eras: [ruled(1886, 'Perak', 'gb')] },
+  8202: { eras: [ruled(1886, 'Selangor', 'gb')] },
+  8203: { eras: [ruled(1886, 'Pahang', 'gb')] },
+  830: { iso: 'SG', eras: [ruled(1886, 'Singapore', 'gb'), ind(1965, 'Singapore')] },
+  835: { iso: 'BN', eras: [ruled(1886, 'Brunei', 'gb'), ind(1984, 'Brunei')] },
+  840: {
+    iso: 'PH',
+    eras: [
+      ruled(1886, 'Philippines', 'es'),
+      ruled(1898, 'Philippines', 'us'),
+      ind(1946, 'Philippines'),
+    ],
+  },
+  850: {
+    iso: 'ID',
+    eras: [
+      ruled(1886, 'Dutch East Indies', 'nl'),
+      ruled(1945, 'Indonesia', 'contested'),
+      ind(1949, 'Indonesia'),
+    ],
+  },
+  851: {
+    eras: [
+      ruled(1886, 'Netherlands New Guinea', 'nl'),
+      ruled(1962, 'West New Guinea', 'contested'),
+    ],
+  },
+  860: {
+    iso: 'TL',
+    eras: [
+      ruled(1886, 'Portuguese Timor', 'pt'),
+      ruled(1976, 'East Timor', 'contested'),
+      ind(2002, 'East Timor'),
+    ],
+  },
+
+  // --- North America & the Caribbean ------------------------------------------
+  2: { iso: 'US', eras: [ind(1886, 'United States')] },
+  3: { eras: [ruled(1886, 'Alaska', 'us')] },
+  4: { eras: [ruled(1886, 'Hawaii', 'us')] },
+  6: { eras: [ruled(1886, 'Puerto Rico', 'es'), ruled(1898, 'Puerto Rico', 'us')] },
+  20: { iso: 'CA', eras: [ruled(1886, 'Dominion of Canada', 'gb'), ind(1931, 'Canada')] },
+  21: { eras: [ruled(1886, 'Newfoundland', 'gb')] },
+  31: { iso: 'BS', eras: [ruled(1886, 'Bahamas', 'gb'), ind(1973, 'Bahamas')] },
+  40: {
+    iso: 'CU',
+    eras: [ruled(1886, 'Cuba', 'es'), ruled(1898, 'Cuba', 'us'), ind(1902, 'Cuba')],
+  },
+  41: { iso: 'HT', eras: [ind(1886, 'Haiti'), ruled(1915, 'Haiti', 'us'), ind(1934, 'Haiti')] },
+  42: { iso: 'DO', eras: [ind(1886, 'Dominican Republic')] },
+  51: { iso: 'JM', eras: [ruled(1886, 'Jamaica', 'gb'), ind(1962, 'Jamaica')] },
+  52: {
+    iso: 'TT',
+    eras: [ruled(1886, 'Trinidad and Tobago', 'gb'), ind(1962, 'Trinidad and Tobago')],
+  },
+  53: { iso: 'BB', eras: [ruled(1886, 'Barbados', 'gb'), ind(1966, 'Barbados')] },
+  65: { eras: [ruled(1886, 'Guadeloupe', 'fr')] },
+  66: { eras: [ruled(1886, 'Martinique', 'fr')] },
+  70: { iso: 'MX', eras: [ind(1886, 'Mexico')] },
+  80: {
+    iso: 'BZ',
+    eras: [ruled(1886, 'British Honduras', 'gb'), ruled(1973, 'Belize', 'gb'), ind(1981, 'Belize')],
+  },
+  90: { iso: 'GT', eras: [ind(1886, 'Guatemala')] },
+  91: { iso: 'HN', eras: [ind(1886, 'Honduras')] },
+  92: { iso: 'SV', eras: [ind(1886, 'El Salvador')] },
+  93: { iso: 'NI', eras: [ind(1886, 'Nicaragua')] },
+  94: { iso: 'CR', eras: [ind(1886, 'Costa Rica')] },
+  95: { iso: 'PA', eras: [ind(1886, 'Panama')] },
+
+  // --- South America ----------------------------------------------------------
+  100: { iso: 'CO', eras: [ind(1886, 'Colombia')] },
+  101: { iso: 'VE', eras: [ind(1886, 'Venezuela')] },
+  110: { iso: 'GY', eras: [ruled(1886, 'British Guiana', 'gb'), ind(1966, 'Guyana')] },
+  115: {
+    iso: 'SR',
+    eras: [ruled(1886, 'Dutch Guiana', 'nl'), ruled(1954, 'Suriname', 'nl'), ind(1975, 'Suriname')],
+  },
+  120: { eras: [ruled(1886, 'French Guiana', 'fr')] },
+  1201: { eras: [ruled(1886, 'Inini', 'fr')] },
+  130: { iso: 'EC', eras: [ind(1886, 'Ecuador')] },
+  135: { iso: 'PE', eras: [ind(1886, 'Peru')] },
+  140: { iso: 'BR', eras: [ind(1886, 'Brazil')] },
+  145: { iso: 'BO', eras: [ind(1886, 'Bolivia')] },
+  150: { iso: 'PY', eras: [ind(1886, 'Paraguay')] },
+  155: { iso: 'CL', eras: [ind(1886, 'Chile')] },
+  160: { iso: 'AR', eras: [ind(1886, 'Argentina')] },
+  165: { iso: 'UY', eras: [ind(1886, 'Uruguay')] },
 }
 
 export interface VintageRegionSpec {
@@ -332,5 +534,49 @@ export const VINTAGE_REGION_SPECS: Record<VintageRegionId, VintageRegionSpec> = 
     frame: [-12, 34, 44, 71],
     clip: [-45, 20, 82, 80],
     pointBudget: 11000,
+  },
+  'middle-east': {
+    owns: gwcode =>
+      (gwcode >= 630 && gwcode <= 698) ||
+      gwcode === 651 ||
+      gwcode === 352 ||
+      (gwcode >= 6300 && gwcode < 6990),
+    frame: [24, 11, 63, 42],
+    clip: [8, 0, 80, 52],
+    pointBudget: 8000,
+  },
+  'south-asia': {
+    owns: gwcode =>
+      gwcode === 630 ||
+      gwcode === 365 ||
+      (gwcode >= 700 && gwcode <= 711) ||
+      (gwcode >= 750 && gwcode <= 790) ||
+      [7020, 7030, 7506, 7708].includes(gwcode),
+    frame: [58, 4, 100, 42],
+    clip: [44, -6, 114, 54],
+    pointBudget: 9000,
+  },
+  'east-asia': {
+    owns: gwcode =>
+      gwcode === 365 ||
+      (gwcode >= 710 && gwcode <= 740) ||
+      (gwcode >= 800 && gwcode <= 860) ||
+      gwcode === 7351 ||
+      (gwcode >= 8000 && gwcode < 8610),
+    frame: [90, -11, 146, 54],
+    clip: [76, -22, 162, 64],
+    pointBudget: 11000,
+  },
+  'north-america': {
+    owns: gwcode => (gwcode >= 2 && gwcode <= 95) || (gwcode >= 20 && gwcode < 100),
+    frame: [-168, 7, -52, 72],
+    clip: [-180, -2, -36, 84],
+    pointBudget: 9000,
+  },
+  'south-america': {
+    owns: gwcode => gwcode === 95 || (gwcode >= 100 && gwcode <= 165) || gwcode === 1201,
+    frame: [-82, -56, -34, 13],
+    clip: [-96, -62, -22, 22],
+    pointBudget: 8000,
   },
 }

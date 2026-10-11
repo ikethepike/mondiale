@@ -47,7 +47,7 @@ import {
   type Point,
 } from './cshapes'
 
-const OUT_GEOMETRY = 'data/vintage.gen.ts'
+const geometryFile = (id: VintageRegionId) => `data/vintage-${id}.gen.ts`
 const OUT_YEARS = 'data/vintage-years.gen.ts'
 const REPORT_FILE = 'generators/data/vintage-report.txt'
 const FIRST_YEAR = 1886
@@ -67,20 +67,45 @@ const log = (line: string) => {
 
 /**
  * CShapes follows de facto control, the app's map does not: Crimea stays
- * Ukrainian (create-map reassigns it the same way) and Western Sahara keeps
- * its own outline after Spain left rather than vanishing into Morocco. Both
- * reuse an exact earlier CShapes geometry, so no shape is ever hand-built.
+ * Ukrainian (create-map reassigns it the same way), Western Sahara keeps its
+ * own outline after Spain left, Israel keeps its 1949 line with the West
+ * Bank and Gaza as their own territories (the app's Palestine) and Golan and
+ * Sinai with Syria and Egypt, and East Timor stays itself through Indonesia's
+ * occupation. Every override reuses an exact CShapes geometry, so no shape
+ * is ever hand-built.
  */
 const applyOverrides = (features: CShapesFeature[]): CShapesFeature[] => {
   const byCode = (gwcode: number) => features.filter(entry => entry.gwcode === gwcode)
   const endingIn = (gwcode: number, year: number) =>
     byCode(gwcode).find(entry => entry.end[0] === year)
-  const reuse = (gwcode: number, fromYear: number, source: CShapesFeature | undefined) => {
+  const reuse = (
+    gwcode: number,
+    fromYear: number,
+    source: CShapesFeature | undefined,
+    untilYear = Infinity
+  ) => {
     if (!source) throw new Error(`Override source missing for ${gwcode}`)
     for (const entry of byCode(gwcode))
-      if (entry.start[0] >= fromYear)
+      if (entry.start[0] >= fromYear && entry.start[0] < untilYear)
         entry.feature = { ...entry.feature, geometry: source.feature.geometry }
   }
+  const latest = (gwcode: number) => {
+    const entry = byCode(gwcode).sort((a, b) => tupleCompare(b.start, a.start))[0]
+    if (!entry) throw new Error(`CShapes has no ${gwcode}`)
+    return entry
+  }
+  const sliceFrom = (gwcode: number, year: number) => {
+    const entry = byCode(gwcode).find(candidate => candidate.start[0] === year)
+    if (!entry) throw new Error(`CShapes has no ${gwcode} slice from ${year}`)
+    return entry
+  }
+
+  const occupied = sliceFrom(666, 1967)
+  reuse(666, 1967, endingIn(666, 1967))
+  reuse(652, 1967, endingIn(652, 1967))
+  reuse(651, 1967, endingIn(651, 1967))
+  const annexed = sliceFrom(850, 1976)
+  reuse(850, 1976, endingIn(850, 1976), 2002)
 
   reuse(365, 2014, endingIn(365, 2014))
   reuse(369, 2014, endingIn(369, 2014))
@@ -98,6 +123,9 @@ const applyOverrides = (features: CShapesFeature[]): CShapesFeature[] => {
   return [
     ...features,
     { ...spanishSahara, start: afterSpain.start, end: lastDay, name: 'Western Sahara' },
+    { ...latest(6631), start: occupied.start, end: lastDay },
+    { ...latest(6511), start: occupied.start, end: lastDay },
+    { ...endingIn(860, 1976)!, start: annexed.start, end: annexed.end },
   ]
 }
 
@@ -406,6 +434,7 @@ const toneUnits = (codes: number[], neighbours: Set<string>): Map<number, number
 // --- Eras -------------------------------------------------------------------
 
 const missingEras = new Set<number>()
+const landedNotes = new Set<string>()
 const eraSpecFor = (gwcode: number, year: number): VintageEra | undefined => {
   const unit = VINTAGE_UNITS[gwcode]
   if (!unit) {
@@ -679,8 +708,10 @@ const buildRegion = (id: VintageRegionId, all: CShapesFeature[]): RegionOutput =
     const stepIndex = scenes.findIndex(scene => scene.from === year) - 1
     const touched =
       stepIndex >= 0 && steps[stepIndex].units.some(([unit]) => unit === unitIndex.get(gwcode))
-    if (touched) notes[key] = note
-    else log(`  ${id}: note ${key} lands on no change to its unit — check the year`)
+    if (touched) {
+      notes[key] = note
+      landedNotes.add(key)
+    }
   }
 
   const tells = { labelled: tellsBy(true), bare: tellsBy(false) }
@@ -752,6 +783,8 @@ const main = async () => {
     geometry[id] = output.geometry
     years[id] = output.years
   }
+  for (const key of Object.keys(VINTAGE_NOTES))
+    if (!landedNotes.has(key)) log(`Note ${key} lands on no change in any region — check the year`)
   if (missingEras.size) {
     log(`Units with no era table: ${[...missingEras].sort((a, b) => a - b).join(', ')}`)
     throw new Error(
@@ -763,15 +796,16 @@ const main = async () => {
 // Source: CShapes 2.0 (icr.ethz.ch/data/cshapes, CC BY-NC-SA 4.0 — Schvitz, Girardin,
 // Rüegger, Walter, Cederman & Weidmann 2022, Journal of Conflict Resolution).
 `
-  writeFileSync(
-    OUT_GEOMETRY,
-    `${header}// Projected with the map's fitted Robinson (see data/map.gen.ts). Holds no years.
-// Lazy-import only, from the client view.
-import type { VintageRegion, VintageRegionId } from '~~/types/vintage.types'
+  for (const id of VINTAGE_REGION_IDS)
+    writeFileSync(
+      geometryFile(id),
+      `${header}// Projected with the map's fitted Robinson (see data/map.gen.ts). Holds no years.
+// Lazy-import only, from the client view (loadVintageRegion in lib/vintage.ts).
+import type { VintageRegion } from '~~/types/vintage.types'
 
-export const VINTAGE_REGIONS: Record<VintageRegionId, VintageRegion> = ${jsonParseLiteral(geometry)}
+export const VINTAGE_REGION: VintageRegion = ${jsonParseLiteral(geometry[id])}
 `
-  )
+    )
   writeFileSync(
     OUT_YEARS,
     `${header}// The answers: server-only, never imported outside lib/events/server.

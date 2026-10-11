@@ -115,9 +115,15 @@ import { latestRound } from '~~/lib/rounds'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { useServerWindow } from '~~/lib/use-server-window'
+import { sentenceCase } from '~~/lib/strings'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import { REGION_LABELS } from '~~/lib/variant'
-import { finalScene, passLengthMs, sceneAt, type VintagePass } from '~~/lib/vintage'
+import {
+  finalScene,
+  loadVintageRegion,
+  passLengthMs,
+  sceneAt,
+  type VintagePass,
+} from '~~/lib/vintage'
 import {
   WASH_RULERS,
   dealtRun,
@@ -126,7 +132,7 @@ import {
   formatYears,
   vintageVerdict,
 } from '~~/lib/vintage-story'
-import type { VintageRegion, VintageWash } from '~~/types/vintage.types'
+import { VINTAGE_REGION_NAMES, type VintageRegion, type VintageWash } from '~~/types/vintage.types'
 
 const VINTAGE_FRAME_PAD = { scale: 0.04, floor: 6 }
 
@@ -164,8 +170,7 @@ watch(
   () => challenge.value?.region,
   async id => {
     if (!id) return
-    const { VINTAGE_REGIONS } = await import('~~/data/vintage.gen')
-    region.value = VINTAGE_REGIONS[id]
+    region.value = await loadVintageRegion(id)
   },
   { immediate: true }
 )
@@ -254,10 +259,12 @@ watch(phase, (now, before) => {
     announce({ hint: 'The map has stopped — when is it from?' })
 })
 
-const regionName = computed(() => (challenge.value ? REGION_LABELS[challenge.value.region] : ''))
+const regionName = computed(() =>
+  challenge.value ? VINTAGE_REGION_NAMES[challenge.value.region] : ''
+)
 const stakes = computed(
   () =>
-    `${regionName.value}'s map runs backward from 2019 — borders unpick, names change, empires return. When it stops, drag to the year you think it shows.`
+    `${sentenceCase(regionName.value)}'s map runs backward from 2019 — borders unpick, names change, empires return. When it stops, drag to the year you think it shows.`
 )
 const headline = computed(() =>
   phase.value === 'rewind' ? 'Time runs backward…' : 'When is this map from?'

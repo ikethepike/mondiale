@@ -1,11 +1,12 @@
 import { readdirSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
-import { describe, expect, it } from 'vitest'
-import { VINTAGE_REGIONS } from '~~/data/vintage.gen'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { VINTAGE_YEARS } from '~~/data/vintage-years.gen'
 import {
   VINTAGE_TUNING,
+  dealableScenes,
   pickVintage,
+  vintageChallengeFor,
   scoreVintage,
   vintageRuns,
   vintageStory,
@@ -23,6 +24,7 @@ import {
 import {
   arcPoints,
   finalScene,
+  loadVintageRegion,
   sceneAt,
   sceneCount,
   slideLine,
@@ -31,7 +33,17 @@ import {
 } from '~~/lib/vintage'
 import { bookends, changelog, clues, dealtRun, vintageVerdict } from '~~/lib/vintage-story'
 import type { Game, GameDifficulty } from '~~/types/game.types'
-import { VINTAGE_REGION_IDS } from '~~/types/vintage.types'
+import {
+  VINTAGE_REGION_IDS,
+  VINTAGE_REGIONS_BY_VARIANT,
+  type VintageRegion,
+  type VintageRegionId,
+} from '~~/types/vintage.types'
+
+const VINTAGE_REGIONS = {} as Record<VintageRegionId, VintageRegion>
+beforeAll(async () => {
+  for (const id of VINTAGE_REGION_IDS) VINTAGE_REGIONS[id] = await loadVintageRegion(id)
+})
 
 const sameScene = (a: ReturnType<typeof sceneAt>, b: ReturnType<typeof sceneAt>) => {
   expect([...a.borders].sort((x, y) => x - y)).toEqual([...b.borders].sort((x, y) => x - y))
@@ -42,7 +54,10 @@ const gameOn = (difficulty: GameDifficulty, variant: Game['variant']) =>
   ({ difficulty, variant }) as Game
 
 describe.each(VINTAGE_REGION_IDS)('vintage data: %s', region => {
-  const geometry = VINTAGE_REGIONS[region]
+  let geometry: VintageRegion
+  beforeAll(() => {
+    geometry = VINTAGE_REGIONS[region]
+  })
   const years = VINTAGE_YEARS[region]
 
   it('spans every year from the first to 2019 with no gap or overlap', () => {
@@ -154,25 +169,35 @@ describe('vintage dealer and grader', () => {
     'never deals below the %s tell floor',
     difficulty => {
       const tuning = VINTAGE_TUNING[difficulty]
+      const mode = tuning.labelled ? 'labelled' : 'bare'
       for (const region of VINTAGE_REGION_IDS)
-        for (let trial = 0; trial < 60; trial++) {
-          const challenge = pickVintage(gameOn(difficulty, region), 10)!
-          expect(challenge.region).toBe(region)
-          const mode = tuning.labelled ? 'labelled' : 'bare'
-          expect(VINTAGE_YEARS[region].tells[mode][challenge.scene]).toBeGreaterThanOrEqual(
-            tuning.minTells
-          )
-          expect(challenge.scene).toBeLessThan(VINTAGE_YEARS[region].spans.length - 1)
+        for (const scene of dealableScenes(region, difficulty)) {
+          expect(VINTAGE_YEARS[region].tells[mode][scene]).toBeGreaterThanOrEqual(tuning.minTells)
+          expect(scene).toBeLessThan(VINTAGE_YEARS[region].spans.length - 1)
+          const challenge = vintageChallengeFor(region, scene, difficulty, 10)
           expect(challenge.durationSeconds).toBe(vintageSeconds(challenge.stepWeights))
         }
     }
   )
 
-  it('deals a region at random on a world board', () => {
+  it('gives every region something to deal on normal', () => {
+    for (const region of VINTAGE_REGION_IDS)
+      expect(dealableScenes(region, 'normal').length, region).toBeGreaterThan(0)
+  })
+
+  it('deals only the board’s own regions', () => {
+    for (const variant of Object.keys(VINTAGE_REGIONS_BY_VARIANT) as Game['variant'][])
+      for (let trial = 0; trial < 30; trial++) {
+        const challenge = pickVintage(gameOn('normal', variant), 10)
+        if (challenge) expect(VINTAGE_REGIONS_BY_VARIANT[variant]).toContain(challenge.region)
+      }
+  })
+
+  it('deals every region somewhere on a world board', () => {
     const regions = new Set(
-      Array.from({ length: 40 }, () => pickVintage(gameOn('normal', 'world'), 10)!.region)
+      Array.from({ length: 300 }, () => pickVintage(gameOn('normal', 'world'), 10)!.region)
     )
-    expect(regions.size).toBe(2)
+    expect(regions.size).toBe(VINTAGE_REGION_IDS.length)
   })
 
   it('pays in full inside the runs and tapers monotonically outside', () => {
@@ -238,7 +263,10 @@ describe('vintage pacing', () => {
 
 describe('vintage story', () => {
   const region = 'africa'
-  const geometry = VINTAGE_REGIONS[region]
+  let geometry: VintageRegion
+  beforeAll(() => {
+    geometry = VINTAGE_REGIONS[region]
+  })
 
   const dealt = (labelled: boolean) => {
     const challenge = pickVintage(gameOn(labelled ? 'normal' : 'hard', region), 10)!

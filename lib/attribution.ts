@@ -1065,7 +1065,16 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   vintage: {
     label: 'Historical political maps',
-    files: ['data/vintage.gen.ts', 'data/vintage-years.gen.ts'],
+    files: [
+      'data/vintage-africa.gen.ts',
+      'data/vintage-europe.gen.ts',
+      'data/vintage-middle-east.gen.ts',
+      'data/vintage-south-asia.gen.ts',
+      'data/vintage-east-asia.gen.ts',
+      'data/vintage-north-america.gen.ts',
+      'data/vintage-south-america.gen.ts',
+      'data/vintage-years.gen.ts',
+    ],
     origins: [
       { source: 'cshapes-2' },
       { source: 'mondiale-editorial', dataset: 'generators/data/vintage-units.ts' },
