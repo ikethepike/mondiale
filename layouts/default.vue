@@ -55,6 +55,8 @@
       "
     />
 
+    <MapPins v-if="gameStore.map.pin || gameStore.map.pinAnswer" />
+
     <!-- The persistent 3D stage: mounted once the game starts and alive until
          the room is left. Board steps cross-fade it in over the parked map
          (`stage-active`) instead of cold-starting a WebGL context per walk.
@@ -119,6 +121,7 @@ import CheerToast from '~/components/feedback/CheerToast.vue'
 import NoticeToast from '~/components/feedback/NoticeToast.vue'
 import ReconnectToast from '~/components/feedback/ReconnectToast.vue'
 import ContourBackdropGl from '~/components/map/ContourBackdropGl.client.vue'
+import MapPins from '~/components/map/MapPins.vue'
 import { COLOR_CODED_REGIONS } from '~~/lib/challenges/final-challenge'
 import { useChromeTint } from '~~/lib/chrome-tint'
 import { countryName, getCountry, primaryCoordinates } from '~~/lib/country'
@@ -284,6 +287,10 @@ onMounted(() => {
   mix-blend-mode: difference;
 }
 
+.map-pins {
+  transition: opacity var(--motion-slow) var(--ease-smooth);
+}
+
 .game-map {
   top: 0;
   left: 0;
@@ -361,6 +368,10 @@ onMounted(() => {
     visibility: visible;
     pointer-events: auto;
     transition: opacity var(--motion-slow) var(--ease-smooth);
+  }
+
+  .map-pins {
+    opacity: 0;
   }
 
   .game-map {
