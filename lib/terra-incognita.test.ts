@@ -39,10 +39,11 @@ import {
 } from '~~/lib/terra-incognita'
 import type { TerraIncognitaChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const rules = (difficulty: GameDifficulty = 'normal', variant: GameVariant = 'world') =>
-  ({ difficulty, variant }) as Game
+  ({ difficulty, regions: regionsForVariant(variant) }) as Game
 
 const seeded = (seed: string) => alea(seed) as unknown as () => number
 

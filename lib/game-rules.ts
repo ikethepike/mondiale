@@ -2,7 +2,7 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { countryInVariant } from './variant'
+import { countryOnBoard } from './variant'
 
 /**
  * The single home for core game-rule configuration: what the difficulty
@@ -83,10 +83,10 @@ export const microNationsIncluded = (
 export const isCountryInPlay = (rules: GameRules, isoCode: ISOCountryCode): boolean =>
   microNationsIncluded(rules) || !isMicroNation(isoCode)
 
-/** Board membership: on this game's variant AND in play under its rules.
+/** Board membership: on one of this game's regions AND in play under its rules.
  *  Dealers draw their subjects from countries that pass this. */
 export const isCountryPlayable = (rules: GameRules, isoCode: ISOCountryCode): boolean =>
-  countryInVariant(isoCode, rules.variant) && isCountryInPlay(rules, isoCode)
+  countryOnBoard(isoCode, rules.regions) && isCountryInPlay(rules, isoCode)
 
 /** The pool a game deals its subjects from — the variant's countries minus
  *  any benched micro-nations. Supersedes bare variantCountries in dealers. */

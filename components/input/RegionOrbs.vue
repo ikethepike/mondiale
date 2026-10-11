@@ -1,14 +1,14 @@
 <template>
-  <div class="region-orbs" :class="{ disabled }" role="radiogroup" aria-label="Region">
+  <div class="region-orbs" :class="{ disabled }" role="group" aria-label="Regions">
     <button
       v-for="variant in gameVariants"
       :key="variant"
       type="button"
-      role="radio"
-      :aria-checked="variant === selected"
+      role="checkbox"
+      :aria-checked="isChosen(variant)"
       :disabled="disabled"
       class="orb"
-      :class="{ active: variant === selected }"
+      :class="{ active: isChosen(variant) }"
       @click="select(variant)"
     >
       <span class="orb-face">
@@ -16,17 +16,18 @@
       </span>
       <span class="orb-label">{{ formatLabel(variant) }}</span>
     </button>
-    <input type="hidden" name="variant" :value="selected" />
+    <input v-for="region in selected" :key="region" type="hidden" name="regions" :value="region" />
   </div>
 </template>
 <script lang="ts" setup>
 import RegionMap from '~/components/map/RegionMap.vue'
 import { titleCase } from '~~/lib/strings'
-import { type GameVariant, gameVariants } from '~~/types/game.types'
+import { isWorldBoard, toggleBoardRegion } from '~~/lib/variant'
+import { type BoardRegion, type GameVariant, gameVariants } from '~~/types/game.types'
 
 const props = defineProps({
   modelValue: {
-    type: String as PropType<GameVariant>,
+    type: Array as PropType<BoardRegion[]>,
     required: true,
   },
   disabled: {
@@ -36,24 +37,27 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: GameVariant]
-  change: [value: GameVariant]
+  'update:modelValue': [value: BoardRegion[]]
+  change: [value: BoardRegion[]]
 }>()
 
 // Optimistic local selection: the picked value shows instantly rather than
-// waiting for the server to round-trip game.variant back (which reads the
-// hidden input, so a purely-controlled value would deadlock). Server state
+// waiting for the server to round-trip game.regions back (which reads the
+// hidden inputs, so a purely-controlled value would deadlock). Server state
 // still wins when it changes — a peer or reconnect updates the prop.
-const selected = ref<GameVariant>(props.modelValue)
+const selected = ref<BoardRegion[]>(props.modelValue)
 watch(
   () => props.modelValue,
   value => (selected.value = value)
 )
 
+const isChosen = (variant: GameVariant) =>
+  variant === 'world' ? isWorldBoard(selected.value) : selected.value.includes(variant)
+
 const select = (variant: GameVariant) => {
-  selected.value = variant
-  emit('update:modelValue', variant)
-  emit('change', variant)
+  selected.value = toggleBoardRegion(selected.value, variant)
+  emit('update:modelValue', selected.value)
+  emit('change', selected.value)
 }
 
 const formatLabel = (variant: GameVariant) => titleCase(variant)

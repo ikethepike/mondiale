@@ -1,7 +1,8 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import type { GameVariant } from '~~/types/game.types'
+import { boardRegions, type BoardRegion, type Game, type GameVariant } from '~~/types/game.types'
 import type { ISOCountryCode, Region } from '~~/types/geography.types'
+import { listJoin } from './strings'
 
 /** Player-facing region names (regions are stored as kebab-case slugs). */
 export const REGION_LABELS: { [region in Region]: string } = {
@@ -60,4 +61,48 @@ export const countryInVariant = (isoCode: ISOCountryCode, variant: GameVariant):
 export const variantCountries = (variant: GameVariant = 'world'): ISOCountryCode[] => {
   if (variant === 'world') return [...ISOCountryCodes]
   return ISOCountryCodes.filter(isoCode => countryInVariant(isoCode, variant))
+}
+
+/** The board a home-page template opens: its one continent, or the whole world. */
+export const regionsForVariant = (variant: GameVariant): BoardRegion[] =>
+  variant === 'world' ? [] : [variant]
+
+/** Deduped and in picker order, so one board always reads (and keys) the same. */
+export const normalizeBoardRegions = (regions: readonly BoardRegion[]): BoardRegion[] =>
+  boardRegions.filter(region => regions.includes(region))
+
+export const isWorldBoard = (regions: readonly BoardRegion[]): boolean => !regions.length
+
+/** The lobby's pick: World clears the board, a continent toggles in or out —
+ *  and dropping the last one leaves the whole world. */
+export const toggleBoardRegion = (
+  regions: readonly BoardRegion[],
+  picked: GameVariant
+): BoardRegion[] => {
+  if (picked === 'world') return []
+  return regions.includes(picked)
+    ? regions.filter(region => region !== picked)
+    : normalizeBoardRegions([...regions, picked])
+}
+
+/** Does a country belong to a board — on any one of its regions? */
+export const countryOnBoard = (isoCode: ISOCountryCode, regions: readonly BoardRegion[]): boolean =>
+  isWorldBoard(regions) || regions.some(region => countryInVariant(isoCode, region))
+
+/** The board in words, ready to follow "in": "Europe", "Europe and Africa", "the world". */
+export const boardLabel = (regions: readonly BoardRegion[]): string =>
+  isWorldBoard(regions) ? 'the world' : listJoin(regions.map(region => REGION_LABELS[region]))
+
+/**
+ * Rooms saved before a board could hold several regions carry one `variant`
+ * and single-region language `scope`s. Upgraded in place on fetch.
+ */
+export const upgradeLegacyBoard = (game: Game): void => {
+  const legacy = game as Game & { variant?: GameVariant }
+  if (!legacy.regions) legacy.regions = regionsForVariant(legacy.variant ?? 'world')
+  delete legacy.variant
+  for (const { groupChallenge } of game.rounds ?? []) {
+    const scoped = groupChallenge as { scope?: BoardRegion | BoardRegion[] } | undefined
+    if (scoped && typeof scoped.scope === 'string') scoped.scope = [scoped.scope]
+  }
 }

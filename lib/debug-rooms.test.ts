@@ -59,7 +59,7 @@ const buildGame = (seats: Player[], extra: Partial<Game> = {}): Game =>
     started: true,
     rev: 9,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     tiles: [],
     players: Object.fromEntries(seats.map(seat => [seat.id, seat])),

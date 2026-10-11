@@ -582,7 +582,7 @@ const finalReveal = computed(() => {
   return finalRevealFor({
     challenge,
     picked: pickedCountry.value,
-    variant: game.value?.variant,
+    regions: game.value?.regions,
     pool: challengePool.value,
     sunset: sunsetResult.value,
     nocturneCities: nocturneResult.value,
@@ -596,7 +596,7 @@ const details = computed(() => {
   if (!currentFinalChallenge.value) return undefined
   return getFinalChallengeDetails({
     challenge: currentFinalChallenge.value,
-    variant: game.value?.variant,
+    regions: game.value?.regions,
   })
 })
 

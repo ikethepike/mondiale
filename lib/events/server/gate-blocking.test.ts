@@ -48,7 +48,7 @@ const buildGame = (players: Player[]): Game =>
     id: uniqueGameId('gate'),
     host: 'a',
     started: true,
-    variant: 'world',
+    regions: [],
     difficulty: 'hard',
     tiles: Array.from({ length: 12 }, (_, index) =>
       index === 5 || index === 8 ? tile(index, 'flag') : tile(index)

@@ -21,7 +21,7 @@ import type {
   TongueBuzzChallenge,
 } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { REGION_LABELS } from './variant'
+import { boardLabel } from './variant'
 
 /** Either language round: both name a language and carry a board-scoped set. */
 type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language' | 'scope'> & {
@@ -64,13 +64,9 @@ export const boardSpeakers = (pool: readonly ISOCountryCode[]): Map<string, ISOC
   return speakers
 }
 
-/**
- * The board in words, ready to follow a question: "in Europe", "in the world".
- * `REGION_LABELS` carries its own article where one is needed ("the Middle
- * East"), so the phrase takes a bare `in`.
- */
+/** The board in words, ready to follow a question: "in Europe and Africa", "in the world". */
 export const motherTongueScope = (challenge: Pick<LanguageRound, 'scope'>): string =>
-  challenge.scope ? `in ${REGION_LABELS[challenge.scope]}` : 'in the world'
+  `in ${boardLabel(challenge.scope ?? [])}`
 
 /**
  * "Who speaks French in Europe?" — the prompt and the interstitial title.

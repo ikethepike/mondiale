@@ -2,7 +2,7 @@ import type { VintageRegionId } from '../vintage.types'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
 import type { TrendMetricId } from '~~/lib/trends'
-import type { GameVariant } from '../game.types'
+import type { BoardRegion } from '../game.types'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -94,7 +94,7 @@ export interface TongueBuzzChallenge {
    *  from off the board is right about the world and wrong only about this
    *  round, so it must not draw a lockout. Same contract as
    *  `MotherTongueChallenge.scope`. */
-  scope?: Exclude<GameVariant, 'world'>
+  scope?: BoardRegion[]
   durationSeconds: number
   maximumPoints: number
   /** The region one speaker country sits in. Unlocks on the clock at every
@@ -543,9 +543,9 @@ export interface MotherTongueChallenge {
   countries: ISOCountryCode[]
   /** The board the answer set was scoped to — absent on world boards, where
    *  the set IS every speaker. A regional board asks a regional question, so
-   *  this drives both the scoped copy and the off-board veto. Never `'world'`:
-   *  that variant is the absence of a scope, and it carries no region label. */
-  scope?: Exclude<GameVariant, 'world'>
+   *  this drives both the scoped copy and the off-board veto. Never empty:
+   *  the whole world is the absence of a scope. */
+  scope?: BoardRegion[]
   durationSeconds: number
   maximumPoints: number
 }

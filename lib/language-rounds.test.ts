@@ -15,11 +15,12 @@ import {
 import { playableCountries } from '~~/lib/game-rules'
 import { isChallengeOfType } from '~~/lib/rounds'
 import type { MotherTongueChallenge } from '~~/types/challenges/group-modes.type'
-import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import type { BoardRegion, Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const rules = (variant: GameVariant, difficulty: GameDifficulty = 'normal') =>
-  ({ difficulty, variant, rounds: [] }) as unknown as Game
+  ({ difficulty, regions: regionsForVariant(variant), rounds: [] }) as unknown as Game
 
 const REGIONAL: Exclude<GameVariant, 'world'>[] = [
   'europe',
@@ -37,7 +38,7 @@ const variantSpeakers = (variant: GameVariant): Map<string, ISOCountryCode[]> =>
 const challengeOf = (
   language: string,
   countries: ISOCountryCode[],
-  scope?: Exclude<GameVariant, 'world'>
+  scope?: BoardRegion[]
 ): MotherTongueChallenge => ({
   _type: 'mother-tongue-challenge',
   language,
@@ -49,7 +50,7 @@ const challengeOf = (
 
 describe('mother tongue scope', () => {
   it('names the board a regional round was dealt on', () => {
-    const challenge = challengeOf('French', ['FR', 'BE', 'LU', 'MC', 'CH'], 'europe')
+    const challenge = challengeOf('French', ['FR', 'BE', 'LU', 'MC', 'CH'], ['europe'])
     expect(motherTongueScope(challenge)).toBe('in Europe')
     expect(motherTongueQuestion(challenge)).toBe('Who speaks French in Europe?')
     expect(motherTongueStakes(challenge)).toContain('5 countries in Europe')
@@ -63,11 +64,17 @@ describe('mother tongue scope', () => {
     expect(motherTongueStakes(challenge)).toContain('3 countries speak German')
   })
 
+  it('names every region of a combined board', () => {
+    const challenge = challengeOf('French', ['FR', 'BE', 'SN', 'CI'], ['europe', 'africa'])
+    expect(motherTongueQuestion(challenge)).toBe('Who speaks French in Europe and Africa?')
+    expect(motherTongueStakes(challenge)).toContain('4 countries in Europe and Africa')
+  })
+
   it('keeps the article REGION_LABELS carries', () => {
     // 'the Middle East' is not a variant, but every variant that IS one must
     // read naturally after a bare "in".
     for (const variant of REGIONAL) {
-      const phrase = motherTongueScope(challengeOf('English', [], variant))
+      const phrase = motherTongueScope(challengeOf('English', [], [variant]))
       expect(phrase.startsWith('in ')).toBe(true)
       expect(phrase).not.toContain('in the the')
     }
@@ -77,7 +84,7 @@ describe('mother tongue scope', () => {
 describe('off-board veto', () => {
   it('credits a speaker standing off the board', () => {
     // The screenshot: a Europe board asking for French.
-    const challenge = challengeOf('French', ['FR', 'BE', 'LU', 'MC', 'CH'], 'europe')
+    const challenge = challengeOf('French', ['FR', 'BE', 'LU', 'MC', 'CH'], ['europe'])
     // Burundi and Senegal speak French — right about the world, off this board.
     expect(speaksButOffBoard(challenge, 'BI')).toBe(true)
     expect(speaksButOffBoard(challenge, 'SN')).toBe(true)
@@ -94,11 +101,15 @@ describe('off-board veto', () => {
     // either must not be charged for it.
     expect(COUNTRIES.SI?.officialLanguages).toContain('Italian')
     expect(COUNTRIES.SI?.languages ?? []).not.toContain('Italian')
-    expect(speaksButOffBoard(challengeOf('Italian', ['IT', 'SM', 'VA'], 'europe'), 'SI')).toBe(true)
+    expect(speaksButOffBoard(challengeOf('Italian', ['IT', 'SM', 'VA'], ['europe']), 'SI')).toBe(
+      true
+    )
 
     expect(COUNTRIES.KZ?.officialLanguages ?? []).not.toContain('Russian')
     expect(COUNTRIES.KZ?.languages).toContain('Russian')
-    expect(speaksButOffBoard(challengeOf('Russian', ['RU', 'BY', 'UA'], 'europe'), 'KZ')).toBe(true)
+    expect(speaksButOffBoard(challengeOf('Russian', ['RU', 'BY', 'UA'], ['europe']), 'KZ')).toBe(
+      true
+    )
   })
 
   it('never fires on a world board', () => {
@@ -114,7 +125,7 @@ describe('off-board veto', () => {
     // make the round unwinnable.
     for (const variant of REGIONAL) {
       for (const [language, countries] of variantSpeakers(variant)) {
-        const challenge = challengeOf(language, countries, variant)
+        const challenge = challengeOf(language, countries, [variant])
         for (const isoCode of countries) {
           expect(speaksButOffBoard(challenge, isoCode), `${variant}/${language}/${isoCode}`).toBe(
             false
@@ -132,7 +143,7 @@ describe('off-board veto', () => {
       let vetoed = 0
       for (const [language, countries] of onBoard) {
         if (countries.length < 3 || countries.length > 12) continue
-        const challenge = challengeOf(language, countries, variant)
+        const challenge = challengeOf(language, countries, [variant])
         vetoed += ISOCountryCodes.filter(isoCode => speaksButOffBoard(challenge, isoCode)).length
       }
       expect(vetoed, variant).toBeGreaterThan(0)
@@ -150,7 +161,7 @@ describe('the dealt round', () => {
     for (const variant of [...REGIONAL, 'world' as const]) {
       const challenge = await getRoundChallenge({ game: rules(variant) })
       if (!isChallengeOfType(challenge, 'mother-tongue-challenge')) continue
-      expect(challenge.scope, variant).toBe(variant === 'world' ? undefined : variant)
+      expect(challenge.scope, variant).toEqual(variant === 'world' ? undefined : [variant])
       // Every answer speaks the language on one list or the other — the round
       // asks "who speaks it", and both fields are half the answer.
       for (const isoCode of challenge.countries) {
@@ -161,6 +172,20 @@ describe('the dealt round', () => {
       const onBoard = variantSpeakers(variant).get(challenge.language) ?? []
       expect([...challenge.countries].sort(), variant).toEqual([...onBoard].sort())
     }
+  })
+
+  it('stamps every region of a combined board, and vetoes only off all of them', async () => {
+    process.env.FORCE_ROUND_TYPE = 'mother-tongue'
+    const game = {
+      difficulty: 'normal',
+      regions: ['europe', 'africa'],
+      rounds: [],
+    } as unknown as Game
+    const challenge = await getRoundChallenge({ game })
+    if (!isChallengeOfType(challenge, 'mother-tongue-challenge')) return
+    expect(challenge.scope).toEqual(['europe', 'africa'])
+    const onBoard = boardSpeakers(playableCountries(game)).get(challenge.language) ?? []
+    expect([...challenge.countries].sort()).toEqual([...onBoard].sort())
   })
 
   it('deals the speakers a statute never named', () => {
@@ -190,7 +215,7 @@ describe('tongue buzz', () => {
     for (const variant of [...REGIONAL, 'world' as const]) {
       const challenge = await getRoundChallenge({ game: rules(variant) })
       if (!isChallengeOfType(challenge, 'tongue-buzz-challenge')) continue
-      expect(challenge.scope, variant).toBe(variant === 'world' ? undefined : variant)
+      expect(challenge.scope, variant).toEqual(variant === 'world' ? undefined : [variant])
       for (const isoCode of challenge.countries) {
         expect(speaksLanguage(isoCode, challenge.language), `${variant}/${isoCode}`).toBe(true)
       }
@@ -208,7 +233,7 @@ describe('tongue buzz', () => {
     const challenge = {
       language: 'French',
       countries: ['FR', 'BE', 'LU', 'MC', 'CH'] as ISOCountryCode[],
-      scope: 'europe' as const,
+      scope: ['europe' as const],
     }
     expect(speaksButOffBoard(challenge, 'SN')).toBe(true)
     expect(speaksButOffBoard(challenge, 'FR')).toBe(false)

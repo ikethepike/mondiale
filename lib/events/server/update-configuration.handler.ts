@@ -1,4 +1,5 @@
 import { generateTiles } from '~~/lib/tiles'
+import { normalizeBoardRegions } from '~~/lib/variant'
 import { isValidGameConfiguration } from '~~/types/game.types'
 import { defineGameHandler } from '../server-side'
 
@@ -20,7 +21,7 @@ export const updateConfigurationHandler = defineGameHandler(
 
     game.difficulty = configuration.difficulty
     game.length = configuration.length
-    game.variant = configuration.variant
+    game.regions = normalizeBoardRegions(configuration.regions)
     game.liveGuesses = configuration.liveGuesses
     // Tri-state: an absent key means auto (the difficulty decides), so the
     // key must actually disappear rather than persist as an explicit value.

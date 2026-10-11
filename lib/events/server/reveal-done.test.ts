@@ -50,7 +50,7 @@ const buildGame = (players: Player[], challenge: unknown): Game =>
     id: `reveal-game-${++gameSeq}`,
     host: players[0]?.id,
     tiles: [],
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     started: true,
     players: Object.fromEntries(players.map(entry => [entry.id, entry])),

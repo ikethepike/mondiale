@@ -96,7 +96,7 @@ describe('famousPlaces', () => {
 
 const game = (difficulty: Game['difficulty']): Game =>
   ({
-    variant: 'world',
+    regions: [],
     difficulty,
     rounds: [{}],
     players: { a: { phase: 'group-challenge' } },

@@ -27,7 +27,7 @@ const buildGame = (seats: Player[]): Game =>
     host: seats[0]!.id,
     started: true,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     tiles: [],
     players: Object.fromEntries(seats.map(seat => [seat.id, seat])),

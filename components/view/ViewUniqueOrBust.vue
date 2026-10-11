@@ -211,7 +211,7 @@ watch(
   challenge,
   async active => {
     if (!active || Object.keys(optionsByCategory.value).length) return
-    const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+    const rules = gameStore.game ?? { regions: [], difficulty: 'normal' as const }
     const registers = await uniqueRegisters(rules)
     optionsByCategory.value = Object.fromEntries(
       active.categories.map(category => [

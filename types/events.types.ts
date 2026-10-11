@@ -47,7 +47,8 @@ export interface SeatEcho {
 export type ClientEventData =
   | {
       event: 'join'
-      variant: GameVariant
+      /** The home-page template a NEW room opens on; an existing room ignores it. */
+      variant?: GameVariant
       /** Honored only when the table is full: take the balcony instead of a
        *  seat. While seats are free a joiner always plays (see joinVerdict). */
       asSpectator?: boolean

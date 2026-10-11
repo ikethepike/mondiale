@@ -46,7 +46,7 @@ const buildGame = (challenge: object, players: Player[]): Game =>
     id: 'bot-test',
     host: 'human',
     tiles: [],
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     started: true,
     players: Object.fromEntries(players.map(player => [player.id, player])),

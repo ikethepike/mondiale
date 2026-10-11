@@ -34,7 +34,7 @@ const buildGame = (seat: Player): Game =>
     host: seat.id,
     started: true,
     length: 'short',
-    variant: 'world',
+    regions: [],
     difficulty: 'normal',
     tiles: [],
     players: { [seat.id]: seat },

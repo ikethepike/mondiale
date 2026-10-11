@@ -52,7 +52,7 @@ const buildGame = (challenge: object, difficulty: Game['difficulty']): Game =>
     id: 'bot-strength',
     host: 'human',
     tiles: [],
-    variant: 'world',
+    regions: [],
     difficulty,
     includeMicroNations: false,
     started: true,
@@ -204,7 +204,7 @@ describe('bot strength realizes the difficulty dial', () => {
   // PREFIX of `optimalPath` carries the start country and never bridges.
   it('completes a traversal route often enough to bank real points', async () => {
     const rules = {
-      variant: 'world',
+      regions: [],
       difficulty: 'hard',
       includeMicroNations: false,
     } as unknown as Parameters<typeof pickTraversal>[0]
@@ -230,7 +230,7 @@ describe('bot strength realizes the difficulty dial', () => {
   // the strongest traversal player at the table.
   it('does not bridge on a miss when the route has one interior country', async () => {
     const rules = {
-      variant: 'world',
+      regions: [],
       difficulty: 'easy',
       includeMicroNations: false,
     } as unknown as Parameters<typeof pickTraversal>[0]

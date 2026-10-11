@@ -261,7 +261,7 @@ export const sweepOffBoardFor = (
 ): ISOCountryCode[] => {
   const spec = SWEEP_SETS[setId]
   if (!spec) return []
-  const everywhere = spec.members({ ...rules, variant: 'world', includeMicroNations: true })
+  const everywhere = spec.members({ ...rules, regions: [], includeMicroNations: true })
   return everywhere.filter(isoCode => !dealt.includes(isoCode))
 }
 

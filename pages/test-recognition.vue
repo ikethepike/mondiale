@@ -131,7 +131,7 @@ const mockGame = (groupChallenge: unknown): Game =>
     started: true,
     length: 'medium',
     difficulty: 'hard',
-    variant: 'world',
+    regions: [],
     rounds: [{ groupChallenge, playerTurns: {} }],
     players: {
       // Keyed by playerId: the store's `player` getter looks it up here, and

@@ -35,7 +35,8 @@ import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.ty
 import { TREATY_FAMILIES, TREATY_META } from '~~/types/treaty.type'
 import { resolveGlyph } from '~~/lib/stat-glyphs'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
-import type { Game, GameDifficulty } from '~~/types/game.types'
+import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/variant'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
   BORDER_STORIES,
@@ -68,8 +69,8 @@ import {
   yearbookYear,
 } from './final-challenge'
 
-const gameFor = (variant: Game['variant'], difficulty: GameDifficulty) =>
-  ({ variant, difficulty }) as Game
+const gameFor = (variant: GameVariant, difficulty: GameDifficulty) =>
+  ({ regions: regionsForVariant(variant), difficulty }) as Game
 
 const isMember = (isoCode: string, organization: string) =>
   COUNTRIES[isoCode as keyof typeof COUNTRIES].membership.some(entry => entry.id === organization)
@@ -153,7 +154,7 @@ describe('membership challenge', () => {
 })
 
 describe('odd-one-out lineup rides the challenge', () => {
-  const oddOneOutItems = (variant: Game['variant']) => {
+  const oddOneOutItems = (variant: GameVariant) => {
     const items: (MembershipChallenge | TreatyChallenge)[] = []
     for (let round = 0; round < DEAL_ROUNDS; round++) {
       for (const challenge of getFinalChallenges({ game: gameFor(variant, 'hard') }).challenges) {
@@ -1081,7 +1082,7 @@ describe('diaspora challenge', () => {
   const MAGNET_REGIONS = ['europe', 'north-america']
   const acceptedWidth: { [difficulty in GameDifficulty]: number } = { easy: 3, normal: 2, hard: 1 }
 
-  const dealtDiasporas = (difficulty: GameDifficulty, variant: Game['variant'] = 'world') => {
+  const dealtDiasporas = (difficulty: GameDifficulty, variant: GameVariant = 'world') => {
     const dealt: DiasporaChallenge[] = []
     for (let round = 0; round < DEAL_ROUNDS; round++) {
       for (const challenge of getFinalChallenges({ game: gameFor(variant, difficulty) })

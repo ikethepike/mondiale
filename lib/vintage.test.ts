@@ -56,7 +56,8 @@ import {
 } from '~~/lib/vintage-tuning'
 import { isFameDealable } from '~~/types/fame.types'
 import { withArticle } from '~~/lib/strings'
-import type { Game, GameDifficulty } from '~~/types/game.types'
+import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/variant'
 import {
   VINTAGE_REGION_IDS,
   VINTAGE_REGIONS_BY_VARIANT,
@@ -74,8 +75,8 @@ const sameScene = (a: ReturnType<typeof sceneAt>, b: ReturnType<typeof sceneAt>)
   expect(a.looks).toEqual(b.looks)
 }
 
-const gameOn = (difficulty: GameDifficulty, variant: Game['variant']) =>
-  ({ difficulty, variant, rounds: [] }) as unknown as Game
+const gameOn = (difficulty: GameDifficulty, variant: GameVariant) =>
+  ({ difficulty, regions: regionsForVariant(variant), rounds: [] }) as unknown as Game
 
 describe.each(VINTAGE_REGION_IDS)('vintage data: %s', region => {
   let geometry: VintageRegion
@@ -346,7 +347,7 @@ describe('vintage dealer and grader', () => {
   })
 
   it('keeps every board but the sparse ones dealing at every difficulty', () => {
-    for (const variant of Object.keys(VINTAGE_REGIONS_BY_VARIANT) as Game['variant'][])
+    for (const variant of Object.keys(VINTAGE_REGIONS_BY_VARIANT) as GameVariant[])
       for (const difficulty of ['easy', 'normal', 'hard'] as const) {
         const dealt = pickVintage(gameOn(difficulty, variant), 10)
         if (variant === 'south-america' && difficulty !== 'hard') expect(dealt).toBeUndefined()
@@ -355,7 +356,7 @@ describe('vintage dealer and grader', () => {
   })
 
   it('deals only the board’s own regions', () => {
-    for (const variant of Object.keys(VINTAGE_REGIONS_BY_VARIANT) as Game['variant'][])
+    for (const variant of Object.keys(VINTAGE_REGIONS_BY_VARIANT) as GameVariant[])
       for (let trial = 0; trial < 30; trial++) {
         const challenge = pickVintage(gameOn('normal', variant), 10)
         if (challenge) expect(VINTAGE_REGIONS_BY_VARIANT[variant]).toContain(challenge.region)

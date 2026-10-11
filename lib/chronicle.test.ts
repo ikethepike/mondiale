@@ -12,7 +12,7 @@ import {
 } from '~~/lib/chronicle'
 import type { GameRules } from '~~/types/game.types'
 
-const WORLD: GameRules = { difficulty: 'normal', variant: 'world' }
+const WORLD: GameRules = { difficulty: 'normal', regions: [] }
 
 describe('chronicleCountries', () => {
   it('keeps a playable pool at every difficulty', () => {

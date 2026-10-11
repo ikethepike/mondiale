@@ -7,7 +7,7 @@ import { VINTAGE_TUNING, vintageFameWeight, yearsOff } from '~~/lib/vintage-tuni
 import type { VintageChallenge, VintageOutcome } from '~~/types/challenges/group-modes.type'
 import { isFameDealable } from '~~/types/fame.types'
 import type { Game, GameDifficulty } from '~~/types/game.types'
-import { VINTAGE_REGIONS_BY_VARIANT, type VintageRegionId } from '~~/types/vintage.types'
+import { vintageRegionsFor, type VintageRegionId } from '~~/types/vintage.types'
 
 /**
  * Vintage's answers. The years live only here and in `vintage-years.gen`,
@@ -70,7 +70,7 @@ export const pickVintage = (game: Game, maximumPoints: number): VintageChallenge
     )
   )
   const region = sample(
-    VINTAGE_REGIONS_BY_VARIANT[game.variant].filter(
+    vintageRegionsFor(game.regions).filter(
       region => !dealt.has(region) && dealableScenes(region, game.difficulty).length
     )
   )

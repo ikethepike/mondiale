@@ -12,7 +12,7 @@ import {
 } from './game-rules'
 
 const rules = (overrides: Partial<GameRules> = {}): GameRules => ({
-  variant: 'world',
+  regions: [],
   difficulty: 'normal',
   ...overrides,
 })
@@ -63,19 +63,31 @@ describe('playableCountries', () => {
   })
 
   it('composes with the variant', () => {
-    const europe = new Set(playableCountries(rules({ variant: 'europe' })))
+    const europe = new Set(playableCountries(rules({ regions: ['europe'] })))
     expect(europe.has('SM')).toBe(false) // micro, benched
     expect(europe.has('IT')).toBe(true)
     expect(europe.has('JP')).toBe(false) // off the board
 
-    const europeHard = new Set(playableCountries(rules({ variant: 'europe', difficulty: 'hard' })))
+    const europeHard = new Set(
+      playableCountries(rules({ regions: ['europe'], difficulty: 'hard' }))
+    )
     expect(europeHard.has('SM')).toBe(true)
+  })
+
+  it('deals a combined board from the union of its regions', () => {
+    const europe = playableCountries(rules({ regions: ['europe'] }))
+    const africa = playableCountries(rules({ regions: ['africa'] }))
+    const both = playableCountries(rules({ regions: ['europe', 'africa'] }))
+    expect(new Set(both)).toEqual(new Set([...europe, ...africa]))
+    // Egypt sits on both boards and must not be dealt twice.
+    expect(both.filter(isoCode => isoCode === 'EG')).toHaveLength(1)
+    expect(both).not.toContain('JP')
   })
 })
 
 describe('isCountryInPlay / isCountryPlayable', () => {
   it('keeps the in-play gate variant-agnostic (answers reach off-board)', () => {
-    const europe = rules({ variant: 'europe' })
+    const europe = rules({ regions: ['europe'] })
     // Morocco is off the Europe board but still a legal answer…
     expect(isCountryInPlay(europe, 'MA')).toBe(true)
     expect(isCountryPlayable(europe, 'MA')).toBe(false)
@@ -86,7 +98,7 @@ describe('isCountryInPlay / isCountryPlayable', () => {
 
 describe('playableWorldCountries / excludedMicroNations', () => {
   it('mirrors the in-play gate world-wide', () => {
-    const world = new Set(playableWorldCountries(rules({ variant: 'europe' })))
+    const world = new Set(playableWorldCountries(rules({ regions: ['europe'] })))
     expect(world.has('MA')).toBe(true)
     expect(world.has('MC')).toBe(false)
   })
@@ -100,7 +112,7 @@ describe('playableWorldCountries / excludedMicroNations', () => {
 describe('isValidGameConfiguration (micro-nations tri-state)', () => {
   const valid = {
     difficulty: 'normal',
-    variant: 'world',
+    regions: [],
     length: 'medium',
     liveGuesses: true,
     challengeOverrides: {},
@@ -114,5 +126,12 @@ describe('isValidGameConfiguration (micro-nations tri-state)', () => {
 
   it('rejects the stringly-typed FormData value', () => {
     expect(isValidGameConfiguration({ ...valid, includeMicroNations: 'on' })).toBe(false)
+  })
+
+  it('takes a list of regions, never the whole world named as one', () => {
+    expect(isValidGameConfiguration({ ...valid, regions: ['europe', 'africa'] })).toBe(true)
+    expect(isValidGameConfiguration({ ...valid, regions: ['world'] })).toBe(false)
+    expect(isValidGameConfiguration({ ...valid, regions: ['europe', 'europe'] })).toBe(false)
+    expect(isValidGameConfiguration({ ...valid, regions: 'europe' })).toBe(false)
   })
 })

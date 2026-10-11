@@ -7,10 +7,11 @@ import { placedCount } from '~~/lib/events/server/player-guessing.handler'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
 import { pairFraction } from '~~/lib/scoring'
 import type { Game, GameDifficulty, GameVariant, Round } from '~~/types/game.types'
+import { regionsForVariant } from '~~/lib/variant'
 
 const game = (difficulty: GameDifficulty, variant: GameVariant = 'world') =>
   ({
-    variant,
+    regions: regionsForVariant(variant),
     difficulty,
     rounds: [{}],
     players: { a: { phase: 'group-challenge' } },

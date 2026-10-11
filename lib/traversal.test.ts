@@ -16,7 +16,7 @@ import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const rules = (overrides: Partial<GameRules> = {}): GameRules => ({
-  variant: 'world',
+  regions: [],
   difficulty: 'normal',
   ...overrides,
 })
@@ -97,7 +97,7 @@ describe('traversalWithin', () => {
   })
 
   it('is variant-agnostic — a border does not stop at the board edge', () => {
-    const within = traversalWithin(rules({ variant: 'europe' }))!
+    const within = traversalWithin(rules({ regions: ['europe'] }))!
     expect(within.has('TR')).toBe(true)
     expect(within.has('AZ')).toBe(true)
   })

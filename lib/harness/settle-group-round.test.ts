@@ -13,7 +13,7 @@ const gameWith = (round: Round): Game =>
   ({
     id: 'settle-test',
     difficulty: 'normal',
-    variant: 'world',
+    regions: [],
     tiles: [],
     rounds: [round],
     players: {

@@ -10,6 +10,7 @@ import { type Game, isValidGame } from '../../types/game.types'
 import type { Player } from '../../types/player.type'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { secretsKey } from '~~/lib/player-secret'
+import { upgradeLegacyBoard } from '~~/lib/variant'
 import type { Redis } from '@upstash/redis'
 
 /** Game-state artifacts (game, secrets, hidden seeds) all expire together. */
@@ -181,6 +182,7 @@ export const useServerSideEvents = ({
       if (!gameId) throw new EvalError('Blank string passed')
       const game = await redis.get<Game>(gameId)
       if (!game) return undefined
+      upgradeLegacyBoard(game)
       if (!isValidGame(game)) {
         console.warn('Invalid game', game)
         return undefined

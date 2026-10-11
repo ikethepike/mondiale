@@ -230,7 +230,7 @@ const myTurn = computed(() => !finished.value && !trap.value && activeId.value =
 // The classic rule: no repeats for the whole round, across every chain walked.
 const walked = computed(() => state.value?.chains.flat() ?? [])
 
-const rules = gameStore.game ?? { variant: 'world' as const, difficulty: 'normal' as const }
+const rules = gameStore.game ?? { regions: [], difficulty: 'normal' as const }
 const isEasyGame = computed(() => gameStore.game?.difficulty === 'easy')
 const rule = computed(() => ({ overlaps: !!challenge.value?.overlaps }))
 
