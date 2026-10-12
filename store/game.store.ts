@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { BoardFactFamily } from '~~/lib/board-facts'
 import type { LatLng, MapBox } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
 import { previewOn } from '~~/lib/seat-view'
@@ -215,6 +216,12 @@ interface GameStoreState {
     /** `seatId:subject` of the walk whose "On the move!" beat already
      *  played, so an overlay remount mid-lead can't replay the interstitial. */
     introSeenKey?: string
+    /** The player turned the caption's fun facts off for this session. */
+    factsHidden: boolean
+    /** Facts already told this session, so a long game never repeats one. */
+    factsSeen: string[]
+    /** Families of the facts told, oldest first — the next pick rotates away from them. */
+    factFamilies: BoardFactFamily[]
   }
   /**
    * The server refused the join — the game was already underway ('started'),
@@ -318,6 +325,9 @@ export const useGameStore = defineStore('game', {
       stageReady: false,
       stageFailed: false,
       introSeenKey: undefined,
+      factsHidden: false,
+      factsSeen: [],
+      factFamilies: [],
     },
   }),
   actions: {},

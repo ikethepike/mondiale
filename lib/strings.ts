@@ -108,7 +108,7 @@ export const sentenceCase = (value: string): string =>
   value ? `${value[0].toUpperCase()}${value.slice(1)}` : value
 
 const TAKES_THE =
-  /\b(Union|Empire|Federation|Republic|Kingdom|Confederation|Free State|Free City|Protectorate|Mandate|Territory|Territories|Colony|Emirates|States|Islands|Coast|Commonwealth|Dominion|Raj|Sultanate|Emirate|Khanate|Duchy|Principality|Netherlands|Gambia|Philippines|Bahamas|Belgian Congo|French Congo|Anglo-Egyptian Sudan)\b/
+  /\b(Union|Empire|Federation|Republic|Kingdom|Confederation|Free State|Free City|Protectorate|Mandate|Territory|Territories|Colony|Emirates|States|Islands|Coast|Commonwealth|Dominion|Raj|Sultanate|Emirate|Khanate|Duchy|Principality|Netherlands|Gambia|Philippines|Bahamas|Belgian Congo|French Congo|Anglo-Egyptian Sudan|Holy See|Maldives)\b/
 
 /** A polity's name as prose uses it: "the Soviet Union", "the Gold Coast",
  *  but "Ghana". */

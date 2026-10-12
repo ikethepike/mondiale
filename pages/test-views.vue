@@ -205,8 +205,9 @@ import type { Game, GameDifficulty, GameRules, PlayerColor, Round } from '~~/typ
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { Player } from '~~/types/player.type'
-import type { SeatStep } from '~~/types/seat.types'
+import type { SeatCursor, SeatStep } from '~~/types/seat.types'
 import { mockFinalCursor, mockGateCursor, mockSeatCursor } from '~~/lib/harness/mock-cursor'
+import { seatSubject } from '~~/lib/seat-transitions'
 import type { Component } from 'vue'
 
 const gameStore = useGameStore()
@@ -565,6 +566,73 @@ const simulateGovernmentPick = (eventData: Record<string, unknown>) => {
 
 /** A live beat runs its own clock; when it rings, the beat resolves regardless. */
 let governmentTimer: number | undefined
+
+/**
+ * The settled seat's wait, played out: your gate held, Wanderer clears a gate
+ * and settles, Rival runs their gate clock out — the caption's whole story
+ * from setback to "Everyone's done" in under a minute.
+ */
+const boardWaitingGame = (): Game => {
+  const now = Date.now()
+  const game = mockGame('settled', [settledRound()])
+  const round = game.rounds[0]!
+  round.playerTurns[ME] = { ...round.playerTurns[ME]!, blocked: { atTile: 15, forfeitedSteps: 3 } }
+  const me = game.players[ME]!
+  me.currentPosition = 14
+  me.cursor = mockSeatCursor('settled', { subject: seatSubject.settled(0), seq: 5 })
+  const rival = game.players[RIVAL]!
+  rival.currentPosition = 20
+  rival.moves = [{ endTile: game.tiles[27]! }] as never
+  rival.cursor = mockSeatCursor('gate', {
+    subject: seatSubject.gate(1, 21),
+    enteredAt: now - 10_000,
+    deadline: now + 34_000,
+    seq: 5,
+  })
+  const wanderer = game.players[THIRD]!
+  wanderer.currentPosition = 9
+  wanderer.cursor = mockSeatCursor('gate', {
+    subject: seatSubject.gate(1, 10),
+    enteredAt: now - 15_000,
+    deadline: now + 12_000,
+    seq: 5,
+  })
+  return game
+}
+
+let boardTimers: number[] = []
+const armBoardScenario = () => {
+  boardTimers.forEach(timer => window.clearTimeout(timer))
+  boardTimers = []
+  if (scenarioId.value !== 'board-waiting') return
+  const moveSeat = (playerId: string, at: number, cursor: (previous: SeatCursor) => SeatCursor) =>
+    boardTimers.push(
+      window.setTimeout(() => {
+        const player = gameStore.game?.players[playerId]
+        if (player) player.cursor = cursor(player.cursor)
+      }, at)
+    )
+  const verdict = (previous: SeatCursor, correct: boolean): SeatCursor => ({
+    ...mockSeatCursor('gate-verdict', { subject: previous.subject, seq: previous.seq + 1 }),
+    verdict: {
+      kind: 'gate',
+      subject: previous.subject,
+      correct,
+      timedOut: !correct,
+      steps: correct ? 4 : 0,
+      browsable: false,
+    },
+  })
+  const settle = (previous: SeatCursor): SeatCursor =>
+    mockSeatCursor('settled', { subject: seatSubject.settled(0), seq: previous.seq + 1 })
+  moveSeat(THIRD, 11_000, previous => verdict(previous, true))
+  moveSeat(THIRD, 14_000, previous => {
+    gameStore.game!.players[THIRD]!.currentPosition = 13
+    return settle(previous)
+  })
+  moveSeat(RIVAL, 34_000, previous => verdict(previous, false))
+  moveSeat(RIVAL, 37_000, settle)
+}
 const armGovernmentScenario = () => {
   const challenge = governmentOf()
   window.clearTimeout(governmentTimer)
@@ -4510,6 +4578,11 @@ const scenarios: Scenario[] = [
     build: () => mockGame('tutorial', [settledRound()]),
   },
   {
+    id: 'board-waiting',
+    label: 'Board: waiting on the table (caption)',
+    build: boardWaitingGame,
+  },
+  {
     id: 'victory',
     label: 'Victory (report)',
     build: () => {
@@ -4660,7 +4733,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Heritage Hunt', ['heritage-hunt']],
   ['Individual Gates', ['individual-']],
   ['Final Gauntlet', ['final-']],
-  ['Lobby & Meta', ['lobby', 'tutorial', 'victory']],
+  ['Lobby & Meta', ['lobby', 'tutorial', 'victory', 'board-']],
   ['Other', ['']],
 ]
 
@@ -4911,6 +4984,7 @@ const deal = async () => {
   ready.value = true
   armChainScenario()
   armGovernmentScenario()
+  armBoardScenario()
 }
 
 /** Push a few opponent guesses so ticker chrome can be previewed. */
