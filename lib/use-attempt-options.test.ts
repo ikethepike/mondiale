@@ -182,6 +182,17 @@ describe('useAttemptOptions named picks', () => {
     expect((await grade(['Houston', 'Toronto', 'Chicago'])).scoring.scored).toBe(0)
   })
 
+  it('lists the country as found only where a city of the picks scored', async () => {
+    expect((await grade(['Houston', 'Chicago'])).answer).toEqual({
+      submitted: ['US'],
+      correct: ['US'],
+    })
+    expect((await grade(['Houston', 'Toronto'])).answer).toEqual({
+      submitted: [],
+      correct: ['US'],
+    })
+  })
+
   it('zeroes a malformed pick list instead of throwing', async () => {
     expect((await grade('Chicago')).scoring.scored).toBe(0)
     expect((await grade([7, 'Chicago'])).scoring.scored).toBe(capitalGuessScore(2, 2, 20))

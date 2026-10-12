@@ -193,16 +193,14 @@ export const gradeGroupAnswer = async ({
       // A wrong city in the right country is a miss, so the options price
       // on the named cities rather than the country the ranking carries.
       if (challenge.maximumGuesses) {
-        answer = { submitted: submission.ranking, correct: [challenge.country] }
-        scoring = {
-          scored: attemptPicksScore(
-            cities.slice(0, challenge.maximumGuesses),
-            namesCity,
-            challenge.maximumGuesses,
-            challenge.maximumPoints
-          ),
-          maximum: challenge.maximumPoints,
-        }
+        const scored = attemptPicksScore(
+          cities,
+          namesCity,
+          challenge.maximumGuesses,
+          challenge.maximumPoints
+        )
+        answer = { submitted: scored > 0 ? [challenge.country] : [], correct: [challenge.country] }
+        scoring = { scored, maximum: challenge.maximumPoints }
         break
       }
       buzzOn(challenge, submission.ranking[0] === challenge.country && namesCity(cities[0]))
