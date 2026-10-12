@@ -80,7 +80,7 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
     case 'anthem-buzz':
       return 'The earlier the buzz, the bigger the score.'
     case 'tongue-buzz':
-      return 'Any country with that official language counted — the earlier the buzz, the bigger the score.'
+      return 'Any country that speaks it counted — the earlier the buzz, the bigger the score.'
     case 'hot-cold':
       return 'Finding it is everything — every extra probe costs points.'
     case 'sketch':

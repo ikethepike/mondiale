@@ -11,7 +11,7 @@ import { WATER_FACTS } from '~~/data/water-facts.gen'
 import { capitalCityLight } from '~~/lib/capitals'
 import { countryInProse, countryName } from '~~/lib/country'
 import { countryLatLng, haversineKm } from '~~/lib/geo'
-import { nationalLanguages, speaksLanguage } from '~~/lib/language-rounds'
+import { officialLanguages, speaksLanguage } from '~~/lib/language-rounds'
 import { clamp, formatOrdinal, formatProseNumber } from '~~/lib/number'
 import { listJoin, normalizeAnswer, sentenceCase } from '~~/lib/strings'
 import { getValueByAccessorID } from '~~/lib/values'
@@ -234,7 +234,7 @@ const borderClaims = (): Claim[] =>
 const languageClaims = (): Claim[] => {
   const officialIn = new Map<string, ISOCountryCode[]>()
   for (const isoCode of ISO_CODES) {
-    for (const language of nationalLanguages(isoCode)) {
+    for (const language of officialLanguages(isoCode)) {
       officialIn.set(language, [...(officialIn.get(language) ?? []), isoCode])
     }
   }
@@ -255,7 +255,7 @@ const languageClaims = (): Claim[] => {
   }
 
   const officialNote = (isoCode: ISOCountryCode) => {
-    const languages = nationalLanguages(isoCode)
+    const languages = officialLanguages(isoCode)
     const listed =
       languages.length > 4
         ? `${languages.slice(0, 3).join(', ')} and ${languages.length - 3} more`
@@ -282,7 +282,7 @@ const languageClaims = (): Claim[] => {
         const truths = speakers.flatMap((subject): Draft[] => {
           // A language's home — its most populous official country, or its only
           // one — is a gift, not a claim: "French is official in France".
-          if (subject === home || nationalLanguages(subject)[0] === language) return []
+          if (subject === home || officialLanguages(subject)[0] === language) return []
           const share = regionalShare(language, regionOf(subject), subject)
           const nextDoor = neighbourShare(subject, isoCode => speakers.includes(isoCode)) ?? 0
           return [

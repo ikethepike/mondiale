@@ -23,7 +23,7 @@ import {
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { flagsIndistinguishable, hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { dealableHeritage, dealableLandmarks } from '~~/lib/places'
-import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
+import { SCRIPTORIUM_POOL, scriptoriumAccepts, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
   HEAVY_ACCESSORS,
@@ -136,7 +136,13 @@ import {
 } from './game-rules'
 import { pickChainSeed } from './chain'
 import { flagSwatches } from './audio-palette'
-import { acceptsSpeaker, boardSpeakers } from './language-rounds'
+import {
+  acceptsSpeaker,
+  boardSpeakers,
+  languagesAsked,
+  motherTongueDeck,
+  motherTongueSeconds,
+} from './language-rounds'
 import { seededTongueSample } from './tongue-samples'
 import {
   initialManhuntCandidates,
@@ -209,7 +215,7 @@ import {
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
 import { isWorldBoard } from './board-regions'
-import { boardLabel, REGION_LABELS } from './variant'
+import { boardLabel, countryOnBoard, REGION_LABELS } from './variant'
 
 export const MAXIMUM_SCORE_PER_COUNTRY = 3
 
@@ -686,7 +692,7 @@ const getAnthemBuzzChallenge = ({
 }
 
 /**
- * A speech clip plays — name any country where that language is official.
+ * A speech clip plays — name any country where that language is spoken.
  * The answer is a SET, not one country: English is official in 55 of them, so
  * demanding a single code would make the most recognisable languages unfair.
  */
@@ -697,11 +703,13 @@ const getTongueBuzzChallenge = ({
 }): TongueBuzzChallenge | undefined => {
   const pool = playableCountries(game)
   // Everyone who speaks it, like Mother Tongue: the round asks where a voice
-  // is understood, not where a statute names it, so `boardSpeakers` reads both
-  // language fields and the two rounds can't disagree about a country.
+  // is understood, not where a statute names it, so both rounds deal from
+  // `boardSpeakers` and can't disagree about a country.
   const speakers = [...boardSpeakers(pool)].filter(([language]) => TONGUES[language])
+  const asked = languagesAsked(game)
+  const fresh = speakers.filter(([language]) => !asked.has(language))
 
-  const entry = sample(speakers)
+  const entry = sample(fresh.length ? fresh : speakers)
   if (!entry) return undefined
 
   const [language, countries] = entry
@@ -747,7 +755,8 @@ const getTongueBuzzChallenge = ({
  * two membership tests would drift the moment the answer set grows a qualifier.
  */
 export const speaksTongue = (challenge: TongueBuzzChallenge, guess: ISOCountryCode): boolean =>
-  challenge.countries.includes(guess)
+  challenge.countries.includes(guess) ||
+  (countryOnBoard(guess, challenge.scope ?? []) && acceptsSpeaker(guess, challenge.language))
 
 /**
  * Micro-island states are near-invisible click targets at world zoom, and a
@@ -1010,24 +1019,14 @@ const getNameWaterChallenge = async (
   }
 }
 
-/** How many countries on the board speak this language. */
-const MOTHER_TONGUE_MIN_SPEAKERS = 3
-const MOTHER_TONGUE_MAX_SPEAKERS = 12
 const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge | undefined => {
-  const pool = playableCountries(game)
+  const deck = motherTongueDeck(playableCountries(game), languagesAsked(game))
+  // Weighted by √speakers: the board's pairs (Greek, Romanian) still come up,
+  // but not as often as French and Spanish do.
+  const entry = weightedPick(deck.map(entry => [entry, Math.sqrt(entry[1].length)] as const))
+  if (!entry) return undefined
 
-  // Count on-board speakers per language, keep the answerable band (a language
-  // spoken by 3–12 board countries — fewer is guessable, more is a slog).
-  // `boardSpeakers` counts every speaker, official or not, because that is what
-  // the round asks and what it credits.
-  const viable = [...boardSpeakers(pool)].filter(
-    ([, countries]) =>
-      countries.length >= MOTHER_TONGUE_MIN_SPEAKERS &&
-      countries.length <= MOTHER_TONGUE_MAX_SPEAKERS
-  )
-  if (!viable.length) return undefined
-
-  const [language, countries] = sample(viable)!
+  const [language, countries] = entry
   return {
     _type: 'mother-tongue-challenge',
     language,
@@ -1036,7 +1035,7 @@ const getMotherTongueChallenge = (game: gameTypes.Game): MotherTongueChallenge |
     // has to say which board it means — and credit the off-board speakers a
     // player names instead of calling them wrong.
     ...(isWorldBoard(game.regions) ? {} : { scope: [...game.regions] }),
-    durationSeconds: Math.min(60, 20 + countries.length * 5),
+    durationSeconds: motherTongueSeconds(countries.length),
     maximumPoints: maximumRoundPoints(game),
   }
 }
@@ -2581,12 +2580,12 @@ export const isCorrectIndividualAnswer = (
   if (isoCode === challenge.country) return true
   const variant = challenge.variant ?? 'find'
   if (variant === 'errata') return !!challenge.errata?.culprits.includes(isoCode)
-  // Scriptorium's set answer, the currency posture: any country where the
-  // language is official wins. Recomputed here rather than read from the
+  // Scriptorium's set answer, the currency posture: any country that speaks
+  // the language wins. Recomputed here rather than read from the
   // payload — both sides of the wire resolve the same lib/scriptorium set.
   if (variant === 'scriptorium') {
     const language = challenge.scriptorium?.language
-    return !!language && scriptoriumAnswers(language).includes(isoCode)
+    return !!language && scriptoriumAccepts(language, isoCode)
   }
   if (variant === 'find' && challenge.id === 'flag')
     return flagsIndistinguishable(challenge.country, isoCode)
@@ -3455,8 +3454,8 @@ const dealAtlas = (
 }
 
 /**
- * Scriptorium: a written sample in a mystery script — name any country where
- * the language is official, typed on every difficulty (the suggestion
+ * Scriptorium: a written sample in a mystery script — name any country that
+ * speaks the language, typed on every difficulty (the suggestion
  * dropdown and easy's free region hint are the relief; an option table of
  * different-script countries answered itself). The pool and the answer set
  * live in lib/scriptorium (shared with the verdict); the sample itself

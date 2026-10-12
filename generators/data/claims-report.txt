@@ -1,17 +1,18 @@
-Two Truths claim deck — 3547 claims
+Two Truths claim deck — 3565 claims
 
 borders     1918 claims · 618 true · 1300 false · 380 traps
 capital       24 claims · 12 true · 12 false · 11 traps
 clock         20 claims · 6 true · 14 false · 6 traps
 club          91 claims · 59 true · 32 false · 24 traps
 currency      50 claims · 32 true · 18 false · 17 traps
-language     411 claims · 48 true · 363 false · 63 traps
+language     429 claims · 50 true · 379 false · 63 traps
 rank          72 claims · 28 true · 44 false · 32 traps
 river        186 claims · 100 true · 86 false · 33 traps
 trade        177 claims · 66 true · 111 false · 64 traps
 versus       598 claims · 299 true · 299 false · 313 traps
 
 Truths that ring false (spiciest 40):
+  0.20 [minor] Hindi is an official language of Fiji.
   0.20 [obscure] French is an official language of Vanuatu.
   0.20 [minor] Paraguay is one of the world's three biggest exporters of soybeans.
   0.20 [minor] Madagascar is the world's biggest exporter of vanilla.
@@ -51,7 +52,6 @@ Truths that ring false (spiciest 40):
   0.25 [minor] Russia shares a land border with Finland.
   0.25 [minor] Russia shares a land border with Norway.
   0.25 [minor] Ecuador uses the US dollar as its currency.
-  0.25 [obscure] The Federated States of Micronesia uses the US dollar as its currency.
 
 Lies that ring true (most tempting 40):
   0.90 [major] Afghanistan shares a land border with Kazakhstan.
@@ -97,5 +97,5 @@ Lies that ring true (most tempting 40):
 
 Sheets dealable per difficulty:
   easy    48 subjects
-  normal  96 subjects
-  hard    110 subjects
+  normal  95 subjects
+  hard    108 subjects

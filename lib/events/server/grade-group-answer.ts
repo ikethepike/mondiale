@@ -243,9 +243,12 @@ export const gradeGroupAnswer = async ({
       // a membership test — through the same predicate the client paid out
       // on — and the reveal lists the whole set as `correct`.
       const challenge = expectChallengeType(roundChallenge, 'tongue-buzz-challenge')
-      const guess = submission.ranking[0]
+      // A bounced guess was never a buzz: the view refuses it before the
+      // verdict, so the server must never judge one either.
+      const claimed = submission.ranking.filter(isoCode => !languageBounce(challenge, isoCode))
+      const guess = claimed[0]
       const correct = !!guess && speaksTongue(challenge, guess)
-      answer = { submitted: submission.ranking, correct: challenge.countries }
+      answer = { submitted: claimed, correct: challenge.countries }
       scoring = {
         scored: correct ? landBuzz(challenge.maximumPoints, clockFraction()) : 0,
         maximum: challenge.maximumPoints,

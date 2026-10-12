@@ -1,5 +1,6 @@
 import { writeFileSync } from 'fs'
-import { COUNTRIES } from '~~/data/countries.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { spokenLanguages } from '~~/lib/language-rounds'
 import { fetchJson, wait } from './vendors/wikidata/commons'
 
 const OUTPUT_FILE = 'data/tongue-facts.gen.ts'
@@ -32,14 +33,14 @@ interface EntityResponse {
 /**
  * Language facts for the Mother Tongue reveal, from Wikidata: total speakers
  * (P1098, the largest published statement) and writing systems (P282).
- * Keyed by the game's language names (Country.languages); languages Wikidata
+ * Keyed by the game's language names (`spokenLanguages`); languages Wikidata
  * can't resolve are simply absent — reveals degrade gracefully.
  *
  *   bun run generate:tongue-facts
  */
 const createTongueFactsFile = async () => {
   const languages = [
-    ...new Set(Object.values(COUNTRIES).flatMap(country => country.languages ?? [])),
+    ...new Set(ISOCountryCodes.flatMap(isoCode => [...spokenLanguages(isoCode)])),
   ].sort()
   console.log(`Resolving ${languages.length} languages against Wikidata…`)
 
@@ -122,7 +123,7 @@ const createTongueFactsFile = async () => {
 // Generated at: ${new Date().toISOString()}
 
 /** Language facts from Wikidata, keyed by the game's language names
- *  (Country.languages): total speakers (P1098) and writing systems (P282). */
+ *  (\`spokenLanguages\`): total speakers (P1098) and writing systems (P282). */
 export interface TongueFacts {
   speakers?: number
   scripts?: string[]

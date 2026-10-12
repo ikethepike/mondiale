@@ -135,6 +135,24 @@ describe('buzz pay is priced off the server clock, never the claim', () => {
     ).toBe(buzzScore(MAX, 0.5))
   })
 
+  it('never judges a Tongues guess the view would have bounced', async () => {
+    const english = {
+      _type: 'tongue-buzz-challenge',
+      language: 'English',
+      countries: ['GB', 'IE', 'MT'],
+      scope: ['europe'],
+      durationSeconds: 20,
+      maximumPoints: MAX,
+    }
+    const seat = { deadline: PLAY_STARTS_AT + 20_000 }
+    const at = into(10_000)
+    // The US speaks English off this board; it bounces, so the buzz behind it lands.
+    expect(await grade(english, { ranking: ['US', 'IE'] }, { at, seat })).toBe(buzzScore(MAX, 0.5))
+    const bounced = await graded(english, { ranking: ['US'] }, { at, seat })
+    expect(bounced.scoring.scored).toBe(0)
+    expect(bounced.answer.submitted).toEqual([])
+  })
+
   it("stamps the reveal's buzz race with the fraction it paid, never the wire's", async () => {
     const landed = await graded(silhouette, { ranking: ['FR'], buzzAt: 0.99 }, { at: into(10_000) })
     expect(landed.answer.buzzAt).toBe(0.5)
