@@ -1,5 +1,6 @@
 import { BORDERS } from '~~/data/borders.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { sample, shuffleArray } from './arrays'
@@ -167,6 +168,21 @@ export const isRouteComplete = (
   guesses: ISOCountryCode[],
   within?: Set<ISOCountryCode>
 ): boolean => !!routeThrough(start, target, guesses, within)
+
+/**
+ * The guesses a round counts: each country once, the endpoints never — the
+ * view refuses both before they spend a turn, and the server must agree.
+ */
+export const countedGuesses = (
+  { start, target }: Pick<TraversalChallenge, 'start' | 'target'>,
+  guesses: readonly ISOCountryCode[]
+): number => new Set(guesses.filter(isoCode => isoCode !== start && isoCode !== target)).size
+
+/** Negative means the list overspent `maximumClicks`, which the server grades 0. */
+export const traversalGuessesLeft = (
+  challenge: Pick<TraversalChallenge, 'start' | 'target' | 'maximumClicks'>,
+  guesses: readonly ISOCountryCode[]
+): number => challenge.maximumClicks - countedGuesses(challenge, guesses)
 
 /**
  * Guesses that hang off either endpoint through other guesses — everything

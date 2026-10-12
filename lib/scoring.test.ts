@@ -26,6 +26,7 @@ import {
   scorePinDistance,
 } from './scoring'
 import { getValueByAccessorID } from './values'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { GameRules } from '~~/types/game.types'
@@ -132,11 +133,38 @@ describe('scoreTraversalSubmission', () => {
       'CZ',
       'DE',
     ]
+    const challenge = { ...traversal(21), maximumClicks: submittedGuesses.length }
+    expect(scoreTraversalSubmission({ challenge, submittedGuesses, rules })).toEqual({
+      scored: 2,
+      maximum: 21,
+    })
+  })
+
+  it('pays nothing for a completed route that spent more than maximumClicks', () => {
+    const submittedGuesses: ISOCountryCode[] = ['BE', 'NL', 'LU', 'CH', 'AT', 'IT', 'DE']
     expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
-      {
-        scored: 2,
-        maximum: 21,
-      }
+      { scored: 0, maximum: 21 }
+    )
+  })
+
+  it('pays nothing for a submission naming every country', () => {
+    const submittedGuesses = ISOCountryCodes.filter(isoCode => isoCode !== 'FR' && isoCode !== 'PL')
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      { scored: 0, maximum: 21 }
+    )
+  })
+
+  it('pays a route completed on the last allowed guess', () => {
+    const submittedGuesses: ISOCountryCode[] = ['BE', 'NL', 'LU', 'CH', 'AT', 'DE']
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      { scored: 11, maximum: 21 }
+    )
+  })
+
+  it('counts neither repeats nor endpoints against the budget or the score', () => {
+    const submittedGuesses: ISOCountryCode[] = ['FR', 'BE', 'BE', 'PL', 'BE', 'DE', 'DE', 'FR']
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      { scored: 19, maximum: 21 }
     )
   })
 })
