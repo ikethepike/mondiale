@@ -95,6 +95,31 @@ const cityRow = (isoCode: ISOCountryCode, wanted: ReadonlySet<string>): CityLigh
   )
 }
 
+const capitalAmong = (isoCode: ISOCountryCode, wanted: ReadonlySet<string>): string | undefined => {
+  const capital = CAPITALS[isoCode]?.name
+  return capital && wanted.has(normalizeAnswer(capital)) ? capital : undefined
+}
+
+const nameKeys = (names: readonly string[]): ReadonlySet<string> =>
+  new Set(names.map(name => normalizeAnswer(name)))
+
+/** Whether the city known as `names` is `isoCode`'s official capital. */
+export const isCapitalCity = (isoCode: ISOCountryCode, names: readonly string[]): boolean =>
+  !!capitalAmong(isoCode, nameKeys(names))
+
+/**
+ * The gazetteer row of the city known as `names` in `isoCode` — its own row,
+ * never its country's capital's unless it is that capital. Undefined where the
+ * city falls outside the generator's per-country slice.
+ */
+export const cityLightFor = (
+  isoCode: ISOCountryCode,
+  names: readonly string[]
+): CityLight | undefined => {
+  const wanted = nameKeys(names)
+  return capitalAmong(isoCode, wanted) ? capitalCityLight(isoCode) : cityRow(isoCode, wanted)
+}
+
 /**
  * Every normalized key a typed answer naming the city known as `names` in
  * `isoCode` may arrive as: the given names, the official capital name where it
@@ -105,12 +130,10 @@ export const citySpellingKeys = (
   isoCode: ISOCountryCode,
   names: readonly string[]
 ): ReadonlySet<string> => {
-  const wanted = new Set(names.map(name => normalizeAnswer(name)))
-  const capital = CAPITALS[isoCode]?.name
-  const isCapital = !!capital && wanted.has(normalizeAnswer(capital))
-  const row = isCapital ? capitalCityLight(isoCode) : cityRow(isoCode, wanted)
-  const own = [...names, isCapital ? capital : undefined, row?.name]
-  const variants = isCapital ? capitalSpellings(isoCode) : row ? rowSpellings(row) : []
+  const capital = capitalAmong(isoCode, nameKeys(names))
+  const row = cityLightFor(isoCode, names)
+  const own = [...names, capital, row?.name]
+  const variants = capital ? capitalSpellings(isoCode) : row ? rowSpellings(row) : []
   const canonical = getCanonicalKeys()
   return new Set(
     [
