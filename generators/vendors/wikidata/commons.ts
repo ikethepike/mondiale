@@ -266,14 +266,13 @@ export const captureImageCredit = async (
   previous?: MediaCredit,
   force = false
 ): Promise<MediaCredit> => {
+  const boilerplate = !!previous?.credit && isBoilerplateCredit(previous.credit)
   const kept: MediaCredit = {
-    ...(previous?.credit && !isBoilerplateCredit(previous.credit)
-      ? { credit: previous.credit }
-      : {}),
+    ...(previous?.credit && !boilerplate ? { credit: previous.credit } : {}),
     ...(previous?.license ? { license: previous.license } : {}),
   }
   if (!file) return kept
-  if (!force && kept.license) return kept
+  if (!force && kept.license && !boilerplate) return kept
 
   const attribution = await fetchImageAttribution(file)
   if (!attribution) return kept

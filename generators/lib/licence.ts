@@ -81,11 +81,10 @@ const ENCUMBERED = /\b(?:non[ -]?commercial|no[ -]?deriv|nc|nd)\b/i
  */
 export const PUBLISH_FAIR_USE = true
 
-/** Commons template prose that lands in the Artist field instead of a name —
- *  {{Derived from}} renders "This image includes elements that have been taken
- *  or adapted from this file:". It credits nobody, so it is no credit at all. */
+/** The {{Derived from}} template's sentence — whole, cut short, or followed only
+ *  by its source file names — standing in the Artist field where a name belongs. */
 const BOILERPLATE_CREDIT =
-  /^this (?:image|file|work|media)\b.*\b(?:taken or adapted|derived) from\b/i
+  /^this\b[\w\s-]*\bincludes elements that have been taken or adapted from(?:\s+(?:this|these)(?:\s+files?)?)?\s*(?:…|:(?:\s*[^:,;]+?\.(?:svg|png|jpe?g|gif|tiff?|webp)[,;]?)*\s*)?$/i
 
 export const isBoilerplateCredit = (credit: string): boolean => BOILERPLATE_CREDIT.test(credit)
 

@@ -164,7 +164,27 @@ describe('isBoilerplateCredit', () => {
         'This image includes elements that have been taken or adapted from this file:'
       )
     ).toBe(true)
-    expect(isBoilerplateCredit('This file was derived from: Flag of Liechtenstein.svg')).toBe(true)
+    expect(
+      isBoilerplateCredit(
+        'This vector image includes elements that have been taken or adapted from this file:'
+      )
+    ).toBe(true)
+    expect(
+      isBoilerplateCredit(
+        'This vector image includes elements that have been taken or adapted from this…'
+      )
+    ).toBe(true)
+    expect(isBoilerplateCredit('This file was derived from: Flag.svg, by Jane Doe')).toBe(false)
+    expect(
+      isBoilerplateCredit(
+        'This image includes elements that have been taken or adapted from this file: Flag of Japan.svg'
+      )
+    ).toBe(true)
+    expect(
+      isBoilerplateCredit(
+        'This image includes elements that have been taken or adapted from this file: Flag.svg by Jane Doe'
+      )
+    ).toBe(false)
     expect(isBoilerplateCredit('Original: Nina R from Africa Derivative work: UnpetitproleX')).toBe(
       false
     )

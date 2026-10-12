@@ -425,7 +425,7 @@ const audioReveal = computed(() => {
 
   if (challenge._type === 'anthem-buzz-challenge') {
     const anthem = ANTHEMS[challenge.country]
-    const era = anthem?.adoptedYear ? `adopted ${anthem.adoptedYear}` : undefined
+    const era = anthem?.writtenYear ? `written ${anthem.writtenYear}` : undefined
     return {
       subject: countryName(challenge.country),
       // The answer is a COUNTRY, so its label carries a flag (the

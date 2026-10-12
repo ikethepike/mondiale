@@ -31,18 +31,21 @@ describe('chooseAnthems', () => {
         anthem: GDNZ,
         title: 'God Defend New Zealand',
         file: 'God Defend New Zealand instrumental.ogg',
-        adoptedYear: 1977,
+        writtenYear: 1876,
       },
     ])
 
-    expect(chosen.get('NZ')).toEqual({
+    expect(chosen.get('NZ')?.anthem).toEqual({
       anthem: GDNZ,
       title: 'God Defend New Zealand',
       files: ['God Defend New Zealand instrumental.ogg'],
-      adoptedYear: 1977,
+      writtenYear: 1876,
       royal: false,
     })
-    expect(chosen.get('GB')?.title).toBe('God Save the King')
+    expect(chosen.get('GB')?.anthem.title).toBe('God Save the King')
+    expect(chosen.get('NZ')?.passedOver).toEqual([
+      { title: 'God Save the King', reason: 'royal anthem' },
+    ])
   })
 
   it("prefers a country's own anthem over one another country also lists", () => {
@@ -58,8 +61,11 @@ describe('chooseAnthems', () => {
       },
     ])
 
-    expect(chosen.get('PS')).toMatchObject({ title: "Fida'i", composer: 'Ali Esmaeil' })
-    expect(chosen.get('IQ')?.title).toBe('Mawtini')
+    expect(chosen.get('PS')?.anthem).toMatchObject({ title: "Fida'i", composer: 'Ali Esmaeil' })
+    expect(chosen.get('IQ')?.anthem.title).toBe('Mawtini')
+    expect(chosen.get('PS')?.passedOver).toEqual([
+      { title: 'Mawtini', reason: 'held by 2 countries' },
+    ])
   })
 
   it('demotes a royal anthem even when no other country shares it', () => {
@@ -67,7 +73,7 @@ describe('chooseAnthems', () => {
       { isoCode: 'DK', anthem: 'Q1', title: 'Kong Christian', file: 'Kong.ogg', royal: true },
       { isoCode: 'DK', anthem: 'Q2', title: 'Der er et yndigt land', file: 'Der er.ogg' },
     ])
-    expect(chosen.get('DK')?.title).toBe('Der er et yndigt land')
+    expect(chosen.get('DK')?.anthem.title).toBe('Der er et yndigt land')
   })
 
   it('prefers an anthem with a playable recording, then the first listed', () => {
@@ -76,7 +82,14 @@ describe('chooseAnthems', () => {
       { isoCode: 'FR', anthem: 'Q2', title: 'La Marseillaise', file: 'La Marseillaise.ogg' },
       { isoCode: 'FR', anthem: 'Q3', title: 'Later', file: 'Later.ogg' },
     ])
-    expect(chosen.get('FR')?.title).toBe('La Marseillaise')
+    expect(chosen.get('FR')?.anthem.title).toBe('La Marseillaise')
+  })
+
+  it('refuses a language or a country as a composer', () => {
+    const chosen = chooseAnthems([
+      { isoCode: 'SC', anthem: 'a', title: 'Koste Seselwa', composer: 'Seychellois Creole' },
+    ])
+    expect(chosen.get('SC')?.anthem.composer).toBeUndefined()
   })
 
   it('skips unlabelled anthems and composers that are no name', () => {
@@ -90,8 +103,11 @@ describe('chooseAnthems', () => {
         composer: 'http://www.wikidata.org/.well-known/genid/ef48570fadf9bf7a',
       },
     ])
-    expect(chosen.get('PL')).toMatchObject({ anthem: 'Q2', title: 'Poland Is Not Yet Lost' })
-    expect(chosen.get('PL')?.composer).toBeUndefined()
+    expect(chosen.get('PL')?.anthem).toMatchObject({
+      anthem: 'Q2',
+      title: 'Poland Is Not Yet Lost',
+    })
+    expect(chosen.get('PL')?.anthem.composer).toBeUndefined()
   })
 })
 
@@ -102,7 +118,13 @@ describe('curateAnthem', () => {
     expect(curateAnthem('NZ', { ...entry, composer: 'Henry Carey' })).toMatchObject({
       title: 'God Defend New Zealand',
       composer: 'John Joseph Woods',
+      writtenYear: 1876,
     })
+  })
+
+  it('drops a harvested field the table nulls', () => {
+    const curated = curateAnthem('NL', { ...entry, composer: 'Adrianus Valerius' })
+    expect('composer' in curated).toBe(false)
   })
 
   it('drops a composer that is an unresolved Wikidata value', () => {
@@ -113,7 +135,7 @@ describe('curateAnthem', () => {
   it('flags a descriptive label only when no override vouches for it', () => {
     expect(isUncuratedRawLabel('MR', 'National anthem of Mauritania')).toBe(true)
     expect(isUncuratedRawLabel('GD', 'Grenada National State Anthem')).toBe(true)
-    expect(isUncuratedRawLabel('ZA', 'National anthem of South Africa')).toBe(false)
+    expect(isUncuratedRawLabel('ZA', 'National Anthem of South Africa')).toBe(false)
     expect(isUncuratedRawLabel('JP', 'Kimigayo')).toBe(false)
   })
 })

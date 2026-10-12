@@ -70,7 +70,7 @@ Replace with an instrumental take on Commons where one exists.
   SG  Majulah Singapura  Majulah Singapura.ogg
   FJ  God Bless Fiji  Fiji National Anthem.ogg
   HT  La Dessalinienne  Haiti National Anthem.ogg
-  ZA  National anthem of South Africa  South African national anthem.oga
+  ZA  National Anthem of South Africa  South African national anthem.oga
   BH  Bahrainona  Bahrainona (vocal).ogg
   BS  March On, Bahamaland  National anthem of the Bahamas.oga
   TL  Pátria  East Timorese national anthem.wav
@@ -86,7 +86,7 @@ Replace with an instrumental take on Commons where one exists.
   EC  Salve, Oh Patria  Anthem of Ecuador.ogg
   PY  Paraguayos, República o Muerte  Paraguayan National Anthem.oga
   OM  Nashid as-Salaam as-Sultani  Peace to the Sultan (نشيد السلام السلطاني).ogg
-  MV  Gaumee Salaam  Gaumii salaam.ogg
+  MV  Qaumii salaam  Gaumii salaam.ogg
   PA  Himno Istmeño  Panama National Anthem.ogg
   TO  Ko e fasi 'o e tu'i 'o e 'Otu Tonga  Ko e fasi ʻo e tuʻi ʻo e ʻOtu Tonga.ogg
   TV  Tuvalu mo te Atua  Tuvalu mo te Atua.ogg

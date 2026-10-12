@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ATTRIBUTION_FREE, corroborates, isPlayable } from '~~/generators/anthem-corroboration'
-import { curateAnthem, isLabel, isUncuratedRawLabel } from '~~/generators/lib/anthem-selection'
+import {
+  curateAnthem,
+  isComposerName,
+  isUncuratedRawLabel,
+} from '~~/generators/lib/anthem-selection'
 import { isBoilerplateCredit } from '~~/generators/lib/licence'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -141,8 +145,6 @@ describe('anthem dataset', () => {
   })
 
   it("titles each country with the anthem its clip plays, not a realm's", () => {
-    // Every P85 statement was once folded into one row: New Zealand shipped
-    // "God Save the King · Henry Carey" over God Defend New Zealand's audio.
     const titles = Object.fromEntries(
       (['NZ', 'AG', 'BZ', 'GD', 'PS', 'ZA'] as const).map(iso => [iso, ANTHEMS[iso]?.title])
     )
@@ -152,9 +154,12 @@ describe('anthem dataset', () => {
       BZ: 'Land of the Free',
       GD: 'Hail Grenada',
       PS: "Fida'i",
-      ZA: 'National anthem of South Africa',
+      ZA: 'National Anthem of South Africa',
     })
     expect(ANTHEMS.NZ?.composer).toBe('John Joseph Woods')
+    expect(ANTHEMS.NZ?.writtenYear).toBe(1876)
+    expect(ANTHEMS.CO?.composer).toBe('Oreste Síndici')
+    expect(ANTHEMS.SC?.composer).toBeUndefined()
     expect(ANTHEMS.GD?.composer).not.toBe('Henry Carey')
   })
 
@@ -175,7 +180,7 @@ describe('anthem dataset', () => {
   it('never prints a composer or credit that names nobody', () => {
     const offenders = entries.filter(
       ([, entry]) =>
-        (entry?.composer !== undefined && !isLabel(entry.composer)) ||
+        (entry?.composer !== undefined && !isComposerName(entry.composer)) ||
         (entry?.credit !== undefined && isBoilerplateCredit(entry.credit))
     )
     expect(offenders.map(([iso]) => iso)).toEqual([])
