@@ -153,7 +153,8 @@ import {
   terraSeconds,
   TERRA_CADENCE_MS,
 } from './terra-incognita'
-import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
+import { haversineKm, isLabelableBox, labelBoxFor, pointBoxGap, type LatLng } from './geo'
+import { parsePolygons } from './outline'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
@@ -1821,22 +1822,10 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   }
 }
 
-/**
- * Distance between two projected map-space boxes, centre to centre. The
- * recognition dataset and the map data share the map's fitted Robinson space,
- * so this is a subtraction rather than a reprojection.
- *
- * Deliberately NOT border-hops: Cyprus has no land borders at all, so a
- * hop-count would score Turkey (10km away) exactly the same as Peru.
- */
-const boxDistance = (
-  a: readonly [number, number, number, number],
-  b: readonly [number, number, number, number]
-) => Math.hypot(a[0] + a[2] / 2 - (b[0] + b[2] / 2), a[1] + a[3] / 2 - (b[1] + b[3] / 2))
-
-/** Beyond this projected distance a guess is worth nothing: a neighbour pays
- *  about half, the next region over pays nothing. */
-const GHOST_STATE_FALLOFF = 80
+/** The map-space gap at which a near miss stops paying. */
+const GHOST_STATE_FALLOFF = 60
+/** What a tap touching the place pays without being it or its claimant. */
+const GHOST_STATE_NEAR_MISS = 0.6
 
 /** Full marks: the claimant, or the ghost's own shape where the roster names it (Taiwan). */
 export const ghostStateAnswers = (
@@ -1852,21 +1841,24 @@ export const ghostStateAnswers = (
 /**
  * What a map tap answers, or undefined for a tap that answers nothing. A ghost
  * the map draws apart but the roster cannot name (Western Sahara's EH) folds
- * into its claimant, as Abkhazia does by being drawn inside Georgia.
+ * into its claimant on every deal, as Abkhazia does by being drawn inside Georgia.
  */
 export const ghostStateTap = (
-  challenge: GhostStateChallenge,
-  territory: RecognitionTerritory | undefined,
+  roster: Record<string, RecognitionTerritory>,
   mapCode: string
 ): ISOCountryCode | undefined => {
   if (isValidISOCode(mapCode)) return mapCode
-  return territory?.mapCode === mapCode ? challenge.parent : undefined
+  return Object.values(roster).find(territory => territory.mapCode === mapCode)?.parent
 }
 
 /**
- * Full marks for the place itself or its claimant; a graded fraction for
- * landing near the place; nothing for the far side of the world.
- * Server-authoritative — the client's only input is which country it tapped.
+ * Full marks for the place itself or its claimant; for any other tap, a share
+ * that shrinks with the gap between the tapped country's nearest outline point
+ * and the place. Server-authoritative — the client's only input is which
+ * country it tapped.
+ *
+ * Deliberately NOT border-hops: Cyprus has no land borders at all, so a
+ * hop-count would score Turkey exactly the same as Peru.
  */
 export const scoreGhostState = async ({
   challenge,
@@ -1881,18 +1873,20 @@ export const scoreGhostState = async ({
 
   // Dynamic, like the water dealer: the map geometry must not ride into client
   // bundles through this module.
-  const [{ RECOGNITION_TERRITORIES }, { MAP_BOUNDS, MAP_REGIONS }] = await Promise.all([
+  const [{ RECOGNITION_TERRITORIES }, { MAP_PATHS }] = await Promise.all([
     import('~~/data/recognition.gen'),
     import('~~/data/map.gen'),
   ])
   const territory = RECOGNITION_TERRITORIES[challenge.territoryId]
   if (ghostStateAnswers(challenge, territory).includes(tapped)) return { scored: maximum, maximum }
 
-  const tappedBounds = MAP_BOUNDS[tapped]
-  if (!territory || !tappedBounds) return { scored: 0, maximum }
+  const outline = MAP_PATHS[tapped]
+  if (!territory || !outline) return { scored: 0, maximum }
 
-  const tappedCentre = mainlandBox(MAP_REGIONS[tapped], tappedBounds)
-  const fraction = 1 - boxDistance(tappedCentre, territory.bounds) / GHOST_STATE_FALLOFF
+  const gap = parsePolygons(outline)
+    .flat()
+    .reduce((nearest, point) => Math.min(nearest, pointBoxGap(point, territory.bounds)), Infinity)
+  const fraction = GHOST_STATE_NEAR_MISS * (1 - gap / GHOST_STATE_FALLOFF)
   // `scored` feeds board movement 1:1 — never emit NaN or a negative.
   const scored = Number.isFinite(fraction) ? Math.max(0, Math.round(maximum * fraction)) : 0
   return { scored: clampScore(scored, maximum), maximum }

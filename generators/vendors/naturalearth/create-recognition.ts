@@ -59,11 +59,8 @@ const DECIMATE_UNITS = 0.35
  */
 const MICRO_FOOTPRINT = 1.5
 
-/**
- * The map draws a few of these as shapes of their own (Taiwan 0.92, Western
- * Sahara 1.0). A territory drawn inside its claimant shares far less of the
- * claimant's box — N. Cyprus, the closest, shares 0.5 of Cyprus's.
- */
+/** A territory drawn inside its claimant also overlaps the claimant's box,
+ *  only less, so the match must be near-exact. */
 const OWN_SHAPE_OVERLAP = 0.8
 
 export const ownMapShape = (bounds: [number, number, number, number]): MapCode | undefined =>

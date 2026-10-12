@@ -100,6 +100,13 @@ export const pointInBox = (
   [left, top, width, height]: MapBox
 ) => x >= left && x <= left + width && y >= top && y <= top + height
 
+/** How far a map-space point lies outside `box`; 0 on or inside it. */
+export const pointBoxGap = (
+  [x, y]: readonly [number, number],
+  [left, top, width, height]: MapBox
+): number =>
+  Math.hypot(Math.max(0, left - x, x - (left + width)), Math.max(0, top - y, y - (top + height)))
+
 /** Do two map-space boxes overlap (touching edges do not count)? */
 export const boxesIntersect = ([ax, ay, aw, ah]: MapBox, [bx, by, bw, bh]: MapBox): boolean =>
   ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by

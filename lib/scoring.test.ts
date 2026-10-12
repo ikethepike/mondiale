@@ -633,9 +633,6 @@ describe('answerBreakdown', () => {
   })
 })
 
-// A miss is measured from the territory's own outline, never the claimant's
-// mainland: that put Taiwan itself at 38 and Mongolia at 75. The tapped country
-// is measured by its mainland ring — the US box spans the Pacific to reach Guam.
 describe('scoreGhostState', () => {
   const ghostState = (territoryId: string): GhostStateChallenge => ({
     _type: 'ghost-state-challenge',
@@ -658,19 +655,30 @@ describe('scoreGhostState', () => {
   })
 
   it('measures a miss from the place, not from the claimant', async () => {
-    expect(await percentFor('taiwan', 'PH')).toBe(31)
+    expect(await percentFor('taiwan', 'JP')).toBe(51)
+    expect(await percentFor('taiwan', 'PH')).toBe(39)
+    expect(await percentFor('taiwan', 'KR')).toBe(9)
     expect(await percentFor('taiwan', 'MN')).toBe(0)
-    expect(await percentFor('taiwan', 'JP')).toBe(0)
   })
 
-  it('pays a neighbour partial credit and the next region nothing', async () => {
-    expect(await percentFor('w-sahara', 'MR')).toBe(71)
-    expect(await percentFor('w-sahara', 'DZ')).toBe(0)
-    expect(await percentFor('abkhazia', 'AM')).toBe(62)
-    expect(await percentFor('abkhazia', 'TR')).toBe(57)
-    expect(await percentFor('n-cyprus', 'TR')).toBe(70)
-    expect(await percentFor('somaliland', 'ET')).toBe(63)
-    expect(await percentFor('transnistria', 'RO')).toBe(74)
+  it('pays a bordering country the near-miss share, however big it is', async () => {
+    expect(await percentFor('w-sahara', 'DZ')).toBe(60)
+    expect(await percentFor('w-sahara', 'MR')).toBe(60)
+    expect(await percentFor('south-ossetia', 'RU')).toBe(60)
+    expect(await percentFor('abkhazia', 'RU')).toBe(60)
+    expect(await percentFor('transnistria', 'UA')).toBe(60)
+    expect(await percentFor('somaliland', 'ET')).toBe(60)
+  })
+
+  it('pays less the farther the tap lands', async () => {
+    expect(await percentFor('w-sahara', 'ML')).toBe(49)
+    expect(await percentFor('w-sahara', 'SN')).toBe(34)
+    expect(await percentFor('w-sahara', 'ES')).toBe(4)
+    expect(await percentFor('w-sahara', 'NG')).toBe(0)
+    expect(await percentFor('abkhazia', 'TR')).toBe(54)
+    expect(await percentFor('abkhazia', 'AM')).toBe(48)
+    expect(await percentFor('n-cyprus', 'GR')).toBe(35)
+    expect(await percentFor('transnistria', 'BG')).toBe(45)
     expect(await percentFor('transnistria', 'DE')).toBe(0)
   })
 
@@ -691,8 +699,7 @@ describe('ghost-state taps', () => {
     durationSeconds: 25,
     maximumPoints: 100,
   })
-  const tap = (territoryId: string, mapCode: string) =>
-    ghostStateTap(challengeFor(territoryId), RECOGNITION_TERRITORIES[territoryId], mapCode)
+  const tap = (mapCode: string) => ghostStateTap(RECOGNITION_TERRITORIES, mapCode)
   const answers = (territoryId: string) =>
     ghostStateAnswers(challengeFor(territoryId), RECOGNITION_TERRITORIES[territoryId])
 
@@ -706,12 +713,18 @@ describe('ghost-state taps', () => {
     ])
   })
 
-  it("accepts Western Sahara's own shape as a tap on Western Sahara", () => {
+  // On every deal: a tap that only answered on the Western Sahara deal would
+  // be a free, unspent "is it Western Sahara?" check everywhere else.
+  it("folds Western Sahara's own shape into its claimant on every deal", async () => {
     expect(isValidISOCode('EH')).toBe(false)
-    expect(tap('w-sahara', 'EH')).toBe('MA')
-    expect(tap('taiwan', 'EH')).toBeUndefined()
-    expect(tap('taiwan', 'TW')).toBe('TW')
-    expect(tap('abkhazia', 'GE')).toBe('GE')
+    expect(tap('EH')).toBe('MA')
+    expect(tap('TW')).toBe('TW')
+    expect(tap('GL')).toBeUndefined()
+    const onSomaliland = await scoreGhostState({
+      challenge: challengeFor('somaliland'),
+      submittedGuesses: [tap('EH')!],
+    })
+    expect(onSomaliland.scored).toBe(0)
   })
 
   it('lists every full-marks tap as the answer', () => {

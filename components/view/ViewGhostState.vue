@@ -81,6 +81,7 @@ const {
 } = useGroupChallenge('ghost-state-challenge', { solo: false })
 
 const territory = ref<RecognitionTerritory>()
+let roster: Record<string, RecognitionTerritory> = {}
 const flagSvg = ref('')
 const flagHost = ref<HTMLElement>()
 /** The MISS line only — 'Out of time' or 'It was'. The win says "Well placed"
@@ -214,6 +215,7 @@ const start = async () => {
     import('~~/data/recognition.gen'),
     import('~~/data/recognition-flags.gen'),
   ])
+  roster = RECOGNITION_TERRITORIES
   territory.value = RECOGNITION_TERRITORIES[active.territoryId]
   flagSvg.value = RECOGNITION_FLAGS[active.territoryId] ?? ''
 
@@ -261,9 +263,8 @@ const submitRound = (isoCode: ISOCountryCode | undefined) => {
 }
 
 const onMapClick = (event: Event) => {
-  if (!isMapClickEvent(event) || !challenge.value || submitted.value || showInterstitial.value)
-    return
-  const isoCode = ghostStateTap(challenge.value, territory.value, event.detail.isoCode)
+  if (!isMapClickEvent(event) || submitted.value || showInterstitial.value) return
+  const isoCode = ghostStateTap(roster, event.detail.isoCode)
   if (!isoCode) return
   // Presence only, like No Man's Land: the policy strips the isoCode, but a
   // `correct`/`wrong` kind still renders as "got it ✓" in the room's ticker —
