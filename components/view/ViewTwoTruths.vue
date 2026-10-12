@@ -1,5 +1,6 @@
 <template>
   <div v-if="challenge" class="two-truths challenge-shell">
+    <CountryBackdrop v-if="!showInterstitial" :country="challenge.country" :receded="revealed" />
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -144,6 +145,7 @@
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
+import CountryBackdrop from '~/components/challenge/CountryBackdrop.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
 import TwoTruthsEvidence from '~/components/challenge/TwoTruthsEvidence.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
@@ -391,6 +393,7 @@ registerCleanup(() => window.removeEventListener('keydown', onKey))
 @use '~/assets/scss/rules/scroll-fade' as *;
 
 .two-truths {
+  isolation: isolate;
   --truth-ink: hsl(170.5, 34.7%, 34%);
   --truth-wash: hsla(170.5, 34.7%, 55.1%, 0.16);
   --lie-ink: var(--hior-ange);
