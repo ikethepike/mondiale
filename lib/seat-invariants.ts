@@ -221,12 +221,17 @@ const engineDeadline = (challenge: unknown): number | undefined => {
             finished?: unknown
             revealing?: unknown
             revealUntil?: unknown
+            verdict?: { holdUntil?: unknown }
           }
         }
       | undefined
   )?.state
   if (state?.revealing && typeof state.revealUntil === 'number' && !state.finished) {
     return state.revealUntil
+  }
+  // A resolved beat's verdict hold is the clock now; the beat's own deadline is spent.
+  if (typeof state?.verdict?.holdUntil === 'number' && !state.finished) {
+    return state.verdict.holdUntil
   }
   // Engines park at deadline 0 through a briefing: unstamped, not overdue.
   return state && !state.finished && typeof state.deadline === 'number' && state.deadline > 0

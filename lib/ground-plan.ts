@@ -16,6 +16,8 @@ import type { GameDifficulty } from '~~/types/game.types'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { capitalStar } from '~~/lib/capitals'
+import { citySpellingKeys } from '~~/lib/cities'
+import { normalizeAnswer } from '~~/lib/strings'
 import { formatCompact } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
@@ -72,6 +74,34 @@ export const cutForDifficulty = (
   const generic = cuts.filter(cut => !cut.signature)
   const wanted = isHardMode(game) ? generic : signature
   return sample(wanted.length ? wanted : cuts)
+}
+
+/**
+ * Whether a typed answer names the dealt city itself — not merely a city in
+ * its country. Both ends grade through this: the view before it submits, the
+ * server against the name the submission carries, which is untrusted and so
+ * typed `unknown` here.
+ */
+const spellingKeys = new Map<string, ReadonlySet<string>>()
+
+/** Longer than any city's name, so a longer submission is refused unread. */
+const MAX_CITY_NAME_LENGTH = 100
+
+export const namesGroundPlanCity = (
+  challenge: Pick<GroundPlanChallenge, 'country' | 'city'>,
+  typed: unknown
+): boolean => {
+  if (typeof typed !== 'string' || !typed || typed.length > MAX_CITY_NAME_LENGTH) return false
+  const id = `${challenge.country}:${challenge.city}`
+  let keys = spellingKeys.get(id)
+  if (!keys) {
+    const entry = GROUND_PLAN_CITIES.find(
+      city => city.country === challenge.country && city.city === challenge.city
+    )
+    keys = citySpellingKeys(challenge.country, [challenge.city, ...(entry?.aliases ?? [])])
+    spellingKeys.set(id, keys)
+  }
+  return keys.has(normalizeAnswer(typed))
 }
 
 /** Distinct water crossings in a cut — what the reveal states out loud. */

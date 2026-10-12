@@ -4,14 +4,13 @@ import { ANTHEMS } from '~~/data/anthems.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { CURRENCIES } from '~~/data/currencies.gen'
 import { PLACES } from '~~/data/places.gen'
 import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
-import { currencyNamesASpender } from '~~/lib/currency'
+import { currencyNamesASpender, moneyHero } from '~~/lib/currency'
 import {
   SWEEP_TUNING,
   sweepBoardFor,
@@ -20,7 +19,7 @@ import {
   viableSweepSets,
 } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
-import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
+import { flagsIndistinguishable, hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
@@ -84,6 +83,7 @@ import type {
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
 import type { ScaleTone } from '~~/types/challenge.type'
+import type { MoneyHero } from '~~/types/currency.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
@@ -123,7 +123,7 @@ import {
   FLASHPOINT_SECONDS_PER_HINT,
   flashpointSeconds,
 } from './round-beats'
-import { countryLedBy, politicalLeader } from './leaders'
+import { countryLedBy, quizLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -153,6 +153,7 @@ import {
   TERRA_CADENCE_MS,
 } from './terra-incognita'
 import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
+import { parsePolygons, polylineLength } from './outline'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
@@ -184,7 +185,14 @@ import {
   SPECTRUM_BANDS,
   shortPartyName,
 } from './parties'
-import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
+import {
+  countedGuesses,
+  isNeighbour,
+  isRouteComplete,
+  pickTraversal,
+  traversalGuessesLeft,
+  traversalWithin,
+} from './traversal'
 import {
   dramaScore,
   isDecisiveGap,
@@ -932,7 +940,7 @@ const getTraversalChallenge = ({
  * dataset (~½ MB gzipped) must not ride along into client bundles through
  * this module's other exports. Clients that need geometry lazy-load it too.
  */
-const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
+export const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const pool = new Set(playableCountries(game))
 
@@ -955,15 +963,19 @@ const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[])
 /** More touching countries = a longer clock. */
 const waterBlitzDuration = (countries: number) => Math.min(75, 20 + countries * 6)
 
-const getWaterBlitzChallenge = async (
-  game: gameTypes.Game,
-  kinds: WaterFeatureKind[],
-  poolFraction = 1
-): Promise<WaterBlitzChallenge | undefined> => {
-  const candidates = (await waterFeaturePool(game, kinds)).filter(
+export const waterBlitzCandidates = async (game: gameTypes.Game, tiers: WaterTiers) => {
+  const { kinds, poolFraction } = tiers[game.difficulty]
+  const pool = (await waterFeaturePool(game, kinds)).filter(
     feature => feature.countries.length >= 3
   )
-  const feature = sample(prominenceCandidates(candidates, poolFraction))
+  return prominenceCandidates(pool, poolFraction)
+}
+
+const getWaterBlitzChallenge = async (
+  game: gameTypes.Game,
+  tiers: WaterTiers
+): Promise<WaterBlitzChallenge | undefined> => {
+  const feature = sample(await waterBlitzCandidates(game, tiers))
   if (!feature) return undefined
 
   return {
@@ -984,51 +996,76 @@ const NAME_WATER_DURATION_SECONDS = 45
 /**
  * The dataset carries no fame field, so projected footprint × shore count
  * stands in for prominence — the Mediterranean outscores Antongil Bay by
- * three orders of magnitude.
+ * three orders of magnitude. A river's footprint is its course length — its
+ * box rewards running diagonally, which ranked the Putumayo over the Rhine.
  */
-const waterProminence = (feature: Pick<WaterFeature, 'bounds' | 'countries'>) =>
-  feature.bounds[2] * feature.bounds[3] * Math.max(1, feature.countries.length)
+type ProminenceFeature = Pick<WaterFeature, 'kind' | 'd' | 'bounds' | 'countries'>
+const courseLengths = new Map<string, number>()
+const courseLength = (d: string) => {
+  let length = courseLengths.get(d)
+  if (length === undefined) {
+    length = parsePolygons(d).reduce((total, run) => total + polylineLength(run), 0)
+    courseLengths.set(d, length)
+  }
+  return length
+}
+const waterProminence = (feature: ProminenceFeature) => {
+  const footprint =
+    feature.kind === 'river' ? courseLength(feature.d) : feature.bounds[2] * feature.bounds[3]
+  return footprint * Math.max(1, feature.countries.length)
+}
+
+type WaterTiers = {
+  [difficulty in gameTypes.GameDifficulty]: { kinds: WaterFeatureKind[]; poolFraction: number }
+}
 
 /** Name That Water scales with difficulty: easy deals oceans and famous seas,
  *  normal adds the major lakes, hard deals the whole atlas. */
-export const NAME_WATER_TIERS: {
-  [difficulty in gameTypes.GameDifficulty]: {
-    kinds: WaterFeatureKind[]
-    poolFraction: number
-  }
-} = {
-  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.25 },
-  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.6 },
+export const NAME_WATER_TIERS: WaterTiers = {
+  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.27 },
+  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.66 },
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
 }
 
 /** Highlands scales the same way: easy deals the famous ranges and deserts,
  *  normal opens the plateaus, hard deals the whole set. */
-export const HIGHLANDS_TIERS: {
-  [difficulty in gameTypes.GameDifficulty]: {
-    kinds: WaterFeatureKind[]
-    poolFraction: number
-  }
-} = {
+export const HIGHLANDS_TIERS: WaterTiers = {
   easy: { kinds: ['range', 'desert'], poolFraction: 0.2 },
   normal: { kinds: ['range', 'desert', 'plateau'], poolFraction: 0.5 },
   hard: { kinds: ['range', 'desert', 'plateau'], poolFraction: 1 },
+}
+
+/** River Run and Shared Shores scale the same way: easy deals the great
+ *  rivers and the famous seas, hard deals the whole atlas. */
+export const RIVER_RUN_TIERS: WaterTiers = {
+  easy: { kinds: ['river'], poolFraction: 0.25 },
+  normal: { kinds: ['river'], poolFraction: 0.6 },
+  hard: { kinds: ['river'], poolFraction: 1 },
+}
+
+export const SHARED_SHORES_TIERS: WaterTiers = {
+  easy: { kinds: ['sea', 'lake'], poolFraction: 0.4 },
+  normal: { kinds: ['sea', 'lake'], poolFraction: 0.7 },
+  hard: { kinds: ['sea', 'lake'], poolFraction: 1 },
 }
 
 /** Small variants slice thin — never starve the pool below a replayable spread. */
 const WATER_MINIMUM_POOL = 8
 
 /** A difficulty's slice of a feature pool: prominence-sorted, top fraction. */
-export const prominenceCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
+export const prominenceCandidates = <T extends ProminenceFeature>(
   features: T[],
   poolFraction: number
 ): T[] => {
-  const sorted = [...features].sort((a, b) => waterProminence(b) - waterProminence(a))
+  const sorted = features
+    .map(feature => ({ feature, prominence: waterProminence(feature) }))
+    .sort((a, b) => b.prominence - a.prominence)
+    .map(({ feature }) => feature)
   const take = Math.ceil(sorted.length * poolFraction)
   return sorted.slice(0, Math.max(WATER_MINIMUM_POOL, take))
 }
 
-export const nameWaterCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
+export const nameWaterCandidates = <T extends ProminenceFeature>(
   features: T[],
   difficulty: gameTypes.GameDifficulty
 ): T[] => prominenceCandidates(features, NAME_WATER_TIERS[difficulty].poolFraction)
@@ -1349,6 +1386,7 @@ const getCompositionChallenge = async (
     country,
     slices,
     options,
+    ...(options ? { maximumGuesses: CAPITAL_GUESS_ATTEMPTS } : {}),
     durationSeconds: COMPOSITION_SECONDS,
     maximumPoints: maximumRoundPoints(gameState),
   }
@@ -1367,6 +1405,23 @@ export const capitalGuessScore = (
       maximumPoints * attemptFraction(attempt, attempts, CAPITAL_GUESS_LAST_ATTEMPT_FRACTION)
     )
   )
+
+/** What an option round's pick sequence pays: `capitalGuessScore` for the
+ *  attempt the answer landed on, 0 when it never landed inside the cap.
+ *  `answer` is the winning pick, or a matcher where several spellings win
+ *  (Ground Plan's cities). */
+export const attemptPicksScore = <Pick extends string>(
+  picks: readonly Pick[],
+  answer: Pick | ((pick: Pick) => boolean),
+  attempts: number,
+  maximumPoints: number
+): number => {
+  const hits = typeof answer === 'function' ? answer : (pick: Pick) => pick === answer
+  const attempt = picks.findIndex(hits) + 1
+  return attempt > 0 && attempt <= attempts
+    ? capitalGuessScore(attempt, attempts, maximumPoints)
+    : 0
+}
 
 /** Sparse dot clouds aren't a readable shape. */
 const FLASHPOINT_MIN_POINTS = 40
@@ -2113,12 +2168,9 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   sketch: game => getSketchChallenge({ game }),
   'stat-detective': game => getStatDetectiveChallenge({ game }),
   'two-truths': game => getTwoTruthsChallenge({ game }),
-  'river-run': game => getWaterBlitzChallenge(game, ['river']),
-  'shared-shores': game => getWaterBlitzChallenge(game, ['sea', 'lake']),
-  highlands: game => {
-    const tier = HIGHLANDS_TIERS[game.difficulty]
-    return getWaterBlitzChallenge(game, tier.kinds, tier.poolFraction)
-  },
+  'river-run': game => getWaterBlitzChallenge(game, RIVER_RUN_TIERS),
+  'shared-shores': game => getWaterBlitzChallenge(game, SHARED_SHORES_TIERS),
+  highlands: game => getWaterBlitzChallenge(game, HIGHLANDS_TIERS),
   'name-that-water': game => getNameWaterChallenge(game),
   'mother-tongue': game => getMotherTongueChallenge(game),
   'flag-palette': game => getFlagPaletteChallenge(game),
@@ -2151,7 +2203,8 @@ const dealRoundChallenge = async (
  * Score a traversal round from the player's full guess list (Travle rules):
  * the round is complete when the guessed countries bridge start → target,
  * and every guess beyond the minimum needed — mistakes and inefficient
- * choices alike — costs points. An unbridged guess set scores nothing.
+ * choices alike — costs points. An unbridged guess set, or one that spent
+ * more than `maximumClicks`, scores nothing.
  */
 export const scoreTraversalSubmission = ({
   challenge,
@@ -2168,12 +2221,15 @@ export const scoreTraversalSubmission = ({
   // It still counts against the guess budget: naming it was the mistake.
   const within = traversalWithin(rules, challenge.corridor?.members)
 
-  if (!isRouteComplete(challenge.start, challenge.target, submittedGuesses, within)) {
+  if (
+    traversalGuessesLeft(challenge, submittedGuesses) < 0 ||
+    !isRouteComplete(challenge.start, challenge.target, submittedGuesses, within)
+  ) {
     return { scored: 0, maximum }
   }
 
   const minimumGuesses = Math.max(0, challenge.optimalHops - 1)
-  const wastedGuesses = submittedGuesses.length - minimumGuesses
+  const wastedGuesses = countedGuesses(challenge, submittedGuesses) - minimumGuesses
   return { scored: attemptDecayScore(wastedGuesses, maximum), maximum }
 }
 
@@ -2266,15 +2322,21 @@ export const isCorrectWaterGuess = (
 /** Shuffles a flat hand gets before the dealer tries another stat. */
 const FLAT_HAND_REDEALS = 6
 
+export const MINIMUM_RANKING_HAND = 3
+
 export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const playerIds = Object.keys(game.players)
   const pool = playableCountries(game)
 
   // Continental pools are small — a full lobby on hard could ask for more
   // countries than the continent has data for. Shrink the hand per player
-  // rather than refusing to deal (never below a rankable three).
+  // (never below a rankable minimum), and once the pool can't give every seat
+  // its own hand, let the hands overlap rather than refuse to deal.
   const configured = DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
-  const perPlayer = Math.max(3, Math.min(configured, Math.floor(pool.length / playerIds.length)))
+  const perPlayer = Math.max(
+    MINIMUM_RANKING_HAND,
+    Math.min(configured, Math.floor(pool.length / playerIds.length))
+  )
   const required = perPlayer * playerIds.length
 
   // Round 1 doubles as the tutorial — it stays on universally comfortable
@@ -2286,23 +2348,30 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   // otherwise players get a question with zero countries to rank. A stat the
   // whole pool agrees on is no question either (a continental pool's
   // electricity access is 100% across the board, and the round would score
-  // itself): the accessor must fill the round AND split the field.
-  const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
-    if (!isAccessorEnabled(game, challenge.id)) return false
-    if (opener && HEAVY_ACCESSORS.has(challenge.id)) return false
+  // itself): the accessor must split the field, and only the stats covering
+  // the most of the table (all of it, where any can) deal.
+  const coverage = (accessorId: GroupChallengeAccessorId) => {
     let available = 0
     let firstAmount: number | undefined
     let splits = false
     for (const isoCode of pool) {
-      const value = getValueByAccessorID(isoCode, challenge.id)
+      const value = getValueByAccessorID(isoCode, accessorId)
       if (!value) continue
       available++
       if (firstAmount === undefined) firstAmount = value.amount
       else if (value.amount !== firstAmount) splits = true
-      if (available >= required && splits) return true
+      if (available >= required && splits) break
     }
-    return false
-  })
+    return splits ? available : 0
+  }
+  const candidates = Object.values(GROUP_CHALLENGES)
+    .filter(challenge => isAccessorEnabled(game, challenge.id))
+    .filter(challenge => !(opener && HEAVY_ACCESSORS.has(challenge.id)))
+    .map(challenge => ({ challenge, available: coverage(challenge.id) }))
+  const widest = Math.min(required, Math.max(0, ...candidates.map(({ available }) => available)))
+  const viable = candidates
+    .filter(({ available }) => available >= Math.max(perPlayer, widest))
+    .map(({ challenge }) => challenge)
 
   if (!viable.length) {
     throw new EvalError('No group challenge has enough country data to fill a round')
@@ -2312,11 +2381,15 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
     new Set(hand.map(isoCode => getValueByAccessorID(isoCode, accessorId)?.amount)).size <= 1
 
   const dealHands = (accessorId: GroupChallengeAccessorId) => {
-    const deck = shuffleArray<ISOCountryCode>([...pool]).filter(
-      isoCode => !!getValueByAccessorID(isoCode, accessorId)
-    )
+    const dealable = pool.filter(isoCode => !!getValueByAccessorID(isoCode, accessorId))
+    let deck: ISOCountryCode[] = []
     const hands: Record<string, ISOCountryCode[]> = {}
-    for (const playerId of playerIds) hands[playerId] = deck.splice(0, perPlayer)
+    for (const playerId of playerIds) {
+      if (deck.length < perPlayer) {
+        deck = [...deck, ...shuffleArray(dealable.filter(isoCode => !deck.includes(isoCode)))]
+      }
+      hands[playerId] = deck.splice(0, perPlayer)
+    }
     return hands
   }
 
@@ -2376,6 +2449,8 @@ const flagPaletteDistance = (a: string[], b: string[]): number => {
  *                   most-similar candidates (flag-pick's colour distance), then
  *                   randomised. Takes precedence over `preferRegion`.
  *  - `preferRegion` — put same-region candidates first, then the rest.
+ *  - `distinctFlags` — the options are told apart by flag alone, so no two of
+ *                   them (subject included) may be `flagsIndistinguishable`.
  *
  * Returns `undefined` when even the world pool can't supply `count` — callers
  * fall back (skip the variant) rather than deal an unanswerable board.
@@ -2393,20 +2468,30 @@ const pickDecoys = (
     /** The widen set when `pool` can't fill the table — pass the game's
      *  in-play world pool so benched micro-nations never turn up as decoys. */
     widen?: ISOCountryCode[]
+    distinctFlags?: boolean
   } = {}
 ): ISOCountryCode[] | undefined => {
   const eligible = (list: ISOCountryCode[]) =>
     list.filter(isoCode => isoCode !== country && (opts.eligible?.(isoCode) ?? true))
+  const distinct = (ordered: ISOCountryCode[]) => {
+    if (!opts.distinctFlags) return ordered
+    const kept: ISOCountryCode[] = []
+    for (const isoCode of ordered) {
+      if (![country, ...kept].some(other => flagsIndistinguishable(isoCode, other)))
+        kept.push(isoCode)
+    }
+    return kept
+  }
 
   // Widen to the whole (in-play) world when the board pool can't fill the table.
   let candidates = eligible(pool)
-  if (candidates.length < count) candidates = eligible(opts.widen ?? [...ISOCountryCodes])
-  if (candidates.length < count) return undefined
+  if (distinct(candidates).length < count) candidates = eligible(opts.widen ?? [...ISOCountryCodes])
+  if (distinct(candidates).length < count) return undefined
 
   if (opts.similarity) {
-    const shortlist = [...candidates]
-      .sort((a, b) => opts.similarity!(a) - opts.similarity!(b))
-      .slice(0, Math.max(count, opts.similarityShortlist ?? 8))
+    const shortlist = distinct(
+      [...candidates].sort((a, b) => opts.similarity!(a) - opts.similarity!(b))
+    ).slice(0, Math.max(count, opts.similarityShortlist ?? 8))
     return shuffleArray(shortlist).slice(0, count)
   }
 
@@ -2416,10 +2501,10 @@ const pickDecoys = (
       candidates.filter(isoCode => COUNTRIES[isoCode].region === region)
     )
     const filler = shuffleArray(candidates.filter(isoCode => !regional.includes(isoCode)))
-    return [...regional, ...filler].slice(0, count)
+    return distinct([...regional, ...filler]).slice(0, count)
   }
 
-  return shuffleArray(candidates).slice(0, count)
+  return distinct(shuffleArray(candidates)).slice(0, count)
 }
 
 /** Flag-pick: the real flag among the three most colour-confusable decoys. */
@@ -2432,6 +2517,7 @@ const dealFlagPick = (
   const decoys = pickDecoys(country, pool, 3, {
     similarity: isoCode => flagPaletteDistance(palette, COUNTRIES[isoCode].identity?.colors ?? []),
     widen: world,
+    distinctFlags: true,
   })
   if (!decoys) return undefined
 
@@ -2460,7 +2546,7 @@ const dealFlagTwins = (
     if (!palette.length) return false
     let twins = 0
     for (const other of world) {
-      if (other === isoCode) continue
+      if (other === isoCode || flagsIndistinguishable(other, isoCode)) continue
       if (sameSimplifiedPalette(palette, COUNTRIES[other].identity.simplifiedColors)) twins++
       if (twins >= 3) return true
     }
@@ -2477,6 +2563,7 @@ const dealFlagTwins = (
     eligible: isoCode =>
       sameSimplifiedPalette(palette, COUNTRIES[isoCode].identity.simplifiedColors),
     widen: world,
+    distinctFlags: true,
   })
   if (!decoys) return undefined
 
@@ -2519,15 +2606,17 @@ const dealBorderDetective = (
  * Money-match (hard only): "Which country uses the ¥?" — pick the country whose
  * currency the hero shows. Decoys must use a DIFFERENT currency so there's
  * exactly one right answer (the Euro-zone shares EUR across 27 countries, so a
- * naive pick could have several correct options).
+ * naive pick could have several correct options); `moneyHero` only ever shows
+ * what one currency wears, so a different currency is a different hero.
  */
 const dealMoneyMatch = (
   pool: ISOCountryCode[],
   world: ISOCountryCode[]
-): { country: ISOCountryCode; options: ISOCountryCode[]; image?: string } | undefined => {
-  const subject = shuffleArray(pool).find(isoCode => !!COUNTRIES[isoCode].currency)
+): { country: ISOCountryCode; options: ISOCountryCode[]; money: MoneyHero } | undefined => {
+  const subject = shuffleArray(pool).find(isoCode => !!moneyHero(COUNTRIES[isoCode].currency))
   if (!subject) return undefined
   const currency = COUNTRIES[subject].currency
+  const money = moneyHero(currency)!
 
   const decoys = pickDecoys(subject, pool, 3, {
     preferRegion: true,
@@ -2536,11 +2625,7 @@ const dealMoneyMatch = (
   })
   if (!decoys) return undefined
 
-  // A banknote image when one exists — the UI falls back to the glyph hero when
-  // it doesn't, so the deal is NOT gated on the image (unlike capital-match).
-  const image = currency ? CURRENCIES[currency]?.image : undefined
-
-  return { country: subject, options: shuffleArray([subject, ...decoys]), image }
+  return { country: subject, options: shuffleArray([subject, ...decoys]), money }
 }
 
 /**
@@ -2573,6 +2658,8 @@ export const isCorrectIndividualAnswer = (
     const language = challenge.scriptorium?.language
     return !!language && scriptoriumAnswers(language).includes(isoCode)
   }
+  if (variant === 'find' && challenge.id === 'flag')
+    return flagsIndistinguishable(challenge.country, isoCode)
   const asksForCurrency =
     variant === 'money-match' || (variant === 'find' && challenge.id === 'currency')
   if (!asksForCurrency) return false
@@ -2940,6 +3027,7 @@ const dealTrajectoryMatch = async (
             relativeGap(reading.endAmount, answer.endAmount) >= minSeparation
           )
         },
+        distinctFlags: true,
       })
       if (!decoys) continue
 
@@ -3067,22 +3155,24 @@ const dealLogoPolitics = (
   }
 }
 
-/** Leader-pick: who runs this country, millionaire-style (decoys same region). */
+/** Leader-pick: who runs this country, millionaire-style (decoys same region,
+ *  never one whose leader also leads the dealt country). */
 const dealLeaderPick = (
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
 ): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
-  const poolLeaders = countryPool.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
-  const withLeaders =
-    poolLeaders.length >= 4
-      ? poolLeaders
-      : world.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
+  const quizzable = (isoCode: ISOCountryCode) => !!quizLeader(isoCode)
+  const poolLeaders = countryPool.filter(quizzable)
+  const withLeaders = poolLeaders.length >= 4 ? poolLeaders : world.filter(quizzable)
   if (withLeaders.length < 4) return undefined
 
   const country = sample(withLeaders)!
   const decoys = pickDecoys(country, withLeaders, 3, {
     preferRegion: true,
-    eligible: isoCode => !!COUNTRIES[isoCode].government?.leader,
+    eligible: isoCode => {
+      const leader = quizLeader(isoCode)
+      return !!leader && !countryLedBy(country, leader.name)
+    },
     widen: world,
   })
   if (!decoys) return undefined
@@ -3090,9 +3180,9 @@ const dealLeaderPick = (
   return { country, options: shuffleArray([country, ...decoys]) }
 }
 
-/** The face to quiz on: the one political-leader selector, portrait required. */
+/** The face to quiz on: the quiz leader's own portrait, never a stand-in role's. */
 const portraitFor = (isoCode: ISOCountryCode) => {
-  const leader = politicalLeader(isoCode, { requireImage: true })
+  const leader = quizLeader(isoCode)
   return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
@@ -3539,7 +3629,7 @@ const pickThemedFindCountry = (
   }
   switch (accessorId) {
     case 'government.leader':
-      return withProperty(isoCode => !!COUNTRIES[isoCode].government?.leader)
+      return withProperty(isoCode => !!quizLeader(isoCode))
     case 'currency':
       // "Which country spends the Danish krone?" answers itself — only deal
       // currencies whose name betrays no spender

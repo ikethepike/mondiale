@@ -16,3 +16,7 @@ export type CurrencyMapping = { [code: string]: CurrencyEntry }
  * generated currency data (the currencies counterpart of ISOCountryCode).
  */
 export type CurrencyCode = keyof typeof CURRENCIES
+
+/** What the Money Match gate shows as its question: a banknote, else a glyph no
+ *  other currency wears (`moneyHero` in lib/currency). */
+export type MoneyHero = { image: string } | { glyph: string }
