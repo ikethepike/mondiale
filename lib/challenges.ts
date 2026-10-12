@@ -184,7 +184,14 @@ import {
   SPECTRUM_BANDS,
   shortPartyName,
 } from './parties'
-import { isNeighbour, isRouteComplete, pickTraversal, traversalWithin } from './traversal'
+import {
+  countedGuesses,
+  isNeighbour,
+  isRouteComplete,
+  pickTraversal,
+  traversalGuessesLeft,
+  traversalWithin,
+} from './traversal'
 import {
   dramaScore,
   isDecisiveGap,
@@ -2151,7 +2158,8 @@ const dealRoundChallenge = async (
  * Score a traversal round from the player's full guess list (Travle rules):
  * the round is complete when the guessed countries bridge start → target,
  * and every guess beyond the minimum needed — mistakes and inefficient
- * choices alike — costs points. An unbridged guess set scores nothing.
+ * choices alike — costs points. An unbridged guess set, or one that spent
+ * more than `maximumClicks`, scores nothing.
  */
 export const scoreTraversalSubmission = ({
   challenge,
@@ -2168,12 +2176,15 @@ export const scoreTraversalSubmission = ({
   // It still counts against the guess budget: naming it was the mistake.
   const within = traversalWithin(rules, challenge.corridor?.members)
 
-  if (!isRouteComplete(challenge.start, challenge.target, submittedGuesses, within)) {
+  if (
+    traversalGuessesLeft(challenge, submittedGuesses) < 0 ||
+    !isRouteComplete(challenge.start, challenge.target, submittedGuesses, within)
+  ) {
     return { scored: 0, maximum }
   }
 
   const minimumGuesses = Math.max(0, challenge.optimalHops - 1)
-  const wastedGuesses = submittedGuesses.length - minimumGuesses
+  const wastedGuesses = countedGuesses(challenge, submittedGuesses) - minimumGuesses
   return { scored: attemptDecayScore(wastedGuesses, maximum), maximum }
 }
 
