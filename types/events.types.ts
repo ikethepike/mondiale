@@ -74,10 +74,8 @@ export type ClientEventData =
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
-      /** Buzz rounds: the clock fraction left at the moment of the buzz, for
-       *  the reveal's buzz race. Reveal-only — the server prices the buzz off
-       *  its own clock at receipt. */
-      buzzAt?: number
+      /** Two Truths rounds: the statement the player called the lie. */
+      lie?: number
       /** Sketch rounds: the normalized drawn outline (`sketchSubmission`). The
        *  server scores it against the country itself and draws it on the reveal. */
       sketch?: [number, number][]
@@ -495,6 +493,9 @@ export type ServerEventData =
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
+  /** A `final-light` the server did not keep (too late, or not the stage's),
+   *  told to the lighting socket alone so its stage un-lights the name. */
+  | { event: 'final-light-refused'; subject: string; name: string }
   /** Manhunt: a relayed taunt. `role` picks the phrase list; `index` the
    *  line. The sender id is the socket's authenticated id. */
   | {

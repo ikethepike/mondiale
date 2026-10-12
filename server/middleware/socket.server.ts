@@ -42,6 +42,9 @@ export type EventHandler = (configuration: {
   eventTarget: ClientEventTarget
   socket: GameSocket
   io: GameServer
+  /** When the event was taken off the game's queue — the moment it is
+   *  recorded for replay, so a replayed answer is priced at the same instant. */
+  receivedAt?: number
 }) => void
 
 /** Per-socket cap on 'error' log lines: the event is client-emittable, so a

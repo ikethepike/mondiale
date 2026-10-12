@@ -85,6 +85,9 @@ interface GameStoreState {
   /** Vintage round stories this socket has been sent, by game and round —
    *  from the targeted 'vintage-story' emit, never a snapshot. */
   vintageStories: Record<string, VintageOutcome>
+  /** Gauntlet stage names the server refused as too late, by subject — from
+   *  the targeted 'final-light-refused' emit; the stage un-lights them. */
+  refusedLights: Record<string, string[]>
   /**
    * The autopilot held this player's seat and they just reclaimed it —
    * the catch-up interstitial's data, from the targeted `autopilot-summary`
@@ -277,6 +280,7 @@ export const useGameStore = defineStore('game', {
     manhunt: undefined,
     manhuntReadings: undefined,
     vintageStories: {},
+    refusedLights: {},
     socket: undefined,
     rejected: false,
     spectatable: false,

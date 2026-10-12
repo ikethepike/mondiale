@@ -256,10 +256,11 @@ export const runClientEvent = ({
 }) => {
   const event = eventData.event
   return enqueueGameTask(eventTarget.gameId, async () => {
+    const receivedAt = Date.now()
     if (!UNRECORDED_CLIENT_EVENTS.includes(event)) {
       await recordSeatEvent(redis, eventTarget.gameId, {
         kind: 'event',
-        at: Date.now(),
+        at: receivedAt,
         actor: eventTarget.playerId,
         event,
         data: eventData,
@@ -272,6 +273,7 @@ export const runClientEvent = ({
       eventTarget,
       eventKey: event,
       eventData,
+      receivedAt,
     })
   })
 }

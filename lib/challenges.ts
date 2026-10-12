@@ -2239,6 +2239,12 @@ export const scoreHotCold = ({
   return { scored: attemptDecayScore(probes, maximum), maximum }
 }
 
+/** Whether a Two Truths pick is the lie — the view's verdict and the grade. */
+export const isTwoTruthsLie = (
+  challenge: Pick<TwoTruthsChallenge, 'lieIndex'>,
+  pick: unknown
+): boolean => typeof pick === 'number' && pick === challenge.lieIndex
+
 /** Articles a named water feature may shed before matching ("the Baltic Sea"). */
 const WATER_NAME_ARTICLES = ['the', 'el', 'la', 'il']
 

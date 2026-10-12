@@ -224,7 +224,7 @@ const resolve = (correct: boolean) => {
 
   // Submit at the resolve — the reveal is pure display, and the server's
   // flip (the kind's reveal hold in ROUND_BEATS) ends the beat.
-  submitOnce([], undefined, { water: guesses.value })
+  submitOnce([], { water: guesses.value })
 }
 
 const begin = () => {

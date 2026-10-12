@@ -37,6 +37,8 @@ const BLITZ: NeighbourBlitzChallenge = {
 const BUZZ: TwoTruthsChallenge = {
   _type: 'two-truths-challenge',
   country: 'SE',
+  statements: [{}, {}, {}],
+  lieIndex: 2,
   durationSeconds: 25,
   maximumPoints: 10,
 } as TwoTruthsChallenge
@@ -75,7 +77,7 @@ describe('composeClassicSubmission', () => {
     expect(scoring.scored).toBeLessThanOrEqual(BLITZ.maximumPoints)
   })
 
-  it('composes a single-pick buzz answer with a clamped claim', async () => {
+  it('composes a single-pick buzz answer the grader prices', async () => {
     const game = buildGame(BUZZ, [testSeat('bot:x', 'round', { bot: true })])
     const submission = await composeClassicSubmission(game, roundOf(game), 'bot:x')
     expect(submission).toBeDefined()

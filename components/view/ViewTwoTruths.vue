@@ -136,7 +136,12 @@ import ScalePlot from '~/components/feedback/ScalePlot.vue'
 import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
 import { sample } from '~~/lib/arrays'
 import { attributionFor, dedupeAttributions } from '~~/lib/attribution'
-import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
+import {
+  accessorTopicLabel,
+  getChallengeDetails,
+  getScaleProps,
+  isTwoTruthsLie,
+} from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
 import { HINT_UNLOCK_FIRST_ELAPSED, hintBitePoints } from '~~/lib/scoring'
@@ -155,7 +160,6 @@ const {
   submitOnce,
   gameStore,
   secondsLeft,
-  remainingFraction,
   elapsedFraction,
   stopCountdown,
   buyHint,
@@ -224,9 +228,7 @@ const lieAccessorId = computed(() => {
   return active ? active.statements[active.lieIndex].accessorId : undefined
 })
 
-const foundLie = computed(
-  () => picked.value !== undefined && picked.value === challenge.value?.lieIndex
-)
+const foundLie = computed(() => !!challenge.value && isTwoTruthsLie(challenge.value, picked.value))
 
 const lieLabel = computed(() => {
   const active = challenge.value
@@ -261,12 +263,9 @@ const pick = (index: number) => {
   // Only three statements, all on screen — naming the pick would name the lie.
   announce({ kind: 'presence' })
 
-  const correct = index === active.lieIndex
-  // A round dealt without a duration has no clock to race.
-  const fraction = active.durationSeconds ? remainingFraction.value : 1
   // Submit at the pick — the reveal is pure display, and the server's flip
   // (the kind's reveal hold in ROUND_BEATS) ends the beat.
-  submitOnce(correct ? [active.country] : [], fraction)
+  submitOnce([], { lie: index })
 }
 </script>
 <style lang="scss" scoped>

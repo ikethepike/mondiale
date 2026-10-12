@@ -5,7 +5,7 @@ import { seatSubject } from '~~/lib/seat-transitions'
 import type { ClientEventData } from '~~/types/events.types'
 import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
-import { dropArmedTimersForTests, rearmSeats } from './seat-cursor'
+import { armedTimersFor, dropArmedTimersForTests, rearmSeats } from './seat-cursor'
 import { createTestTable, uniqueGameId, type TestTable } from './test-table'
 import { testCursor, testSeat } from './test-seat'
 
@@ -85,6 +85,18 @@ describe('gate hints are charged from the server record', () => {
     expect(gateLeapSteps(fraction, 1, gatePot('border-detective'))).toBeLessThan(
       gateLeapSteps(fraction, 0, gatePot('border-detective'))
     )
+  })
+
+  it('keeps the gate-cap timer on its fire time across a purchase', async () => {
+    const table = await open(
+      buildGame([onGate(Date.now() + 40_000), second], { _type: 'group-challenge' })
+    )
+    const capOf = () => armedTimersFor(table.id).find(timer => timer.seat === 'a')
+    const before = capOf()
+    await send(table, { event: 'buy-hint', hint: 'iso' })
+    const after = capOf()
+    expect(after).toMatchObject({ kind: 'gate-cap', fireAt: before!.fireAt })
+    expect(after!.seq).toBe(before!.seq + 1)
   })
 
   it('charges a redelivered purchase once and ignores a hint the gate does not sell', async () => {

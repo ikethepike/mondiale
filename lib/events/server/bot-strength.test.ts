@@ -141,6 +141,8 @@ const BLITZ: NeighbourBlitzChallenge = {
 const BUZZ: TwoTruthsChallenge = {
   _type: 'two-truths-challenge',
   country: 'SE',
+  statements: [{}, {}, {}],
+  lieIndex: 2,
   durationSeconds: 25,
   maximumPoints: 10,
 } as TwoTruthsChallenge

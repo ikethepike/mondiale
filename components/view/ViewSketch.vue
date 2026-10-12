@@ -133,7 +133,7 @@ const submitSketch = () => {
   const sketch = sketchSubmission(points.value)
   // Pencils-down is the only beat worth telling the room — never the drawing.
   announce({ kind: 'presence' })
-  submitOnce([active.country], undefined, { sketch })
+  submitOnce([active.country], { sketch })
   void scoreSketchFor(active.country, sketch, active.maximumPoints).then(score =>
     previewVerdict(score > active.maximumPoints * 0.4 ? 'correct' : 'incorrect')
   )

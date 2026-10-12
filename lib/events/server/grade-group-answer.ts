@@ -2,6 +2,7 @@ import {
   attemptPicksScore,
   getCorrectRanking,
   isFlagPaletteMatch,
+  isTwoTruthsLie,
   scoreChallengeSubmission,
   scoreGhostState,
   scoreHotCold,
@@ -29,7 +30,7 @@ import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, buzzScore, clampScore, hintDockedScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
-import { clamp, clamp01 } from '~~/lib/number'
+import { clamp } from '~~/lib/number'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
@@ -104,6 +105,13 @@ export const gradeGroupAnswer = async ({
   const elapsedMs = () =>
     round.playStartsAt === undefined ? undefined : Math.max(0, pricedAt - round.playStartsAt)
   const bought = hintsBought(seat, roundHintsOnSale(roundChallenge))
+  /** The fraction a landed buzz was priced on — what the reveal's buzz race draws. */
+  let landedAt: number | undefined
+  /** `buzzScore` for a landed buzz, recording the fraction it was priced on. */
+  const landBuzz = (maximumPoints: number, fraction: number) => {
+    landedAt = fraction
+    return buzzScore(maximumPoints, fraction)
+  }
 
   /** Buzz modes are all-or-nothing: one target country, paid on the buzz
    *  curve at `fraction` when the pick was right. */
@@ -114,7 +122,7 @@ export const gradeGroupAnswer = async ({
   ) => {
     answer = { submitted: submission.ranking, correct: [challenge.country] }
     scoring = {
-      scored: correct ? buzzScore(challenge.maximumPoints, fraction) : 0,
+      scored: correct ? landBuzz(challenge.maximumPoints, fraction) : 0,
       maximum: challenge.maximumPoints,
     }
   }
@@ -209,7 +217,7 @@ export const gradeGroupAnswer = async ({
       const correct = !!guess && speaksTongue(challenge, guess)
       answer = { submitted: submission.ranking, correct: challenge.countries }
       scoring = {
-        scored: correct ? buzzScore(challenge.maximumPoints, clockFraction()) : 0,
+        scored: correct ? landBuzz(challenge.maximumPoints, clockFraction()) : 0,
         maximum: challenge.maximumPoints,
       }
       break
@@ -227,11 +235,12 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'two-truths': {
-      // Spotting the lie is all-or-nothing; the client reports the pick as
-      // the mystery country when the lie was found. The 50/50 bites whatever
-      // the buzz was worth.
+      // Spotting the lie is all-or-nothing; the 50/50 bites whatever the buzz
+      // was worth.
       const challenge = expectChallengeType(roundChallenge, 'two-truths-challenge')
-      buzzOn(challenge)
+      const found = isTwoTruthsLie(challenge, submission.lie)
+      buzzOn(challenge, found)
+      answer = { ...answer, submitted: found ? [challenge.country] : [] }
       scoring = {
         ...scoring,
         scored: hintDockedScore(scoring.scored, challenge.maximumPoints, bought),
@@ -351,7 +360,7 @@ export const gradeGroupAnswer = async ({
         seat?.deadline !== undefined && window
           ? seat.deadline - window - TIMEOUT_SLACK_MS
           : pricedAt
-      const beat1 = named ? buzzScore(pots.name, clockFraction(buzzedAt)) : 0
+      const beat1 = named ? landBuzz(pots.name, clockFraction(buzzedAt)) : 0
       // Beat 2: server-derived Jaccard over the pinned core; partials forgiven.
       const beat2 = scoreEmpireExtent({
         challenge,
@@ -459,11 +468,7 @@ export const gradeGroupAnswer = async ({
 
   if (absent) scoring = { scored: 0, maximum: scoring.maximum }
 
-  // Reveal-only, and only meaningful where a buzz happened: the score is
-  // already settled above, so this needs no trust — it just lets the buzz
-  // race show WHEN each player committed.
-  if (typeof submission.buzzAt === 'number')
-    answer = { ...answer, buzzAt: clamp01(submission.buzzAt) }
+  if (landedAt !== undefined && !absent) answer = { ...answer, buzzAt: landedAt }
 
   return { scoring, answer }
 }

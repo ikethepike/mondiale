@@ -26,7 +26,7 @@ export type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
  *  the event declares it — and can never drift from what the server reads. */
 export type SubmitExtras = Omit<
   Extract<ClientEventData, { event: 'submit-group-challenge-answers' }>,
-  'event' | 'ranking' | 'buzzAt' | keyof SeatEcho
+  'event' | 'ranking' | keyof SeatEcho
 >
 
 const PRUNE_INTERVAL_MS = 250
@@ -135,13 +135,13 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op.
    *  `extras` carries the mode-specific answer the server grades and prices
    *  (the named water feature, the drawn outline) — no score travels. */
-  const submitOnce = (ranking: ISOCountryCode[], buzzAt?: number, extras?: SubmitExtras) => {
+  const submitOnce = (ranking: ISOCountryCode[], extras?: SubmitExtras) => {
     // Watchers hold no answer: the gate here also keeps the redelivery loop
     // from ever arming (update() would swallow the emit and retry forever).
     if (gameStore.watching) return
     if (submitted.value) return
     submitted.value = true
-    void deliverAnswer(ranking, buzzAt, extras)
+    void deliverAnswer(ranking, extras)
   }
 
   /**
@@ -154,7 +154,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    * never offers a second answer.
    */
   const redeliver = createRedeliver('group answer')
-  const deliverAnswer = (ranking: ISOCountryCode[], buzzAt?: number, extras?: SubmitExtras) => {
+  const deliverAnswer = (ranking: ISOCountryCode[], extras?: SubmitExtras) => {
     // The echo names the subject this mount rendered: a buffered redelivery
     // flushing after the settle advanced the table lands on a spent subject.
     const echo = seatEcho(subject)
@@ -162,7 +162,6 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       update({
         event: 'submit-group-challenge-answers',
         ranking,
-        buzzAt,
         ...extras,
         ...echo,
       })

@@ -13,7 +13,7 @@ import { commitSeat, gateVerdict } from './seat-exits'
  */
 export const submitIndividualChallengeAnswersHandler = defineGameHandler(
   'submit-individual-challenge-answer',
-  async ({ game, player, server, eventData, eventTarget }) => {
+  async ({ game, player, server, eventData, eventTarget, receivedAt }) => {
     const { cursor } = player
     if (eventData.subject !== cursor.subject) {
       return server.emit({ event: 'update', game }, eventTarget)
@@ -34,7 +34,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     // leap is priced here — the view shows the same fraction off the same deadline.
     const steps = correct
       ? gateLeapSteps(
-          gateRemainingFraction(challenge, cursor.deadline, Date.now()),
+          gateRemainingFraction(challenge, cursor.deadline, receivedAt),
           hintsBought(cursor, gateHintsOnSale(challenge.variant)),
           gatePot(challenge.variant)
         )

@@ -48,7 +48,6 @@ import {
   BOT_UNTIMED_THINK_MS,
   classicPlaySeconds,
   isClassicGroupRound,
-  remainingFractionOn,
   seatWindowMsFor,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
@@ -598,20 +597,6 @@ const classicAnswerDelay = (round: Round): number => {
   return remaining * randomBetween(from, to)
 }
 
-/**
- * How much of the play window is still on the clock as the bot answers — the
- * buzz moment it reports, measured rather than guessed. The act was already
- * scheduled into `BOT_CLASSIC_WINDOW`, so this reads back what that wait
- * actually spent; an untimed kind has no window to be early in and buzzes at
- * the middle of the curve.
- */
-const liveRemainingFraction = (round: Round): number => {
-  const playSeconds = classicPlaySeconds(round.groupChallenge)
-  // An untimed kind has no window to be early in — mid-curve, not full marks.
-  if (!round.deadline || !playSeconds) return 0.5
-  return remainingFractionOn(round.deadline, playSeconds, Date.now())
-}
-
 // --- The AFK autopilot: the same brain, borrowed for a vacated human seat ---
 
 /**
@@ -777,9 +762,10 @@ export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) =
  */
 const botAct = async (ctx: EngineContext, eventData: ClientEventData) => {
   const { gameId, playerId } = ctx.eventTarget
+  const receivedAt = Date.now()
   await recordSeatEvent(ctx.redis, gameId, {
     kind: 'event',
-    at: Date.now(),
+    at: receivedAt,
     actor: playerId,
     bot: true,
     event: eventData.event,
@@ -789,6 +775,7 @@ const botAct = async (ctx: EngineContext, eventData: ClientEventData) => {
     ...ctx,
     eventKey: eventData.event,
     eventData,
+    receivedAt,
   })
 }
 
@@ -1490,10 +1477,6 @@ export const composeClassicSubmission = async (
   const hit = Math.random() < share
   const challenge = round.groupChallenge
   const kind = roundChallengeKind(challenge)
-  /** When the bot actually buzzed, off the round's own clock — the act was
-   *  scheduled into `BOT_CLASSIC_WINDOW`, so reporting a share-derived guess
-   *  instead would tax a right answer for being confident. Reveal-only. */
-  const buzzAt = liveRemainingFraction(round)
   /**
    * Whether a priced answer lands. The grader prices it off its own clock, and
    * a bot answers mid-window on purpose (never racing a human off the line), so
@@ -1519,7 +1502,6 @@ export const composeClassicSubmission = async (
     case 'silhouette':
     case 'anthem-buzz':
     case 'stat-detective':
-    case 'two-truths':
     case 'flashpoint':
     case 'capital-guess':
     case 'ground-plan':
@@ -1529,10 +1511,17 @@ export const composeClassicSubmission = async (
       // Tongues: any speaker wins — the correct set is the whole membership.
       const target = kind === 'tongue-buzz' ? sample(correct) : correct[0]
       if (!target) return { ranking: [] }
-      const landed = { ranking: [target], buzzAt }
+      const landed = { ranking: [target] }
       if (await lands(landed)) return landed
       const miss = wrongPick(game, correct)
-      return miss ? { ranking: [miss], buzzAt } : { ranking: [] }
+      return miss ? { ranking: [miss] } : { ranking: [] }
+    }
+    case 'two-truths': {
+      const truths = expectChallengeType(challenge, 'two-truths-challenge')
+      const landed = { ranking: [], lie: truths.lieIndex }
+      if (await lands(landed)) return landed
+      const decoys = truths.statements.map((_, index) => index)
+      return { ranking: [], lie: sample(decoys.filter(index => index !== truths.lieIndex)) }
     }
     case 'hot-cold': {
       // A probe trail: the colder the seat, the longer the wander. Every stray

@@ -511,7 +511,7 @@ const onScrub = (t: number) => ghostField.value?.seek(t)
 /** One submit carries both beats: taps in `ranking`, the buzz through
  *  SubmitExtras' `empire` field. */
 const submitRound = () => {
-  submitOnce(picks.value, undefined, {
+  submitOnce(picks.value, {
     empire: beat1Guess ? { guessedId: beat1Guess } : {},
   })
 }

@@ -62,9 +62,10 @@ import { sunsetDarkCount, sunsetOutcome, sunsetQuota, sunsetSchedule } from '~~/
 import { useFinalLight } from '~~/lib/use-seat-record'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
+import { finalQuestionSeconds } from '~~/lib/final-timing'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { SunsetBlitzChallenge } from '~~/types/challenges/final-challenge.type'
-import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import { isValidISOCode, type Country, type ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * The gauntlet finale. The camera frames the dealt window and the rest of the
@@ -79,14 +80,16 @@ const emit = defineEmits<{
 }>()
 
 const { gameStore, game } = useClientEvents()
-const light = useFinalLight()
+const { light, refused } = useFinalLight()
 
 const field = computed(() => props.challenge.countries)
 const fieldSet = computed(() => new Set(field.value))
 const schedule = computed(() =>
   sunsetSchedule(field.value.length, game.value?.difficulty ?? 'normal')
 )
-const durationSeconds = computed(() => Math.ceil(schedule.value.at(-1) ?? 0))
+const durationSeconds = computed(
+  () => finalQuestionSeconds(props.challenge, game.value?.difficulty ?? 'normal') ?? 0
+)
 const quota = computed(() => sunsetQuota(props.challenge))
 
 // The frame is the subject: the default pad floor would push the field into
@@ -236,6 +239,16 @@ const start = () => {
   document.body.classList.add('sunset-blitz')
   sceneOpenedAt = now.value
 }
+
+watch(refused, names => {
+  for (const isoCode of names) {
+    if (!isValidISOCode(isoCode) || !named.value.has(isoCode)) continue
+    named.value.delete(isoCode)
+    gameStore.map.highlighted.delete(isoCode)
+    lose(isoCode)
+    flash(`${countryName(isoCode)} went dark before your answer arrived.`)
+  }
+})
 
 let feedbackTimeout: ReturnType<typeof setTimeout> | undefined
 const flash = (message: string) => {

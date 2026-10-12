@@ -1239,10 +1239,12 @@ export const weighScalesPicks = (
 /** The dealt cities a nocturne answer may light — the top N of CITY_LIGHTS. */
 /** The dealt city set — exported so the bot brain names the same cities the
  *  verdict validates against, never a second CITY_LIGHTS slice. */
+/** The cities a Nocturne stage deals: its country's top `cityCount` lights. */
+export const nocturneCities = (challenge: Pick<CityNocturneChallenge, 'country' | 'cityCount'>) =>
+  (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount)
+
 export const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
-  new Set(
-    (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount).map(city => city.name)
-  )
+  new Set(nocturneCities(challenge).map(city => city.name))
 
 /** Whether a `final-light` name counts: one of the stage's own and in time. */
 export const acceptsFinalLight = (

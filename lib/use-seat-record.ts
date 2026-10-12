@@ -1,4 +1,4 @@
-import { onScopeDispose } from 'vue'
+import { computed, onScopeDispose } from 'vue'
 import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 
 /**
@@ -29,10 +29,16 @@ export const useSeatRecord = () => {
   }
 }
 
-/** A gauntlet stage's `final-light`, on the subject the stage mounted on. */
+/**
+ * A gauntlet stage's `final-light`, on the subject the stage mounted on, and
+ * the names the server refused there (too late) for the stage to un-light.
+ */
 export const useFinalLight = () => {
-  const { seatCursor } = useClientEvents()
+  const { seatCursor, gameStore } = useClientEvents()
   const subject = seatCursor.value?.subject ?? ''
   const { lightFinal } = useSeatRecord()
-  return (name: string) => lightFinal(subject, name)
+  return {
+    light: (name: string) => lightFinal(subject, name),
+    refused: computed(() => gameStore.refusedLights[subject] ?? []),
+  }
 }

@@ -616,10 +616,9 @@ export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): 
  */
 /**
  * How much of a clock is still to run, 0..1 — THE deadline→fraction math.
- * Both sides of the wire price a buzz off this: `useDeadlineClock` repaints
- * the player's shot clock with it and the bot brain stamps its own `buzzAt`
- * with it, so a human and a machine answering at the same moment can never be
- * graded by two different roundings.
+ * Both sides of the wire read a buzz off this: `useDeadlineClock` repaints
+ * the player's shot clock with it and the grader prices the buzz with it, so
+ * the clock a player saw and the pay they got can never round differently.
  *
  * No WINDOW means nothing to be early in, so the clock reads full. An unset
  * DEADLINE is a different thing — a round that hasn't been stamped yet — and

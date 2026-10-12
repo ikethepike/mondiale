@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
-import { TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { FINAL_REVEAL_HOLD_MS, SEAT_DEADLINE_GRACE_MS, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import { seatSubject } from '~~/lib/seat-transitions'
 import { sunsetSchedule, sunsetSeconds } from '~~/lib/sunset-pace'
 import type { FinalChallenge, FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
@@ -104,6 +104,9 @@ describe('Sunset Blitz counts only the names the server took before dark', () =>
     await send(table, { event: 'final-light', name: 'NO' })
     await send(table, { event: 'final-light', name: 'SE' })
     expect((await cursorA(table)).lit).toEqual(['SE'])
+    expect(table.emits.filter(emit => emit.event === 'final-light-refused')).toMatchObject([
+      { payload: { name: 'NO', subject: seatSubject.final(1, 0) } },
+    ])
   })
 
   it('scores a submitted set with no lights behind it as a miss', async () => {
@@ -128,6 +131,34 @@ describe('Sunset Blitz counts only the names the server took before dark', () =>
       correct: true,
       submittedAnswer: { namedCountries: ['SE', 'FI'] },
     })
+  })
+})
+
+describe('the lit record at the question cap and beyond', () => {
+  it('passes a stage whose quota was lit when the clock closes unanswered', async () => {
+    const table = await open(sunset)
+    await send(table, { event: 'final-light', name: 'SE' })
+    await send(table, { event: 'final-light', name: 'FI' })
+    await vi.advanceTimersByTimeAsync(stageSeconds(sunset) * 1000 + SEAT_DEADLINE_GRACE_MS + 50)
+    expect((await cursorA(table)).verdict).toMatchObject({
+      correct: true,
+      timedOut: false,
+      submittedAnswer: { namedCountries: ['SE', 'FI'] },
+    })
+  })
+
+  it('clears the record when the next question opens', async () => {
+    const table = await open(sunset)
+    await send(table, { event: 'final-light', name: 'SE' })
+    await send(table, {
+      event: 'submit-final-challenge-answer',
+      submittedAnswer: { _type: 'sunset-blitz-challenge', namedCountries: [] },
+    })
+    expect((await cursorA(table)).lit).toEqual(['SE'])
+    await vi.advanceTimersByTimeAsync(FINAL_REVEAL_HOLD_MS + 50)
+    const next = await cursorA(table)
+    expect(next.subject).toBe(seatSubject.final(1, 1))
+    expect(next.lit).toBeUndefined()
   })
 })
 

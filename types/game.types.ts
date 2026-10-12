@@ -120,10 +120,8 @@ export interface GroupChallengeAnswer {
    *  party names and seat counts rather than countries, so they cannot ride
    *  `submitted`/`correct` — those are ISO codes by type. */
   governmentBeats?: { beat: 'party' | 'seats' | 'sides'; scored: number; maximum: number }[]
-  /** Buzz rounds: the clock fraction left when the player buzzed, for the
-   *  reveal's buzz race. Absent when the player never buzzed. Reveal-only —
-   *  the score is already settled by then, and inverting `buzzScore` would not
-   *  recover it through the rounding and the server's clamp. */
+  /** Buzz rounds: the fraction the server priced a landed buzz on, for the
+   *  reveal's buzz race. Absent when the player never landed one. */
   buzzAt?: number
   /** Vintage rounds: the year the player dated the map to. */
   year?: number

@@ -39,7 +39,6 @@
 <script lang="ts" setup>
 import NightConsole from '~/components/challenge/NightConsole.vue'
 import NightLights, { type NightLight } from '~/components/challenge/NightLights.vue'
-import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { countryName, normalizeCountryName } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -47,6 +46,7 @@ import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useNocturne } from '~~/lib/use-nocturne'
 import { useFinalLight } from '~~/lib/use-seat-record'
+import { nocturneCities } from '~~/lib/challenges/final-challenge'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
@@ -67,7 +67,7 @@ const props = defineProps<{ challenge: CityNocturneChallenge; paused: boolean }>
 const emit = defineEmits<{ finished: [namedCities: string[]] }>()
 
 const { gameStore } = useClientEvents()
-const light = useFinalLight()
+const { light, refused } = useFinalLight()
 
 const field = ref<HTMLInputElement>()
 const entry = ref('')
@@ -86,7 +86,10 @@ const isCoarsePointer = useIsCoarsePointer()
 const { nightfall } = useNocturne(() => [props.challenge.country], { held: true })
 
 const countryLabel = computed(() => countryName(COUNTRIES[props.challenge.country]))
-const cities = CITY_LIGHTS[props.challenge.country]?.slice(0, props.challenge.cityCount) ?? []
+const cities = nocturneCities(props.challenge)
+watch(refused, names => {
+  for (const name of names) named.value.delete(name)
+})
 
 const { secondsLeft, running, expired, stop } = useFinalStageClock(props.challenge.durationSeconds)
 

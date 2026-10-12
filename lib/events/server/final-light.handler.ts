@@ -1,3 +1,4 @@
+import { isBrainSeat } from '~~/lib/bots'
 import { defineGameHandler } from '../server-side'
 import { advanceSeat } from './seat-cursor'
 import { commitSeat } from './seat-exits'
@@ -9,7 +10,7 @@ import { commitSeat } from './seat-exits'
  */
 export const finalLightHandler = defineGameHandler(
   'final-light',
-  async ({ game, player, server, eventData, eventTarget }) => {
+  async ({ game, player, server, socket, eventData, eventTarget, receivedAt }) => {
     const { cursor } = player
     if (eventData.subject !== cursor.subject) {
       return server.emit({ event: 'update', game }, eventTarget)
@@ -24,8 +25,15 @@ export const finalLightHandler = defineGameHandler(
     // Deferred module: only loads once a game reaches the gauntlet (#110).
     const { acceptsFinalLight } = await import('~~/lib/challenges/final-challenge')
     if (
-      !acceptsFinalLight(question, game.difficulty, cursor.deadline, eventData.name, Date.now())
+      !acceptsFinalLight(question, game.difficulty, cursor.deadline, eventData.name, receivedAt)
     ) {
+      // The brain acts with no socket, and only ever lights in time.
+      if (isBrainSeat(player)) return
+      socket.emit(
+        'final-light-refused',
+        { event: 'final-light-refused', subject: cursor.subject, name: eventData.name },
+        eventTarget
+      )
       return
     }
     advanceSeat(

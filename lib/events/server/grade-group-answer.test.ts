@@ -11,26 +11,26 @@ import { gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 const PLAY_STARTS_AT = 1_000_000
 const MAX = 10
 
-const grade = async (
+const graded = (
   challenge: object,
   submission: Record<string, unknown>,
   { at, seat }: { at: number; seat?: Pick<SeatCursor, 'deadline' | 'hints'> }
 ) =>
-  (
-    await gradeGroupAnswer({
-      game: { difficulty: 'normal', regions: [] } as unknown as Game,
-      round: {
-        groupChallenge: challenge,
-        groupAnswers: {},
-        playerTurns: {},
-        playStartsAt: PLAY_STARTS_AT,
-      } as unknown as Round,
-      playerId: 'p',
-      submission: submission as GroupSubmission,
-      seat,
-      at,
-    })
-  ).scoring.scored
+  gradeGroupAnswer({
+    game: { difficulty: 'normal', regions: [] } as unknown as Game,
+    round: {
+      groupChallenge: challenge,
+      groupAnswers: {},
+      playerTurns: {},
+      playStartsAt: PLAY_STARTS_AT,
+    } as unknown as Round,
+    playerId: 'p',
+    submission: submission as GroupSubmission,
+    seat,
+    at,
+  })
+
+const grade = async (...args: Parameters<typeof graded>) => (await graded(...args)).scoring.scored
 
 /** Server time when the answer arrives `ms` into the play window, wire slack included. */
 const into = (ms: number) => PLAY_STARTS_AT + ms + TIMEOUT_SLACK_MS
@@ -120,17 +120,33 @@ describe('buzz pay is priced off the server clock, never the claim', () => {
     ).toBe(buzzScore(MAX, 0.5))
   })
 
+  const truths = {
+    _type: 'two-truths-challenge',
+    country: 'FR',
+    lieIndex: 1,
+    durationSeconds: 20,
+    maximumPoints: MAX,
+  }
+
+  it('grades Two Truths on the statement picked, never the country token', async () => {
+    const at = into(0)
+    expect(await grade(truths, { ranking: [], lie: 1 }, { at })).toBe(MAX)
+    expect(await grade(truths, { ranking: [], lie: 2 }, { at })).toBe(0)
+    expect(await grade(truths, { ranking: ['FR'] }, { at })).toBe(0)
+  })
+
   it('docks the Two Truths 50/50 from the cursor, not the submit', async () => {
-    const truths = {
-      _type: 'two-truths-challenge',
-      country: 'FR',
-      durationSeconds: 20,
-      maximumPoints: MAX,
-    }
     const seat = { hints: ['fifty-fifty'] }
-    expect(await grade(truths, { ranking: ['FR'] }, { at: into(0), seat })).toBe(
+    expect(await grade(truths, { ranking: [], lie: 1 }, { at: into(0), seat })).toBe(
       hintDockedScore(MAX, MAX, 1)
     )
+  })
+
+  it("stamps the reveal's buzz race with the fraction it paid, never the wire's", async () => {
+    const landed = await graded(silhouette, { ranking: ['FR'], buzzAt: 0.99 }, { at: into(10_000) })
+    expect(landed.answer.buzzAt).toBe(0.5)
+    const missed = await graded(silhouette, { ranking: ['DE'], buzzAt: 0.99 }, { at: into(0) })
+    expect(missed.answer.buzzAt).toBeUndefined()
   })
 })
 

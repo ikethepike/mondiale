@@ -75,7 +75,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     showInterstitial,
     started,
     submitted,
-    remainingFraction,
     elapsedFraction,
     begin: beginRound,
     announce,
@@ -85,8 +84,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
 
   const resolved = ref(false)
   const { lockedOut, lockOut } = useLockoutBeat({ onEnd: options.onLockoutEnd })
-  /** Held for the reveal: what the player buzzed, and when. */
-  const buzzedAt = ref<number | undefined>()
 
   const unlocked = computed(() => ({
     region: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.region,
@@ -105,7 +102,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     // Submit at the resolve — the reveal (mask lifts, the translated verse)
     // is pure display, and the server's flip (the kind's reveal hold in
     // ROUND_BEATS) ends the beat.
-    submitOnce(guess ? [guess] : [], buzzedAt.value)
+    submitOnce(guess ? [guess] : [])
   }
 
   /**
@@ -160,7 +157,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     }
 
     if (options.isCorrect(active, isoCode)) {
-      buzzedAt.value = remainingFraction.value
       resolve(isoCode)
       return 'correct'
     }

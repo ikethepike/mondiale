@@ -70,11 +70,11 @@ const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_E
 const shownRelation = computed(() =>
   isEasy.value || boughtRelation.value ? props.challenge.rosetta?.relationLabel : undefined
 )
-/** Only a bought hint bites — the easy-mode freebie is the difficulty, not a
- *  purchase, and must not dock the leap. */
 onMounted(() => {
   footerReady.value = true
 })
+/** Only a bought hint bites — the easy-mode freebie is the difficulty, not a
+ *  purchase, and must not dock the leap. */
 const buyRelationHint = () => {
   if (boughtRelation.value || status.value) return
   boughtRelation.value = true

@@ -407,8 +407,24 @@ export const SEAT_TIMER_EXITS: Record<SeatTimerKind, (exit: SeatExit) => Promise
     await commitSeat(server, game, seat)
   },
   'final-cap': async ({ game, server, seat }) => {
-    console.warn(`Final cap burning unanswered question for ${seat.id} in ${game.id}`)
-    await finalVerdict(game, seat, { correct: false, timedOut: true }, 'timer:final-cap')
+    // A lit stage is graded on its record, so a seat that lit the quota and
+    // then lost its socket still passes when the clock closes.
+    const gauntlet = seat.moves[0]?.challenge
+    const question = gauntlet?._type === 'final-challenge' ? gauntlet.challenges[0] : undefined
+    const { isCorrectFinalAnswer, recordedFinalAnswer } =
+      await import('~~/lib/challenges/final-challenge')
+    const submittedAnswer = question && recordedFinalAnswer(question, seat.cursor.lit)
+    const correct =
+      !!question &&
+      !!submittedAnswer &&
+      isCorrectFinalAnswer({ challenge: question, submittedAnswer })
+    if (!correct) console.warn(`Final cap burning unanswered question for ${seat.id} in ${game.id}`)
+    await finalVerdict(
+      game,
+      seat,
+      { correct, timedOut: !correct, ...(submittedAnswer ? { submittedAnswer } : {}) },
+      'timer:final-cap'
+    )
     await commitSeat(server, game, seat)
   },
   'verdict-hold': async ({ game, server, seat }) => {
