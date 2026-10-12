@@ -81,6 +81,23 @@ const ENCUMBERED = /\b(?:non[ -]?commercial|no[ -]?deriv|nc|nd)\b/i
  */
 export const PUBLISH_FAIR_USE = true
 
+/** Commons template prose that lands in the Artist field instead of a name —
+ *  {{Derived from}} renders "This image includes elements that have been taken
+ *  or adapted from this file:". It credits nobody, so it is no credit at all. */
+const BOILERPLATE_CREDIT =
+  /^this (?:image|file|work|media)\b.*\b(?:taken or adapted|derived) from\b/i
+
+export const isBoilerplateCredit = (credit: string): boolean => BOILERPLATE_CREDIT.test(credit)
+
+export const artistCredit = (
+  metadata: ExtMetadata | undefined,
+  stripTags: (html: string) => string,
+  shortenCredit: (credit: string) => string
+): string | undefined => {
+  const credit = metadata?.Artist?.value ? stripTags(metadata.Artist.value) : undefined
+  return credit && !isBoilerplateCredit(credit) ? shortenCredit(credit) : undefined
+}
+
 export const classifyLicence = (
   metadata: ExtMetadata | undefined,
   stripTags: (html: string) => string,
@@ -89,7 +106,7 @@ export const classifyLicence = (
   const license = metadata?.LicenseShortName?.value
     ? stripTags(metadata.LicenseShortName.value)
     : undefined
-  const credit = metadata?.Artist?.value ? stripTags(metadata.Artist.value) : undefined
+  const credit = artistCredit(metadata, stripTags, shortenCredit)
   const nonFree = String(metadata?.NonFree?.value ?? '').toLowerCase() === 'true'
   const restrictions = metadata?.Restrictions?.value || undefined
   // A free licence is a FACT about the file. NonCommercial and NoDerivatives
@@ -98,7 +115,7 @@ export const classifyLicence = (
   const free = !nonFree && !!license && FREE_LICENCE.test(license) && !ENCUMBERED.test(license)
   return {
     ...(license ? { license } : {}),
-    ...(credit ? { credit: shortenCredit(credit) } : {}),
+    ...(credit ? { credit } : {}),
     nonFree,
     ...(restrictions ? { restrictions } : {}),
     free,

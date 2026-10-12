@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { ATTRIBUTION_FREE, corroborates, isPlayable } from '~~/generators/anthem-corroboration'
+import { curateAnthem, isLabel, isUncuratedRawLabel } from '~~/generators/lib/anthem-selection'
+import { isBoilerplateCredit } from '~~/generators/lib/licence'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -136,5 +138,46 @@ describe('anthem dataset', () => {
     })
 
     expect(unverifiable.map(([iso, entry]) => `${iso}: ${entry?.sourceFile}`)).toEqual([])
+  })
+
+  it("titles each country with the anthem its clip plays, not a realm's", () => {
+    // Every P85 statement was once folded into one row: New Zealand shipped
+    // "God Save the King · Henry Carey" over God Defend New Zealand's audio.
+    const titles = Object.fromEntries(
+      (['NZ', 'AG', 'BZ', 'GD', 'PS', 'ZA'] as const).map(iso => [iso, ANTHEMS[iso]?.title])
+    )
+    expect(titles).toEqual({
+      NZ: 'God Defend New Zealand',
+      AG: 'Fair Antigua, We Salute Thee',
+      BZ: 'Land of the Free',
+      GD: 'Hail Grenada',
+      PS: "Fida'i",
+      ZA: 'National anthem of South Africa',
+    })
+    expect(ANTHEMS.NZ?.composer).toBe('John Joseph Woods')
+    expect(ANTHEMS.GD?.composer).not.toBe('Henry Carey')
+  })
+
+  it('ships every entry exactly as the curation leaves it', () => {
+    const uncurated = entries.filter(([iso, entry]) => {
+      return entry && JSON.stringify(curateAnthem(iso, entry)) !== JSON.stringify(entry)
+    })
+    expect(uncurated.map(([iso]) => iso)).toEqual([])
+  })
+
+  it('names every anthem rather than describing it', () => {
+    const described = entries.filter(
+      ([iso, entry]) => entry && isUncuratedRawLabel(iso, entry.title)
+    )
+    expect(described.map(([iso, entry]) => `${iso}: ${entry?.title}`)).toEqual([])
+  })
+
+  it('never prints a composer or credit that names nobody', () => {
+    const offenders = entries.filter(
+      ([, entry]) =>
+        (entry?.composer !== undefined && !isLabel(entry.composer)) ||
+        (entry?.credit !== undefined && isBoilerplateCredit(entry.credit))
+    )
+    expect(offenders.map(([iso]) => iso)).toEqual([])
   })
 })

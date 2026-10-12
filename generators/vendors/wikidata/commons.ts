@@ -3,7 +3,13 @@ import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import sharp from 'sharp'
 import type { MediaCredit } from '../../../lib/attribution'
-import { classifyLicence, type ExtMetadata, type ImageLicence } from '../../lib/licence'
+import {
+  artistCredit,
+  classifyLicence,
+  isBoilerplateCredit,
+  type ExtMetadata,
+  type ImageLicence,
+} from '../../lib/licence'
 
 /**
  * Shared Wikidata / Wikimedia Commons fetch helpers — one implementation of the
@@ -236,17 +242,17 @@ export const fetchImageAttribution = async (
   const metadata = Object.values(data?.query?.pages ?? {})[0]?.imageinfo?.[0]?.extmetadata
   if (!metadata) return undefined
 
-  const credit = metadata.Artist?.value ? stripTags(metadata.Artist.value) : undefined
-  const license = metadata.LicenseShortName?.value
-    ? stripTags(metadata.LicenseShortName.value)
-    : undefined
-  if (!credit && !license) return undefined
   // Some "artist" fields are whole camera-club paragraphs, or a bare URL to the
   // source page. Those are too long to print — but DROPPING them left files
   // under CC BY / CC BY-SA shipping with a licence that demands attribution and
   // nobody to attribute (Ireland's Green Party, Turkey's HDP). Shorten instead:
   // a trimmed credit still names the author, where none names nobody.
-  return { credit: credit ? shortenCredit(credit) : undefined, license }
+  const credit = artistCredit(metadata, stripTags, shortenCredit)
+  const license = metadata.LicenseShortName?.value
+    ? stripTags(metadata.LicenseShortName.value)
+    : undefined
+  if (!credit && !license) return undefined
+  return { credit, license }
 }
 
 /**
@@ -261,7 +267,9 @@ export const captureImageCredit = async (
   force = false
 ): Promise<MediaCredit> => {
   const kept: MediaCredit = {
-    ...(previous?.credit ? { credit: previous.credit } : {}),
+    ...(previous?.credit && !isBoilerplateCredit(previous.credit)
+      ? { credit: previous.credit }
+      : {}),
     ...(previous?.license ? { license: previous.license } : {}),
   }
   if (!file) return kept
