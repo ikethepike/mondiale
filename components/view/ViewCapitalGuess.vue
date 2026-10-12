@@ -129,13 +129,13 @@ const submitRound = (score: number, picks: ISOCountryCode[]) => {
 }
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0, spent.value) })
+  begin({ onTimeout: expire })
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
 // The winning guess is never broadcast — outside hard mode the small option
 // table makes even a wrong name too strong a clue (policy drops to presence).
-const { spent, pending, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess, expire } = useAttemptOptions({
   challenge,
   submitted,
   started,

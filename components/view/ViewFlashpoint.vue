@@ -268,7 +268,7 @@ const start = async () => {
   if (bounds) gameStore.map.feature = { d: '', kind: 'area', bounds }
 
   begin({
-    onTimeout: () => submitRound(0, spent.value),
+    onTimeout: expire,
     onTick: left => {
       const elapsed = active.durationSeconds - left
       shownWaves.value = Math.min(
@@ -309,7 +309,7 @@ const submitRound = (score: number, picks: ISOCountryCode[]) => {
 
 // The winning guess is never broadcast — outside hard mode the small option
 // table makes even a wrong name too strong a clue (policy drops to presence).
-const { spent, pending, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess, expire } = useAttemptOptions({
   challenge,
   submitted,
   started,

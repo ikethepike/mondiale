@@ -89,6 +89,14 @@ describe('spent option picks live on the seat', () => {
     expect((await seatA(table)).cursor.spent).toEqual(['NE', 'QA'])
   })
 
+  it('refuses a pick that left the player after the seat clock ran out', async () => {
+    const game = buildGame([onRound(), testSeat('b', 'round')], PYRAMID)
+    game.rounds[0]!.playStartsAt = Date.now() - PYRAMID.durationSeconds * 1000 - 1000
+    const table = await open(game)
+    await send(table, { event: 'spend-pick', pick: 'JP' })
+    expect((await seatA(table)).cursor.spent).toBeUndefined()
+  })
+
   it('ignores a board that is not priced by attempt', async () => {
     const typed = { ...PYRAMID, _type: 'capital-guess-challenge', maximumGuesses: undefined }
     const table = await open(buildGame([onRound(), testSeat('b', 'round')], typed))

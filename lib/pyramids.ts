@@ -231,12 +231,12 @@ export const pyramidAttempts = (difficulty: GameDifficulty, band: GameDifficulty
 
 /** A band that leaves a board fewer subjects than this (or than half the
  *  board, on a small one) borrows a neighbour on `BAND_LADDER`. */
-export const PYRAMID_MIN_SUBJECTS = 12
+const PYRAMID_MIN_SUBJECTS = 12
 
 /** How far a country may be shown beyond what its chance of being the answer
  *  justifies, as a share of deals — past it, its presence alone says "not
  *  this one". A fair country sits in `options` deals for every one it answers. */
-export const PYRAMID_MAX_TELL = 0.1
+const PYRAMID_MAX_TELL = 0.1
 
 /** Which bands a difficulty may borrow, nearest first. */
 const BAND_LADDER: Record<GameDifficulty, GameDifficulty[]> = {
@@ -359,6 +359,13 @@ const shareBetween = (frame: PopulationPyramid, from: number, to: number): numbe
  *  on are 65 and over. */
 export const PYRAMID_CHILD_COHORTS = 3
 export const PYRAMID_ELDER_COHORT = 13
+/** The age a cohort starts at, read off its label. */
+export const pyramidCohortAge = (cohort: number): number =>
+  Number.parseInt(PYRAMID_COHORTS[cohort] ?? '', 10)
+
+/** The chart's viewBox: bars in `width` by `height`, taller than wide so 21
+ *  cohorts read, with the age ticks in a gutter to the left when annotated. */
+export const PYRAMID_CHART = { width: 100, height: 88, ageGutter: 7 } as const
 /** Ages 20-49: the working years a migrant-labour slab swells. */
 const WORKING_COHORTS = [4, 10] as const
 
@@ -451,7 +458,7 @@ export const medianAge = (frame: PopulationPyramid): number => {
 }
 
 /** Men per 100 women across the working years. */
-export const workingAgeSexRatio = (frame: PopulationPyramid): number => {
+const workingAgeSexRatio = (frame: PopulationPyramid): number => {
   const { male, female } = workingAgeSexes(frame)
   return female ? (100 * male) / female : 100
 }
@@ -489,18 +496,24 @@ export interface PyramidFactRow {
 /** Below this, or above its mirror, the working years are visibly lopsided. */
 const SEX_RATIO_NOTABLE = { below: 92, above: 110 }
 
+const percent = (value: number) => `${Math.round(value)}%`
+const READOUT: { label: string; read: (frame: PopulationPyramid) => string }[] = [
+  { label: 'Median age', read: frame => String(Math.round(medianAge(frame))) },
+  { label: 'Under 15', read: frame => percent(shareUnder15(frame)) },
+  { label: '65 and over', read: frame => percent(shareOver65(frame)) },
+]
+
+/** One frame's headline numbers, as the round's live readout prints them. */
+export const pyramidReadout = (frame: PopulationPyramid): { label: string; value: string }[] =>
+  READOUT.map(({ label, read }) => ({ label, value: read(frame) }))
+
 /** The then → now numbers a reveal prints, every one read off the frames. */
 export const pyramidFactRows = ({ then, now }: PyramidFacts): PyramidFactRow[] => {
-  const percent = (value: number) => `${Math.round(value)}%`
-  const rows: PyramidFactRow[] = [
-    {
-      label: 'Median age',
-      then: String(Math.round(medianAge(then))),
-      now: String(Math.round(medianAge(now))),
-    },
-    { label: 'Under 15', then: percent(shareUnder15(then)), now: percent(shareUnder15(now)) },
-    { label: '65 and over', then: percent(shareOver65(then)), now: percent(shareOver65(now)) },
-  ]
+  const rows: PyramidFactRow[] = READOUT.map(({ label, read }) => ({
+    label,
+    then: read(then),
+    now: read(now),
+  }))
   const ratio = workingAgeSexRatio(now)
   if (ratio < SEX_RATIO_NOTABLE.below || ratio > SEX_RATIO_NOTABLE.above) {
     rows.push({

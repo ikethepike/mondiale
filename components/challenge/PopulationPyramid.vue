@@ -64,9 +64,11 @@
 
 <script lang="ts" setup>
 import {
+  PYRAMID_CHART,
   PYRAMID_CHILD_COHORTS,
   PYRAMID_COHORTS,
   PYRAMID_ELDER_COHORT,
+  pyramidCohortAge,
   pyramidFrameAt,
   pyramidPeakShare,
   pyramidScarIndex,
@@ -75,14 +77,10 @@ import {
 import { countryName } from '~~/lib/country'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-const WIDTH = 100
-/** Taller than it is wide: a pyramid is 21 stacked cohorts, and the shape only
- *  reads when the rows have room. The host sizes the box; this is the ratio. */
-const HEIGHT = 88
+const { width: WIDTH, height: HEIGHT, ageGutter: AGE_GUTTER } = PYRAMID_CHART
 const MIDLINE = WIDTH / 2
 /** Gap between cohort bars, in viewBox units. */
 const BAR_GAP = 0.55
-const AGE_GUTTER = 7
 
 const props = defineProps({
   isoCode: { type: String as PropType<ISOCountryCode>, required: true },
@@ -171,8 +169,10 @@ const guides = [boundaryY(PYRAMID_CHILD_COHORTS), boundaryY(PYRAMID_ELDER_COHORT
 
 const ticks = [
   { age: 0, y: HEIGHT },
-  { age: 15, y: boundaryY(PYRAMID_CHILD_COHORTS) + 1 },
-  { age: 65, y: boundaryY(PYRAMID_ELDER_COHORT) + 1 },
+  ...[PYRAMID_CHILD_COHORTS, PYRAMID_ELDER_COHORT].map(cohort => ({
+    age: pyramidCohortAge(cohort),
+    y: boundaryY(cohort) + 1,
+  })),
   { age: 100, y: 2.4 },
 ]
 

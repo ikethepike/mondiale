@@ -237,14 +237,14 @@ const resolve = (correct: boolean, cities: string[]) => {
 const submitRound = (score: number, picks: string[]) => resolve(score > 0, picks)
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0, spent.value) })
+  begin({ onTimeout: expire })
   nextTick(() => guessInput.value?.focus())
 }
 
 // Options pay by attempt through the shared table; the typed variant pays by
 // LADDER instead, so it must not route through the same helper — its clock
 // branch would price the answer on seconds, which is not this round's tension.
-const { spent, pending, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess, expire } = useAttemptOptions({
   challenge: computed(() =>
     challenge.value
       ? {

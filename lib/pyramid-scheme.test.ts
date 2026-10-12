@@ -92,11 +92,12 @@ describe('pyramid scheme dealer', () => {
   it('makes every hard decoy a story the readout can tell', async () => {
     // A bare shape gap in some frame left a quarter of hard deals unreadable:
     // every decoy must have aged years apart and show a readout gap a player can see.
+    const { agedApart, readoutFrom } = PYRAMID_TUNING.hard.decoys
     for (let round = 0; round < 40; round++) {
       const { country, options } = await deal('hard')
       for (const decoy of options.filter(option => option !== country)) {
-        expect(pyramidAgedApart(country, decoy)).toBeGreaterThanOrEqual(15)
-        expect(pyramidReadoutGap(country, decoy)).toBeGreaterThanOrEqual(6)
+        expect(pyramidAgedApart(country, decoy)).toBeGreaterThanOrEqual(agedApart!)
+        expect(pyramidReadoutGap(country, decoy)).toBeGreaterThanOrEqual(readoutFrom!)
       }
     }
   })

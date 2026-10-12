@@ -122,8 +122,6 @@ onMounted(() => {
   else play()
 })
 onBeforeUnmount(stop)
-
-defineExpose({ stop })
 </script>
 
 <style lang="scss" scoped>

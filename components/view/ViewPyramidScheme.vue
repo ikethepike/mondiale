@@ -40,7 +40,7 @@
       @scroll.passive="syncScrollEdges"
     >
       <div class="board">
-        <div class="chart">
+        <div class="chart" :style="chartGeometry">
           <PopulationPyramid
             :iso-code="challenge.country"
             :frame="frame"
@@ -68,17 +68,9 @@
               <dt>Year</dt>
               <dd>{{ shownYear }}</dd>
             </div>
-            <div>
-              <dt>Median age</dt>
-              <dd>{{ readout.median }}</dd>
-            </div>
-            <div>
-              <dt>Under 15</dt>
-              <dd>{{ readout.young }}%</dd>
-            </div>
-            <div>
-              <dt>65 and over</dt>
-              <dd>{{ readout.old }}%</dd>
+            <div v-for="row in readout" :key="row.label">
+              <dt>{{ row.label }}</dt>
+              <dd>{{ row.value }}</dd>
             </div>
           </dl>
         </aside>
@@ -96,7 +88,7 @@
     </section>
 
     <footer ref="footerEl" class="shell-footer">
-      <div v-if="!revealed" class="options card-options">
+      <div v-if="!revealed" class="options card-options" :class="{ compact: isShort && !isPhone }">
         <button
           v-for="option in challenge.options"
           :key="option"
@@ -132,16 +124,16 @@ import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
+import { attemptPicksScore } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import {
-  medianAge,
+  PYRAMID_CHART,
   pyramidFrameAt,
   pyramidPeakShare,
+  pyramidReadout,
   pyramidScars,
   pyramidYearAt,
-  shareOver65,
-  shareUnder15,
 } from '~~/lib/pyramids'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
@@ -200,28 +192,21 @@ const stakes = computed(() => {
     : base
 })
 
-// --- the chart ---------------------------------------------------------------
-
 const frame = ref(0)
 const shownYear = computed(() => pyramidYearAt(frame.value))
 const current = computed(() =>
   challenge.value ? pyramidFrameAt(challenge.value.country, frame.value) : undefined
 )
-const readout = computed(() => {
-  const at = current.value
-  if (!at) return { median: 0, young: 0, old: 0 }
-  return {
-    median: Math.round(medianAge(at)),
-    young: Math.round(shareUnder15(at)),
-    old: Math.round(shareOver65(at)),
-  }
-})
+const readout = computed(() => (current.value ? pyramidReadout(current.value) : []))
 const peak = computed(() =>
   challenge.value ? pyramidPeakShare(challenge.value.options) : undefined
 )
 const scars = computed(() => (challenge.value ? pyramidScars(challenge.value.country) : []))
-
-// --- answering ---------------------------------------------------------------
+const chartWidth = PYRAMID_CHART.width + PYRAMID_CHART.ageGutter
+const chartGeometry = {
+  '--chart-aspect': chartWidth / PYRAMID_CHART.height,
+  '--chart-gutter': `${(PYRAMID_CHART.ageGutter / chartWidth) * 100}%`,
+}
 
 /** This mount's own picks, once banked. */
 const picks = ref<ISOCountryCode[]>()
@@ -234,7 +219,13 @@ const banked = computed<ISOCountryCode[]>(() =>
     : (picks.value ?? currentRound.value?.round.groupAnswers[gameStore.seatId]?.submitted ?? [])
 )
 const revealed = outcomeShown
-const solved = computed(() => !!challenge.value && banked.value.includes(challenge.value.country))
+const solved = computed(() => {
+  const active = challenge.value
+  return (
+    !!active &&
+    attemptPicksScore(banked.value, active.country, active.maximumGuesses, active.maximumPoints) > 0
+  )
+})
 const wrongPick = computed(() =>
   banked.value.filter(isoCode => isoCode !== challenge.value?.country).at(-1)
 )
@@ -254,11 +245,11 @@ const submitRound = (_score: number, attempt: ISOCountryCode[]) => {
   submitOnce(attempt)
 }
 
-const start = () => begin({ onTimeout: () => submitRound(0, spent.value) })
+const start = () => begin({ onTimeout: expire })
 
 // The winning pick is never broadcast, and the four options make even a wrong
 // name too strong a clue — the policy drops it to presence.
-const { spent, pending, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess, expire } = useAttemptOptions({
   challenge,
   submitted,
   started,
@@ -268,8 +259,6 @@ const { spent, pending, onGuess } = useAttemptOptions({
   recorded: spentPicks,
   record: spendPick,
 })
-
-// --- the browsable reveal ----------------------------------------------------
 
 const browseHold = computed(() =>
   !gameStore.watching &&
@@ -286,9 +275,6 @@ const { send: finish } = useAckOnce(() => ({ event: 'round-reveal-done', ...seat
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/scroll-fade' as *;
-
-/** PopulationPyramid's annotated viewBox, width over height. */
-$chart-aspect: calc(107 / 88);
 
 .stage {
   --chart-height: 52dvh;
@@ -330,7 +316,7 @@ $chart-aspect: calc(107 / 88);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  width: min(100%, calc(var(--chart-height) * #{$chart-aspect}), 96rem);
+  width: min(100%, calc(var(--chart-height) * var(--chart-aspect)), 96rem);
 
   :deep(.population-pyramid svg) {
     max-height: var(--chart-height);
@@ -344,7 +330,7 @@ $chart-aspect: calc(107 / 88);
   font-size: 1.1rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding-left: 7%;
+  padding-left: var(--chart-gutter);
 
   .men {
     color: var(--pyramid-male);
@@ -458,8 +444,6 @@ $chart-aspect: calc(107 / 88);
     gap: 0.8rem;
   }
 
-  // What the prompt, the readout row, the timeline and two rows of options
-  // leave over — a short phone otherwise stacks them over the chart.
   .stage:not(.revealed) {
     --chart-height: clamp(12rem, calc(100dvh - 46rem), 44dvh);
   }
@@ -499,18 +483,7 @@ $chart-aspect: calc(107 / 88);
   }
 
   .card-options {
-    gap: 0.8rem;
     grid-template-columns: repeat(4, minmax(0, 14rem));
-  }
-
-  .card-option {
-    gap: 0.3rem;
-    padding: 0.5rem;
-    font-size: 1.3rem;
-
-    :deep(.option-flag) {
-      height: 2.6rem;
-    }
   }
 }
 </style>

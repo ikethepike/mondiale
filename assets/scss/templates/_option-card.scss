@@ -7,6 +7,20 @@
   gap: 1.4rem;
   display: grid;
   pointer-events: auto;
+
+  &.compact {
+    gap: 0.8rem;
+
+    .card-option {
+      gap: 0.3rem;
+      padding: 0.5rem;
+      font-size: 1.3rem;
+    }
+
+    .option-flag {
+      height: 2.6rem;
+    }
+  }
 }
 
 .card-option {

@@ -109,36 +109,52 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
     })
   }
 
+  const expired = shallowRef(false)
+  const failOut = () => {
+    if (!submitted.value) submitRound(0, spent.value)
+  }
+
   const onGuess = (country: Country, name?: Pick) => {
     const active = challenge.value
-    if (!active || submitted.value || !started.value || pending.value) return
+    if (!active || submitted.value || !started.value || pending.value || expired.value) return
     const pick = name ?? (country.isoCode as Pick)
-    if (active.maximumGuesses && spent.value.includes(pick)) return
+    if (active.maximumGuesses && (spent.value.includes(pick) || attemptsLeft.value <= 0)) return
     if (!record || !active.maximumGuesses) return judge(active, country, pick, name)
 
     pending.value = pick
     void record(pick).then(landed => {
       pending.value = undefined
-      if (landed && !submitted.value && challenge.value === active) {
+      // A snapshot swaps the challenge object mid-flight; only a new subject drops the verdict.
+      if (landed && !submitted.value && challenge.value?.country === active.country) {
         judge(active, country, pick, name)
       }
+      if (expired.value) failOut()
     })
   }
 
-  // A reload between a recorded answer and its submit: the server already
-  // holds the pick, so the round finishes on it rather than greying it out.
+  /** The clock ran out: a pick still on its way is judged first, since the
+   *  server may already be holding it. */
+  const expire = () => {
+    expired.value = true
+    if (!pending.value) failOut()
+  }
+
+  // A reload after a recorded pick: the server already holds the sequence, so
+  // the round finishes on it rather than handing the guesses back.
   watch(
     [sequence, started, submitted],
     () => {
       const active = challenge.value
       if (!active?.maximumGuesses || !started.value || submitted.value) return
       const hit = sequence.value.findIndex(isAnswer(active))
-      if (hit < 0) return
-      const picks = sequence.value.slice(0, hit + 1)
-      submitRound(scoreFor(active, picks), picks)
+      if (hit >= 0) {
+        const picks = sequence.value.slice(0, hit + 1)
+        return submitRound(scoreFor(active, picks), picks)
+      }
+      if (attemptsLeft.value <= 0) failOut()
     },
     { immediate: true }
   )
 
-  return { spent, pending, attemptsUsed, attemptsLeft, onGuess }
+  return { spent, pending, attemptsUsed, attemptsLeft, onGuess, expire }
 }
