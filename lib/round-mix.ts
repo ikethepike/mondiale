@@ -204,7 +204,7 @@ export const MIX_TUNING = {
    *  complaint, two is fine, and a theme should come back around. */
   groupBite: 0.6,
   groupHalfLife: 1.5,
-  /** Weakest of the three — eight mechanics over 28 kinds means a hard bite
+  /** Weakest of the three — nine mechanics over 37 kinds means a hard bite
    *  would starve whole mechanics at a small table. */
   mechanicBite: 0.4,
   mechanicHalfLife: 1,
