@@ -1,6 +1,6 @@
 <template>
   <template v-if="challenge.rulers">
-    <h1 class="map-caption">One of these is not its country's ruling party</h1>
+    <h1 class="map-caption">{{ RULERS_PROMPT }}</h1>
     <span class="map-caption sub">Tap the party that isn't in government</span>
     <ChallengeTimerRadial
       class="gate-clock rulers-clock"
@@ -15,6 +15,7 @@
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { RULERS_PROMPT } from '~~/lib/parties'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { RULERS_SECONDS } from '~~/lib/gate-timing'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -35,7 +36,14 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, showInterstitial, submitAnswer, giveUp, isHard } = useGateChallenge()
+const {
+  challenge: onStage,
+  status,
+  showInterstitial,
+  submitAnswer,
+  giveUp,
+  isHard,
+} = useGateChallenge()
 
 const showDoubleTapHint = ref(false)
 
@@ -82,7 +90,7 @@ onBeforeUnmount(() => {
  */
 const restoreStage = () => {
   stop()
-  const rulers = props.challenge.rulers
+  const rulers = onStage.value?.rulers
   if (rulers) {
     gameStore.map.countryLogos = { ...rulers.logos, ...(rulers.trueLogo ?? {}) }
     // The reveal names every party, hard mode included — the lesson lands
@@ -99,6 +107,13 @@ const restoreStage = () => {
   gameStore.map.framePad = undefined
   return undefined
 }
+
+// The true government lands with the verdict, in the flush that swaps this view out.
+watch(
+  () => onStage.value?.rulers?.trueLogo,
+  trueLogo => trueLogo && restoreStage(),
+  { flush: 'sync' }
+)
 
 const resolve = (isoCode: ISOCountryCode) => {
   restoreStage()
