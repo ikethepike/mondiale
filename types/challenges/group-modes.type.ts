@@ -516,6 +516,8 @@ export interface GovernmentState {
     scored: Record<string, number>
     /** Beat 3 only: where each sorted bench truly files. */
     sides?: Record<string, 'government' | 'opposition'>
+    /** When the hold ends — stamped so a restart resumes it rather than restarting it. */
+    holdUntil?: number
   }
   /** The answers, revealed only once the last beat resolves. */
   answers?: GovernmentAnswers
