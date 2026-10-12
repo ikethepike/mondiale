@@ -5,7 +5,9 @@ import { getRoundChallenge } from '~~/lib/challenges'
 import {
   boardSpeakers,
   isSignLanguage,
+  languageBounce,
   speaksLanguage,
+  speaksRegionally,
   spokenLanguages,
   tongueBuzzRule,
   tongueBuzzTally,
@@ -225,6 +227,20 @@ describe('spoken languages', () => {
     // A regional official the country also speaks at scale still counts.
     expect(COUNTRIES.ES.regionalLanguages).toContain('Catalan')
     expect(speaksLanguage('ES', 'Catalan')).toBe(true)
+  })
+
+  it('accepts a regional speaker without requiring it', () => {
+    // Naming Austria for Croatian bounces free on any board: right about a
+    // statute, never one of the answers.
+    const croatian = challengeOf('Croatian', ['BA', 'HR', 'ME'])
+    expect(speaksRegionally('AT', 'Croatian')).toBe(true)
+    expect(languageBounce(croatian, 'AT')).toBe('regional')
+    expect(languageBounce(challengeOf('Italian', ['IT', 'CH']), 'SI')).toBe('regional')
+    expect(languageBounce(croatian, 'HR')).toBeUndefined()
+    expect(languageBounce(croatian, 'FR')).toBeUndefined()
+    // Spain speaks Catalan at scale, so it is an answer, never a bounce.
+    expect(speaksRegionally('ES', 'Catalan')).toBe(false)
+    expect(languageBounce(challengeOf('French', ['FR', 'BE'], ['europe']), 'SN')).toBe('off-board')
   })
 
   it('never counts a sign language as spoken', () => {

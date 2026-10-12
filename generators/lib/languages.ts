@@ -136,8 +136,11 @@ export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
   // countries-list's own name for ISO 639-1 "so": the country, not the language.
   Somalia: 'Somali',
   Azeri: 'Azerbaijani',
-  // countries-list's ISO 639-1 "pa": no table keyed it before, so the clean spelling breaks none.
+  Castilian: 'Spanish',
+  // countries-list's names for ISO 639-1 "pa" and "or": no table keyed them
+  // before, so the current spellings break none.
   'Panjabi / Punjabi': 'Punjabi',
+  Oriya: 'Odia',
   Bokmal: 'Norwegian',
   'Bokmal Norwegian': 'Norwegian',
   'Nynorsk Norwegian': 'Norwegian',
@@ -239,6 +242,10 @@ export const regionalOfficialLanguages = (text: string | undefined): string[] =>
 /** The share of the population a language is spoken by, in percent. */
 export const SPOKEN_SHARE_THRESHOLD = 5
 
+/** Or the head count, where a share undersells a huge country: India's 2.7%
+ *  Punjabi is more speakers than Pakistan's 38.8% of a smaller one. */
+export const SPOKEN_POPULATION_FLOOR = 20_000_000
+
 /**
  * Past this the shares are a can-speak survey, not a first-language census —
  * Hungary's "English 25.3%, German 12.6%" is schooling, not a community.
@@ -262,13 +269,19 @@ const segmentShare = (segment: string): number | undefined => {
   return share === undefined ? undefined : Number.parseFloat(share.replace(/,/g, ''))
 }
 
+/** Is this share of this population enough to call the language spoken there? */
+export const isWidelySpoken = (share: number, population: number | undefined): boolean =>
+  share >= SPOKEN_SHARE_THRESHOLD || (share / 100) * (population ?? 0) >= SPOKEN_POPULATION_FLOOR
+
 /**
- * Every language a first-language tally puts at `SPOKEN_SHARE_THRESHOLD` or
- * more — Ukraine's, Latvia's and Estonia's Russian, which no other source
- * carries. Empty for a can-speak survey and for the half of the corpus that
- * states no shares at all.
+ * Every language a first-language tally puts past `isWidelySpoken` — Ukraine's,
+ * Latvia's and Estonia's Russian, which no other source carries. Empty for a
+ * can-speak survey and for the half of the corpus that states no shares at all.
  */
-export const widelySpokenLanguages = (text: string | undefined): string[] => {
+export const widelySpokenLanguages = (
+  text: string | undefined,
+  population: number | undefined
+): string[] => {
   if (!text) return []
   const segments = splitLanguageSegments(text).map(segment => ({
     segment,
@@ -279,7 +292,7 @@ export const widelySpokenLanguages = (text: string | undefined): string[] => {
 
   const found: string[] = []
   for (const { segment, share } of segments) {
-    if (share === undefined || share < SPOKEN_SHARE_THRESHOLD) continue
+    if (share === undefined || !isWidelySpoken(share, population)) continue
     if (NOT_THE_SAME_LANGUAGE.has(segmentName(segment))) continue
     const language = typeableLanguage(segment)
     if (language && ISO_LANGUAGE_NAMES.has(language)) found.push(language)

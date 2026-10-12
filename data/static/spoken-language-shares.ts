@@ -1,30 +1,44 @@
 /**
  * Speaker shares for the languages a country's Factbook language prose NAMES
- * but cannot size — Malaysia lists "Chinese (Cantonese, Mandarin, …)" with no
- * figure, so no share threshold can ever reach it. Each share is the matching
- * group's own figure from the same Factbook entry's "Ethnic groups", quoted in
- * `basis`; `generators/lib/languages.test.ts` holds every row to that quote and
- * to the language prose naming the language. Applied by create-countries-file.ts
- * under the same `SPOKEN_SHARE_THRESHOLD` as the parsed shares.
+ * but the share parse cannot credit: `unsized` where the prose gives no figure
+ * (Malaysia's "Chinese (Cantonese, Mandarin, …)"), `survey` where its figures
+ * add past 100% and are skipped as a can-speak survey (Andorra's "Castilian
+ * 40.3%"). Each share is the matching group's figure from the same entry's
+ * "Ethnic groups", quoted in `basis` — a home community, not schooling.
+ * `generators/lib/languages.test.ts` holds every row to that quote and that
+ * reason; create-countries-file.ts admits a row through `isWidelySpoken`, the
+ * same rule as a parsed share.
  */
 export const SPOKEN_LANGUAGE_SHARES: {
-  [isoCode: string]: { language: string; share: number; basis: string }[]
+  [isoCode: string]: {
+    language: string
+    share: number
+    basis: string
+    reason: 'unsized' | 'survey'
+  }[]
 } = {
-  BJ: [{ language: 'Yoruba', share: 12, basis: 'Yoruba and related 12%' }],
-  BN: [{ language: 'Chinese', share: 9.6, basis: 'Chinese 9.6%' }],
-  GM: [{ language: 'Wolof', share: 12.9, basis: 'Wolof 12.9%' }],
+  AD: [
+    { language: 'Spanish', share: 34.3, basis: 'Spanish 34.3%', reason: 'survey' },
+    { language: 'Portuguese', share: 10, basis: 'Portuguese 10%', reason: 'survey' },
+    { language: 'French', share: 5.6, basis: 'French 5.6%', reason: 'survey' },
+  ],
+  BJ: [{ language: 'Yoruba', share: 12, basis: 'Yoruba and related 12%', reason: 'unsized' }],
+  BN: [{ language: 'Chinese', share: 9.6, basis: 'Chinese 9.6%', reason: 'unsized' }],
+  GM: [{ language: 'Wolof', share: 12.9, basis: 'Wolof 12.9%', reason: 'unsized' }],
   MY: [
-    { language: 'Chinese', share: 20.6, basis: 'Chinese 20.6%' },
-    { language: 'Tamil', share: 6, basis: 'Indian 6%' },
+    { language: 'Chinese', share: 20.6, basis: 'Chinese 20.6%', reason: 'unsized' },
+    // A proxy: Tamils are about 85% of Malaysian Indians, ≈5.1% of the
+    // country — still past the threshold.
+    { language: 'Tamil', share: 6, basis: 'Indian 6%', reason: 'unsized' },
   ],
-  NE: [{ language: 'Hausa', share: 53.1, basis: 'Hausa 53.1%' }],
+  NE: [{ language: 'Hausa', share: 53.1, basis: 'Hausa 53.1%', reason: 'unsized' }],
   NG: [
-    { language: 'Hausa', share: 30, basis: 'Hausa 30%' },
-    { language: 'Yoruba', share: 15.5, basis: 'Yoruba 15.5%' },
-    { language: 'Igbo', share: 15.2, basis: 'Igbo (Ibo) 15.2%' },
+    { language: 'Hausa', share: 30, basis: 'Hausa 30%', reason: 'unsized' },
+    { language: 'Yoruba', share: 15.5, basis: 'Yoruba 15.5%', reason: 'unsized' },
+    { language: 'Igbo', share: 15.2, basis: 'Igbo (Ibo) 15.2%', reason: 'unsized' },
   ],
-  SN: [{ language: 'Wolof', share: 39.7, basis: 'Wolof 39.7%' }],
-  SY: [{ language: 'Kurdish', share: 10, basis: 'Kurd ~10%' }],
-  TG: [{ language: 'Ewe', share: 42.4, basis: 'Adja-Ewe/Mina 42.4%' }],
-  TR: [{ language: 'Kurdish', share: 19, basis: 'Kurdish 19%' }],
+  SN: [{ language: 'Wolof', share: 39.7, basis: 'Wolof 39.7%', reason: 'unsized' }],
+  SY: [{ language: 'Kurdish', share: 10, basis: 'Kurd ~10%', reason: 'unsized' }],
+  TG: [{ language: 'Ewe', share: 42.4, basis: 'Adja-Ewe/Mina 42.4%', reason: 'unsized' }],
+  TR: [{ language: 'Kurdish', share: 19, basis: 'Kurdish 19%', reason: 'unsized' }],
 }

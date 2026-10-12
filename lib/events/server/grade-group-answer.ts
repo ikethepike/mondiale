@@ -13,6 +13,7 @@ import {
   speaksTongue,
 } from '~~/lib/challenges'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
+import { languageBounce } from '~~/lib/language-rounds'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
@@ -166,7 +167,11 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'mother-tongue': {
-      blitzOn(expectChallengeType(roundChallenge, 'mother-tongue-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'mother-tongue-challenge')
+      blitzOn(
+        challenge,
+        submission.ranking.filter(isoCode => !languageBounce(challenge, isoCode))
+      )
       break
     }
     case 'flag-palette': {

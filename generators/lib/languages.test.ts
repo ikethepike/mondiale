@@ -5,8 +5,10 @@ import { spokenLanguages } from '~~/lib/language-rounds'
 import { SPOKEN_LANGUAGE_SHARES } from '~~/data/static/spoken-language-shares'
 import {
   ISO_LANGUAGE_NAMES,
-  SPOKEN_SHARE_THRESHOLD,
+  LANGUAGE_ALIASES,
+  SPOKEN_POPULATION_FLOOR,
   canonicalLanguage,
+  isWidelySpoken,
   officialLanguages,
   regionalOfficialLanguages,
   splitLanguageSegments,
@@ -24,7 +26,11 @@ const factbookLanguages = (isoCode: string): string | undefined => {
 
 const officialFor = (isoCode: string) => officialLanguages(factbookLanguages(isoCode))
 const regionalFor = (isoCode: string) => regionalOfficialLanguages(factbookLanguages(isoCode))
-const spokenFor = (isoCode: string) => widelySpokenLanguages(factbookLanguages(isoCode))
+const spokenFor = (isoCode: string) =>
+  widelySpokenLanguages(
+    factbookLanguages(isoCode),
+    COUNTRIES[isoCode as ISOCountryCode]?.people.population?.amount
+  )
 
 describe('splitting the prose', () => {
   it('splits on top-level separators only', () => {
@@ -205,6 +211,13 @@ describe('widely spoken languages', () => {
     expect(spokenFor('US')).toContain('Spanish')
   })
 
+  it('counts a head count a share undersells', () => {
+    // India's 2.7% Punjabi and 4.2% Urdu are each tens of millions of people.
+    expect(spokenFor('IN')).toEqual(expect.arrayContaining(['Punjabi', 'Urdu']))
+    expect(isWidelySpoken(1, SPOKEN_POPULATION_FLOOR * 100)).toBe(true)
+    expect(isWidelySpoken(1, SPOKEN_POPULATION_FLOOR * 99)).toBe(false)
+  })
+
   it('stops at the share threshold', () => {
     // Austria: "Croatian (official in Burgenland) 1.6%".
     expect(spokenFor('AT')).toEqual(['German'])
@@ -240,15 +253,29 @@ describe('the curated speaker shares', () => {
         { 'Ethnic groups'?: { text?: string } } | undefined
     )?.['Ethnic groups']?.text ?? ''
 
-  it('sizes only what the language prose names but cannot size', () => {
+  /** The prose names the language in either spelling ("Castilian" for Spanish). */
+  const proseNames = (isoCode: string, language: string): boolean => {
+    const text = factbookLanguages(isoCode) ?? ''
+    return [
+      language,
+      ...Object.keys(LANGUAGE_ALIASES).filter(name => LANGUAGE_ALIASES[name] === language),
+    ].some(name => new RegExp(`\\b${name}\\b`).test(text))
+  }
+
+  it('sizes only what the language prose names but the share parse cannot credit', () => {
     for (const [isoCode, rows] of Object.entries(SPOKEN_LANGUAGE_SHARES)) {
-      for (const { language, share, basis } of rows) {
+      const population = COUNTRIES[isoCode as ISOCountryCode].people.population?.amount
+      for (const { language, share, basis, reason } of rows) {
         const where = `${isoCode}/${language}`
-        expect(factbookLanguages(isoCode), where).toContain(language)
+        expect(proseNames(isoCode, language), where).toBe(true)
         expect(spokenFor(isoCode), where).not.toContain(language)
+        // A survey row's entry is one the parse skipped whole; an unsized one gives no figures.
+        const figures = /\d\s*%/.test(factbookLanguages(isoCode) ?? '')
+        expect(figures, where).toBe(reason === 'survey')
+        if (reason === 'survey') expect(spokenFor(isoCode), where).toEqual([])
         expect(ethnicGroups(isoCode), where).toContain(basis)
         expect(Number.parseFloat(basis.replace(/^\D*?(\d)/, '$1')), where).toBe(share)
-        expect(share, where).toBeGreaterThanOrEqual(SPOKEN_SHARE_THRESHOLD)
+        expect(isWidelySpoken(share, population), where).toBe(true)
         expect(ISO_LANGUAGE_NAMES.has(language), where).toBe(true)
         expect(COUNTRIES[isoCode as ISOCountryCode].languages, where).toContain(language)
       }

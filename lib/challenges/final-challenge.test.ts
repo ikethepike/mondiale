@@ -1016,13 +1016,13 @@ describe('isCorrectFinalAnswer', () => {
   it('accepts a country whose language is official but missing from the spoken list', () => {
     // "Speaks English" is dealt from anywhere; Burundi makes it official, and
     // the spoken list alone graded Burundi wrong and left it off the reveal.
-    expect(COUNTRIES.BI.languages).not.toContain('English')
     for (const [language, isoCode] of [
-      ['Quechua', 'PE'],
+      ['Guarani', 'BO'],
       ['Swahili', 'RW'],
       ['English', 'BI'],
-      ['Somali', 'ET'],
+      ['Portuguese', 'GQ'],
     ] as const) {
+      expect(COUNTRIES[isoCode].languages, `${language}/${isoCode}`).not.toContain(language)
       const challenge = { _type: 'language-challenge', language } as const
       expect(
         isCorrectFinalAnswer({

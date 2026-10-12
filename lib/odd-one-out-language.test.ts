@@ -25,12 +25,14 @@ describe('odd-one-out language lineups', () => {
     delete process.env.FORCE_INDIVIDUAL_VARIANT
   })
 
-  // Each impostor makes the language official without the spoken list carrying it.
+  // Each impostor makes the language official without the spoken list carrying
+  // it — Austria only in Burgenland, which is accepted but never required.
   const officialOnly: [string, ISOCountryCode][] = [
     ['Swahili', 'RW'],
     ['English', 'BI'],
     ['Portuguese', 'GQ'],
     ['Guarani', 'BO'],
+    ['Croatian', 'AT'],
   ]
 
   it.each(officialOnly)('never deals a %s speaker (%s) as the impostor', async (language, iso) => {
@@ -41,6 +43,7 @@ describe('odd-one-out language lineups', () => {
     const dealt = await getIndividualChallenge({ accessorId: 'isoCode' })
     expect(dealt.oddOneOut?.kind).toBe('language')
     expect(dealt.oddOneOut?.value).toBe(language)
+    expect(dealt.country).not.toBe(iso)
     expect(speaksLanguage(dealt.country, language), dealt.country).toBe(false)
     for (const isoCode of dealt.oddOneOut!.countries) {
       if (isoCode === dealt.country) continue

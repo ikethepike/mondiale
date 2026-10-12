@@ -137,3 +137,24 @@ export const speaksButOffBoard = (
   // speaker is standing somewhere else" — never a second opinion on who speaks.
   return speaksLanguage(isoCode, challenge.language)
 }
+
+/** Does the country make the language official only in a region, without speaking it at scale? */
+export const speaksRegionally = (isoCode: ISOCountryCode, language: string): boolean =>
+  !speaksLanguage(isoCode, language) &&
+  (COUNTRIES[isoCode]?.regionalLanguages ?? []).includes(language)
+
+/**
+ * Why a guess outside the answer set bounces free instead of costing a point:
+ * the speaker stands off the board, or names a regional statute (Austria's
+ * Croatian) — accepted, never required. The ONE predicate both language rounds'
+ * views and the server's grading read, so a bounced guess is never charged.
+ */
+export const languageBounce = (
+  challenge: LanguageRound | undefined,
+  isoCode: ISOCountryCode
+): 'off-board' | 'regional' | undefined => {
+  if (!challenge || challenge.countries.includes(isoCode)) return undefined
+  if (speaksButOffBoard(challenge, isoCode)) return 'off-board'
+  if (speaksRegionally(isoCode, challenge.language)) return 'regional'
+  return undefined
+}

@@ -51,8 +51,8 @@ import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
 import {
-  SPOKEN_SHARE_THRESHOLD,
   canonicalLanguage,
+  isWidelySpoken,
   officialLanguages,
   regionalOfficialLanguages,
   widelySpokenLanguages,
@@ -171,6 +171,12 @@ const normalizeCountry = ({
   // data/flags.gen.ts (create-flags-file.ts), lazy-loaded via lib/country.ts.
   const flag = readFileSync(`data/static/flags/${isoCode.toLowerCase()}.svg`)
 
+  // Factbook nests the headline figure under Population.total; the bare
+  // Population node has no .text of its own (it drifted from a flat node).
+  const population =
+    wppAmount<'people'>(isoCode, 'population', 'people') ??
+    getTextNode<'people'>(data['People and Society'].Population?.total, 'people')
+
   return {
     url,
     name: names,
@@ -178,7 +184,7 @@ const normalizeCountry = ({
     coordinates: data.Geography['Geographic coordinates']?.text || '',
     region: getRegion({ data, isoCode }),
     membership: getMembership({ briMembership, data, names, isoCode }),
-    languages: getLanguages({ data, isoCode }),
+    languages: getLanguages({ data, isoCode, population: population?.amount }),
     officialLanguages: getOfficialLanguages({ data, isoCode }),
     regionalLanguages: getRegionalLanguages(data),
     currency: getCurrency({ isoCode }),
@@ -353,11 +359,7 @@ const normalizeCountry = ({
       childrenPerWoman:
         wppAmount(isoCode, 'childrenPerWoman', 'children') ??
         getTextNode<'children'>(data['People and Society']['Total fertility rate'], 'children'),
-      // Factbook nests the headline figure under Population.total; the bare
-      // Population node has no .text of its own (it drifted from a flat node).
-      population:
-        wppAmount(isoCode, 'population', 'people') ??
-        getTextNode<'people'>(data['People and Society'].Population?.total, 'people'),
+      population,
       populationGrowthRate:
         wppAmount(isoCode, 'populationGrowthRate', '%') ??
         getTextNode<'%'>(data['People and Society']['Population growth rate'], '%'),
@@ -1084,20 +1086,26 @@ const factbookLanguageText = (data: FactbookResponse): string | undefined => {
 }
 
 /**
- * Every language the country speaks: `countries-list`'s handful of ISO 639-1
- * codes, plus each language the Factbook puts `SPOKEN_SHARE_THRESHOLD` of the
- * population behind — read from the prose's own shares, or, where the prose
- * names a language without one, from `SPOKEN_LANGUAGE_SHARES`. The codes
- * alone left Ukraine, Latvia and Estonia out of "Who speaks Russian?".
+ * Every language the country speaks: the `countries-list` codes, plus each
+ * language `isWidelySpoken` admits — sized by the prose's own share or, where
+ * the prose cannot size it, by `SPOKEN_LANGUAGE_SHARES`.
  */
-const getLanguages = ({ data, isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {
+const getLanguages = ({
+  data,
+  isoCode,
+  population,
+}: {
+  data: FactbookResponse
+  isoCode: string
+  population: number | undefined
+}): string[] => {
   const sized = (SPOKEN_LANGUAGE_SHARES[isoCode] ?? [])
-    .filter(({ share }) => share >= SPOKEN_SHARE_THRESHOLD)
+    .filter(({ share }) => isWidelySpoken(share, population))
     .map(({ language }) => language)
   return [
     ...new Set([
       ...getListedLanguages({ isoCode }),
-      ...widelySpokenLanguages(factbookLanguageText(data)),
+      ...widelySpokenLanguages(factbookLanguageText(data), population),
       ...sized,
     ]),
   ]
