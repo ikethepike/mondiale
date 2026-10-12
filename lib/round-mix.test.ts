@@ -1,4 +1,8 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { stripComments } from '~~/scripts/source-scrape'
 import {
   CHALLENGE_GROUP_BY_KIND,
   CHALLENGE_GROUPS,
@@ -14,6 +18,7 @@ import type {
 } from '~~/types/challenges/traversal-challenge.type'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { GameDifficulty } from '~~/types/game.types'
+import { ROUND_BEATS } from './round-beats'
 import {
   isKindFeasible,
   MECHANIC_BY_KIND,
@@ -23,6 +28,7 @@ import {
   recentKinds,
   ROUND_KINDS,
   ROUND_WEIGHTS,
+  type RoundMechanic,
 } from './round-mix'
 
 /** Seeded RNG so the statistical assertions below are reproducible. Local to
@@ -83,6 +89,96 @@ describe('the mix tables', () => {
         )
       }
     }
+  })
+})
+
+/**
+ * The mechanic axis pinned whole: a kind moving between mechanics changes what
+ * the decay spaces it from, so the move is a review here, not a quiet edit.
+ */
+const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
+  typed: ['traversal', 'capital-guess', 'composition', 'name-that-water', 'unique-or-bust'],
+  collect: [
+    'neighbour-blitz',
+    'mother-tongue',
+    'star-chart',
+    'terra-incognita',
+    'river-run',
+    'shared-shores',
+    'highlands',
+    'no-mans-land',
+    'clean-sweep',
+  ],
+  pin: ['heritage-hunt', 'pin-landmark', 'ghost-state', 'hot-cold', 'vintage'],
+  choice: ['two-truths', 'trend-race'],
+  buzz: [
+    'anthem-buzz',
+    'tongue-buzz',
+    'silhouette',
+    'stat-detective',
+    'flag-palette',
+    'flashpoint',
+    'ground-plan',
+    'empire',
+  ],
+  turns: ['border-chain', 'atlas', 'manhunt'],
+  order: ['ranking', 'timeline'],
+  draw: ['sketch'],
+  match: ['government', 'pyramid-scheme'],
+}
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const readSource = (file: string) =>
+  stripComments(file, fs.readFileSync(path.join(ROOT, file), 'utf8'))
+
+/** Each kind's view source, resolved through the dispatch table the room renders. */
+const viewSourceByKind = (): Map<RoundChallengeKind, string> => {
+  const dispatch = readSource('components/view/dispatch.ts')
+  const imports = new Map(
+    [...dispatch.matchAll(/import (View\w+) from '~\/(components\/view\/View\w+\.vue)'/g)].map(
+      ([, name, file]) => [name!, file!]
+    )
+  )
+  const table = dispatch.slice(dispatch.indexOf('const GROUP_VIEWS'))
+  const body = table.slice(table.indexOf('{') + 1, table.indexOf('\n}'))
+  return new Map(
+    [...body.matchAll(/^\s*'?([\w-]+)'?: (View\w+),$/gm)].map(([, kind, view]) => [
+      kind as RoundChallengeKind,
+      readSource(imports.get(view!)!),
+    ])
+  )
+}
+
+describe('the mechanic axis', () => {
+  it('pins every kind to the mechanic it plays as', () => {
+    const pinned = Object.entries(KINDS_BY_MECHANIC).flatMap(([mechanic, kinds]) =>
+      kinds.map(kind => [kind, mechanic] as const)
+    )
+    expect(Object.fromEntries(pinned)).toEqual(MECHANIC_BY_KIND)
+    expect(pinned).toHaveLength(ROUND_KINDS.length)
+  })
+
+  describe('agrees with how each view takes its answer', () => {
+    const views = viewSourceByKind()
+    const TYPED_CONSOLE = /<(CountryGuessInput|SuggestInput|input)\b/
+    const TYPED_MECHANICS: RoundMechanic[] = ['typed', 'collect', 'buzz', 'turns']
+
+    it('reads a view for every kind', () => {
+      expect([...views.keys()].sort()).toEqual([...ROUND_KINDS].sort())
+    })
+
+    it.each(ROUND_KINDS)('%s', kind => {
+      const source = views.get(kind)!
+      const mechanic = MECHANIC_BY_KIND[kind]
+      if (source.includes('useBuzzRound(')) expect(mechanic).toBe('buzz')
+      if (source.includes('useCollectSetRound(')) expect(mechanic).toBe('collect')
+      if (source.includes('usePinDrop(')) expect(mechanic).toBe('pin')
+      if (TYPED_CONSOLE.test(source)) expect(TYPED_MECHANICS).toContain(mechanic)
+      if (mechanic === 'typed' || mechanic === 'buzz') expect(source).toMatch(TYPED_CONSOLE)
+      // Seat-by-seat needs a server engine to rotate the seats; a classic
+      // clock runs the whole table at once.
+      if (mechanic === 'turns') expect(ROUND_BEATS[kind].owner).toBe('engine')
+    })
   })
 })
 

@@ -2,7 +2,22 @@ import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { ANTHEMS } from '~~/data/anthems.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import {
+  SHARED_MELODIES,
+  anthemTuneMatches,
+  sharedTuneCountries,
+  sharedTuneLine,
+} from '~~/lib/anthems'
+import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import { ATTRIBUTION_FREE, corroborates, isPlayable } from '~~/generators/anthem-corroboration'
+import {
+  curateAnthem,
+  isComposerName,
+  isUncuratedRawLabel,
+} from '~~/generators/lib/anthem-selection'
+import { isBoilerplateCredit } from '~~/generators/lib/licence'
+import type { AnthemBuzzChallenge } from '~~/types/challenges/group-modes.type'
+import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -136,5 +151,140 @@ describe('anthem dataset', () => {
     })
 
     expect(unverifiable.map(([iso, entry]) => `${iso}: ${entry?.sourceFile}`)).toEqual([])
+  })
+
+  it("titles each country with the anthem its clip plays, not a realm's", () => {
+    const titles = Object.fromEntries(
+      (['NZ', 'AG', 'BZ', 'GD', 'PS', 'ZA'] as const).map(iso => [iso, ANTHEMS[iso]?.title])
+    )
+    expect(titles).toEqual({
+      NZ: 'God Defend New Zealand',
+      AG: 'Fair Antigua, We Salute Thee',
+      BZ: 'Land of the Free',
+      GD: 'Hail Grenada',
+      PS: "Fida'i",
+      ZA: 'National Anthem of South Africa',
+    })
+    expect(ANTHEMS.NZ?.composer).toBe('John Joseph Woods')
+    expect(ANTHEMS.NZ?.writtenYear).toBe(1876)
+    expect(ANTHEMS.CO?.composer).toBe('Oreste Síndici')
+    expect(ANTHEMS.SC?.composer).toBeUndefined()
+    expect(ANTHEMS.GD?.composer).not.toBe('Henry Carey')
+  })
+
+  it('ships every entry exactly as the curation leaves it', () => {
+    const uncurated = entries.filter(([iso, entry]) => {
+      return entry && JSON.stringify(curateAnthem(iso, entry)) !== JSON.stringify(entry)
+    })
+    expect(uncurated.map(([iso]) => iso)).toEqual([])
+  })
+
+  it('names every anthem rather than describing it', () => {
+    const described = entries.filter(
+      ([iso, entry]) => entry && isUncuratedRawLabel(iso, entry.title)
+    )
+    expect(described.map(([iso, entry]) => `${iso}: ${entry?.title}`)).toEqual([])
+  })
+
+  it('never prints a composer or credit that names nobody', () => {
+    const offenders = entries.filter(
+      ([, entry]) =>
+        (entry?.composer !== undefined && !isComposerName(entry.composer)) ||
+        (entry?.credit !== undefined && isBoilerplateCredit(entry.credit))
+    )
+    expect(offenders.map(([iso]) => iso)).toEqual([])
+  })
+})
+
+describe('shared anthem tunes', () => {
+  /** Composers credited on more than one shipped anthem who wrote each a
+   *  different melody. A regenerated roster that pairs a new composer has to
+   *  be ruled on here or in SHARED_MELODIES. */
+  const DISTINCT_TUNES_BY_COMPOSER = new Set([
+    'Mohammed Abdel Wahab',
+    'Herbert Pepper',
+    'Rabindranath Tagore',
+    'Francisco José Debali',
+  ])
+  const shipped = Object.entries(ANTHEMS) as [ISOCountryCode, (typeof ANTHEMS)[ISOCountryCode]][]
+
+  it('accepts every country sung to the dealt tune, and no other', () => {
+    for (const [dealt, sibling] of [
+      ['CY', 'GR'],
+      ['GR', 'CY'],
+      ['LI', 'GB'],
+      ['GB', 'LI'],
+      ['EE', 'FI'],
+      ['ZA', 'TZ'],
+      ['ZM', 'ZA'],
+    ] as const) {
+      expect(anthemTuneMatches(dealt, dealt)).toBe(true)
+      expect(anthemTuneMatches(dealt, sibling)).toBe(true)
+    }
+    expect(anthemTuneMatches('CY', 'TR')).toBe(false)
+    expect(anthemTuneMatches('LI', 'CH')).toBe(false)
+    expect(anthemTuneMatches('FR', 'FR')).toBe(true)
+    expect(sharedTuneCountries('FR')).toEqual(['FR'])
+  })
+
+  it('puts the dealt country first and names the rest', () => {
+    expect(sharedTuneCountries('CY')).toEqual(['CY', 'GR'])
+    expect(sharedTuneCountries('ZA')).toEqual(['ZA', 'TZ', 'ZM'])
+    expect(sharedTuneLine('LI')).toBe('Same tune as the United Kingdom')
+    expect(sharedTuneLine('FR')).toBeUndefined()
+  })
+
+  it('groups every shipped recording two countries share', () => {
+    const byFile = new Map<string, ISOCountryCode[]>()
+    for (const [isoCode, anthem] of shipped) {
+      if (anthem?.sourceFile)
+        byFile.set(anthem.sourceFile, [...(byFile.get(anthem.sourceFile) ?? []), isoCode])
+    }
+    for (const members of byFile.values()) {
+      for (const isoCode of members)
+        expect(sharedTuneCountries(isoCode)).toEqual(expect.arrayContaining(members))
+    }
+  })
+
+  it('rules on every composer two shipped anthems share', () => {
+    const byComposer = new Map<string, ISOCountryCode[]>()
+    for (const [isoCode, anthem] of shipped) {
+      if (anthem?.composer)
+        byComposer.set(anthem.composer, [...(byComposer.get(anthem.composer) ?? []), isoCode])
+    }
+    const unruled = [...byComposer]
+      .filter(
+        ([composer, members]) => members.length > 1 && !DISTINCT_TUNES_BY_COMPOSER.has(composer)
+      )
+      .filter(([, members]) => !members.every(isoCode => anthemTuneMatches(members[0]!, isoCode)))
+    expect(unruled).toEqual([])
+  })
+
+  it('ships an anthem for every country on the melody table', () => {
+    expect(SHARED_MELODIES.flat().filter(isoCode => !ANTHEMS[isoCode])).toEqual([])
+  })
+
+  it('grades a sibling buzz correct on the server and lists the whole tune', async () => {
+    const challenge: AnthemBuzzChallenge = {
+      _type: 'anthem-buzz-challenge',
+      country: 'CY',
+      clip: { webm: '/anthems/CY.webm', m4a: '/anthems/CY.m4a' },
+      durationSeconds: 30,
+      maximumPoints: 10,
+    }
+    const grade = (guess: ISOCountryCode) =>
+      gradeGroupAnswer({
+        game: { difficulty: 'normal', regions: [] } as unknown as Game,
+        round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as never,
+        playerId: 'p1',
+        submission: { ranking: [guess], clientScore: 8 },
+      })
+
+    for (const guess of ['CY', 'GR'] as const) {
+      const { scoring, answer } = await grade(guess)
+      expect(scoring).toEqual({ scored: 8, maximum: 10 })
+      expect(answer.correct).toEqual(['CY', 'GR'])
+    }
+    expect((await grade('TR')).scoring.scored).toBe(0)
   })
 })

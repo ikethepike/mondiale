@@ -186,6 +186,7 @@ import type { FlagMeaning } from '~~/data/flag-meanings.gen'
 import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
+import { sharedTuneLine } from '~~/lib/anthems'
 import ContourRipple from '~/components/feedback/ContourRipple.vue'
 import { EMPIRES } from '~~/data/empires.gen'
 import { empireDisplayName } from '~~/lib/empires'
@@ -298,6 +299,12 @@ const capitalGuessChallenge = computed(() =>
 
 const flashpointChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'flashpoint-challenge') ? roundChallenge.value : undefined
+)
+
+const compositionChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'composition-challenge')
+    ? roundChallenge.value
+    : undefined
 )
 
 const cleanSweepChallenge = computed(() =>
@@ -425,14 +432,16 @@ const audioReveal = computed(() => {
 
   if (challenge._type === 'anthem-buzz-challenge') {
     const anthem = ANTHEMS[challenge.country]
-    const era = anthem?.adoptedYear ? `adopted ${anthem.adoptedYear}` : undefined
+    const era = anthem?.writtenYear ? `written ${anthem.writtenYear}` : undefined
     return {
       subject: countryName(challenge.country),
       // The answer is a COUNTRY, so its label carries a flag (the
       // chosen-country rule); the tongue round's subject is a language and
       // stays bare text.
       countryCode: challenge.country,
-      subtitle: [anthem?.title, anthem?.composer, era].filter(Boolean).join(' · '),
+      subtitle: [anthem?.title, anthem?.composer, era, sharedTuneLine(challenge.country)]
+        .filter(Boolean)
+        .join(' · '),
       credit: mediaCreditLine(anthem, 'commons-media'),
       clip: challenge.clip,
       lyrics: lyrics.value,
@@ -514,7 +523,9 @@ const explainer = computed(() =>
     hasTies: rankingTies.value,
     hardMode: isHardMode(gameStore.game),
     maximumGuesses:
-      capitalGuessChallenge.value?.maximumGuesses ?? flashpointChallenge.value?.maximumGuesses,
+      capitalGuessChallenge.value?.maximumGuesses ??
+      flashpointChallenge.value?.maximumGuesses ??
+      compositionChallenge.value?.maximumGuesses,
   })
 )
 

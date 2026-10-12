@@ -29,7 +29,7 @@ export interface ScorecardCopyContext {
   /** Ranking rounds only: the stat had countries sharing a value. */
   hasTies?: boolean
   hardMode?: boolean
-  /** Capital-guess and flashpoint: a dealt guess cap changes what pays. */
+  /** Capital-guess, flashpoint and composition: a dealt guess cap changes what pays. */
   maximumGuesses?: number
 }
 
@@ -91,6 +91,7 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
         ? 'The sooner you call the lie, the more it pays.'
         : 'The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot.'
     case 'capital-guess':
+    case 'composition':
       return context.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
         : "The sooner you name it, the more it's worth."
@@ -158,6 +159,8 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
         return { submitted: 'Your Verdict', correct: 'The Country' }
       case 'capital-guess':
         return { submitted: 'Your Answer', correct: 'The Country' }
+      case 'composition':
+        return { submitted: 'Your Answer', correct: 'The Largest Origin' }
       case 'ground-plan':
         return { submitted: 'Your Answer', correct: 'The City' }
       // The star chart renders StarChartReveal instead of the shared ledger, so

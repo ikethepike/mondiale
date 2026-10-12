@@ -1,12 +1,10 @@
 <template>
   <h1 class="map-caption">Which country uses this currency?</h1>
-  <div v-if="challenge.image" class="money-hero money-hero-photo">
-    <img class="money-note" :src="challenge.image" alt="A banknote" />
-    <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
+  <div v-if="note" class="money-hero money-hero-photo">
+    <img class="money-note" :src="note" alt="A banknote" />
   </div>
-  <div v-else class="money-hero" aria-hidden="true">
-    <span class="money-symbol">{{ currencySymbol(getCountry(challenge.country).currency) }}</span>
-    <span class="money-code">{{ getCountry(challenge.country).currency }}</span>
+  <div v-else-if="glyph" class="money-hero" aria-hidden="true">
+    <span class="money-symbol">{{ glyph }}</span>
   </div>
   <div class="gate-options card-options">
     <button
@@ -24,11 +22,19 @@
 <script lang="ts" setup>
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { currencySymbol } from '~~/lib/currency'
 import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 
-defineProps<{ challenge: IndividualChallenge }>()
+const props = defineProps<{ challenge: IndividualChallenge }>()
+
+const note = computed(() => {
+  const money = props.challenge.money
+  return money && 'image' in money ? money.image : undefined
+})
+const glyph = computed(() => {
+  const money = props.challenge.money
+  return money && 'glyph' in money ? money.glyph : undefined
+})
 
 const { submitAnswer } = useGateChallenge()
 </script>
@@ -50,12 +56,6 @@ const { submitAnswer } = useGateChallenge()
     font-weight: 700;
     color: var(--dark-blue);
     font-family: 'Lusitana', serif;
-  }
-  .money-code {
-    font-size: 1.6rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--soft-blue);
   }
 }
 

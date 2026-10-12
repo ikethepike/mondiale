@@ -10,9 +10,9 @@ import { buildLineup, isMemberOf, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
 import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
-import { titlecaseLeader } from '~~/lib/leaders'
+import { quizLeader } from '~~/lib/leaders'
 import { speaksLanguage, spokenLanguages } from '~~/lib/language-rounds'
-import { MAP_PATHS } from '~~/data/map.gen'
+import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
 import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
 import type {
@@ -46,6 +46,7 @@ import {
   type ISOCountryCode,
   isValidISOCode,
   type Region,
+  worldRegions,
 } from '~~/types/geography.types'
 import type { CountryColorGrouping } from '~~/types/map.type'
 import { OrganizationVector } from '~~/types/organization.type'
@@ -1176,15 +1177,13 @@ export const boundaryStory = (countries: [ISOCountryCode, ISOCountryCode]): stri
   BORDER_STORIES[[...countries].sort().join('|')]
 
 const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => {
-  const country = shuffleArray(pool.map(isoCode => COUNTRIES[isoCode])).find(country => {
-    return !!country.government.leader
-  })
+  const country = sample(pool.filter(isoCode => !!quizLeader(isoCode)))
 
   if (!country) throw new ReferenceError(`Unable to find leader for leadership challenge`)
 
   return {
     _type: 'leadership-challenge',
-    country: country.isoCode,
+    country,
   }
 }
 
@@ -1395,9 +1394,8 @@ export const getFinalChallengeDetails = ({
     case 'leadership-challenge': {
       // The DEALT country's leader — asking about anyone else's makes the
       // question unanswerable (validation compares against challenge.country)
-      const { leader } = COUNTRIES[challenge.country].government
       return {
-        question: `Which country is led by ${titlecaseLeader(leader ?? '')}?`,
+        question: `Which country is led by ${quizLeader(challenge.country)?.name ?? ''}?`,
       }
     }
     case 'min-challenge':
@@ -1548,212 +1546,57 @@ const finalChallengeMinMaxQuestion: {
 // region board reads as one harmonious map instead of a shouting match:
 // asia teal · europe cornflower · africa amber · n-america lavender ·
 // oceania sage · middle-east dusty rose · s-america terracotta.
-export const COLOR_CODED_REGIONS: { [region in Region]: CountryColorGrouping } = {
-  asia: {
-    color: 'hsla(178, 36%, 50%, 0.6)',
-    countries: [
-      'AF',
-      'AM',
-      'AZ',
-      'BD',
-      'BT',
-      'BN',
-      'KH',
-      'CN',
-      'GE',
-      'IN',
-      'ID',
-      'JP',
-      'KZ',
-      'KR',
-      'KP',
-      'KG',
-      'LA',
-      'MY',
-      'MV',
-      'MN',
-      'MM',
-      'NP',
-      'PK',
-      'PH',
-      'RU',
-      'SG',
-      'LK',
-      'TW',
-      'TJ',
-      'TH',
-      'TL',
-      'TM',
-      'UA',
-      'UZ',
-      'VN',
-    ],
-  },
-  europe: {
-    color: 'hsla(217, 52%, 62%, 0.6)',
-    countries: [
-      'AD',
-      'AL',
-      'AT',
-      'BA',
-      'BE',
-      'BG',
-      'BY',
-      'CH',
-      'CZ',
-      'DE',
-      'DK',
-      'EE',
-      'ES',
-      'FI',
-      'FR',
-      'GB',
-      'GR',
-      'HR',
-      'HU',
-      'IE',
-      'IS',
-      'IT',
-      'LI',
-      'LT',
-      'LU',
-      'LV',
-      'MC',
-      'MD',
-      'ME',
-      'MK',
-      'MT',
-      'NL',
-      'NO',
-      'PL',
-      'PT',
-      'RO',
-      'RS',
-      'SE',
-      'SI',
-      'SK',
-      'SM',
-      'VA',
-      'XK',
-    ],
-  },
-  africa: {
-    color: 'hsla(35, 70%, 60%, 0.65)',
-    countries: [
-      'EC',
-      'AO',
-      'BF',
-      'BI',
-      'BJ',
-      'BW',
-      'CD',
-      'CF',
-      'CG',
-      'CI',
-      'CM',
-      'CV',
-      'DJ',
-      'DZ',
-      'EG',
-      'EH',
-      'ER',
-      'ET',
-      'GA',
-      'GH',
-      'GM',
-      'GN',
-      'GQ',
-      'GW',
-      'IC',
-      'KE',
-      'KM',
-      'LR',
-      'LS',
-      'LY',
-      'MA',
-      'MG',
-      'ML',
-      'MR',
-      'MU',
-      'MW',
-      'MZ',
-      'NA',
-      'NE',
-      'NG',
-      'RW',
-      'SC',
-      'SD',
-      'SL',
-      'SN',
-      'SO',
-      'SS',
-      'ST',
-      'SZ',
-      'TD',
-      'TG',
-      'TN',
-      'TZ',
-      'UG',
-      'ZA',
-      'ZM',
-      'ZW',
-    ],
-  },
-  'north-america': {
-    color: 'hsla(262, 32%, 62%, 0.55)',
-    countries: [
-      'AG',
-      'BS',
-      'BB',
-      'BZ',
-      'CA',
-      'CR',
-      'CU',
-      'DM',
-      'DO',
-      'SV',
-      'GL',
-      'GD',
-      'GT',
-      'HT',
-      'HN',
-      'JM',
-      'MX',
-      'NI',
-      'PA',
-      'KN',
-      'LC',
-      'TT',
-      'US',
-    ],
-  },
-  oceania: {
-    color: 'hsla(135, 32%, 52%, 0.6)',
-    countries: ['AU', 'FJ', 'KI', 'FM', 'NR', 'NZ', 'PW', 'PG', 'SB', 'TO', 'TV', 'VU'],
-  },
-  'middle-east': {
-    color: 'hsla(345, 42%, 62%, 0.6)',
-    countries: [
-      'BH',
-      'CY',
-      'IR',
-      'IQ',
-      'IL',
-      'JO',
-      'KW',
-      'LB',
-      'OM',
-      'PS',
-      'QA',
-      'SA',
-      'SY',
-      'TR',
-      'AE',
-      'YE',
-    ],
-  },
-  'south-america': {
-    color: 'hsla(12, 62%, 60%, 0.62)',
-    countries: ['AR', 'GF', 'BO', 'BR', 'CL', 'CO', 'EC', 'GY', 'PY', 'PE', 'SR', 'UY', 'VE'],
-  },
+const REGION_COLORS: { [region in Region]: string } = {
+  asia: 'hsla(178, 36%, 50%, 0.6)',
+  europe: 'hsla(217, 52%, 62%, 0.6)',
+  africa: 'hsla(35, 70%, 60%, 0.65)',
+  'north-america': 'hsla(262, 32%, 62%, 0.55)',
+  oceania: 'hsla(135, 32%, 52%, 0.6)',
+  'middle-east': 'hsla(345, 42%, 62%, 0.6)',
+  'south-america': 'hsla(12, 62%, 60%, 0.62)',
 }
+
+const TERRITORY_REGIONS: { [code in Exclude<MapCode, ISOCountryCode>]: Region } = {
+  AI: 'north-america',
+  AW: 'north-america',
+  BM: 'north-america',
+  CW: 'north-america',
+  EH: 'africa',
+  FK: 'south-america',
+  FO: 'europe',
+  GF: 'south-america',
+  GL: 'north-america',
+  GP: 'north-america',
+  IC: 'africa',
+  KY: 'north-america',
+  MQ: 'north-america',
+  MS: 'north-america',
+  NC: 'oceania',
+  PF: 'oceania',
+  PN: 'oceania',
+  PR: 'north-america',
+  RE: 'africa',
+  SX: 'north-america',
+  TC: 'north-america',
+  VC: 'north-america',
+  VG: 'north-america',
+  VI: 'north-america',
+  YT: 'africa',
+}
+
+export const regionOfMapCode = (code: string): Region | undefined =>
+  isValidISOCode(code)
+    ? COUNTRIES[code]?.region
+    : TERRITORY_REGIONS[code as keyof typeof TERRITORY_REGIONS]
+
+export const COLOR_CODED_REGIONS = Object.fromEntries(
+  worldRegions.map(region => [
+    region,
+    {
+      color: REGION_COLORS[region],
+      countries: [...ISOCountryCodes, ...Object.keys(TERRITORY_REGIONS)].filter(
+        code => regionOfMapCode(code) === region
+      ),
+    },
+  ])
+) as { [region in Region]: CountryColorGrouping }

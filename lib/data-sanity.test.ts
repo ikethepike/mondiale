@@ -18,6 +18,7 @@ import { owidMapping } from '~~/data/owid.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { TREATY_META } from '~~/types/treaty.type'
+import { isBoilerplateCredit } from '~~/generators/lib/licence'
 
 // 194 countries today; the UN would notice before we dip under 190.
 const COUNTRY_FLOOR = 190
@@ -215,6 +216,11 @@ describe('parties.gen', () => {
       .filter(party => /nazi/i.test(party.logoRestrictions ?? ''))
     expect(flagged.length, 'expected the flagged rows to still exist').toBeGreaterThan(0)
     for (const party of flagged) expect(isDecorativeLogo(party)).toBe(false)
+  })
+
+  it('never credits a logo with Commons template prose', () => {
+    const boilerplate = parties.filter(party => party.credit && isBoilerplateCredit(party.credit))
+    expect(boilerplate.map(party => party.name)).toEqual([])
   })
 
   it('credits every logo whose licence demands attribution', () => {

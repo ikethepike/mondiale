@@ -116,7 +116,7 @@ and the yen heads none because "Japanese yen" names its own country.
 player has to infer the _question_ as well as the answer.
 
 **Data:** `lib/rosetta.ts` holds the relations — capital, highest peak, currency, leader,
-landmark — each reading through the module that already owns its data (`politicalLeader`,
+landmark — each reading through the module that already owns its data (`quizLeader`,
 `currencyName`, `LANDMARKS`, `COUNTRIES`). Dealer, hint and reveal all read that one table.
 
 Two guards make a term dealable, and the **order is load-bearing**: index every term first,

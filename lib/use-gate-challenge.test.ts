@@ -4,6 +4,7 @@ import { testCursor } from '~~/lib/events/server/test-seat'
 import { gateClockDeadline, gateDeadline, gateVerdictLeadMs } from '~~/lib/gate-timing'
 import { GATE_RESULT_HOLD_MS, INTERSTITIAL_TOTAL_MS } from '~~/lib/round-beats'
 import { seatSubject } from '~~/lib/seat-transitions'
+import { gateQuestion } from '~~/lib/wire-view'
 import type { SeatCursor, SeatVerdict } from '~~/types/seat.types'
 import type { PreviewVerdict } from '~~/store/game.store'
 
@@ -440,6 +441,66 @@ describe('the verdict lead', () => {
     submitAnswer('SE')
     await nextTick()
     expect(verdictShown.value).toBe(true)
+    unmount()
+  })
+})
+
+describe('a gate whose answer the wire withholds', () => {
+  const dealt = gate(5, 'FI')
+  const asked = () => ({ ...dealt, challenge: gateQuestion(dealt.challenge as never) })
+
+  beforeEach(() => {
+    currentMove.value = asked()
+  })
+
+  it('sends the answer once and waits for the verdict, which brings the answer', async () => {
+    const { challenge, country, status, verdictShown, submitAnswer, unmount } = mountShell()
+
+    submitAnswer('FI')
+    submitAnswer('SE')
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ isoCode: 'FI', subject: FIRST }))
+    expect(status.value).toBeUndefined()
+    expect(country.value).toBeUndefined()
+
+    currentMove.value = dealt
+    seatCursor.value = gateVerdict(FIRST, true, 11)
+    await nextTick()
+    expect(challenge.value).toEqual(dealt.challenge)
+    expect(country.value?.isoCode).toBe('FI')
+    expect(status.value).toBe('correct')
+    expect(verdictShown.value).toBe(true)
+    expect(map.reveal).toBe('FI')
+    unmount()
+  })
+
+  it('a clock run out forfeits at once, and the card waits for the answer', async () => {
+    const { status, verdictShown, giveUp, unmount } = mountShell()
+
+    giveUp()
+    expect(status.value).toBe('incorrect')
+    expect(update).toHaveBeenCalledWith({
+      event: 'submit-individual-challenge-answer',
+      timedOut: true,
+      subject: FIRST,
+      seq: 10,
+    })
+    await nextTick()
+    expect(verdictShown.value).toBe(false)
+
+    currentMove.value = dealt
+    seatCursor.value = gateVerdict(FIRST, false, 11, true)
+    await nextTick()
+    expect(verdictShown.value).toBe(true)
+    unmount()
+  })
+
+  it('a gate holding its answer leaves the timeout to the server', () => {
+    currentMove.value = dealt
+    const { giveUp, unmount } = mountShell()
+    giveUp()
+    expect(update).not.toHaveBeenCalled()
+    expect(map.reveal).toBe('FI')
     unmount()
   })
 })
