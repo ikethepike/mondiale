@@ -36,6 +36,7 @@ import { RECOGNITION_CORRECTIONS } from '../../../data/static/recognition-correc
 import {
   CAST_B_ARMISTICE_EXCLUSIONS,
   CAST_B_TONAL_EXCLUSIONS,
+  DISSOLVED_TERRITORIES,
   EXCLUDED_TERRITORIES,
   SELF_ADMIN_PREDICATE,
   TERRA_NULLIUS,
@@ -303,7 +304,7 @@ const parseNote = (note: string) => {
  *     → Abkhazia and South Ossetia: RU alone, of the 33 POVs. (In the wider
  *       world four more UN members recognize them — Nicaragua 2008, Venezuela
  *       2009, Nauru 2009, Syria 2018 — but none is a POV column here.)
- *     → Transnistria and Artsakh: nobody. Moscow keeps ~1,500 troops in
+ *     → Transnistria: nobody. Moscow keeps ~1,500 troops in
  *       Transnistria guarding the Cobasna depot and still draws it inside
  *       Moldova; it never extended the August 2008 Abkhazia / South Ossetia
  *       recognition here. Control and recognition are not the same thing, and
@@ -487,6 +488,12 @@ const main = async () => {
     const selfAdmin = SELF_ADMIN_PREDICATE.test(note)
     const uninhabited = pop === undefined || pop === 0
 
+    const dissolved = DISSOLVED_TERRITORIES[name]
+    if (dissolved !== undefined) {
+      rejected.push([name, `excluded: dissolved ${dissolved}`])
+      continue
+    }
+
     let cast: RecognitionCast
     if (selfAdmin) {
       if (EXCLUDED_TERRITORIES.has(name)) {
@@ -634,7 +641,7 @@ const main = async () => {
     if (!condition) throw new Error(`recognition invariant broken: ${message}`)
   }
 
-  assert(ghostStates.length === 8, `expected 8 ghost states, got ${ghostStates.length}`)
+  assert(ghostStates.length === 7, `expected 7 ghost states, got ${ghostStates.length}`)
   for (const banned of ['Gaza', 'East Jerusalem', 'West Bank', 'Mount Scopus', 'Shebaa Farms'])
     assert(
       !Object.values(territories).some(t => t.name.includes(banned)),
@@ -675,13 +682,13 @@ const main = async () => {
   assert(recognizers(byId('south-ossetia')).join() === 'RU', 'S. Ossetia: Russia alone')
 
   // Moscow recognized Abkhazia and South Ossetia in August 2008 and never
-  // extended it to Transnistria, where it still keeps troops. Artsakh likewise.
+  // extended it to Transnistria, where it still keeps troops.
   assert(recognizers(byId('transnistria')).length === 0, 'Transnistria: nobody, not even Russia')
-  assert(recognizers(byId('artsakh')).length === 0, 'Artsakh: nobody; Russia only hedges')
-  assert(
-    byId('artsakh').povs.RU?.fclass === 'breakaway',
-    'Artsakh: Russia hedges, never recognizes'
-  )
+  for (const name of Object.keys(DISSOLVED_TERRITORIES))
+    assert(
+      !Object.values(territories).some(t => t.name === name),
+      `${name}: dissolved, still dealt`
+    )
 
   // The cartographic column tells a different story, and must stay separable.
   assert(drawnApart(byId('abkhazia')).includes('US'), 'Abkhazia: the US draws it apart…')

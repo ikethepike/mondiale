@@ -177,7 +177,6 @@ const FOOTNOTES: Record<string, string> = {
   // Its sole recognizer is itself recognized by fewer than half the world.
   somaliland:
     'Its only recognizer is Taiwan, which most of the world will not call a country either.',
-  artsakh: 'Russia calls it a breakaway, and stops short of calling it a country.',
   abkhazia: 'Four other UN members recognize it: Nicaragua, Venezuela, Nauru and Syria.',
   'south-ossetia': 'Four other UN members recognize it: Nicaragua, Venezuela, Nauru and Syria.',
   'n-cyprus': 'Turkey alone. Every other government treats it as occupied Cyprus.',
