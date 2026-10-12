@@ -198,7 +198,7 @@
       :countries="membershipCountries"
       :subject="oddOneOutSubject"
       :total="oddOneOutTotal"
-      :settled="!!status"
+      :settled="answered"
       @pick="submitMembership"
     />
   </div>
@@ -250,9 +250,11 @@ import { organizationSize, treatyPartyCount } from '~~/lib/odd-one-out'
 import { listJoin } from '~~/lib/strings'
 import { formatAmount, formatCompact } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
-import type {
-  ChangeChallenge,
-  FinalChallengeAnswer,
+import { finalAnswerOnHand } from '~~/lib/wire-view'
+import {
+  oddOneOut,
+  type ChangeChallenge,
+  type FinalChallengeAnswer,
 } from '~~/types/challenges/final-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
 import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
@@ -294,15 +296,60 @@ const gauntlet = computed(() =>
 
 const knockedOut = computed(() => !!verdict.value?.knockedOut)
 
+/**
+ * A single-answer question's answer, lit and framed rather than revealed: its
+ * card already carries it (MinMaxReveal ranks it, LeaderReveal shows who runs
+ * it, OddOneOutReveal names the holdout), so the dossier would only repeat it
+ * from on top of the card. Focus is re-aimed, never cleared: an active focus
+ * suppresses moveToCountry's fly-in, and clearing it would queue a rest-view
+ * tween that stomps the reveal camera.
+ */
+const markAnswer = (landed: NonNullable<typeof verdict.value>) => {
+  const challenge = currentFinalChallenge.value
+  const picked =
+    landed.submittedAnswer && 'isoCode' in landed.submittedAnswer
+      ? landed.submittedAnswer.isoCode
+      : undefined
+  switch (challenge?._type) {
+    case 'min-challenge':
+    case 'max-challenge':
+    case 'leadership-challenge': {
+      // Stat ties share the podium — mark the country the player actually got
+      // right, not the dealt extreme it happens to equal.
+      const shown = landed.correct && picked ? picked : challenge.country
+      gameStore.map.focus = [shown]
+      gameStore.map.highlighted.add(shown)
+      return
+    }
+    case 'membership-challenge':
+    case 'treaty-challenge': {
+      const odd = oddOneOut(challenge)
+      gameStore.map.highlighted.clear()
+      gameStore.map.focus = [odd]
+      gameStore.map.highlighted.add(odd)
+    }
+  }
+}
+
 // The verdict paints the map wash for everyone watching this seat, the booth
-// included, whether or not this tab answered.
+// included, whether or not this tab answered — and brings any answer the wire
+// withheld until now.
+let markedOn: string | undefined
 watch(
   verdict,
   landed => {
-    if (landed) previewVerdict(landed.correct ? 'correct' : 'incorrect', landed.subject)
+    if (!landed) return
+    previewVerdict(landed.correct ? 'correct' : 'incorrect', landed.subject)
+    if (markedOn === landed.subject) return
+    markedOn = landed.subject
+    markAnswer(landed)
   },
   { immediate: true }
 )
+
+/** Graded, or sent for the verdict that brings a withheld answer. */
+const answeredOn = ref<string>()
+const answered = computed(() => !!status.value || answeredOn.value === questionSubject.value)
 
 // ONE exit for every answer: the redeliver loop keeps it alive past socket
 // blips, and the subject echo — captured at answer time — pins it to the
@@ -310,12 +357,13 @@ watch(
 // question cap lands on a spent subject.
 const finalRedeliver = createRedeliver('final answer')
 onBeforeUnmount(() => finalRedeliver.dispose())
-const submitFinalAnswer = (
-  submittedAnswer: FinalChallengeAnswer,
-  correct = checkAnswer(submittedAnswer)
-) => {
+const submitFinalAnswer = (submittedAnswer: FinalChallengeAnswer) => {
   const subject = questionSubject.value
-  previewVerdict(correct ? 'correct' : 'incorrect', subject)
+  const challenge = currentFinalChallenge.value
+  answeredOn.value = subject
+  if (challenge && finalAnswerOnHand(challenge)) {
+    previewVerdict(checkAnswer(submittedAnswer) ? 'correct' : 'incorrect', subject)
+  }
   // The booth mounts this stage read-only, and the auto-finishing modes'
   // clocks call here with no user input: a watcher must not arm a minute of
   // doomed redelivery against the write gate (same guard as submitOnce and
@@ -747,39 +795,15 @@ const clearScalesPicks = () => {
  */
 const submitMembership = (isoCode: ISOCountryCode) => {
   const challenge = currentFinalChallenge.value
-  if (status.value) return
+  if (answered.value) return
   if (!membershipCountries.value.includes(isoCode)) return
-
-  const answered =
-    challenge?._type === 'membership-challenge'
-      ? {
-          submittedAnswer: { _type: challenge._type, isoCode } as const,
-          reveal: challenge.exception,
-        }
-      : challenge?._type === 'treaty-challenge'
-        ? {
-            submittedAnswer: { _type: challenge._type, isoCode } as const,
-            reveal: challenge.holdout,
-          }
-        : undefined
-  if (!answered) return
+  if (challenge?._type !== 'membership-challenge' && challenge?._type !== 'treaty-challenge') return
 
   // Both entry points record the pick here, not just the map tap: a sheet row
   // is the only way to answer on a phone, and without this the reveal's
   // "your pick" line vanished for exactly those players.
   lastGuess.value = isoCode
-  gameStore.map.highlighted.clear()
-  // Re-aim the live focus frame at the answer rather than clearing it: an
-  // active focus suppresses moveToCountry's fly-in, and clearing it would
-  // queue a rest-view tween that stomps the reveal camera.
-  gameStore.map.focus = [answered.reveal]
-  // Lit rather than revealed. No map.reveal here, on the scales' precedent:
-  // OddOneOutReveal already names the holdout, shows its flag and says how it
-  // stands apart, so the dossier adds only a capital and a population — and
-  // on a phone it sits over the card that did the teaching.
-  gameStore.map.highlighted.add(answered.reveal)
-
-  submitFinalAnswer(answered.submittedAnswer)
+  submitFinalAnswer({ _type: challenge._type, isoCode })
 }
 
 const submitScales = () => {
@@ -871,7 +895,7 @@ const onMapClick = (event: Event) => {
   if (showInterstitial.value) return
   // Answer revealed — ignore clicks so the result can't be re-submitted or
   // the zoomed-in highlight repainted while the server settles the outcome
-  if (status.value) return
+  if (answered.value) return
   if (!currentFinalChallenge.value) return
   const { isoCode } = event.detail
   if (isValidISOCode(isoCode)) lastGuess.value = isoCode
@@ -898,27 +922,12 @@ const onMapClick = (event: Event) => {
       break
     case 'max-challenge':
     case 'min-challenge':
-    case 'leadership-challenge': {
-      const submittedAnswer: FinalChallengeAnswer = {
+    case 'leadership-challenge':
+      submitFinalAnswer({
         _type: currentFinalChallenge.value._type,
         isoCode: isoCode as ISOCountryCode, // We check this in the backend
-      }
-      const correct = checkAnswer(submittedAnswer)
-      // Stat ties share the podium — reveal the country the player actually
-      // got right, not the dealt extreme it happens to equal.
-      const revealIso =
-        correct && isValidISOCode(isoCode) ? isoCode : currentFinalChallenge.value.country
-      // Lit and framed, not revealed. Both of these questions now end on a
-      // card that already carries the answer — MinMaxReveal ranks it with its
-      // number, LeaderReveal shows who runs it — so the dossier only repeats
-      // them, from on top of them. Focus does the camera work map.reveal used
-      // to; the highlight does its tint.
-      gameStore.map.focus = [revealIso]
-      gameStore.map.highlighted.add(revealIso)
-
-      submitFinalAnswer(submittedAnswer, correct)
+      })
       break
-    }
     case 'language-challenge':
       {
         if (!isValidISOCode(isoCode)) {

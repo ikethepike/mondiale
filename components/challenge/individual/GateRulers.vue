@@ -35,7 +35,14 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, showInterstitial, submitAnswer, giveUp, isHard } = useGateChallenge()
+const {
+  challenge: onStage,
+  status,
+  showInterstitial,
+  submitAnswer,
+  giveUp,
+  isHard,
+} = useGateChallenge()
 
 const showDoubleTapHint = ref(false)
 
@@ -82,7 +89,7 @@ onBeforeUnmount(() => {
  */
 const restoreStage = () => {
   stop()
-  const rulers = props.challenge.rulers
+  const rulers = onStage.value?.rulers
   if (rulers) {
     gameStore.map.countryLogos = { ...rulers.logos, ...(rulers.trueLogo ?? {}) }
     // The reveal names every party, hard mode included — the lesson lands
@@ -99,6 +106,14 @@ const restoreStage = () => {
   gameStore.map.framePad = undefined
   return undefined
 }
+
+// The true government is withheld until the verdict, which may land after
+// this view has begun to leave.
+watch(
+  () => onStage.value?.rulers?.trueLogo,
+  trueLogo => trueLogo && restoreStage(),
+  { flush: 'sync' }
+)
 
 const resolve = (isoCode: ISOCountryCode) => {
   restoreStage()

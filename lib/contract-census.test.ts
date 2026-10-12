@@ -507,7 +507,10 @@ describe('the wire', () => {
       )
     ).toEqual({})
     expect(sources.get('lib/events/server-side.ts')).toMatch(
-      /\{ \.\.\.eventData, serverNow: Date\.now\(\) \}/
+      /\{ \.\.\.eventData, game: wireGame\(eventData\.game\) \}/
+    )
+    expect(sources.get('lib/events/server-side.ts')).toMatch(
+      /\{ \.\.\.wire, serverNow: Date\.now\(\) \}/
     )
   })
 

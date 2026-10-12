@@ -42,6 +42,7 @@ import { seatVerdictOn } from './seat-view'
 import { secondsOnDeadline } from './use-deadline-clock'
 import { useSeatClockStart } from './use-seat-clock'
 import { useServerNow } from './use-server-now'
+import { gateAnswerOnHand } from './wire-view'
 
 /** Gates whose own reveal is the answer: the duels paint their board, atlas
  *  draws its chain, chronicle sets its record — the map's country card would
@@ -62,13 +63,15 @@ export interface GateSubmitOptions {
 export interface GateChallengeContext {
   challenge: Ref<IndividualChallenge | undefined>
   variant: Ref<IndividualChallengeVariant>
-  /** The answer's country record — undefined only before the first deal. */
+  /** The answer's country record — undefined before the first deal, and
+   *  while the wire withholds the answer (`gateAnswerOnHand`). */
   country: Ref<Country | undefined>
   /** 'correct' | 'incorrect' once answered: the server's verdict for this
    *  gate, or this seat's own preview of it until the verdict lands. */
   status: ComputedRef<'correct' | 'incorrect' | undefined>
   /** The result card is up: the verdict plus the variant's own lead (a wash
-   *  painted on the question first). The shell swaps on this, not `status`. */
+   *  painted on the question first), once the answer it shows is on hand. The
+   *  shell swaps on this, not `status`. */
   verdictShown: ComputedRef<boolean>
   isHard: Ref<boolean>
   isEasy: Ref<boolean>
@@ -180,6 +183,8 @@ export const provideGateChallenge = (): GateChallengeContext => {
   const verdictShown = computed(
     () =>
       !!status.value &&
+      !!challenge.value &&
+      gateAnswerOnHand(challenge.value) &&
       gradedAt.value !== undefined &&
       now.value >= gradedAt.value + verdictLeadMs.value
   )
@@ -213,11 +218,16 @@ export const provideGateChallenge = (): GateChallengeContext => {
   const browseReveal = computed(() => isBrowsableGateVariant(variant.value))
 
   // The server's verdict paints the map wash for everyone watching this seat,
-  // the booth included, whether or not this tab answered.
+  // the booth included, whether or not this tab answered. Its snapshot is the
+  // first to carry a withheld answer, so the gate on stage takes it up here.
   watch(
     verdict,
     landed => {
       if (!landed || !challenge.value) return
+      const head = currentMove.value?.challenge
+      if (!gateAnswerOnHand(challenge.value) && head?._type === 'individual-challenge') {
+        challenge.value = head
+      }
       previewVerdict(landed.correct ? 'correct' : 'incorrect', subject)
       if (!gameStore.map.reveal && !OWN_REVEAL_VARIANTS.has(variant.value)) {
         gameStore.map.reveal =
@@ -246,7 +256,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     // Watch mode: the gates' own reactive clocks reach here with no user
     // input — the booth never answers a gate.
     if (gameStore.watching) return
-    if (status.value) return
+    if (status.value || answeredISOCode.value) return
     const active = challenge.value
     if (!active) return
 
@@ -259,6 +269,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
       ...seatEcho(subject),
     })
 
+    if (!gateAnswerOnHand(active)) return
     const correct = isCorrectIndividualAnswer(active, isoCode)
     if (!OWN_REVEAL_VARIANTS.has(variant.value)) {
       // A shared-currency gate can be won on a country other than the dealt
