@@ -239,6 +239,7 @@ import {
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
+import { phrasedLeader } from '~~/lib/leaders'
 import { formatEventYear } from '~~/lib/timeline'
 import { seatVerdictOn } from '~~/lib/seat-view'
 import { finalInterstitialEndsAt, finalQuestionNumber } from '~~/lib/final-timing'
@@ -468,8 +469,9 @@ const lesson = computed(() => {
       // LeaderReveal carries the portrait, party and tenure — this line is
       // what it can't say: which country the person actually leads. Naming
       // them again here would just repeat the card's own headline.
-      const country = COUNTRIES[challenge.country]
-      return country.government.leader ? `The country is ${countryName(country)}.` : undefined
+      return phrasedLeader(challenge.country)
+        ? `The country is ${countryName(COUNTRIES[challenge.country])}.`
+        : undefined
     }
     case 'language-challenge':
       // LanguageReveal carries the whole roster and its reach

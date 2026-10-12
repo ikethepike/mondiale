@@ -1,28 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { leaderHintFacts, partyLabel, politicalLeader, titlecaseLeader } from './leaders'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { leaderHintFacts, partyLabel, phrasedLeader, politicalLeader } from './leaders'
 import type { ISOCountryCode } from '~~/types/geography.types'
-
-describe('titlecaseLeader', () => {
-  it('softens the factbook surname caps', () => {
-    expect(titlecaseLeader('Vladimir Vladimirovich PUTIN')).toBe('Vladimir Vladimirovich Putin')
-    expect(titlecaseLeader('Giorgia MELONI')).toBe('Giorgia Meloni')
-  })
-
-  it('titlecases each hyphen/apostrophe segment', () => {
-    expect(titlecaseLeader('Karin KELLER-SUTTER')).toBe('Karin Keller-Sutter')
-    expect(titlecaseLeader("Sean O'NEILL")).toBe("Sean O'Neill")
-  })
-
-  it('leaves regnal numerals uppercase', () => {
-    expect(titlecaseLeader('Leo XIV')).toBe('Leo XIV')
-    expect(titlecaseLeader('CHARLES III')).toBe('Charles III')
-  })
-
-  it('leaves mixed-case words and particles alone', () => {
-    expect(titlecaseLeader('Mohammed bin ZAYID Al Nuhayyan')).toBe('Mohammed bin Zayid Al Nuhayyan')
-    expect(titlecaseLeader('Emmanuel Macron')).toBe('Emmanuel Macron')
-  })
-})
 
 describe('partyLabel', () => {
   // Printing "independent" invites the reader to conclude a leader has no
@@ -117,11 +96,30 @@ describe('politicalLeader', () => {
     // country from every mode that shows a leader.
     expect(politicalLeader('CH' as ISOCountryCode)).toBeTruthy()
   })
+})
 
-  it('never returns a leader without a portrait when one is required', () => {
-    for (const isoCode of ['DE', 'FR', 'BR', 'JP'] as ISOCountryCode[]) {
-      const leader = politicalLeader(isoCode, { requireImage: true })
-      if (leader) expect(leader.image, isoCode).toBeTruthy()
+describe('phrasedLeader', () => {
+  it("hands back politicalLeader's own profile, so a reveal headlines the person quizzed", () => {
+    for (const isoCode of ISOCountryCodes) {
+      const quizzed = phrasedLeader(isoCode)
+      if (quizzed) expect(politicalLeader(isoCode), isoCode).toBe(quizzed)
+    }
+  })
+
+  it('sits out a country whose factbook names someone else', () => {
+    // Seguro, Albert II, Russell Dlamini and Savi De Tove in the factbook
+    for (const isoCode of ['PT', 'MC', 'SZ', 'TG'] as ISOCountryCode[]) {
+      expect(politicalLeader(isoCode), isoCode).toBeTruthy()
+      expect(phrasedLeader(isoCode), isoCode).toBeUndefined()
+    }
+  })
+
+  it('never quizzes a collective body', () => {
+    for (const isoCode of ['CH', 'HT'] as ISOCountryCode[]) {
+      expect(phrasedLeader(isoCode), isoCode).toBeUndefined()
+    }
+    for (const isoCode of ISOCountryCodes) {
+      expect(phrasedLeader(isoCode)?.name ?? '', isoCode).not.toMatch(/\bcouncil\b/i)
     }
   })
 })

@@ -7,6 +7,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
+import { politicalLeader } from '~~/lib/leaders'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
@@ -1041,6 +1042,25 @@ describe('isCorrectFinalAnswer', () => {
         submittedAnswer: { _type: 'born-challenge', isoCodes: ['FI'] },
       })
     ).toThrow(TypeError)
+  })
+
+  it('asks about the leader its reveal headlines', () => {
+    let dealt = 0
+    for (let round = 0; round < DEAL_ROUNDS; round++) {
+      for (const variant of ['world', 'europe', 'africa'] as const) {
+        const { challenges } = getFinalChallenges({ game: gameFor(variant, 'hard') })
+        for (const challenge of challenges) {
+          if (challenge._type !== 'leadership-challenge') continue
+          dealt++
+          const headline = politicalLeader(challenge.country)?.name
+          expect(headline, challenge.country).toBeTruthy()
+          expect(getFinalChallengeDetails({ challenge }).question, challenge.country).toBe(
+            `Which country is led by ${headline}?`
+          )
+        }
+      }
+    }
+    expect(dealt).toBeGreaterThan(0)
   })
 
   it('stays strict on leadership questions and throws on shape mismatches', () => {

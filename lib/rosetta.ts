@@ -19,7 +19,7 @@ import { curatedPlaces } from '~~/lib/places'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { mentionsCountry } from './country'
 import { currencyName } from './currency'
-import { politicalLeader } from './leaders'
+import { phrasedLeader } from './leaders'
 import { normalizeAnswer } from './strings'
 
 export interface RosettaRelation {
@@ -60,7 +60,7 @@ export const ROSETTA_RELATIONS = {
   },
   leader: {
     label: 'who leads it',
-    terms: isoCode => [politicalLeader(isoCode)?.name].filter(Boolean) as string[],
+    terms: isoCode => [phrasedLeader(isoCode)?.name].filter(Boolean) as string[],
   },
   // No demonym relation: `mentionsCountry` reads `name.demonyms` as markers,
   // so every demonym betrays its own country by definition and the scrub

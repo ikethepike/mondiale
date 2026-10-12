@@ -123,7 +123,7 @@ import {
   FLASHPOINT_SECONDS_PER_HINT,
   flashpointSeconds,
 } from './round-beats'
-import { countryLedBy, politicalLeader } from './leaders'
+import { countryLedBy, phrasedLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -3067,22 +3067,24 @@ const dealLogoPolitics = (
   }
 }
 
-/** Leader-pick: who runs this country, millionaire-style (decoys same region). */
+/** Leader-pick: who runs this country, millionaire-style (decoys same region,
+ *  never one whose leader also leads the dealt country). */
 const dealLeaderPick = (
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
 ): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
-  const poolLeaders = countryPool.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
-  const withLeaders =
-    poolLeaders.length >= 4
-      ? poolLeaders
-      : world.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
+  const quizzable = (isoCode: ISOCountryCode) => !!phrasedLeader(isoCode)
+  const poolLeaders = countryPool.filter(quizzable)
+  const withLeaders = poolLeaders.length >= 4 ? poolLeaders : world.filter(quizzable)
   if (withLeaders.length < 4) return undefined
 
   const country = sample(withLeaders)!
   const decoys = pickDecoys(country, withLeaders, 3, {
     preferRegion: true,
-    eligible: isoCode => !!COUNTRIES[isoCode].government?.leader,
+    eligible: isoCode => {
+      const leader = phrasedLeader(isoCode)
+      return !!leader && !countryLedBy(country, leader.name)
+    },
     widen: world,
   })
   if (!decoys) return undefined
@@ -3090,9 +3092,9 @@ const dealLeaderPick = (
   return { country, options: shuffleArray([country, ...decoys]) }
 }
 
-/** The face to quiz on: the one political-leader selector, portrait required. */
+/** The face to quiz on: the quiz leader's own portrait, never a stand-in role's. */
 const portraitFor = (isoCode: ISOCountryCode) => {
-  const leader = politicalLeader(isoCode, { requireImage: true })
+  const leader = phrasedLeader(isoCode)
   return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
@@ -3539,7 +3541,7 @@ const pickThemedFindCountry = (
   }
   switch (accessorId) {
     case 'government.leader':
-      return withProperty(isoCode => !!COUNTRIES[isoCode].government?.leader)
+      return withProperty(isoCode => !!phrasedLeader(isoCode))
     case 'currency':
       // "Which country spends the Danish krone?" answers itself — only deal
       // currencies whose name betrays no spender

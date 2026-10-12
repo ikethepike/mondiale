@@ -15,20 +15,6 @@ export interface LeaderProfile extends MediaCredit {
   sinceYear?: number
 }
 
-/** Regnal numerals stay uppercase (Leo XIV, Frederik X). */
-const ROMAN_NUMERAL = /^[IVXLCDM]+$/
-
-/**
- * The factbook prints surnames in shouting caps ("Karin KELLER-SUTTER").
- * Soften only the all-caps words to title case — per hyphen/apostrophe
- * segment — leaving mixed-case words, particles, and regnal numerals alone.
- */
-export const titlecaseLeader = (name: string): string =>
-  name.replace(/[A-ZÀ-ÞŒ]{2,}(?:['’-][A-ZÀ-ÞŒ]+)*/g, word => {
-    if (ROMAN_NUMERAL.test(word)) return word
-    return word.toLowerCase().replace(/(?:^|['’-])\p{L}/gu, letter => letter.toUpperCase())
-  })
-
 const LEADER_TITLE_NOISE = new Set([
   'the',
   'king',
@@ -94,21 +80,13 @@ export const leaderNamesOverlap = (a?: string, b?: string): boolean => {
  * `executivePower` names an OFFICE that may be empty: Sierra Leone's executive
  * is its president and polity records no head of government at all, so a rule
  * that only read the field would return nothing. Where the office it names has
- * no eligible holder, the older chain still decides.
- *
- * `requireImage` narrows the pick to roles with a portrait (the quiz needs a
- * face); reveals leave it off and fall back to the name.
+ * no holder, the older chain still decides.
  */
-export const politicalLeader = (
-  isoCode: ISOCountryCode,
-  options: { requireImage?: boolean } = {}
-): LeaderProfile | undefined => {
+export const politicalLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
   const entry = LEADERS[isoCode]
   if (!entry) return undefined
-  const eligible = (role?: LeaderProfile) =>
-    role && (!options.requireImage || role.image) ? role : undefined
-  const state = eligible(entry.headOfState)
-  const government = eligible(entry.headOfGovernment)
+  const state = entry.headOfState
+  const government = entry.headOfGovernment
   if (!state && !government) return undefined
 
   // polity decided this from the country's own constitutional description, so
@@ -163,10 +141,13 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
 }
 
 /**
- * The leader as a `government.leader`-phrased prompt names them: the
- * political leader, but only when the profile is the SAME person the
- * factbook string phrases — a drifted profile would hint the wrong face or
- * party. Any surface hinting against a phrased leader selects through here.
+ * The leader every leader quiz deals, names, shows and hints: the political
+ * leader, but only where the factbook's `government.leader` names the SAME
+ * person. It returns `politicalLeader`'s own profile, so the reveal headlines
+ * whoever the question asked about. Where the two sources disagree — a
+ * contested office, a stale record, or a collective body like Switzerland's
+ * Federal Council that no person-phrased record can match — the country sits
+ * the quiz out rather than ask about a name one source disputes.
  */
 export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
   const profile = politicalLeader(isoCode)

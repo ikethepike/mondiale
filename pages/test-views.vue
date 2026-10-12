@@ -109,6 +109,7 @@ import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
 import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
+import { phrasedLeader } from '~~/lib/leaders'
 import {
   countriesWithGoverningLogo,
   governingParty,
@@ -4685,7 +4686,7 @@ const gauntletGame = (difficulty: GameDifficulty): Game => {
 }
 
 const leaderFindGame = (difficulty: GameDifficulty): Game => {
-  const game = individualGame({ variant: 'find', id: 'government.leader', country: 'SO' })
+  const game = individualGame({ variant: 'find', id: 'government.leader', country: 'DE' })
   game.difficulty = difficulty
   return game
 }
@@ -4696,7 +4697,7 @@ const leaderFindGame = (difficulty: GameDifficulty): Game => {
 const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
   const { region } = getCountry(isoCode)
   const neighbours = playableWorldCountries({ regions: [], difficulty: 'normal' })
-    .filter(code => code !== isoCode && getCountry(code).region === region)
+    .filter(code => code !== isoCode && getCountry(code).region === region && !!phrasedLeader(code))
     .slice(0, 3)
   return [isoCode, ...neighbours]
 }

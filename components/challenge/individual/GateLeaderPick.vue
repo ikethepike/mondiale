@@ -2,46 +2,44 @@
   <h1 class="map-caption">Who leads {{ countryName(challenge.country) }}?</h1>
   <div class="gate-options card-options leader-options">
     <button
-      v-for="option in challenge.options"
+      v-for="{ option, leader, facts } in cards"
       :key="option"
       class="card-option leader-option"
       type="button"
       @click="submitAnswer(option)"
     >
       <span
-        v-if="leaderPortrait(option)"
+        v-if="leader?.image"
         class="leader-thumb"
-        :style="{ backgroundImage: `url(${leaderPortrait(option)})` }"
+        :style="{ backgroundImage: `url(${leader.image})` }"
         aria-hidden="true"
       />
       <span v-else class="leader-thumb placeholder" aria-hidden="true" />
-      <span class="leader-name">{{
-        titlecaseLeader(getCountry(option).government?.leader ?? '')
-      }}</span>
-      <span v-if="leaderFacts(option).length" class="fact-row">
-        <span v-for="fact in leaderFacts(option)" :key="fact" class="fact">{{ fact }}</span>
+      <span class="leader-name">{{ leader?.name }}</span>
+      <span v-if="facts.length" class="fact-row">
+        <span v-for="fact in facts" :key="fact" class="fact">{{ fact }}</span>
       </span>
     </button>
   </div>
 </template>
 <script lang="ts" setup>
-import { countryName, getCountry } from '~~/lib/country'
-import { leaderHintFacts, politicalLeader, titlecaseLeader } from '~~/lib/leaders'
+import { countryName } from '~~/lib/country'
+import { leaderHintFacts, phrasedLeader } from '~~/lib/leaders'
 import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
-import type { ISOCountryCode } from '~~/types/geography.types'
 
-defineProps<{ challenge: IndividualChallenge }>()
+const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { isHard, submitAnswer } = useGateChallenge()
 
-const leaderPortrait = (isoCode: ISOCountryCode) => politicalLeader(isoCode)?.image
 // Hard mode gets bare names; easy/normal see party and tenure under each option.
-const leaderFacts = (isoCode: ISOCountryCode): string[] => {
-  if (isHard.value) return []
-  const leader = politicalLeader(isoCode)
-  return leader ? leaderHintFacts(leader, isoCode) : []
-}
+const cards = computed(() =>
+  (props.challenge.options ?? []).map(option => {
+    const leader = phrasedLeader(option)
+    const facts = leader && !isHard.value ? leaderHintFacts(leader, option) : []
+    return { option, leader, facts }
+  })
+)
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/breakpoints' as *;
