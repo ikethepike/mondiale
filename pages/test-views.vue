@@ -144,6 +144,9 @@ import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { vintageStoryKey } from '~~/lib/vintage-story'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
+import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
+import { revealedCardIndex } from '~~/lib/two-truths'
+import { twoTruthsReceiptsEvent } from '~~/lib/events/client/two-truths-receipts.event'
 import type { VintageRegionId } from '~~/types/vintage.types'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -703,6 +706,8 @@ const installStubSocket = () => {
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
     if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
+    if (event === 'fetch-two-truths-receipts') simulateTwoTruthsReceipts(eventData ?? {})
+    if (event === 'buy-hint') simulateBuyHint(eventData ?? {})
     if (event === 'submit-composition-drop' || event === 'fetch-composition-board') {
       void simulateComposition(event, eventData ?? {})
     }
@@ -980,6 +985,65 @@ const buildGovernmentReveal = (isoCode: ISOCountryCode) => {
     }
   }
   return game
+}
+
+/** Two Truths deals from the server deck, which reaches the harness only
+ *  through the dev-guarded loader. */
+let twoTruthsAnswers: Awaited<ReturnType<typeof loadTwoTruthsAnswers>>
+const prepareTwoTruths = async () => {
+  twoTruthsAnswers ??= await loadTwoTruthsAnswers()
+}
+
+const twoTruthsGame = (difficulty: GameDifficulty): Game => {
+  const game = mockGame('round', [])
+  game.difficulty = difficulty
+  const challenge = twoTruthsAnswers?.pickTwoTruths(game, MAXIMUM_POINTS)
+  if (challenge) game.rounds = [groupRound(challenge)]
+  return game
+}
+
+/** The stub's half of buy-hint: the server records it on the seat's cursor. */
+const simulateBuyHint = ({ hint }: Record<string, unknown>) => {
+  const cursor = gameStore.game?.players[ME]?.cursor
+  if (!cursor || typeof hint !== 'string' || cursor.hints?.includes(hint)) return
+  cursor.hints = [...(cursor.hints ?? []), hint]
+}
+
+/** The stub's half of fetch-two-truths-receipts: the harness holds the deck,
+ *  so it plays the server's targeted reply — every card once the seat banked. */
+const simulateTwoTruthsReceipts = ({ round }: Record<string, unknown>) => {
+  const game = gameStore.game
+  const dealt = typeof round === 'number' ? game?.rounds[round] : undefined
+  const challenge = dealt?.groupChallenge
+  if (!game || !dealt || !twoTruthsAnswers || !isChallengeOfType(challenge, 'two-truths-challenge'))
+    return
+  const answers = twoTruthsAnswers
+  window.setTimeout(() => {
+    const banked = !!dealt.groupAnswers[ME]
+    const indices = banked
+      ? undefined
+      : [revealedCardIndex(`${game.id}:${round}:${ME}`, challenge.cards.length)]
+    const sheets = banked
+      ? Object.fromEntries(
+          Object.entries(dealt.groupAnswers).flatMap(([id, answer]) =>
+            answer.sheet ? [[id, answer.sheet]] : []
+          )
+        )
+      : {}
+    const payload = {
+      event: 'two-truths-receipts' as const,
+      round: round as number,
+      receipts: answers.twoTruthsReceipts(challenge, indices),
+      sheets,
+    }
+    twoTruthsReceiptsEvent({
+      eventKey: payload.event,
+      payload,
+      gameStore,
+      eventTarget: {} as never,
+      playerId: ME,
+    })
+  }, SIM_LATENCY_MS * 2)
 }
 
 /** Vintage's answer key reaches the harness only through the dev-guarded
@@ -1598,41 +1662,14 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'two-truths',
-    label: 'Two truths and a lie',
-    build: () =>
-      mockGame('round', [
-        groupRound({
-          _type: 'two-truths-challenge',
-          country: 'IS',
-          statements: [
-            { accessorId: 'people.population', amount: 372000, unit: 'people' },
-            { accessorId: 'geography.highestPeak', amount: 2110, unit: 'm' },
-            { accessorId: 'people.lifeExpectancy', amount: 71.2, unit: 'years' },
-          ],
-          lieIndex: 2,
-          lieSource: 'EG',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
-  },
-  {
-    id: 'two-truths-scaled',
-    label: 'Two truths and a lie (bounded indices)',
-    build: () =>
-      mockGame('round', [
-        groupRound({
-          _type: 'two-truths-challenge',
-          country: 'DK',
-          statements: [
-            { accessorId: 'people.population', amount: 5900000, unit: 'people' },
-            { accessorId: 'government.democracyIndex', amount: 0.31, unit: 'index' },
-            { accessorId: 'government.happiness', amount: 7.6, unit: 'score' },
-          ],
-          lieIndex: 1,
-          lieSource: 'RU',
-          maximumPoints: MAXIMUM_POINTS,
-        }),
-      ]),
+    label: 'Two Truths (stamp the sheet)',
+    prepare: prepareTwoTruths,
+    variants: [
+      { id: 'normal', label: 'A dealt sheet (normal)' },
+      { id: 'easy', label: 'A dealt sheet (easy)' },
+      { id: 'hard', label: 'A dealt sheet (hard)' },
+    ],
+    build: variant => twoTruthsGame((variant?.id ?? 'normal') as GameDifficulty),
   },
   {
     id: 'trend-sparkline-gallery',

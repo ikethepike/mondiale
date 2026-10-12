@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
 import { rearmClassicRound, scheduleClassicSettle, startClassicClock } from './classic-rounds'
 import {
   CLASSIC_SETTLE_SLACK_MS,
@@ -25,6 +26,7 @@ import { testCursor, testSeat } from './test-seat'
 const CHALLENGE: TwoTruthsChallenge = {
   _type: 'two-truths-challenge',
   country: 'SE',
+  cards: [],
   durationSeconds: 25,
   maximumPoints: 10,
 } as TwoTruthsChallenge
@@ -73,6 +75,12 @@ const context = (game: Game): EngineContext => {
 }
 
 const roundOf = (gameId: string): Round => store.get(gameId)!.rounds[0]
+
+// The settle grades through the answer loader; its first import is real I/O
+// that fake timers cannot flush, so it lands before the clocks are faked.
+beforeAll(async () => {
+  await loadTwoTruthsAnswers()
+})
 
 beforeEach(() => {
   vi.useFakeTimers()

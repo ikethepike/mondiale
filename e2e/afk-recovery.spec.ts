@@ -49,9 +49,11 @@ test('a dead tab mid-round cannot freeze the table', async ({ browser }) => {
   // The guest's tab dies mid-round, before answering anything.
   await guestContext.close()
 
-  // Host answers: pick the first claim. The reveal plays (display-only) and
-  // the server flips the seat to its scorecard after the kind's hold.
-  await host.locator('.card-option, .claim-stage button, .stat-card').first().click()
+  // Host answers: stamp the first claim and lock the sheet. The reveal plays
+  // (display-only) and the server flips the seat to its scorecard after the
+  // kind's hold.
+  await host.locator('.claim-stage .stamp-button').first().click()
+  await host.locator('.lock-button').click()
 
   // The freeze this exists to catch: the round must settle the dead seat
   // (zero banked at deadline + hold + slack ≈ 36s) and the scorecard cap

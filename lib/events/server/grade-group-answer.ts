@@ -3,7 +3,6 @@ import {
   getCorrectRanking,
   ghostStateAnswers,
   isFlagPaletteMatch,
-  isTwoTruthsLie,
   scoreChallengeSubmission,
   scoreGhostState,
   scoreHotCold,
@@ -40,6 +39,8 @@ import { blitzScore, buzzScore, hintDockedScore } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp } from '~~/lib/number'
+import { isPerfectSheet, scoreSheet, toSheet } from '~~/lib/two-truths'
+import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
@@ -242,15 +243,32 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'two-truths': {
-      // Spotting the lie is all-or-nothing; the 50/50 bites whatever the buzz
-      // was worth.
       const challenge = expectChallengeType(roundChallenge, 'two-truths-challenge')
-      const found = isTwoTruthsLie(challenge, submission.lie)
-      buzzOn(challenge, found)
-      answer = { ...answer, submitted: found ? [challenge.country] : [] }
+      const answers = await loadTwoTruthsAnswers()
+      if (!answers) throw new Error('Two Truths graded without its answer key')
+      const truths = answers.twoTruthsVerdicts(challenge)
+      const sheet = toSheet(absent ? undefined : submission.sheet, truths.length)
+      const perfect = isPerfectSheet(sheet, truths)
+      // The bonus goes to the first perfect sheet banked — answers land on the
+      // game's queue one at a time, so "already banked" is a total order.
+      const firstPerfect =
+        perfect &&
+        !Object.entries(round.groupAnswers).some(
+          ([id, banked]) =>
+            id !== playerId && !!banked.sheet && isPerfectSheet(banked.sheet, truths)
+        )
+      answer = {
+        submitted: perfect ? [challenge.country] : [],
+        correct: [challenge.country],
+        ...(absent ? {} : { sheet }),
+      }
       scoring = {
-        ...scoring,
-        scored: hintDockedScore(scoring.scored, challenge.maximumPoints, bought),
+        scored: hintDockedScore(
+          scoreSheet({ sheet, truths, maximumPoints: challenge.maximumPoints, firstPerfect }),
+          challenge.maximumPoints,
+          bought
+        ),
+        maximum: challenge.maximumPoints,
       }
       break
     }

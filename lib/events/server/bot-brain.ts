@@ -1,5 +1,7 @@
 import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import { vintageRuns } from './vintage-grade'
+import { twoTruthsVerdicts } from './two-truths-deck'
+import { stampFor, TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
 import type {
   CompositionPlacement,
   GovernmentAnswers,
@@ -7,7 +9,10 @@ import type {
   VintageChallenge,
 } from '~~/types/challenges/group-modes.type'
 import { randomBetween, randomInt, sample, sampleMany, shuffleArray } from '~~/lib/arrays'
+import { clamp } from '~~/lib/number'
 import {
+  BOT_SHEET_CERTAINTY,
+  BOT_SHEET_WRONG,
   botShare,
   isBrainSeat,
   jitteredShare,
@@ -1589,11 +1594,25 @@ export const composeClassicSubmission = async (
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'two-truths': {
-      const truths = expectChallengeType(challenge, 'two-truths-challenge')
-      const landed = { ranking: [], lie: truths.lieIndex }
-      if (await lands(landed)) return landed
-      const decoys = truths.statements.map((_, index) => index)
-      return { ranking: [], lie: sample(decoys.filter(index => index !== truths.lieIndex)) }
+      // A seat stamps what it knows, guesses some of the rest wrong and leaves
+      // the remainder blank. The right rate is solved so the net realizes the
+      // dial, and capped so even a strong seat isn't a lock on the perfect-
+      // sheet bonus it would bank before most humans.
+      const verdicts = twoTruthsVerdicts(expectChallengeType(challenge, 'two-truths-challenge'))
+      const right = clamp(
+        (share / TWO_TRUTHS_TUNING.sheetShare + BOT_SHEET_WRONG) / (1 + BOT_SHEET_WRONG),
+        0,
+        BOT_SHEET_CERTAINTY
+      )
+      const wrong = BOT_SHEET_WRONG * (1 - right)
+      return {
+        ranking: [],
+        sheet: verdicts.map(truth => {
+          const roll = Math.random()
+          if (roll < right) return stampFor(truth)
+          return roll < right + wrong ? stampFor(!truth) : null
+        }),
+      }
     }
     case 'hot-cold': {
       // A probe trail: the colder the seat, the longer the wander. Every stray

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DIFFICULTY_SHARE } from '~~/lib/bots'
 import { pickTraversal } from '~~/lib/traversal'
+import { CLAIMS } from '~~/data/claims.gen'
 import { PLACES } from '~~/data/places.gen'
 import type {
   GhostStateChallenge,
@@ -8,7 +9,7 @@ import type {
   NeighbourBlitzChallenge,
   PyramidSchemeChallenge,
   TrendRaceChallenge,
-  TwoTruthsChallenge,
+  SilhouetteChallenge,
 } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, Round } from '~~/types/game.types'
@@ -143,14 +144,12 @@ const BLITZ: NeighbourBlitzChallenge = {
   maximumPoints: 12,
 } as NeighbourBlitzChallenge
 
-const BUZZ: TwoTruthsChallenge = {
-  _type: 'two-truths-challenge',
+const BUZZ: SilhouetteChallenge = {
+  _type: 'silhouette-challenge',
   country: 'SE',
-  statements: [{}, {}, {}],
-  lieIndex: 2,
   durationSeconds: 25,
   maximumPoints: 10,
-} as TwoTruthsChallenge
+} as SilhouetteChallenge
 
 /** No correctness gate — the similarity IS the score, so a bot that traced the
  *  outline every time would bank the pot at every difficulty. */
@@ -192,6 +191,22 @@ const TREND: TrendRaceChallenge = {
   maximumPoints: 10,
 } as TrendRaceChallenge
 
+/** A dealt sheet from the real deck — the bot stamps what it knows and leaves
+ *  the rest blank, so the net has to come out at the dial. */
+const TWO_TRUTHS = (() => {
+  const dealt = [
+    ...CLAIMS.filter(claim => claim.truth).slice(0, 2),
+    ...CLAIMS.filter(claim => !claim.truth).slice(0, 2),
+  ]
+  return {
+    _type: 'two-truths-challenge',
+    country: dealt[0].subject,
+    cards: dealt.map(({ id, family, text, countries }) => ({ id, family, text, countries })),
+    durationSeconds: 45,
+    maximumPoints: 10,
+  }
+})()
+
 const GROUND_PLAN: GroundPlanChallenge = {
   _type: 'ground-plan-challenge',
   country: 'US',
@@ -222,6 +237,18 @@ describe('bot strength realizes the difficulty dial', () => {
   it.each(['easy', 'normal', 'hard'] as const)(
     'buzz rounds land near the %s share',
     async difficulty => expectOnDial(await realizedFraction(BUZZ, difficulty), difficulty)
+  )
+
+  // The first perfect sheet's bonus rides on top of the net, so a strong seat
+  // may run a little over its dial.
+  it.each(['easy', 'normal', 'hard'] as const)(
+    'two-truths sheets land near the %s share',
+    async difficulty =>
+      expectOnDial(
+        await realizedFraction(TWO_TRUTHS, difficulty),
+        difficulty,
+        PARTIAL_CREDIT_HEADROOM
+      )
   )
 
   // Graded on the CITY, so a hit that names only the country banks nothing.

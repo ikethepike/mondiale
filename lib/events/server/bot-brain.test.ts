@@ -10,7 +10,7 @@ import {
 import type {
   NeighbourBlitzChallenge,
   PyramidSchemeChallenge,
-  TwoTruthsChallenge,
+  SilhouetteChallenge,
 } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -43,14 +43,12 @@ const BLITZ: NeighbourBlitzChallenge = {
   maximumPoints: 10,
 } as NeighbourBlitzChallenge
 
-const BUZZ: TwoTruthsChallenge = {
-  _type: 'two-truths-challenge',
+const BUZZ: SilhouetteChallenge = {
+  _type: 'silhouette-challenge',
   country: 'SE',
-  statements: [{}, {}, {}],
-  lieIndex: 2,
   durationSeconds: 25,
   maximumPoints: 10,
-} as TwoTruthsChallenge
+} as SilhouetteChallenge
 
 const buildGame = (challenge: object, players: Player[]): Game =>
   ({

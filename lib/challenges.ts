@@ -1,3 +1,4 @@
+import { loadTwoTruthsAnswers } from './two-truths-answers'
 import { loadVintageAnswers } from './vintage-answers'
 import { ANTHEM_LYRICS } from '~~/data/anthem-lyrics.gen'
 import { ANTHEMS } from '~~/data/anthems.gen'
@@ -67,7 +68,6 @@ import type {
   TimelineChallenge,
   TongueBuzzChallenge,
   TrendRaceChallenge,
-  TwoTruthsChallenge,
   UniqueOrBustChallenge,
   WaterBlitzChallenge,
   WaterFeatureKind,
@@ -775,11 +775,6 @@ const getSketchChallenge = ({ game }: { game: gameTypes.Game }): SketchChallenge
   maximumPoints: maximumRoundPoints(game),
 })
 
-/** How alike two values may be before a claim stops being decidable. */
-const LIE_MINIMUM_GAP = 0.4
-const LIE_MINIMUM_YEAR_GAP = 8
-const TWO_TRUTHS_SECONDS = 40
-
 /**
  * Stat detective: a mystery country's stats reveal one by one. Only the
  * accessor ids travel — clients read the values from the shared dataset.
@@ -826,67 +821,8 @@ const getStatDetectiveChallenge = ({
   return undefined
 }
 
-/**
- * Two truths and a lie: three stat claims about one country, one of them
- * carrying another country's value. The lie is honest — a real value from a
- * real country, just the wrong one — and must differ enough to be decidable.
- */
-const getTwoTruthsChallenge = ({
-  game,
-}: {
-  game: gameTypes.Game
-}): TwoTruthsChallenge | undefined => {
-  const pool = playableCountries(game)
-
-  for (const country of sampleMany(pool, 40)) {
-    const accessors = shuffleArray(
-      Object.values(GROUP_CHALLENGES)
-        .map(challenge => challenge.id)
-        .filter(accessorId => isAccessorEnabled(game, accessorId))
-        .filter(accessorId => !!getValueByAccessorID(country, accessorId))
-    )
-    if (accessors.length < 3) continue
-
-    const chosen = accessors.slice(0, 3)
-    const lieIndex = sample(chosen.map((_, index) => index)) ?? 0
-    const lieAccessor = chosen[lieIndex]
-    const truth = getValueByAccessorID(country, lieAccessor)
-    if (!truth) continue
-
-    // Decoys prefer the variant pool but a lie may come from anywhere in play
-    const lieSource = shuffleArray([...pool, ...playableWorldCountries(game)]).find(isoCode => {
-      if (isoCode === country) return false
-      const candidate = getValueByAccessorID(isoCode, lieAccessor)
-      if (!candidate) return false
-      if (candidate.unit === 'year') {
-        return Math.abs(candidate.amount - truth.amount) >= LIE_MINIMUM_YEAR_GAP
-      }
-      return relativeGap(candidate.amount, truth.amount) >= LIE_MINIMUM_GAP
-    })
-    if (!lieSource) continue
-
-    const statements = chosen.map((accessorId, index) => {
-      const source = getValueByAccessorID(index === lieIndex ? lieSource : country, accessorId)
-      return {
-        accessorId,
-        amount: source?.amount ?? 0,
-        unit: source?.unit ?? '',
-      }
-    })
-
-    return {
-      _type: 'two-truths-challenge',
-      country,
-      statements,
-      lieIndex,
-      lieSource,
-      durationSeconds: TWO_TRUTHS_SECONDS,
-      maximumPoints: maximumRoundPoints(game),
-    }
-  }
-
-  return undefined
-}
+const getTwoTruthsChallenge = async (game: gameTypes.Game) =>
+  (await loadTwoTruthsAnswers())?.pickTwoTruths(game, maximumRoundPoints(game))
 
 /** Alliances big enough to host a hard-mode corridor run. */
 const CORRIDOR_ORGANIZATIONS = ['nato', 'eu', 'au', 'oecd', 'bri']
@@ -2166,7 +2102,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'hot-cold': game => getHotColdChallenge({ game }),
   sketch: game => getSketchChallenge({ game }),
   'stat-detective': game => getStatDetectiveChallenge({ game }),
-  'two-truths': game => getTwoTruthsChallenge({ game }),
+  'two-truths': game => getTwoTruthsChallenge(game),
   'river-run': game => getWaterBlitzChallenge(game, RIVER_RUN_TIERS),
   'shared-shores': game => getWaterBlitzChallenge(game, SHARED_SHORES_TIERS),
   highlands: game => getWaterBlitzChallenge(game, HIGHLANDS_TIERS),
@@ -2278,12 +2214,6 @@ export const scoreHotCold = ({
   const probes = submittedGuesses.length - 1
   return { scored: attemptDecayScore(probes, maximum), maximum }
 }
-
-/** Whether a Two Truths pick is the lie — the view's verdict and the grade. */
-export const isTwoTruthsLie = (
-  challenge: Pick<TwoTruthsChallenge, 'lieIndex'>,
-  pick: unknown
-): boolean => typeof pick === 'number' && pick === challenge.lieIndex
 
 /** Articles a named water feature may shed before matching ("the Baltic Sea"). */
 const WATER_NAME_ARTICLES = ['the', 'el', 'la', 'il']
