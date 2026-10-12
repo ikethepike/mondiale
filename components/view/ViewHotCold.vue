@@ -9,7 +9,8 @@
       @done="begin()"
     />
 
-    <ProbeCompasses v-if="!showInterstitial" :probes="probes" />
+    <ProbeZones v-if="!showInterstitial" :probes="probes" />
+    <ProbeCompasses v-if="!showInterstitial" :probes="probes" :compact="isPhone" />
 
     <ChallengePrompt :attributions="promptSources">
       <h1 class="map-caption">Find the mystery country</h1>
@@ -37,8 +38,8 @@
         <CountryChip
           v-for="probe in probes"
           :key="probe.isoCode"
-          class="map-caption"
-          :class="probe.warmth"
+          class="map-caption probe-chip"
+          :style="{ '--warmth': warmthColor(warmthFraction(probe.distanceKm)) }"
           :country="getCountry(probe.isoCode)"
         >
           <small v-if="probe.degrees !== undefined">
@@ -53,6 +54,7 @@
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ProbeCompasses from '~/components/challenge/ProbeCompasses.vue'
+import ProbeZones from '~/components/challenge/ProbeZones.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
@@ -62,18 +64,21 @@ import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { compassArrow, compassLabel } from '~~/lib/geo'
 import {
   probeDistanceKm,
+  probeFrame,
   probeHeading,
   probeOrigin,
   probeTrend,
   temperatureFor,
   warmthFor,
+  warmthFraction,
   type HotColdProbe,
   type Warmth,
 } from '~~/lib/hot-cold'
 import { formatApproxKm, formatKm } from '~~/lib/number'
-import type { MapTint } from '~~/store/game.store'
+import { useIsPhone } from '~~/lib/use-viewport'
+import { warmthColor } from '~~/lib/warmth'
 import { isMapClickEvent } from '~~/types/events.types'
-import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
+import { isValidISOCode } from '~~/types/geography.types'
 import { datasetAttribution } from '~~/lib/attribution'
 
 const promptSources = datasetAttribution('map')
@@ -104,15 +109,18 @@ const feedback = ref<{ text: string; warmth: Warmth; trend?: Trend }>()
 
 const probesLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - probes.value.length)
 
+const isPhone = useIsPhone()
+
+/** Each probed country wears its own point on the warmth ramp; a small
+ *  screen also frames the trail and its zones. */
 const paintProbes = () => {
-  gameStore.map.highlighted.clear()
-  const tints: { [isoCode in ISOCountryCode]?: MapTint } = {}
-  for (const probe of probes.value) {
-    gameStore.map.highlighted.add(probe.isoCode)
-    tints[probe.isoCode] = probe.warmth
-  }
-  gameStore.map.tints = tints
+  gameStore.map.countryGroupings = probes.value.map(probe => ({
+    color: warmthColor(warmthFraction(probe.distanceKm), 0.45),
+    countries: [probe.isoCode],
+  }))
+  if (isPhone.value) gameStore.map.frame = probeFrame(probes.value)
 }
+registerCleanup(() => (gameStore.map.frame = undefined))
 
 const distancePhrase = (distanceKm: number): string =>
   distanceKm < 100 ? 'less than 100 km' : `about ${formatApproxKm(distanceKm)}`
@@ -159,6 +167,7 @@ const onMapClick = (event: Event) => {
   if (isoCode === active.country) {
     probes.value.push({ isoCode, origin, distanceKm: 0, warmth: 'hot', replays: 0 })
     previewVerdict('correct')
+    gameStore.map.frame = undefined
     gameStore.map.reveal = active.country
     feedback.value = { text: `${countryName(isoCode)} — found it!`, warmth: 'hot' }
     return submitRound()
@@ -239,20 +248,12 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 }
 
 // Chip, trail-list and phone rail recipes come from templates/_country-chip.scss;
-// only the warmth borders live here.
-.country-chip {
+// only the warmth edge lives here.
+.probe-chip {
+  border-color: var(--warmth);
+
   small {
     opacity: 0.6;
-  }
-
-  &.hot {
-    border-color: flame(0.6);
-  }
-  &.warm {
-    border-color: hsla(29.7, 79.9%, 60%, 0.6);
-  }
-  &.cold {
-    border-color: hsla(197.6, 51.2%, 41.8%, 0.4);
   }
 }
 </style>

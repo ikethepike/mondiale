@@ -4,11 +4,13 @@
       v-for="compass in placed"
       :key="compass.key"
       class="compass"
-      :class="[compass.warmth, compass.trend, { found: compass.degrees === undefined }]"
+      :class="[compass.trend, { found: compass.degrees === undefined }]"
       :style="{
         left: `${compass.left}%`,
         top: `${compass.top}%`,
         '--heading': `${compass.degrees ?? 0}deg`,
+        '--warmth': compass.color,
+        '--warmth-wash': compass.wash,
       }"
     >
       <span
@@ -60,19 +62,21 @@
         </svg>
       </span>
 
-      <span class="km">{{ compass.label }}</span>
+      <span v-if="compass.labelled" class="km">{{ compass.label }}</span>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import { MAP_PROJECTION } from '~~/data/map.gen'
 import { projectRobinson } from '~~/lib/geo'
-import type { HotColdProbe } from '~~/lib/hot-cold'
+import { warmthFraction, type HotColdProbe } from '~~/lib/hot-cold'
 import { formatKm } from '~~/lib/number'
 import { useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
+import { warmthColor } from '~~/lib/warmth'
 
-/** Hot & Cold's probe marks: a compass at each clicked point, needle on the target's heading. */
-const props = defineProps<{ probes: HotColdProbe[] }>()
+/** Hot & Cold's probe marks: a compass at each clicked point, needle on the target's heading.
+ *  `compact` labels only the newest and the closest — a phone's labels overlap. */
+const props = defineProps<{ probes: HotColdProbe[]; compact?: boolean }>()
 
 const WEDGE_RADIUS = 17.5
 const WEDGE_HALF_ANGLE = Math.PI / 8
@@ -82,15 +86,27 @@ const { viewBox, toScreenPercent } = useMapViewBox()
 const root = ref<HTMLElement>()
 const { frameStyle } = useMapPanTrack(root)
 
-const anchored = computed(() =>
-  props.probes.flatMap(probe => {
+const anchored = computed(() => {
+  const closest = Math.min(...props.probes.map(probe => probe.distanceKm))
+  return props.probes.flatMap((probe, index) => {
     if (!probe.origin) return []
     const label = probe.degrees === undefined ? 'Found!' : formatKm(probe.distanceKm)
+    const fraction = warmthFraction(probe.distanceKm)
+    const labelled =
+      !props.compact || index === props.probes.length - 1 || probe.distanceKm === closest
     return [
-      { ...probe, key: probe.isoCode, label, point: projectRobinson(probe.origin, MAP_PROJECTION) },
+      {
+        ...probe,
+        key: probe.isoCode,
+        label,
+        labelled,
+        color: warmthColor(fraction),
+        wash: warmthColor(fraction, 0.35),
+        point: projectRobinson(probe.origin, MAP_PROJECTION),
+      },
     ]
   })
-)
+})
 
 const placed = computed(() => {
   if (!viewBox.value?.w) return []
@@ -112,8 +128,6 @@ const placed = computed(() => {
 
 .compass {
   --dial-size: 3.2rem;
-  --warmth: #{flame()};
-  --warmth-wash: #{flame(0.35)};
   --land: 0.45s;
   --land-delay: 0.05s;
   --needle-delay: 0.12s;
@@ -126,15 +140,6 @@ const placed = computed(() => {
   width: var(--dial-size);
   height: var(--dial-size);
   transform: translate(-50%, -50%);
-
-  &.warm {
-    --warmth: #{ember()};
-    --warmth-wash: #{ember(0.35)};
-  }
-  &.cold {
-    --warmth: var(--soft-blue);
-    --warmth-wash: color-mix(in srgb, var(--soft-blue) 32%, transparent);
-  }
 }
 
 .pings,
@@ -254,8 +259,11 @@ const placed = computed(() => {
   font-size: 0.95rem;
   font-weight: bold;
   white-space: nowrap;
-  color: var(--warmth);
+  color: var(--dark-blue);
   @include caption-surface(0.6rem);
+  // The ramp's middle is a pale sand no text could stand on: the warmth
+  // rides the label's lower edge instead.
+  box-shadow: inset 0 -0.22rem 0 var(--warmth);
   animation: row-land var(--reveal) var(--ease-out-expressive) var(--settled) both;
 }
 
@@ -300,17 +308,6 @@ const placed = computed(() => {
   .km {
     color: flame(1, 45%);
     animation-delay: var(--motion-slow);
-  }
-}
-
-@keyframes probe-ping {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.2);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(3);
   }
 }
 

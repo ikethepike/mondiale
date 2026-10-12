@@ -1,0 +1,346 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  clueAdmits,
+  huntCandidates,
+  initialManhuntCandidates,
+  legalManhuntMoves,
+  manhuntKey,
+  MANHUNT_TUNING,
+  manhuntFloor,
+  sonarDistance,
+  stepManhuntCandidates,
+  type ManhuntSecret,
+} from '~~/lib/manhunt'
+import { latestChallengeOfType } from '~~/lib/rounds'
+import type { ManhuntChallenge } from '~~/types/challenges/group-modes.type'
+import type { Game } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
+import { armBotPump, forgetBotStateForTests } from './bot-brain'
+import { rearmManhunt, startManhunt } from './manhunt-beats'
+import { dropArmedTimersForTests } from './seat-cursor'
+import { testSeat } from './test-seat'
+import { createTestTable, type TestTable, uniqueGameId } from './test-table'
+
+const DESPOT = 'd'
+const DETECTIVES = ['a', 'b', 'c']
+const VAULTS: ISOCountryCode[] = ['CH', 'SG', 'PA']
+const RULES = { regions: [], difficulty: 'normal' as const }
+
+const buildGame = (difficulty: 'normal' | 'hard' = 'normal'): Game => {
+  const tuning = MANHUNT_TUNING[difficulty]
+  const challenge: ManhuntChallenge = {
+    _type: 'manhunt-challenge',
+    turnCount: tuning.turnCount,
+    beatSeconds: tuning.beatSeconds,
+    claimsPerBeat: 3,
+    maximumPoints: 15,
+    despotId: DESPOT,
+    favours: tuning.favours,
+    subpoenas: 1,
+    showCandidates: difficulty !== 'hard',
+    analysisDelay: tuning.analysisDelay,
+    vaults: VAULTS,
+    state: {
+      briefing: true,
+      ready: [],
+      turn: 0,
+      hop: 1,
+      deadline: 0,
+      analysisAt: 0,
+      detectives: DETECTIVES,
+      clues: [],
+      moves: [],
+      favoursLeft: tuning.favours,
+      subpoenasLeft: Object.fromEntries(DETECTIVES.map(id => [id, 1])),
+      claims: {},
+      pings: {},
+      despotReady: false,
+      dragnets: [],
+    },
+  }
+  return {
+    id: uniqueGameId('manhunt'),
+    host: DESPOT,
+    started: true,
+    length: 'short',
+    regions: [],
+    difficulty,
+    tiles: [],
+    players: Object.fromEntries([DESPOT, ...DETECTIVES].map(id => [id, testSeat(id, 'round')])),
+    rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
+  } as unknown as Game
+}
+
+const manhuntOf = async (table: TestTable) =>
+  latestChallengeOfType(await table.read(), 'manhunt-challenge')!
+
+const secretOf = async (table: TestTable) =>
+  (await table.redis.get(manhuntKey(table.id, 0))) as ManhuntSecret
+
+const despotAt = async (table: TestTable) => {
+  const { trail } = await secretOf(table)
+  return trail[trail.length - 1]
+}
+
+/** A seeded table with the briefing dismissed and the first beat running. */
+const openChase = async (
+  game = buildGame(),
+  options: Parameters<typeof createTestTable>[1] = {}
+) => {
+  const table = await createTestTable(game, options)
+  const fresh = await table.read()
+  await startManhunt(table.ctx(DESPOT), fresh, latestChallengeOfType(fresh, 'manhunt-challenge')!)
+  await table.redis.set(fresh.id, fresh)
+  for (const id of [DESPOT, ...DETECTIVES]) await table.send(id, { event: 'manhunt-ready' })
+  return table
+}
+
+/** Stake out countries that are NOT the hideout (and not vaults). */
+const missEverywhere = async (table: TestTable) => {
+  const at = await despotAt(table)
+  const decoys = initialManhuntCandidates(RULES, VAULTS).filter(
+    iso => iso !== at && !VAULTS.includes(iso)
+  )
+  for (const [index, id] of DETECTIVES.entries()) {
+    const { turn } = (await manhuntOf(table)).state
+    await table.send(id, { event: 'submit-manhunt-claim', isoCode: decoys[index]!, turn })
+  }
+}
+
+const planGround = async (table: TestTable) => {
+  const at = await despotAt(table)
+  const { state } = await manhuntOf(table)
+  const destination = legalManhuntMoves(at, 0, RULES).ground[0]!
+  await table.send(DESPOT, { event: 'submit-manhunt-move', isoCode: destination, turn: state.turn })
+  return destination
+}
+
+describe('the Despot beat engine', () => {
+  let table: TestTable | undefined
+
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    table?.dispose()
+    table = undefined
+    dropArmedTimersForTests()
+    forgetBotStateForTests()
+    vi.useRealTimers()
+    vi.unstubAllEnvs()
+  })
+
+  it('seeds the trail off the snapshot and deals a true opening leak', async () => {
+    table = await openChase()
+    const challenge = await manhuntOf(table)
+    const secret = await secretOf(table)
+    expect(challenge.state.briefing).toBe(false)
+    expect(challenge.state.clues).toHaveLength(1)
+    expect(huntCandidates(challenge, RULES)).toContain(secret.trail[0])
+    expect(JSON.stringify(challenge)).not.toContain('"trail"')
+  })
+
+  it('carries out the plan and the chosen leak when the beat settles', async () => {
+    table = await openChase()
+    const destination = await planGround(table)
+    const plan = (await secretOf(table)).plan!
+    expect(plan.isoCode).toBe(destination)
+    expect(plan.options).toHaveLength(2)
+
+    const { state } = await manhuntOf(table)
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 1, turn: state.turn })
+    expect((await manhuntOf(table)).state.despotReady).toBe(true)
+    await missEverywhere(table)
+
+    const after = await manhuntOf(table)
+    expect(after.state.hop).toBe(2)
+    expect(after.state.dragnets).toHaveLength(1)
+    expect(after.state.clues[1]!.text).toBe(plan.options[1]!.text)
+    expect(huntCandidates(after, RULES)).toContain(destination)
+    expect(after.state.claims).toEqual({})
+    expect(await despotAt(table)).toBe(destination)
+  })
+
+  it('refuses a second detective on a country already staked out', async () => {
+    table = await openChase()
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-claim', isoCode: 'DE', turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-claim', isoCode: 'DE', turn: state.turn })
+    expect((await manhuntOf(table)).state.claims).toEqual({ a: 'DE' })
+  })
+
+  it('captures on a stakeout of the hideout and scores the table', async () => {
+    table = await openChase()
+    const at = await despotAt(table)
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-claim', isoCode: at, turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-claim', isoCode: 'JP', turn: state.turn })
+    await table.send('c', { event: 'submit-manhunt-ping', isoCode: 'BR', turn: state.turn })
+    await planGround(table)
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+
+    const caught = await manhuntOf(table)
+    expect(caught.state.finished).toBe(true)
+    expect(caught.state.outcome).toMatchObject({ kind: 'captured', capturerId: 'a', country: at })
+    // The round's readings go public with the trail, at the reveal.
+    expect(caught.state.outcome!.readings.c).toHaveLength(1)
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    const settled = await table.read()
+    const answers = settled.rounds[0]!.groupAnswers
+    expect(Object.keys(answers).sort()).toEqual([DESPOT, ...DETECTIVES].sort())
+    expect(await table.redis.get(manhuntKey(table.id, 0))).toBeNull()
+  })
+
+  it('shelters the despot on an untouched vault and banks the loot', async () => {
+    table = await openChase()
+    const secret = await secretOf(table)
+    secret.trail = ['CH']
+    await table.redis.set(manhuntKey(table.id, 0), secret)
+
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-claim', isoCode: 'CH', turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-claim', isoCode: 'DE', turn: state.turn })
+    await table.send('c', { event: 'submit-manhunt-claim', isoCode: 'FR', turn: state.turn })
+    await table.send(DESPOT, { event: 'submit-manhunt-move', isoCode: 'AT', turn: state.turn })
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+
+    const after = await manhuntOf(table)
+    expect(after.state.finished).toBeFalsy()
+    expect((await secretOf(table)).looted).toEqual(['CH'])
+  })
+
+  it('answers a ping privately and lets it share a country with a stakeout', async () => {
+    table = await openChase()
+    const at = await despotAt(table)
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-ping', isoCode: 'FR', turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-claim', isoCode: 'FR', turn: state.turn })
+    // One action a beat: a pinger can't also stake out.
+    await table.send('a', { event: 'submit-manhunt-claim', isoCode: 'JP', turn: state.turn })
+    const live = await manhuntOf(table)
+    expect(live.state.pings).toEqual({ a: 'FR' })
+    expect(live.state.claims).toEqual({ b: 'FR' })
+
+    await table.send('c', { event: 'submit-manhunt-ping', isoCode: 'BR', turn: state.turn })
+    await planGround(table)
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+
+    const after = await manhuntOf(table)
+    const { readings } = await secretOf(table)
+    expect(readings.a).toEqual([
+      { hop: 1, isoCode: 'FR', distance: sonarDistance('FR', at, RULES) },
+    ])
+    expect(readings.c).toHaveLength(1)
+    expect(readings.b).toBeUndefined()
+    expect(after.state.pings).toEqual({})
+    expect(after.state.dragnets[0]).toEqual({
+      hop: 1,
+      claims: { b: 'FR' },
+      pings: { a: 'FR', c: 'BR' },
+    })
+    // The reading never rides the snapshot.
+    expect(JSON.stringify(after)).not.toContain('"distance"')
+  })
+
+  it('binds a served subpoena to the next leak and credits the asker', async () => {
+    table = await openChase()
+    const { state } = await manhuntOf(table)
+    await table.send('b', { event: 'submit-manhunt-subpoena', topic: 'economy', turn: state.turn })
+    expect((await manhuntOf(table)).state.subpoena).toEqual({ by: 'b', topic: 'economy' })
+
+    await planGround(table)
+    const plan = (await secretOf(table)).plan!
+    expect(plan.options).toHaveLength(1)
+    expect(plan.subpoenaBy).toBe('b')
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+    await missEverywhere(table)
+
+    const after = await manhuntOf(table)
+    expect(after.state.subpoena).toBeUndefined()
+    expect(after.state.clues[1]!.askedBy).toBe('b')
+    expect(after.state.subpoenasLeft.b).toBe(0)
+  })
+
+  it('re-binds a plan the subpoena lands on before its leak is chosen', async () => {
+    table = await openChase()
+    await planGround(table)
+    expect((await secretOf(table)).plan!.options).toHaveLength(2)
+    const { state } = await manhuntOf(table)
+    await table.send('c', { event: 'submit-manhunt-subpoena', topic: 'land', turn: state.turn })
+    expect((await secretOf(table)).plan!.options).toHaveLength(1)
+  })
+
+  it('moves an idle despot at random when the clock runs out', async () => {
+    table = await openChase()
+    const before = await despotAt(table)
+    const { state } = await manhuntOf(table)
+    await vi.advanceTimersByTimeAsync(state.deadline - Date.now() + 5_000)
+    const after = await manhuntOf(table)
+    expect(after.state.hop).toBe(2)
+    expect(after.state.clues).toHaveLength(2)
+    expect(await despotAt(table)).not.toBe(before)
+  })
+
+  it('bot detectives act within the beat on hard, where no map is painted', async () => {
+    vi.stubEnv('FLY_MACHINE_ID', '')
+    const game = buildGame('hard')
+    for (const id of DETECTIVES) game.players[id]!.bot = true
+    table = await openChase(game, { connected: [DESPOT] })
+    armBotPump(table.ctx(DESPOT), await table.read())
+    const { state, beatSeconds } = await manhuntOf(table)
+    await vi.advanceTimersByTimeAsync((beatSeconds * 1000) / 2)
+    const live = await manhuntOf(table)
+    expect(live.state.turn).toBe(state.turn)
+    for (const id of DETECTIVES) {
+      expect(live.state.claims[id] ?? live.state.pings[id], id).toBeDefined()
+    }
+  })
+
+  it('never lets a subpoena serve a giveaway below the floor', async () => {
+    table = await openChase()
+    const { state } = await manhuntOf(table)
+    await table.send('b', { event: 'submit-manhunt-subpoena', topic: 'culture', turn: state.turn })
+    await planGround(table)
+    const plan = (await secretOf(table)).plan!
+    const challenge = await manhuntOf(table)
+    const stepped = stepManhuntCandidates(huntCandidates(challenge, RULES), plan.kind, RULES)
+    const [leak] = plan.options
+    const left = stepped.filter(isoCode => clueAdmits(leak!, isoCode)).length
+    expect(left).toBeGreaterThanOrEqual(Math.min(manhuntFloor(3, 'normal'), stepped.length))
+  })
+
+  it('sends a detective their reading before the new beat reaches the room', async () => {
+    table = await openChase(buildGame(), { connected: DETECTIVES })
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-ping', isoCode: 'FR', turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-ping', isoCode: 'DE', turn: state.turn })
+    await table.send('c', { event: 'submit-manhunt-ping', isoCode: 'PL', turn: state.turn })
+    await planGround(table)
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+    const order = table.emits.map(emit => emit.event)
+    const sonar = order.indexOf('manhunt-sonar')
+    const nextBeat = order.lastIndexOf('manhunt-updated')
+    expect(sonar).toBeGreaterThan(-1)
+    expect(sonar).toBeLessThan(nextBeat)
+  })
+
+  it('winds a round saved before the sonar down cleanly after a deploy', async () => {
+    const game = buildGame()
+    const challenge = latestChallengeOfType(game, 'manhunt-challenge')!
+    const legacy = challenge as unknown as Record<string, unknown>
+    delete legacy.vaults
+    delete legacy.claimsPerBeat
+    const state = challenge.state as unknown as Record<string, unknown>
+    Object.assign(state, { briefing: false, beat: 'hunt', committed: [], deadline: Date.now() - 1 })
+    delete state.pings
+    delete state.claims
+    table = await createTestTable(game)
+
+    rearmManhunt(table.ctx(DESPOT), await table.read())
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect((await manhuntOf(table)).state.finished).toBe(true)
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(Object.keys((await table.read()).rounds[0]!.groupAnswers).sort()).toEqual(
+      [DESPOT, ...DETECTIVES].sort()
+    )
+  })
+})

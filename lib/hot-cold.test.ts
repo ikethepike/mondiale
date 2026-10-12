@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { compassLabel, countryLatLng } from '~~/lib/geo'
+import { compassLabel, countryLatLng, haversineKm } from '~~/lib/geo'
 import {
   HOT_COLD_WARMTH,
   probeDistanceKm,
   probeHeading,
+  probeZone,
   probeOrigin,
   probeTrend,
   temperatureFor,
@@ -108,5 +109,27 @@ describe('probeTrend', () => {
       trend: 'colder',
       deltaKm: 2000,
     })
+  })
+})
+
+describe('probeZone', () => {
+  it('draws the band the needle and the kilometres describe, around the target', () => {
+    const origin = centroid('FR')
+    const target = centroid('MN')
+    const km = haversineKm(origin, target)
+    const heading = probeHeading(origin, 'MN')!
+    const zone = probeZone(origin, km, heading.degrees)
+    expect(zone.length).toBeGreaterThan(4)
+    for (const point of zone) {
+      const distance = haversineKm(origin, point)
+      expect(distance).toBeGreaterThan(km * 0.85)
+      expect(distance).toBeLessThan(km * 1.15)
+    }
+    const lats = zone.map(point => point.lat)
+    const lngs = zone.map(point => point.lng)
+    expect(target.lat).toBeGreaterThan(Math.min(...lats))
+    expect(target.lat).toBeLessThan(Math.max(...lats))
+    expect(target.lng).toBeGreaterThan(Math.min(...lngs))
+    expect(target.lng).toBeLessThan(Math.max(...lngs))
   })
 })

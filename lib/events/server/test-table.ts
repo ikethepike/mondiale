@@ -111,6 +111,10 @@ export const createTestTable = async (
         (options.connected ?? []).map(playerId => ({
           id: `socket-${playerId}`,
           data: { playerId },
+          emit: (event: string, payload: ServerEnvelope, target: ClientEventTarget) => {
+            if (options.captureEmits !== false)
+              emits.push({ event, payload: clone(payload), target })
+          },
         })),
     }),
     of: () => ({ sockets: new Map() }),

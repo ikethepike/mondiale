@@ -136,7 +136,13 @@ import { pickChainSeed } from './chain'
 import { flagSwatches } from './audio-palette'
 import { boardSpeakers } from './language-rounds'
 import { seededTongueSample } from './tongue-samples'
-import { initialManhuntCandidates, MANHUNT_TUNING, MINIMUM_MANHUNT_POOL } from './manhunt'
+import {
+  initialManhuntCandidates,
+  manhuntClaimsPerBeat,
+  MANHUNT_TUNING,
+  MINIMUM_MANHUNT_POOL,
+  pickManhuntVaults,
+} from './manhunt'
 import { UNIQUE_BOARD, UNIQUE_TUNING, uniqueRegisters, uniqueViableLetters } from './unique-or-bust'
 import { pickStarChart, starChartInitials, starChartSeconds } from './star-chart'
 import {
@@ -355,26 +361,22 @@ const getAtlasChallenge = ({ game }: { game: gameTypes.Game }): AtlasChallenge |
 /**
  * Manhunt dealer: one contender becomes the despot on the run, the rest form
  * the detective dragnet. Below four players the rivalry collapses, so the
- * mode simply never deals at small tables. The seed country is NOT dealt
- * here — the dealer has no redis handle, and the trail must never ride the
- * broadcast challenge; manhunt-beats picks it at the round reveal.
+ * mode never deals at small tables. The vaults are public and dealt here; the
+ * seed is NOT — the dealer has no redis handle, and the trail must never ride
+ * the broadcast challenge, so manhunt-beats picks it at the round reveal.
  */
 const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallenge | undefined => {
   const contenders = chainContenders(game)
-  // Also pre-filtered by the mix (lib/round-mix `isKindFeasible`), so a small
-  // table never spends a pick here — kept as defence in depth, and because
-  // FORCE_ROUND_TYPE reaches this dealer without passing the picker.
+  // Also pre-filtered by the mix (lib/round-mix `isKindFeasible`); kept for
+  // FORCE_ROUND_TYPE, which reaches this dealer without passing the picker.
   if (contenders.length < (MINIMUM_TABLE_BY_KIND.manhunt ?? 0)) return undefined
-  // A board too small to hide on never deals (South America fields nine
-  // viable seeds) — the real seed is picked at reveal, off the snapshot.
-  if (initialManhuntCandidates(game).length < MINIMUM_MANHUNT_POOL) return undefined
+  const vaults = pickManhuntVaults(game)
+  const pool = initialManhuntCandidates(game, vaults)
+  if (pool.length < MINIMUM_MANHUNT_POOL) return undefined
 
   const tuning = MANHUNT_TUNING[game.difficulty]
   // The despot is the round's starring role — deal it to a human whenever
-  // one is standing. Through isBrainSeat, not `.bot`: an AFK seat under
-  // autopilot is brain-played too, and handing it the starring role while
-  // real humans sit at the table is what this filter exists to prevent. An
-  // all-bot table still gets a bot despot so the round deals at all.
+  // one is standing (isBrainSeat, so an autopiloted AFK seat counts as a bot).
   const humanContenders = contenders.filter(playerId => {
     const seat = game.players[playerId]
     return !!seat && !isBrainSeat(seat)
@@ -384,29 +386,32 @@ const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallen
   return {
     _type: 'manhunt-challenge',
     turnCount: tuning.turnCount,
-    moveSeconds: tuning.moveSeconds,
-    huntSeconds: tuning.huntSeconds,
+    beatSeconds: tuning.beatSeconds,
+    claimsPerBeat: manhuntClaimsPerBeat(detectives.length, pool.length),
     maximumPoints: maximumRoundPoints(game),
     despotId,
-    seaPassages: tuning.seaPassages,
+    favours: tuning.favours,
     subpoenas: tuning.subpoenas,
     showCandidates: game.difficulty !== 'hard',
+    analysisDelay: tuning.analysisDelay,
+    vaults,
     state: {
       briefing: true,
       ready: [],
       turn: 0,
       hop: 1,
-      beat: 'move',
-      // Stamped when the round is revealed (manhunt-beats) — staging pauses first.
+      // Stamped when the chase begins (manhunt-beats) — the briefing comes first.
       deadline: 0,
+      analysisAt: 0,
       detectives,
       clues: [],
       moves: [],
-      seaPassagesLeft: tuning.seaPassages,
+      favoursLeft: tuning.favours,
       subpoenasLeft: Object.fromEntries(detectives.map(playerId => [playerId, tuning.subpoenas])),
-      candidates: [],
+      claims: {},
+      pings: {},
+      despotReady: false,
       dragnets: [],
-      committed: [],
     },
   }
 }

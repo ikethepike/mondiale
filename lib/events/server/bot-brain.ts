@@ -5,13 +5,14 @@ import type {
   UniqueCategoryId,
   VintageChallenge,
 } from '~~/types/challenges/group-modes.type'
-import { randomBetween, randomInt, sample, sampleMany } from '~~/lib/arrays'
+import { randomBetween, randomInt, sample, sampleMany, shuffleArray } from '~~/lib/arrays'
 import {
   botShare,
   isBrainSeat,
   jitteredShare,
   GATE_REMAINING,
   HOT_COLD_MAX_WANDER,
+  MANHUNT_POUNCE_AT,
   PIN_SCATTER_BAND,
   SWEEP_ACCURACY,
 } from '~~/lib/bots'
@@ -54,7 +55,19 @@ import { activePlayerId } from '~~/lib/chain'
 import { speaksLanguage } from '~~/lib/language-rounds'
 import { sweepUnclaimed } from '~~/lib/clean-sweep'
 import { governmentKey, type GovernmentAnswer } from '~~/lib/government'
-import { manhuntKey, randomManhuntMove, type ManhuntSecret } from '~~/lib/manhunt'
+import {
+  bordersBetween,
+  canServeSubpoena,
+  claimantOf,
+  hasActed,
+  huntCandidates,
+  isPreSonarRound,
+  isSheltered,
+  leakWidths,
+  legalManhuntMoves,
+  MANHUNT_SUBPOENA_TOPICS,
+  randomManhuntMove,
+} from '~~/lib/manhunt'
 import {
   activeTimelinePlayerId,
   correctSlotRange,
@@ -83,7 +96,7 @@ import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 import { currentGovernment } from './government-beats'
 import { currentHeritageHunt } from './heritage-beats'
-import { currentManhunt, isManhuntParticipant } from './manhunt-beats'
+import { currentManhunt, fetchManhuntSecret, isManhuntParticipant } from './manhunt-beats'
 import { SERVER_SIDE_EVENT_HANDLERS } from './registry'
 import { scheduleEngineTask, type EngineContext } from './round-engine'
 import { retireSeat } from './seat-exits'
@@ -533,7 +546,7 @@ const planGroupChallenge = ({
   const manhunt = currentManhunt(game)
   if (manhunt) {
     const { state } = manhunt
-    if (state.finished) return
+    if (state.finished || isPreSonarRound(manhunt)) return
     if (!isManhuntParticipant(manhunt, seat.id)) return
     if (state.briefing) {
       if (state.ready.includes(seat.id)) return
@@ -542,21 +555,27 @@ const planGroupChallenge = ({
       }
       return
     }
-    if (state.beat === 'move' && manhunt.despotId === seat.id) {
-      if (due(`manhunt-move:${roundIndex}:${state.turn}`, think)) {
-        dispatchManhuntMove(ctx, seat.id, state.turn)
+    if (manhunt.despotId === seat.id) {
+      if (state.despotReady || state.hop >= manhunt.turnCount) return
+      if (due(`manhunt-plan:${roundIndex}:${state.turn}`, think)) {
+        dispatchManhuntPlan(ctx, seat.id, state.turn)
       }
       return
     }
-    if (state.beat === 'hunt' && state.detectives.includes(seat.id)) {
-      if (state.committed.includes(seat.id)) return
-      if (
-        due(`manhunt-marker:${roundIndex}:${state.turn}:${seat.id}`, () =>
-          rollMs(BOT_TURN_THINK_MS + BOT_MARKER_EXTRA_MS, BOT_TURN_JITTER_MS)
-        )
-      ) {
-        dispatchManhuntMarker(ctx, seat.id, state.turn)
-      }
+    if (hasActed(state, seat.id)) return
+    // A bot reads the painted cut, never the leak itself: it acts only after
+    // the analysis lands, so a human who knows the answer beats it. Hard
+    // paints nothing, and its analysis stamp sits at the deadline.
+    const sinceAnalysis = manhunt.showCandidates ? Math.max(0, state.analysisAt - Date.now()) : 0
+    if (
+      due(
+        `manhunt-act:${roundIndex}:${state.turn}:${seat.id}`,
+        () =>
+          Math.max(sinceAnalysis, rollMs(BOT_TURN_THINK_MS, BOT_TURN_JITTER_MS)) +
+          rollMs(BOT_MARKER_EXTRA_MS, BOT_TURN_JITTER_MS)
+      )
+    ) {
+      dispatchManhuntAct(ctx, seat.id, state.turn)
     }
   }
 }
@@ -1102,46 +1121,84 @@ const dispatchManhuntReady = (ctx: EngineContext, playerId: string) => {
   })
 }
 
-const dispatchManhuntMove = (ctx: EngineContext, playerId: string, turn: number) => {
+/** The bot despot: an untouched vault in reach tempts it half the time;
+ *  otherwise it runs from wherever this beat's markers landed, then leaks
+ *  whichever truth keeps the widest set. */
+const dispatchManhuntPlan = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
     const challenge = currentManhunt(fresh)
     if (!challenge || challenge.despotId !== playerId) return
     const { state } = challenge
-    if (state.finished || state.briefing || state.beat !== 'move' || state.turn !== turn) return
-    const secret = await ctx.redis.get<ManhuntSecret>(manhuntKey(fresh.id, fresh.rounds.length - 1))
+    if (state.finished || state.briefing || state.despotReady || state.turn !== turn) return
+    const secret = await fetchManhuntSecret(ctx.redis, fresh.id, fresh.rounds.length - 1)
     const from = secret?.trail[secret.trail.length - 1]
-    if (!from) return
-    const move = randomManhuntMove(from, state.seaPassagesLeft, fresh)
-    // Cornered (an island hideout, no sea passages left): randomManhuntMove
-    // hands back `from`, which applyManhuntMove refuses as illegal — only
-    // the beat's own timeout commits the idle hop. Stand down and let it.
-    if (move.isoCode === from) return
-    await botAct(ctx, { event: 'submit-manhunt-move', isoCode: move.isoCode, turn })
+    if (!secret || !from) return
+    const known = huntCandidates(challenge, fresh)
+
+    const plan = secret.plan?.turn === turn ? secret.plan : undefined
+    if (plan) {
+      const widths = leakWidths(known, plan.kind, plan.options, fresh)
+      const index = widths.indexOf(Math.max(...widths))
+      await botAct(ctx, { event: 'submit-manhunt-leak', index: Math.max(0, index), turn })
+      return
+    }
+
+    const moves = legalManhuntMoves(from, state.favoursLeft, fresh)
+    const vault = moves.ground.find(isoCode =>
+      isSheltered(isoCode, challenge.vaults, secret.looted)
+    )
+    if (vault && Math.random() < 0.5) {
+      await botAct(ctx, { event: 'submit-manhunt-move', isoCode: vault, turn })
+      return
+    }
+    const markers = [...Object.values(state.claims), ...Object.values(state.pings)]
+    const clearance = (isoCode: ISOCountryCode) =>
+      Math.min(99, ...markers.map(marker => bordersBetween(marker, isoCode, fresh) ?? 99))
+    const best = shuffleArray([...moves.ground]).sort((a, b) => clearance(b) - clearance(a))[0]
+    const isoCode = best ?? randomManhuntMove(from, state.favoursLeft, fresh).isoCode
+    // Cornered somewhere only a favour leaves: the move kind resolves it.
+    await botAct(ctx, { event: 'submit-manhunt-move', isoCode, turn })
   })
 }
 
-const dispatchManhuntMarker = (ctx: EngineContext, playerId: string, turn: number) => {
+/** An honest detective hunting its OWN replay (the public record plus its
+ *  own readings): it pings inside that set until the set is small, then
+ *  stakes out a free country in it — never a vault while anything else is
+ *  open. Now and then it serves a subpoena too. */
+const dispatchManhuntAct = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
     const challenge = currentManhunt(fresh)
     if (!challenge || !challenge.state.detectives.includes(playerId)) return
     const { state } = challenge
-    if (state.finished || state.briefing || state.beat !== 'hunt' || state.turn !== turn) return
-    if (state.committed.includes(playerId)) return
-    // Honest detective: sample the clue-consistent set — never the secret
-    // trail itself. Hard mode hides the public snapshot's copy, so the side
-    // key's authoritative set stands in (same information, engine-derived).
-    let candidates = state.candidates
-    if (!candidates.length) {
-      const secret = await ctx.redis.get<ManhuntSecret>(
-        manhuntKey(fresh.id, fresh.rounds.length - 1)
+    if (state.finished || state.briefing || state.turn !== turn) return
+    if (hasActed(state, playerId)) return
+    const secret = await fetchManhuntSecret(ctx.redis, fresh.id, fresh.rounds.length - 1)
+    const mine = huntCandidates(challenge, fresh, secret?.readings[playerId] ?? [])
+    const open = mine.filter(
+      isoCode => !claimantOf(state, isoCode) && !challenge.vaults.includes(isoCode)
+    )
+    const stakeoutsLeft = Object.keys(state.claims).length < challenge.claimsPerBeat
+    const lastBeat = state.hop >= challenge.turnCount
+    const pounce = stakeoutsLeft && open.length && (open.length <= MANHUNT_POUNCE_AT || lastBeat)
+    const target = sample(pounce ? open : mine.length ? mine : open)
+    if (target) {
+      const marker = { isoCode: target, turn }
+      await botAct(
+        ctx,
+        pounce
+          ? { event: 'submit-manhunt-claim', ...marker }
+          : { event: 'submit-manhunt-ping', ...marker }
       )
-      candidates = secret?.candidates ?? []
     }
-    const marker = sample(candidates)
-    if (!marker) return
-    await botAct(ctx, { event: 'submit-manhunt-marker', isoCode: marker, turn })
+
+    if (canServeSubpoena(challenge, playerId)) {
+      if (Math.random() < 0.3) {
+        const topic = sample(MANHUNT_SUBPOENA_TOPICS)!.id
+        await botAct(ctx, { event: 'submit-manhunt-subpoena', topic, turn })
+      }
+    }
   })
 }
 

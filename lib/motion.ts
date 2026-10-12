@@ -38,6 +38,11 @@ export const DWELL = {
 /** How long the reveal card waits, once the keyboard is down, before it slides in, in ms. */
 export const REVEAL_CARD_BEAT_MS = 300
 
+/** A sonar reading's ripple: each ring out from the ping lands this long after
+ *  the last, and the outermost holds before the map settles back, in ms. */
+export const SONAR_RING_MS = 260
+export const SONAR_HOLD_MS = 1800
+
 /** The beat a chain or trail reveal holds blank before its replay redraws, in ms. */
 export const REPLAY_REDRAW_MS = 400
 

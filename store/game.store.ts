@@ -3,7 +3,11 @@ import type { BoardFactFamily } from '~~/lib/board-facts'
 import type { LatLng, MapBox } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
 import { previewOn } from '~~/lib/seat-view'
-import type { VintageOutcome } from '~~/types/challenges/group-modes.type'
+import type {
+  ManhuntPosition,
+  ManhuntReading,
+  VintageOutcome,
+} from '~~/types/challenges/group-modes.type'
 import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, PlayerTurn, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -74,7 +78,10 @@ interface GameStoreState {
    * 'manhunt-position' emit — never in a broadcast snapshot. Cleared when a
    * new round arrives; detectives never see this populated.
    */
-  manhunt?: { trail: ISOCountryCode[]; turn: number }
+  manhunt?: ManhuntPosition
+  /** Manhunt, one detective's eyes only: their own sonar readings, from the
+   *  targeted 'manhunt-sonar' emit. Cleared with `manhunt`. */
+  manhuntReadings?: { readings: ManhuntReading[]; turn: number }
   /** Vintage round stories this socket has been sent, by game and round —
    *  from the targeted 'vintage-story' emit, never a snapshot. */
   vintageStories: Record<string, VintageOutcome>
@@ -268,6 +275,7 @@ export const useGameStore = defineStore('game', {
     game: undefined,
     playerId: '',
     manhunt: undefined,
+    manhuntReadings: undefined,
     vintageStories: {},
     socket: undefined,
     rejected: false,
@@ -443,7 +451,7 @@ export interface Scorecard {
 }
 
 /** Guess verdicts painted onto the map: traversal verdicts plus hot & cold warmth. */
-export type MapTint = 'optimal' | 'inefficient' | 'stray' | 'endpoint' | 'hot' | 'warm' | 'cold'
+export type MapTint = 'optimal' | 'inefficient' | 'stray' | 'endpoint'
 
 export type PlayerScore =
   | {

@@ -171,6 +171,8 @@ import type {
   AtlasChallenge,
   BorderChainChallenge,
   GovernmentChallenge,
+  ManhuntChallenge,
+  ManhuntState,
   TongueBuzzChallenge,
 } from '~~/types/challenges/group-modes.type'
 import {
@@ -1011,6 +1013,72 @@ const vintageScoresGame = (id: string): Game => {
 
 const groupRound = (groupChallenge: unknown): Round =>
   stampMockClassicClock({ groupChallenge, groupAnswers: {}, playerTurns: {} } as unknown as Round)
+
+/** A live Despot round, mid-chase, for the harness scenarios to bend. */
+const manhuntChallenge = (
+  despotId: string,
+  detectives: string[],
+  state: Partial<ManhuntState>
+): ManhuntChallenge => ({
+  _type: 'manhunt-challenge',
+  turnCount: 7,
+  beatSeconds: 30,
+  claimsPerBeat: 2,
+  maximumPoints: MAXIMUM_POINTS,
+  despotId,
+  favours: 2,
+  subpoenas: 1,
+  showCandidates: true,
+  analysisDelay: 0.4,
+  vaults: ['CH', 'GR', 'PL'],
+  state: {
+    ready: [],
+    turn: 3,
+    hop: 3,
+    deadline: Date.now() + 30_000,
+    analysisAt: Date.now() - 1,
+    detectives,
+    clues: [
+      {
+        hop: 1,
+        kind: 'region',
+        topic: 'geography',
+        subject: 'europe',
+        text: 'The despot is hiding in Europe',
+      },
+      {
+        hop: 2,
+        kind: 'threshold',
+        accessorId: 'people.medianAge',
+        threshold: 42,
+        above: true,
+        text: 'Its median age is at least 42 years',
+      },
+      {
+        hop: 3,
+        kind: 'threshold',
+        accessorId: 'economics.gdpPerCapita',
+        threshold: 30000,
+        above: true,
+        text: 'Its GDP per capita is at least $30,000',
+      },
+    ],
+    moves: [
+      { hop: 2, kind: 'ground' },
+      { hop: 3, kind: 'ground' },
+    ],
+    favoursLeft: 2,
+    subpoenasLeft: Object.fromEntries(detectives.map(playerId => [playerId, 1])),
+    claims: {},
+    pings: {},
+    despotReady: false,
+    dragnets: [
+      { hop: 1, claims: {}, pings: { [detectives[0]]: 'ES', [detectives[1]]: 'PL' } },
+      { hop: 2, claims: { [detectives[1]]: 'PL' }, pings: { [detectives[0]]: 'FR' } },
+    ],
+    ...state,
+  },
+})
 
 /** A finished timeline round flipped to its scorecard, settled the way
  *  timeline-turns does: the real scorer's points, each card flattened to its
@@ -2962,65 +3030,62 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'manhunt-detective',
-    label: 'The Despot (detective, hunt beat, candidates painted)',
+    label: 'The Despot (detective, a fresh sonar reading, markers landing)',
+    build: () => {
+      // Readings arrive over the detective's own socket in real play — the
+      // harness plants them directly.
+      gameStore.manhuntReadings = {
+        turn: 3,
+        readings: [
+          { hop: 1, isoCode: 'ES', distance: 4 },
+          { hop: 2, isoCode: 'FR', distance: 2 },
+        ],
+      }
+      return mockGame('round', [
+        groupRound(
+          manhuntChallenge(RIVAL, [ME, THIRD], {
+            turn: 3,
+            hop: 3,
+            claims: { [THIRD]: 'DE' },
+            moves: [
+              { hop: 2, kind: 'ground' },
+              { hop: 3, kind: 'favour' },
+            ],
+            favoursLeft: 1,
+            pings: { [THIRD]: 'PL' },
+          })
+        ),
+      ])
+    },
+  },
+  {
+    id: 'manhunt-last-beat',
+    label: 'The Despot (detective, the last beat — stake-outs only matter now)',
+    build: () => {
+      gameStore.manhuntReadings = {
+        turn: 7,
+        readings: [{ hop: 6, isoCode: 'FR', distance: 1 }],
+      }
+      return mockGame('round', [
+        groupRound(manhuntChallenge(RIVAL, [ME, THIRD], { turn: 7, hop: 7 })),
+      ])
+    },
+  },
+  {
+    id: 'manhunt-analysis',
+    label: 'The Despot (detective, before the analysts land, subpoena served)',
     build: () =>
       mockGame('round', [
-        groupRound({
-          _type: 'manhunt-challenge',
-          turnCount: 7,
-          moveSeconds: 15,
-          huntSeconds: 25,
-          maximumPoints: MAXIMUM_POINTS,
-          despotId: RIVAL,
-          seaPassages: 2,
-          subpoenas: 2,
-          showCandidates: true,
-          state: {
-            ready: [],
-            turn: 5,
+        groupRound(
+          manhuntChallenge(RIVAL, [ME, THIRD], {
+            turn: 3,
             hop: 3,
-            beat: 'hunt',
-            deadline: Date.now() + 25000,
-            detectives: [ME, THIRD],
-            clues: [
-              {
-                hop: 1,
-                kind: 'region',
-                topic: 'geography',
-                text: 'The despot is hiding in Europe',
-              },
-              {
-                hop: 2,
-                kind: 'threshold',
-                accessorId: 'people.medianAge',
-                threshold: 42,
-                above: true,
-                text: 'Its median age is at least 42 years',
-              },
-              {
-                hop: 3,
-                kind: 'threshold',
-                accessorId: 'economics.gdpPerCapita',
-                threshold: 30000,
-                above: true,
-                text: 'Its GDP per capita is at least $30,000',
-              },
-            ],
-            moves: [
-              { hop: 1, kind: 'ground' },
-              { hop: 2, kind: 'ground' },
-              { hop: 3, kind: 'sea' },
-            ],
-            seaPassagesLeft: 1,
-            subpoenasLeft: { [ME]: 2, [THIRD]: 1 },
-            candidates: ['IT', 'DE', 'ES', 'PT', 'GR', 'HR', 'SI', 'AT'],
-            dragnets: [
-              { hop: 1, markers: { [ME]: 'FR', [THIRD]: 'PL' } },
-              { hop: 2, markers: { [ME]: 'DE', [THIRD]: 'DE' } },
-            ],
-            committed: [THIRD],
-          },
-        }),
+            analysisAt: Date.now() + 60_000,
+            subpoena: { by: THIRD, topic: 'economy' },
+            subpoenasLeft: { [ME]: 1, [THIRD]: 0 },
+            pings: { [THIRD]: 'IT' },
+          })
+        ),
       ]),
   },
   {
@@ -3028,33 +3093,16 @@ const scenarios: Scenario[] = [
     label: 'The Despot (briefing — detective case file)',
     build: () =>
       mockGame('round', [
-        groupRound({
-          _type: 'manhunt-challenge',
-          turnCount: 7,
-          moveSeconds: 15,
-          huntSeconds: 25,
-          maximumPoints: MAXIMUM_POINTS,
-          despotId: RIVAL,
-          seaPassages: 2,
-          subpoenas: 2,
-          showCandidates: true,
-          state: {
+        groupRound(
+          manhuntChallenge(RIVAL, [ME, THIRD], {
             briefing: true,
             ready: [THIRD],
             turn: 0,
             hop: 1,
-            beat: 'move',
             deadline: 0,
-            detectives: [ME, THIRD],
             clues: [],
-            moves: [],
-            seaPassagesLeft: 2,
-            subpoenasLeft: { [ME]: 2, [THIRD]: 2 },
-            candidates: [],
-            dragnets: [],
-            committed: [],
-          },
-        }),
+          })
+        ),
       ]),
   },
   {
@@ -3062,78 +3110,74 @@ const scenarios: Scenario[] = [
     label: 'The Despot (briefing — Glorious Leader card)',
     build: () =>
       mockGame('round', [
-        groupRound({
-          _type: 'manhunt-challenge',
-          turnCount: 7,
-          moveSeconds: 15,
-          huntSeconds: 25,
-          maximumPoints: MAXIMUM_POINTS,
-          despotId: ME,
-          seaPassages: 2,
-          subpoenas: 2,
-          showCandidates: true,
-          state: {
+        groupRound(
+          manhuntChallenge(ME, [RIVAL, THIRD], {
             briefing: true,
             ready: [THIRD],
             turn: 0,
             hop: 1,
-            beat: 'move',
             deadline: 0,
-            detectives: [RIVAL, THIRD],
             clues: [],
-            moves: [],
-            seaPassagesLeft: 2,
-            subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
-            candidates: [],
-            dragnets: [],
-            committed: [],
-          },
-        }),
+          })
+        ),
       ]),
   },
   {
-    id: 'manhunt-despot',
-    label: 'The Despot (you flee, move beat, trail + dragnet)',
+    id: 'manhunt-despot-plan',
+    label: 'The Despot (you flee — pick the next hideout)',
     build: () => {
       // The trail arrives over the targeted position channel in real play —
       // the harness plants it directly.
-      gameStore.manhunt = { trail: ['CZ', 'AT', 'IT'], turn: 4 }
+      gameStore.manhunt = { trail: ['CZ', 'AT', 'IT'], turn: 3, looted: [] }
       return mockGame('round', [
-        groupRound({
-          _type: 'manhunt-challenge',
-          turnCount: 7,
-          moveSeconds: 15,
-          huntSeconds: 25,
-          maximumPoints: MAXIMUM_POINTS,
-          despotId: ME,
-          seaPassages: 2,
-          subpoenas: 2,
-          showCandidates: true,
-          state: {
-            ready: [],
-            turn: 4,
+        groupRound(
+          manhuntChallenge(ME, [RIVAL, THIRD], {
+            turn: 3,
             hop: 3,
-            beat: 'move',
-            deadline: Date.now() + 15000,
-            detectives: [RIVAL, THIRD],
-            clues: [
-              { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
-              { hop: 2, kind: 'language', text: 'Official languages there include German' },
-            ],
-            moves: [
-              { hop: 1, kind: 'ground' },
-              { hop: 2, kind: 'ground' },
-            ],
-            seaPassagesLeft: 2,
-            subpoenasLeft: { [RIVAL]: 2, [THIRD]: 2 },
-            candidates: ['IT', 'AT', 'CH', 'SI', 'HR'],
-            dragnets: [
-              { hop: 1, markers: { [RIVAL]: 'DE', [THIRD]: 'PL' } },
-              { hop: 2, markers: { [RIVAL]: 'AT', [THIRD]: 'CH' } },
-            ],
-            committed: [],
-          },
-        }),
+            claims: { [RIVAL]: 'AT' },
+          })
+        ),
+      ])
+    },
+  },
+  {
+    id: 'manhunt-despot',
+    label: 'The Despot (you flee — choose what leaks)',
+    build: () => {
+      gameStore.manhunt = {
+        trail: ['CZ', 'AT', 'IT'],
+        turn: 3,
+        looted: [],
+        plan: {
+          isoCode: 'CH',
+          kind: 'ground',
+          options: [
+            {
+              hop: 4,
+              kind: 'threshold',
+              accessorId: 'people.medianAge',
+              threshold: 42,
+              above: true,
+              text: 'Its median age is at least 42 years',
+            },
+            {
+              hop: 4,
+              kind: 'language',
+              topic: 'department.communications',
+              subject: 'German',
+              text: 'Official languages there include German',
+            },
+          ],
+        },
+      }
+      return mockGame('round', [
+        groupRound(
+          manhuntChallenge(ME, [RIVAL, THIRD], {
+            turn: 3,
+            hop: 3,
+            claims: { [RIVAL]: 'AT', [THIRD]: 'FR' },
+          })
+        ),
       ])
     },
   },
@@ -3142,23 +3186,11 @@ const scenarios: Scenario[] = [
     label: 'The Despot (captured, trail replay + reveal)',
     build: () =>
       mockGame('round', [
-        groupRound({
-          _type: 'manhunt-challenge',
-          turnCount: 7,
-          moveSeconds: 15,
-          huntSeconds: 25,
-          maximumPoints: MAXIMUM_POINTS,
-          despotId: RIVAL,
-          seaPassages: 2,
-          subpoenas: 2,
-          showCandidates: true,
-          state: {
-            ready: [],
-            turn: 10,
-            hop: 5,
-            beat: 'hunt',
+        groupRound(
+          manhuntChallenge(RIVAL, [ME, THIRD], {
+            turn: 6,
+            hop: 6,
             deadline: 0,
-            detectives: [ME, THIRD],
             clues: [
               { hop: 1, kind: 'region', text: 'The despot is hiding in Europe' },
               { hop: 2, kind: 'threshold', text: 'Its urbanization is below 68%' },
@@ -3167,37 +3199,37 @@ const scenarios: Scenario[] = [
                 hop: 4,
                 kind: 'flag-colors',
                 text: 'The flag flying over the hideout carries green',
+                askedBy: THIRD,
               },
               { hop: 5, kind: 'threshold', text: 'Its population is below 11,000,000' },
+              { hop: 6, kind: 'membership', text: 'The country is a member of the European Union' },
             ],
             moves: [
-              { hop: 1, kind: 'ground' },
               { hop: 2, kind: 'ground' },
-              { hop: 3, kind: 'sea' },
+              { hop: 3, kind: 'ground' },
               { hop: 4, kind: 'ground' },
-              { hop: 5, kind: 'ground' },
+              { hop: 5, kind: 'favour' },
+              { hop: 6, kind: 'ground' },
             ],
-            seaPassagesLeft: 1,
-            subpoenasLeft: { [ME]: 0, [THIRD]: 1 },
-            candidates: ['IT', 'SI'],
             dragnets: [
-              { hop: 1, markers: { [ME]: 'FR', [THIRD]: 'DE' } },
-              { hop: 2, markers: { [ME]: 'AT', [THIRD]: 'AT' } },
-              { hop: 3, markers: { [ME]: 'ES', [THIRD]: 'IT' } },
-              { hop: 4, markers: { [ME]: 'HR', [THIRD]: 'HR' } },
-              { hop: 5, markers: { [ME]: 'SI', [THIRD]: 'SI' } },
+              { hop: 5, claims: { [THIRD]: 'AT' }, pings: { [ME]: 'HR' } },
+              { hop: 6, claims: { [ME]: 'SI' }, pings: { [THIRD]: 'HU' } },
             ],
-            committed: [ME, THIRD],
             outcome: {
               kind: 'captured',
-              hop: 5,
-              capturerIds: [ME, THIRD],
+              hop: 6,
+              capturerId: ME,
               country: 'SI',
-              trail: ['CZ', 'AT', 'IT', 'HR', 'SI'],
+              trail: ['CZ', 'AT', 'CH', 'IT', 'IT', 'SI'],
+              looted: ['CH'],
+              readings: {
+                [ME]: [{ hop: 5, isoCode: 'HR', distance: 2 }],
+                [THIRD]: [{ hop: 6, isoCode: 'HU', distance: 2 }],
+              },
             },
             finished: true,
-          },
-        }),
+          })
+        ),
       ]),
   },
   {
