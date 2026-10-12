@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FAIR_SHARE_PAY,
   SWEEP_SETS,
+  SWEEP_SMALLEST_BOARD,
   SWEEP_TUNING,
   sweepBoardFor,
   sweepOffBoardFor,
@@ -21,7 +22,13 @@ import {
 import { DATASETS } from '~~/lib/attribution'
 import { playableCountries } from '~~/lib/game-rules'
 import type { CleanSweepChallenge, SweepClaim } from '~~/types/challenges/group-modes.type'
-import type { GameDifficulty, GameRules, GameVariant } from '~~/types/game.types'
+import {
+  boardRegions,
+  type BoardRegion,
+  type GameDifficulty,
+  type GameRules,
+  type GameVariant,
+} from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -36,6 +43,12 @@ const VARIANTS: GameVariant[] = [
   'north-america',
   'south-america',
 ]
+
+const SEATS = [2, 3, 4, 5, 6]
+
+const EVERY_BOARD: BoardRegion[][] = Array.from({ length: 2 ** boardRegions.length }, (_, mask) =>
+  boardRegions.filter((_, index) => mask & (2 ** index))
+)
 
 const claim = (isoCode: string, playerId: string, remaining = 0.5): SweepClaim => ({
   isoCode: isoCode as ISOCountryCode,
@@ -89,13 +102,13 @@ describe('the set register', () => {
 
   it('fields a board at every difficulty on the world map', () => {
     for (const difficulty of DIFFICULTIES) {
-      const band = sweepSlotBand(difficulty, 2)
+      const band = sweepSlotBand({ ...RULES, difficulty }, 2)
       expect(viableSweepSets({ ...RULES, difficulty }, band).length, difficulty).toBeGreaterThan(0)
     }
   })
 
   it('keeps hard-only sets out of easier games', () => {
-    const band = sweepSlotBand('easy', 2)
+    const band = sweepSlotBand({ ...RULES, difficulty: 'easy' }, 2)
     for (const setId of viableSweepSets({ ...RULES, difficulty: 'easy' }, band)) {
       expect(SWEEP_SETS[setId].hardOnly, setId).not.toBe(true)
     }
@@ -104,7 +117,7 @@ describe('the set register', () => {
   it('never deals a board outside the table’s band', () => {
     for (const difficulty of DIFFICULTIES) {
       for (const contenders of [2, 4, 6]) {
-        const band = sweepSlotBand(difficulty, contenders)
+        const band = sweepSlotBand({ ...RULES, difficulty }, contenders)
         for (const setId of viableSweepSets({ ...RULES, difficulty }, band)) {
           const members = sweepBoardFor(setId, { ...RULES, difficulty }, band)!
           expect(members.length, `${setId} @${difficulty}/${contenders}`).toBeGreaterThanOrEqual(
@@ -130,17 +143,64 @@ describe('the set register', () => {
   })
 
   it('raises the board floor as the table grows', () => {
-    expect(sweepSlotBand('normal', 6).minimum).toBeGreaterThan(sweepSlotBand('normal', 2).minimum)
+    expect(sweepSlotBand(RULES, 6).minimum).toBeGreaterThan(sweepSlotBand(RULES, 2).minimum)
   })
 
   it('refuses a set that would swallow its own board', () => {
     // South America IS the south-america variant — a round asking for every
     // country on the board is not a question.
-    const band = sweepSlotBand('normal', 2)
+    const band = sweepSlotBand(RULES, 2)
     expect(
       sweepBoardFor('south-america', { regions: ['south-america'], difficulty: 'normal' }, band)
     ).toBeUndefined()
     expect(sweepBoardFor('south-america', RULES, band)).toBeDefined()
+  })
+
+  it('fields a board on every selectable board, at every difficulty and table size', () => {
+    for (const regions of EVERY_BOARD) {
+      for (const difficulty of DIFFICULTIES) {
+        for (const contenders of SEATS) {
+          const rules: GameRules = { regions, difficulty }
+          expect(
+            viableSweepSets(rules, sweepSlotBand(rules, contenders)),
+            `${regions.join('+') || 'world'} @${difficulty}/${contenders}`
+          ).not.toHaveLength(0)
+        }
+      }
+    }
+  })
+
+  it('leaves no set in the register that no table can ever be dealt', () => {
+    const reached = new Set<string>()
+    for (const regions of EVERY_BOARD) {
+      for (const difficulty of DIFFICULTIES) {
+        for (const contenders of SEATS) {
+          const rules: GameRules = { regions, difficulty }
+          for (const setId of viableSweepSets(rules, sweepSlotBand(rules, contenders))) {
+            reached.add(setId)
+          }
+        }
+      }
+    }
+    expect([...reached].sort()).toEqual(Object.keys(SWEEP_SETS).sort())
+  })
+
+  it('lowers the seat floor only as far as the board’s biggest set, and never below the smallest board', () => {
+    const southAmerica: GameRules = { regions: ['south-america'], difficulty: 'hard' }
+    const band = sweepSlotBand(southAmerica, 6)
+    const largest = Math.max(
+      ...viableSweepSets(southAmerica, band).map(
+        setId => sweepBoardFor(setId, southAmerica, band)!.length
+      )
+    )
+    expect(band.minimum).toBe(largest)
+    expect(band.minimum).toBeGreaterThanOrEqual(SWEEP_SMALLEST_BOARD)
+    expect(band.minimum).toBeLessThan(
+      SWEEP_TUNING.hard.minimumSlots + 4 * SWEEP_TUNING.hard.slotsPerExtraSeat
+    )
+    expect(sweepSlotBand({ ...RULES, difficulty: 'hard' }, 6).minimum).toBe(
+      SWEEP_TUNING.hard.minimumSlots + 4 * SWEEP_TUNING.hard.slotsPerExtraSeat
+    )
   })
 
   it('gives every difficulty a clock', () => {
@@ -332,7 +392,7 @@ describe('sweepOffBoardFor', () => {
   it('names the members the band trimmed away', () => {
     // "Name every member of NATO" deals 30 of 32 on a hard world board —
     // the United States and the United Kingdom fall off the alphabetical tail.
-    const band = sweepSlotBand('hard', 2)
+    const band = sweepSlotBand(rules('world', 'hard'), 2)
     const dealt = sweepBoardFor('nato', rules('world', 'hard'), band)!
     const off = sweepOffBoardFor('nato', rules('world', 'hard'), dealt)
     expect(off.length).toBeGreaterThan(0)
@@ -347,7 +407,7 @@ describe('sweepOffBoardFor', () => {
   })
 
   it('names the members a continental board leaves out', () => {
-    const band = sweepSlotBand('normal', 2)
+    const band = sweepSlotBand(rules('europe'), 2)
     const dealt = sweepBoardFor('nato', rules('europe'), band)
     if (!dealt) return
     const off = sweepOffBoardFor('nato', rules('europe'), dealt)
@@ -359,7 +419,7 @@ describe('sweepOffBoardFor', () => {
   it('never calls a dealt member off-board', () => {
     for (const difficulty of ['easy', 'normal', 'hard'] as GameDifficulty[]) {
       for (const variant of ['world', 'europe', 'asia'] as GameVariant[]) {
-        const band = sweepSlotBand(difficulty, 2)
+        const band = sweepSlotBand(rules(variant, difficulty), 2)
         for (const setId of Object.keys(SWEEP_SETS)) {
           const dealt = sweepBoardFor(setId, rules(variant, difficulty), band)
           if (!dealt) continue

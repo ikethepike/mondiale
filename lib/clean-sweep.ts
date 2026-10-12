@@ -6,9 +6,11 @@ import { clamp01 } from './number'
 import { countriesSpending } from './currency'
 import { isMemberOf } from './odd-one-out'
 import { playableCountries } from './game-rules'
+import { speaksLanguage } from './language-rounds'
 import { REGION_LABELS } from './variant'
 import type { DataSetId } from './attribution'
 import type { CleanSweepChallenge, SweepSetFamily } from '~~/types/challenges/group-modes.type'
+import type { CurrencyCode } from '~~/types/currency.type'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode, Region } from '~~/types/geography.types'
 import type { TreatyId } from '~~/types/treaty.type'
@@ -59,11 +61,16 @@ const treatyParties =
   }
 
 const currencyZone =
-  (code: Parameters<typeof countriesSpending>[0]) =>
+  (...codes: CurrencyCode[]) =>
   (rules: GameRules): ISOCountryCode[] => {
-    const spenders = new Set(countriesSpending(code))
+    const spenders = new Set(codes.flatMap(code => countriesSpending(code)))
     return playableCountries(rules).filter(isoCode => spenders.has(isoCode))
   }
+
+const speakers =
+  (language: string) =>
+  (rules: GameRules): ISOCountryCode[] =>
+    playableCountries(rules).filter(isoCode => speaksLanguage(isoCode, language))
 
 const regionRoster =
   (region: Region) =>
@@ -109,16 +116,6 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
     dataset: 'countries',
     members: clubRoster('opec'),
   },
-  csto: {
-    family: 'club',
-    prompt: 'Name every member of the CSTO',
-    label: 'the CSTO',
-    qualifier:
-      'A Russia-led mutual-defence pact of post-Soviet states, built on the 1992 Collective Security Treaty.',
-    dataset: 'countries',
-    hardOnly: true,
-    members: clubRoster('csto'),
-  },
   eurozone: {
     family: 'currency',
     prompt: 'Name every country that spends the euro',
@@ -127,6 +124,16 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
       'Not the same list as the EU: several members kept their own currency, and a few non-members use the euro anyway.',
     dataset: 'currencies',
     members: currencyZone('EUR'),
+  },
+  'cfa-franc': {
+    family: 'currency',
+    prompt: 'Name every country that spends a CFA franc',
+    label: 'the CFA franc',
+    qualifier:
+      'Two currencies sharing one name — the West and Central African CFA francs, both pegged to the euro. Guinea-Bissau and Equatorial Guinea use them without ever having been French.',
+    dataset: 'currencies',
+    hardOnly: true,
+    members: currencyZone('XOF', 'XAF'),
   },
   schengen: {
     family: 'treaty',
@@ -172,6 +179,51 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
     dataset: 'marriage-rights',
     members: marriageAdopters,
   },
+  spanish: {
+    family: 'language',
+    prompt: 'Name every country that speaks Spanish',
+    label: 'Spanish speakers',
+    qualifier:
+      'Spain, most of Latin America, and Equatorial Guinea — the one African state that speaks it. Brazil, the region’s giant, speaks Portuguese.',
+    dataset: 'countries',
+    members: speakers('Spanish'),
+  },
+  french: {
+    family: 'language',
+    prompt: 'Name every country that speaks French',
+    label: 'French speakers',
+    qualifier:
+      'France’s language reaches four continents — through Belgium, Switzerland and Canada, and across West and Central Africa, where colonial rule left it official.',
+    dataset: 'countries',
+    members: speakers('French'),
+  },
+  arabic: {
+    family: 'language',
+    prompt: 'Name every country that speaks Arabic',
+    label: 'Arabic speakers',
+    qualifier:
+      'Spoken from Morocco to Oman — and in Chad, Comoros and Djibouti too, where it shares official status with French.',
+    dataset: 'countries',
+    members: speakers('Arabic'),
+  },
+  portuguese: {
+    family: 'language',
+    prompt: 'Name every country that speaks Portuguese',
+    label: 'Portuguese speakers',
+    qualifier:
+      'Portugal, Brazil, Timor-Leste and a scatter of African states from Cape Verde to Mozambique — the old reach of Portugal’s empire.',
+    dataset: 'countries',
+    members: speakers('Portuguese'),
+  },
+  russian: {
+    family: 'language',
+    prompt: 'Name every country that speaks Russian',
+    label: 'Russian speakers',
+    qualifier:
+      'The Soviet Union’s common tongue outlived it: Russian is still spoken across Central Asia, in Armenia and in Belarus.',
+    dataset: 'countries',
+    members: speakers('Russian'),
+  },
 }
 
 /**
@@ -205,25 +257,53 @@ export const SWEEP_LAST_CALL = 3
  *  determined typist can't grow the snapshot for the room. */
 export const SWEEP_STRAY_CAP = 24
 
-/** The band this table plays in — the tuning's floor, raised by the seats. */
-export const sweepSlotBand = (
-  difficulty: GameDifficulty,
-  contenders: number
-): { minimum: number; maximum: number } => {
-  const tuning = SWEEP_TUNING[difficulty]
-  const minimum = Math.min(
-    tuning.maximumSlots,
-    tuning.minimumSlots + Math.max(0, contenders - 2) * tuning.slotsPerExtraSeat
-  )
-  return { minimum, maximum: tuning.maximumSlots }
-}
+/** No board is dealt smaller than this, however small the map. */
+export const SWEEP_SMALLEST_BOARD = 8
 
 /**
  * A region set on its own continental board would BE the board — every
  * playable country, and the round becomes "name the world". Any set that
  * swallows this share of the pool is not a question.
  */
-const MAXIMUM_POOL_SHARE = 0.7
+const MAXIMUM_POOL_SHARE = 0.8
+
+const dealableSweepSets = (rules: GameRules): string[] =>
+  Object.keys(SWEEP_SETS).filter(
+    setId => !SWEEP_SETS[setId].hardOnly || rules.difficulty === 'hard'
+  )
+
+/** The set resolved on this board, or undefined when it would swallow the board. */
+const sweepRoster = (setId: string, rules: GameRules): ISOCountryCode[] | undefined => {
+  const spec = SWEEP_SETS[setId]
+  if (!spec) return undefined
+  const members = spec.members(rules)
+  return members.length > playableCountries(rules).length * MAXIMUM_POOL_SHARE ? undefined : members
+}
+
+/**
+ * The band this table plays in — the tuning's floor, raised by the seats, but
+ * never past the biggest set this board can field: a twelve-country board has
+ * no 22-slot question in it, and refusing to deal there just hands the round
+ * to another kind.
+ */
+export const sweepSlotBand = (
+  rules: GameRules,
+  contenders: number
+): { minimum: number; maximum: number } => {
+  const tuning = SWEEP_TUNING[rules.difficulty]
+  const seated = Math.min(
+    tuning.maximumSlots,
+    tuning.minimumSlots + Math.max(0, contenders - 2) * tuning.slotsPerExtraSeat
+  )
+  const largest = Math.max(
+    0,
+    ...dealableSweepSets(rules).map(setId => sweepRoster(setId, rules)?.length ?? 0)
+  )
+  return {
+    minimum: Math.max(SWEEP_SMALLEST_BOARD, Math.min(seated, largest)),
+    maximum: tuning.maximumSlots,
+  }
+}
 
 /**
  * The set as this table would play it: resolved, windowed to the band's
@@ -236,11 +316,8 @@ export const sweepBoardFor = (
   rules: GameRules,
   band: { minimum: number; maximum: number }
 ): ISOCountryCode[] | undefined => {
-  const spec = SWEEP_SETS[setId]
-  if (!spec) return undefined
-  const members = spec.members(rules)
-  if (members.length < band.minimum) return undefined
-  if (members.length > playableCountries(rules).length * MAXIMUM_POOL_SHARE) return undefined
+  const members = sweepRoster(setId, rules)
+  if (!members || members.length < band.minimum) return undefined
   return members.slice(0, band.maximum)
 }
 
@@ -270,11 +347,7 @@ export const viableSweepSets = (
   rules: GameRules,
   band: { minimum: number; maximum: number }
 ): string[] =>
-  Object.keys(SWEEP_SETS).filter(
-    setId =>
-      (!SWEEP_SETS[setId].hardOnly || rules.difficulty === 'hard') &&
-      sweepBoardFor(setId, rules, band) !== undefined
-  )
+  dealableSweepSets(rules).filter(setId => sweepBoardFor(setId, rules, band) !== undefined)
 
 // --- Reading the board ------------------------------------------------------
 

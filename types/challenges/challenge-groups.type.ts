@@ -114,10 +114,10 @@ export const CHALLENGE_GROUP_BY_KIND = {
   // what 'culture' now means: a word game over place names, where the naming
   // is the mechanic and the subject is incidental.
   'unique-or-bust': 'culture',
-  // Clubs, currency zones, treaty rosters and regions — who belongs to what.
-  // SWEEP_SETS is mostly treaty and political blocs (EU, NATO, OPEC, CSTO,
-  // Schengen) plus three regions, so 'economy' would misname it: only the
-  // euro set is economic. Membership is its own axis.
+  // Clubs, currency zones, treaty rosters, regions and languages — who belongs
+  // to what. SWEEP_SETS is mostly treaty and political blocs (EU, NATO, OPEC,
+  // Schengen), regions and language spheres, so 'economy' would misname it:
+  // only the currency sets are economic. Membership is its own axis.
   'clean-sweep': 'blocs',
   'capital-guess': 'cities',
   'ground-plan': 'cities',

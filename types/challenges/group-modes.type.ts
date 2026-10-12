@@ -1146,7 +1146,7 @@ export interface UniqueOrBustState {
 
 /** Where a Clean Sweep set's membership rule comes from. Each family reads an
  *  existing single source — the mode adds no membership test of its own. */
-export type SweepSetFamily = 'club' | 'currency' | 'treaty' | 'region' | 'rights'
+export type SweepSetFamily = 'club' | 'currency' | 'treaty' | 'region' | 'rights' | 'language'
 
 /** One slot taken off the board, and by whom. */
 export interface SweepClaim {

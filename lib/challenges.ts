@@ -432,7 +432,7 @@ const getCleanSweepChallenge = ({
   // Pre-filtered by the mix too — see the note in getManhuntChallenge.
   if (contenders.length < (MINIMUM_TABLE_BY_KIND['clean-sweep'] ?? 0)) return undefined
 
-  const band = sweepSlotBand(game.difficulty, contenders.length)
+  const band = sweepSlotBand(game, contenders.length)
   const setId = sample(viableSweepSets(game, band))
   if (!setId) return undefined
   const members = sweepBoardFor(setId, game, band)
