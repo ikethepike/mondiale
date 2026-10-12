@@ -8,6 +8,7 @@ import {
   RIVER_RUN_TIERS,
   SHARED_SHORES_TIERS,
   waterBlitzCandidates,
+  waterFeaturePool,
 } from '~~/lib/challenges'
 import { isCountryInPlay, playableWorldCountries } from '~~/lib/game-rules'
 import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
@@ -59,6 +60,33 @@ describe('prominenceCandidates', () => {
   it('returns the whole pool untouched at fraction 1', () => {
     const pool = Array.from({ length: 40 }, (_, index) => feature(index, 40 - index))
     expect(prominenceCandidates(pool, 1)).toHaveLength(40)
+  })
+})
+
+// The world easy slice is the famous water; the tier fraction is sized so the
+// slice holds its count when the atlas loses fake shores.
+describe('the world Name That Water pools', () => {
+  const pool = async (difficulty: Game['difficulty']) =>
+    nameWaterCandidates(
+      await waterFeaturePool(
+        { regions: [], difficulty } as unknown as Game,
+        NAME_WATER_TIERS[difficulty].kinds
+      ),
+      difficulty
+    ).map(feature => feature.id)
+
+  it('keeps easy at its size, the Gulf of Mexico and the Persian Gulf in it', async () => {
+    const easy = await pool('easy')
+    expect(easy).toEqual(expect.arrayContaining(['gulf-of-mexico', 'persian-gulf']))
+    expect(Math.abs(easy.length - 24)).toBeLessThanOrEqual(2)
+  })
+
+  it('keeps normal at its size, the great shared lakes in it', async () => {
+    const normal = await pool('normal')
+    expect(normal).toEqual(
+      expect.arrayContaining(['lake-erie', 'lake-malawi', 'strait-of-magellan', 'salish-sea'])
+    )
+    expect(Math.abs(normal.length - 74)).toBeLessThanOrEqual(2)
   })
 })
 
@@ -195,9 +223,8 @@ describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
  * The three-country floor is measured on the key the table can actually reach,
  * never on the shipped list — otherwise benching a micro-nation would leave a
  * "name 3" round with two reachable answers and no third to find. The Ligurian
- * (FR/IT/MC) and Tyrrhenian (FR/IT/VA) seas are the shipped keys that fall
- * under it once Monaco and the Vatican are out, so they simply don't deal
- * below hard.
+ * (FR/IT/MC) is a shipped key that falls under it once Monaco is out, so it
+ * simply doesn't deal below hard.
  */
 describe('the three-country floor and benched micro-nations', () => {
   const shores = (
@@ -208,13 +235,13 @@ describe('the three-country floor and benched micro-nations', () => {
 
   it('measures the floor on the in-play key, not the shipped one', async () => {
     const { WATER_FEATURES } = await import('~~/data/water.gen')
-    for (const id of ['ligurian-sea', 'tyrrhenian-sea']) {
-      expect(WATER_FEATURES[id].countries.length).toBeGreaterThanOrEqual(3)
-      expect(shores(id, { regions: [], difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
-      expect(
-        shores(id, { regions: [], difficulty: 'hard' }, WATER_FEATURES).length
-      ).toBeGreaterThanOrEqual(3)
-    }
+    expect(WATER_FEATURES['ligurian-sea'].countries.length).toBeGreaterThanOrEqual(3)
+    expect(
+      shores('ligurian-sea', { regions: [], difficulty: 'normal' }, WATER_FEATURES).length
+    ).toBe(2)
+    expect(
+      shores('ligurian-sea', { regions: [], difficulty: 'hard' }, WATER_FEATURES).length
+    ).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -346,11 +373,13 @@ describe('nameWaterCandidates', () => {
   })
 
   it('slices the most prominent fraction for easy and normal', () => {
+    const slice = (difficulty: Game['difficulty']) =>
+      Math.ceil(pool.length * NAME_WATER_TIERS[difficulty].poolFraction)
     const easy = nameWaterCandidates(pool, 'easy')
-    expect(easy).toHaveLength(10)
+    expect(easy).toHaveLength(slice('easy'))
     // Prominence-sorted: the famous giants, not the first-listed.
-    expect(easy.map(candidate => candidate.id)).toEqual([...Array(10).keys()])
-    expect(nameWaterCandidates(pool, 'normal')).toHaveLength(24)
+    expect(easy.map(candidate => candidate.id)).toEqual([...Array(slice('easy')).keys()])
+    expect(nameWaterCandidates(pool, 'normal')).toHaveLength(slice('normal'))
   })
 
   it('ranks by footprint × shore count, not footprint alone', () => {

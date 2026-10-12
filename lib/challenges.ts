@@ -940,7 +940,7 @@ const getTraversalChallenge = ({
  * dataset (~½ MB gzipped) must not ride along into client bundles through
  * this module's other exports. Clients that need geometry lazy-load it too.
  */
-const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
+export const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const pool = new Set(playableCountries(game))
 
@@ -1022,8 +1022,8 @@ type WaterTiers = {
 /** Name That Water scales with difficulty: easy deals oceans and famous seas,
  *  normal adds the major lakes, hard deals the whole atlas. */
 export const NAME_WATER_TIERS: WaterTiers = {
-  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.25 },
-  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.6 },
+  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.27 },
+  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.66 },
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
 }
 
