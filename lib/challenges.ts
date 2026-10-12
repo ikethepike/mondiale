@@ -1659,7 +1659,7 @@ const recognitionPool = async (cast: 'ghost-state' | 'no-mans-land') => {
  * genuinely strange. Weight the pick by obscurity: a place most of the world
  * draws as its own shape isn't a ghost state to anyone. That demotes Taiwan,
  * which 23 of 31 governments draw apart, and Western Sahara at 22 — leaving
- * the six frozen oddities as the common draw.
+ * the five frozen oddities as the common draw.
  */
 const ghostStateOddity = (drawnApart: number, povs: number) => 1 - drawnApart / povs
 
