@@ -300,6 +300,12 @@ const flashpointChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'flashpoint-challenge') ? roundChallenge.value : undefined
 )
 
+const compositionChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'composition-challenge')
+    ? roundChallenge.value
+    : undefined
+)
+
 const cleanSweepChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'clean-sweep-challenge')
     ? roundChallenge.value
@@ -514,7 +520,9 @@ const explainer = computed(() =>
     hasTies: rankingTies.value,
     hardMode: isHardMode(gameStore.game),
     maximumGuesses:
-      capitalGuessChallenge.value?.maximumGuesses ?? flashpointChallenge.value?.maximumGuesses,
+      capitalGuessChallenge.value?.maximumGuesses ??
+      flashpointChallenge.value?.maximumGuesses ??
+      compositionChallenge.value?.maximumGuesses,
   })
 )
 

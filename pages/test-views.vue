@@ -2048,6 +2048,7 @@ const scenarios: Scenario[] = [
             { isoCode: 'IR', share: 0.0293 },
           ],
           options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
+          maximumGuesses: 2,
           durationSeconds: 30,
           maximumPoints: MAXIMUM_POINTS,
         }),

@@ -1,4 +1,5 @@
 import {
+  attemptPicksScore,
   clampClientScore,
   getCorrectRanking,
   isCorrectWaterGuess,
@@ -231,6 +232,21 @@ export const gradeGroupAnswer = async ({
       const challenge = expectChallengeType(roundChallenge, 'composition-challenge')
       const largestOrigin = challenge.slices[0]?.isoCode
       if (!largestOrigin) throw new ReferenceError('Composition challenge dealt with no slices')
+      // The option table is every origin on the bar, so a claimed score would
+      // let a seat tap them all for nearly the pot: the server prices the picks
+      if (challenge.maximumGuesses) {
+        answer = { submitted: submission.ranking, correct: [largestOrigin] }
+        scoring = {
+          scored: attemptPicksScore(
+            submission.ranking,
+            largestOrigin,
+            challenge.maximumGuesses,
+            challenge.maximumPoints
+          ),
+          maximum: challenge.maximumPoints,
+        }
+        break
+      }
       buzzOn(
         { country: largestOrigin, maximumPoints: challenge.maximumPoints },
         submission.ranking[0] === largestOrigin

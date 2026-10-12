@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   answerBreakdown,
+  attemptPicksScore,
   capitalGuessScore,
   getCorrectRanking,
   rankingBreakdown,
@@ -341,6 +342,19 @@ describe('capitalGuessScore', () => {
     for (const maximum of [12, 15, 21]) {
       expect(capitalGuessScore(2, 2, maximum)).toBeLessThan(capitalGuessScore(1, 2, maximum))
     }
+  })
+})
+
+describe('attemptPicksScore', () => {
+  it('prices the attempt the answer landed on', () => {
+    expect(attemptPicksScore(['PL'], 'PL', 2, 15)).toBe(capitalGuessScore(1, 2, 15))
+    expect(attemptPicksScore(['TR', 'PL'], 'PL', 2, 15)).toBe(capitalGuessScore(2, 2, 15))
+  })
+
+  it('pays nothing once the answer falls outside the cap', () => {
+    expect(attemptPicksScore(['TR', 'RO', 'PL', 'IT'], 'PL', 2, 15)).toBe(0)
+    expect(attemptPicksScore(['TR', 'RO'], 'PL', 2, 15)).toBe(0)
+    expect(attemptPicksScore([], 'PL', 2, 15)).toBe(0)
   })
 })
 
