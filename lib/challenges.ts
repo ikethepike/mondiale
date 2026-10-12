@@ -4,14 +4,13 @@ import { ANTHEMS } from '~~/data/anthems.gen'
 import { BORDERS } from '~~/data/borders.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { CURRENCIES } from '~~/data/currencies.gen'
 import { PLACES } from '~~/data/places.gen'
 import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
-import { currencyNamesASpender } from '~~/lib/currency'
+import { currencyNamesASpender, moneyHero } from '~~/lib/currency'
 import {
   SWEEP_TUNING,
   sweepBoardFor,
@@ -84,6 +83,7 @@ import type {
   TraversalChallenge,
 } from '~~/types/challenges/traversal-challenge.type'
 import type { ScaleTone } from '~~/types/challenge.type'
+import type { MoneyHero } from '~~/types/currency.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
@@ -2519,15 +2519,17 @@ const dealBorderDetective = (
  * Money-match (hard only): "Which country uses the ¥?" — pick the country whose
  * currency the hero shows. Decoys must use a DIFFERENT currency so there's
  * exactly one right answer (the Euro-zone shares EUR across 27 countries, so a
- * naive pick could have several correct options).
+ * naive pick could have several correct options); `moneyHero` only ever shows
+ * what one currency wears, so a different currency is a different hero.
  */
 const dealMoneyMatch = (
   pool: ISOCountryCode[],
   world: ISOCountryCode[]
-): { country: ISOCountryCode; options: ISOCountryCode[]; image?: string } | undefined => {
-  const subject = shuffleArray(pool).find(isoCode => !!COUNTRIES[isoCode].currency)
+): { country: ISOCountryCode; options: ISOCountryCode[]; money: MoneyHero } | undefined => {
+  const subject = shuffleArray(pool).find(isoCode => !!moneyHero(COUNTRIES[isoCode].currency))
   if (!subject) return undefined
   const currency = COUNTRIES[subject].currency
+  const money = moneyHero(currency)!
 
   const decoys = pickDecoys(subject, pool, 3, {
     preferRegion: true,
@@ -2536,11 +2538,7 @@ const dealMoneyMatch = (
   })
   if (!decoys) return undefined
 
-  // A banknote image when one exists — the UI falls back to the glyph hero when
-  // it doesn't, so the deal is NOT gated on the image (unlike capital-match).
-  const image = currency ? CURRENCIES[currency]?.image : undefined
-
-  return { country: subject, options: shuffleArray([subject, ...decoys]), image }
+  return { country: subject, options: shuffleArray([subject, ...decoys]), money }
 }
 
 /**
