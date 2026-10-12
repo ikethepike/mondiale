@@ -131,7 +131,6 @@ export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
   traversal: 'typed',
   'capital-guess': 'typed',
-  composition: 'typed',
   'name-that-water': 'typed',
   'unique-or-bust': 'typed',
   // Name or tap every member of a set before the clock runs out.
@@ -177,6 +176,8 @@ export const MECHANIC_BY_KIND = {
   sketch: 'draw',
   // File each bench with or against the government.
   government: 'match',
+  // An origin onto the group of the crowd it belongs to.
+  composition: 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>
 
 /**

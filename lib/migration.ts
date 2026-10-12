@@ -103,3 +103,14 @@ export const compositionBoards = (pool: ISOCountryCode[]): ISOCountryCode[] =>
 /** Boards whose leading origin dominates outright — the shape alone answers. */
 export const hasClearLeader = (isoCode: ISOCountryCode): boolean =>
   corridorMargin(corridorsToDestination(isoCode)) >= COMPOSITION_CLEAR_MARGIN
+
+/** A Composition board's groups, largest first — the answer key, derived
+ *  server-side and never stored on the snapshot. */
+export const compositionOrigins = (isoCode: ISOCountryCode, slots: number): MigrationCorridor[] =>
+  corridorsToDestination(isoCode).slice(0, slots)
+
+/** Everyone born abroad, from the head corridor's own share of the whole. */
+export const foreignBornTotal = (isoCode: ISOCountryCode): number => {
+  const [head] = corridorsToDestination(isoCode)
+  return head?.share ? Math.round(head.value.amount / head.share) : 0
+}

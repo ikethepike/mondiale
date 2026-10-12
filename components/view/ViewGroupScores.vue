@@ -307,12 +307,6 @@ const pyramidChallenge = computed(() =>
     : undefined
 )
 
-const compositionChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'composition-challenge')
-    ? roundChallenge.value
-    : undefined
-)
-
 const cleanSweepChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'clean-sweep-challenge')
     ? roundChallenge.value
@@ -531,7 +525,6 @@ const explainer = computed(() =>
     maximumGuesses:
       capitalGuessChallenge.value?.maximumGuesses ??
       flashpointChallenge.value?.maximumGuesses ??
-      compositionChallenge.value?.maximumGuesses ??
       pyramidChallenge.value?.maximumGuesses,
   })
 )
