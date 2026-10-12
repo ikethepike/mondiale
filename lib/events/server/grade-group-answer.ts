@@ -36,7 +36,7 @@ import {
 } from '~~/lib/round-beats'
 import { languageBounce } from '~~/lib/language-rounds'
 import { expectChallengeType } from '~~/lib/rounds'
-import { blitzScore, buzzScore, hintDockedScore } from '~~/lib/scoring'
+import { blitzCounted, blitzScore, buzzScore, hintDockedScore } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp } from '~~/lib/number'
@@ -170,14 +170,15 @@ export const gradeGroupAnswer = async ({
 
   /** Blitz modes: name as many of the answer set as the clock allows. */
   const blitzOn = (
-    challenge: { countries: ISOCountryCode[]; maximumPoints: number },
+    challenge: { countries: ISOCountryCode[]; accepted?: ISOCountryCode[]; maximumPoints: number },
     /** What the guesses actually claimed, where a mode accepts more than one
      *  name per answer (Terra Incognita's absorbers). Defaults to the raw
      *  submission, which is every other blitz mode. */
     claimed: ISOCountryCode[] = submission.ranking
   ) => {
-    answer = { submitted: claimed, correct: challenge.countries }
-    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints)
+    const free = challenge.accepted ?? []
+    answer = { submitted: blitzCounted(claimed, free), correct: challenge.countries }
+    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints, free)
   }
 
   switch (kind) {
@@ -285,9 +286,7 @@ export const gradeGroupAnswer = async ({
       }
       break
     }
-    case 'river-run':
-    case 'shared-shores':
-    case 'highlands': {
+    case 'lay-of-the-land': {
       blitzOn(expectChallengeType(roundChallenge, 'water-blitz-challenge'))
       break
     }

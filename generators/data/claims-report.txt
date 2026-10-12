@@ -1,4 +1,4 @@
-Two Truths claim deck — 3561 claims
+Two Truths claim deck — 3565 claims
 
 borders     1918 claims · 618 true · 1300 false · 380 traps
 capital       24 claims · 12 true · 12 false · 11 traps
@@ -7,7 +7,7 @@ club          91 claims · 59 true · 32 false · 24 traps
 currency      50 claims · 32 true · 18 false · 17 traps
 language     429 claims · 50 true · 379 false · 63 traps
 rank          72 claims · 28 true · 44 false · 32 traps
-river        182 claims · 96 true · 86 false · 36 traps
+river        186 claims · 100 true · 86 false · 33 traps
 trade        177 claims · 66 true · 111 false · 64 traps
 versus       598 claims · 299 true · 299 false · 313 traps
 
@@ -96,6 +96,6 @@ Lies that ring true (most tempting 40):
   0.90 [minor] Hungary shares a land border with Bulgaria.
 
 Sheets dealable per difficulty:
-  easy    47 subjects
-  normal  96 subjects
-  hard    107 subjects
+  easy    48 subjects
+  normal  95 subjects
+  hard    108 subjects

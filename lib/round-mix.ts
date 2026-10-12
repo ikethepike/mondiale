@@ -46,10 +46,8 @@ export const ROUND_WEIGHTS = {
   sketch: 0.07,
   'stat-detective': 0.06,
   'two-truths': 0.07,
-  'river-run': 0.06,
-  'shared-shores': 0.05,
+  'lay-of-the-land': 0.1,
   'name-that-water': 0.04,
-  highlands: 0.08,
   'mother-tongue': 0.063,
   'flag-palette': 0.08,
   'capital-guess': 0.056,
@@ -138,9 +136,7 @@ export const MECHANIC_BY_KIND = {
   'mother-tongue': 'collect',
   'star-chart': 'collect',
   'terra-incognita': 'collect',
-  'river-run': 'collect',
-  'shared-shores': 'collect',
-  highlands: 'collect',
+  'lay-of-the-land': 'collect',
   'no-mans-land': 'collect',
   // Collect-a-set, but against the table rather than the clock alone — same
   // verb, so the mix decays it against its solitaire siblings.

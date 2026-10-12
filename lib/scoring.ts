@@ -127,18 +127,24 @@ export const hintDockedScore = (scored: number, maximumPoints: number, hintsUsed
   return Math.max(0, scored - bought * hintBitePoints(maximumPoints))
 }
 
+/** The guesses a blitz grades: a `free` one — true, but off the key — drops
+ *  out of the score and the ledger alike. */
+export const blitzCounted = <T extends string>(guesses: readonly T[], free: readonly T[] = []) =>
+  guesses.filter(guess => !free.includes(guess))
+
 /**
- * Blitz-family scoring (water modes, mother-tongue, neighbour-blitz): the
+ * Blitz-family scoring (lay of the land, mother-tongue, neighbour-blitz): the
  * found ratio scales the pot, every wrong guess bites one point. Duplicate
- * guesses count once.
+ * guesses count once; free guesses neither pay nor bite.
  */
 export const blitzScore = (
   answers: readonly string[],
   submittedGuesses: readonly string[],
-  maximumPoints: number
+  maximumPoints: number,
+  free: readonly string[] = []
 ): { scored: number; maximum: number } => {
   const answerSet = new Set(answers)
-  const unique = [...new Set(submittedGuesses)]
+  const unique = [...new Set(blitzCounted(submittedGuesses, free))]
   const correct = unique.filter(guess => answerSet.has(guess)).length
   const wrong = unique.length - correct
 
