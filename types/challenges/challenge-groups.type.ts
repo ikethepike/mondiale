@@ -96,8 +96,9 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'river-run': 'water',
   'shared-shores': 'water',
   // Deals on every difficulty — the pool scales in-dealer (famous seas on
-  // easy, major lakes join on normal, the whole atlas on hard). Highlands
-  // scales the same way: famous ranges and deserts first (HIGHLANDS_TIERS).
+  // easy, major lakes join on normal, the whole atlas on hard). Highlands,
+  // River Run and Shared Shores scale the same way (HIGHLANDS_TIERS,
+  // RIVER_RUN_TIERS, SHARED_SHORES_TIERS).
   'name-that-water': 'water',
   highlands: 'water',
   sketch: 'flags',

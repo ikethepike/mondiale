@@ -14,8 +14,15 @@
  */
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
-import { capitalCountryByName } from '~~/lib/capitals'
+import { CAPITALS } from '~~/data/capitals.gen'
+import {
+  capitalCityLight,
+  capitalCountryByName,
+  capitalSpellings,
+  cityLightSpellings,
+} from '~~/lib/capitals'
 import { normalizeAnswer } from '~~/lib/strings'
+import type { CityLight } from '~~/types/city.type'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
 let cityIndex: Map<string, ISOCountryCode> | undefined
@@ -55,3 +62,81 @@ const getCityIndex = (): ReadonlyMap<string, ISOCountryCode> => {
 /** Resolve a typed city name to the country it sits in. */
 export const cityCountryByName = (typed: string): ISOCountryCode | undefined =>
   getCityIndex().get(normalizeAnswer(typed)) ?? capitalCountryByName(typed)
+
+let canonicalKeys: Set<string> | undefined
+
+/**
+ * Every name that belongs to one city alone: roster names and aliases, gazetteer
+ * canonicals and official capital names — the keys the indexes claim first. A
+ * gazetteer variant that is one of these names another city (Lomé's row lists
+ * "Rome"), so it never counts as a spelling of the city it was filed under.
+ */
+const getCanonicalKeys = (): ReadonlySet<string> => {
+  if (canonicalKeys) return canonicalKeys
+  const names = [
+    ...GROUND_PLAN_CITIES.flatMap(entry => [entry.city, ...(entry.aliases ?? [])]),
+    ...Object.values(CITY_LIGHTS).flatMap(cities => (cities ?? []).map(city => city.name)),
+    ...Object.values(CAPITALS).map(capital => capital?.name),
+  ]
+  canonicalKeys = new Set(
+    names.filter((name): name is string => !!name).map(name => normalizeAnswer(name))
+  )
+  return canonicalKeys
+}
+
+const cityRow = (isoCode: ISOCountryCode, wanted: ReadonlySet<string>): CityLight | undefined => {
+  const rows = CITY_LIGHTS[isoCode] ?? []
+  // Canonical names first: a smaller town that lists the city among its variants never claims it.
+  return (
+    rows.find(city => wanted.has(normalizeAnswer(city.name))) ??
+    rows.find(city => cityLightSpellings(city).some(name => wanted.has(normalizeAnswer(name))))
+  )
+}
+
+const capitalAmong = (isoCode: ISOCountryCode, wanted: ReadonlySet<string>): string | undefined => {
+  const capital = CAPITALS[isoCode]?.name
+  return capital && wanted.has(normalizeAnswer(capital)) ? capital : undefined
+}
+
+const nameKeys = (names: readonly string[]): ReadonlySet<string> =>
+  new Set(names.map(name => normalizeAnswer(name)))
+
+/** Whether the city known as `names` is `isoCode`'s official capital. */
+export const isCapitalCity = (isoCode: ISOCountryCode, names: readonly string[]): boolean =>
+  !!capitalAmong(isoCode, nameKeys(names))
+
+/**
+ * The gazetteer row of the city known as `names` in `isoCode` — its own row,
+ * never its country's capital's unless it is that capital. Undefined where the
+ * city falls outside the generator's per-country slice.
+ */
+export const cityLightFor = (
+  isoCode: ISOCountryCode,
+  names: readonly string[]
+): CityLight | undefined => {
+  const wanted = nameKeys(names)
+  return capitalAmong(isoCode, wanted) ? capitalCityLight(isoCode) : cityRow(isoCode, wanted)
+}
+
+/**
+ * Every normalized key a typed answer naming the city known as `names` in
+ * `isoCode` may arrive as: the given names, the official capital name where it
+ * is one, and its gazetteer row's spellings — minus any variant that is another
+ * city's own name.
+ */
+export const citySpellingKeys = (
+  isoCode: ISOCountryCode,
+  names: readonly string[]
+): ReadonlySet<string> => {
+  const capital = capitalAmong(isoCode, nameKeys(names))
+  const row = cityLightFor(isoCode, names)
+  const own = [...names, capital, row?.name]
+  const variants = capital ? capitalSpellings(isoCode) : row ? cityLightSpellings(row) : []
+  const canonical = getCanonicalKeys()
+  return new Set(
+    [
+      ...own.filter((name): name is string => !!name).map(name => normalizeAnswer(name)),
+      ...variants.map(name => normalizeAnswer(name)).filter(key => !canonical.has(key)),
+    ].filter(key => !!key)
+  )
+}

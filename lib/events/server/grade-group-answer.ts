@@ -1,4 +1,5 @@
 import {
+  attemptPicksScore,
   clampClientScore,
   getCorrectRanking,
   isCorrectWaterGuess,
@@ -12,8 +13,10 @@ import {
   scoreTrendRace,
   speaksTongue,
 } from '~~/lib/challenges'
+import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { languageBounce } from '~~/lib/language-rounds'
+import { namesGroundPlanCity } from '~~/lib/ground-plan'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
@@ -136,7 +139,10 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'anthem-buzz': {
-      buzzOn(expectChallengeType(roundChallenge, 'anthem-buzz-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'anthem-buzz-challenge')
+      const guess = submission.ranking[0]
+      buzzOn(challenge, !!guess && anthemTuneMatches(challenge.country, guess))
+      answer.correct = sharedTuneCountries(challenge.country)
       break
     }
     case 'tongue-buzz': {
@@ -186,10 +192,23 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'ground-plan': {
-      // The typed answer was a CITY, resolved to its country by the view before
-      // it left (`cityCountryByName`), so this grades as a plain buzz on the
-      // country — the same wire shape every other mode uses.
-      buzzOn(expectChallengeType(roundChallenge, 'ground-plan-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'ground-plan-challenge')
+      const cities = Array.isArray(submission.cities) ? submission.cities : []
+      const namesCity = (city: unknown) => namesGroundPlanCity(challenge, city)
+      // A wrong city in the right country is a miss, so the options price
+      // on the named cities rather than the country the ranking carries.
+      if (challenge.maximumGuesses) {
+        const scored = attemptPicksScore(
+          cities,
+          namesCity,
+          challenge.maximumGuesses,
+          challenge.maximumPoints
+        )
+        answer = { submitted: scored > 0 ? [challenge.country] : [], correct: [challenge.country] }
+        scoring = { scored, maximum: challenge.maximumPoints }
+        break
+      }
+      buzzOn(challenge, submission.ranking[0] === challenge.country && namesCity(cities[0]))
       break
     }
     case 'star-chart': {
@@ -236,6 +255,21 @@ export const gradeGroupAnswer = async ({
       const challenge = expectChallengeType(roundChallenge, 'composition-challenge')
       const largestOrigin = challenge.slices[0]?.isoCode
       if (!largestOrigin) throw new ReferenceError('Composition challenge dealt with no slices')
+      // The option table is every origin on the bar, so a claimed score would
+      // let a seat tap them all for nearly the pot: the server prices the picks
+      if (challenge.maximumGuesses) {
+        answer = { submitted: submission.ranking, correct: [largestOrigin] }
+        scoring = {
+          scored: attemptPicksScore(
+            submission.ranking,
+            largestOrigin,
+            challenge.maximumGuesses,
+            challenge.maximumPoints
+          ),
+          maximum: challenge.maximumPoints,
+        }
+        break
+      }
       buzzOn(
         { country: largestOrigin, maximumPoints: challenge.maximumPoints },
         submission.ranking[0] === largestOrigin

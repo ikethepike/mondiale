@@ -88,7 +88,13 @@ import {
 } from '~~/lib/attribution'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { governingParty, logoPoliticsPrompt, partiesOf, partySpectrum } from '~~/lib/parties'
+import {
+  governingParty,
+  logoPoliticsPrompt,
+  partiesOf,
+  partySpectrum,
+  RULERS_PROMPT,
+} from '~~/lib/parties'
 import { politicalLeader } from '~~/lib/leaders'
 import { spokenLanguages } from '~~/lib/language-rounds'
 import { countriesSpending, currencyName } from '~~/lib/currency'
@@ -111,7 +117,6 @@ const {
   country,
   status,
   verdictShown,
-  isHard,
   isEasy,
   submittedISOCode,
   submittedCountry,
@@ -205,9 +210,7 @@ const promptSources = computed<Attribution[] | undefined>(() => {
   if (!active) return undefined
   switch (variant.value) {
     case 'find':
-      // The leader find shows Wikidata facts (and, on easy, a Commons face) —
-      // but hard mode shows neither, so it credits the flag like the rest.
-      return active.id === 'government.leader' && !isHard.value
+      return active.id === 'government.leader'
         ? datasetAttribution('leaders')
         : [attributionFor('flag')]
     case 'flag-pick':
@@ -298,6 +301,8 @@ const interstitialTitle = computed(() => {
       return `Put ${countryName(active.country)}'s history in order`
     case 'far-flung':
       return 'A far-flung piece of a country — whose is it?'
+    case 'rulers':
+      return RULERS_PROMPT
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }

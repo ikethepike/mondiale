@@ -58,19 +58,9 @@ export const ROUND_WEIGHTS = {
   // Shy of its mirror on purpose: the dark map asks more of a player than a
   // skyline photo does, and two city rounds in a game is plenty.
   'star-chart': 0.042,
-  // A THIN pool, and weighted low for that as much as for the read. Measured,
-  // it is 15 (DZ MA AL CA DK EE ES ID IT JP LU NL NZ SE ZA) at every
-  // difficulty, because the round needs a chamber whose cabinet resolved AND
-  // whose leader's party is among its own government benches AND carries a
-  // logo, beside two rivals that carry one too. By variant: world 15, europe 8,
-  // africa 3, asia 2, north-america 1, oceania 1 — americas, south-america and
-  // middle-east still deal NONE.
-  //
-  // Twenty-eight chambers now name a government; the thirteen that clear that
-  // and still do not deal are mostly waiting on LOGOS (Britain and Ghana each
-  // seat one logo'd rival where the row needs two, Hungary none), not on the
-  // cabinet join. Not a crash: `getGovernmentChallenge` returns undefined and
-  // the mix buys another kind. Raise this as the logo coverage grows.
+  // A set-piece: a briefing, then three beats on one chamber. Supply is not
+  // the limit — over ninety chambers deal on the world board (pinned in
+  // government.test.ts) — so this is a pacing weight alone.
   government: 0.06,
   composition: 0.042,
   // Rare on purpose. The cast is tiny — eight ghost states, and only six of
@@ -135,57 +125,58 @@ export type RoundMechanic =
   | 'turns'
   | 'draw'
   | 'order'
-  /** Drag a thing ONTO a target — distinct from `order`, which rearranges a
-   *  list in place. Parliament's benches drop onto the arc. */
+  /** File a thing ONTO a target — distinct from `order`, which rearranges a
+   *  list in place. Parliament's benches file onto a side. */
   | 'match'
 
 export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
   traversal: 'typed',
-  'border-chain': 'typed',
-  atlas: 'typed',
-  'neighbour-blitz': 'typed',
-  silhouette: 'typed',
-  'mother-tongue': 'typed',
   'capital-guess': 'typed',
-  'ground-plan': 'typed',
-  'star-chart': 'typed',
   composition: 'typed',
   'name-that-water': 'typed',
   'unique-or-bust': 'typed',
-  'terra-incognita': 'typed',
-  // Tap the map until the set is complete.
-  'heritage-hunt': 'pin',
+  // Name or tap every member of a set before the clock runs out.
+  'neighbour-blitz': 'collect',
+  'mother-tongue': 'collect',
+  'star-chart': 'collect',
+  'terra-incognita': 'collect',
   'river-run': 'collect',
   'shared-shores': 'collect',
   highlands: 'collect',
+  'no-mans-land': 'collect',
   // Collect-a-set, but against the table rather than the clock alone — same
   // verb, so the mix decays it against its solitaire siblings.
   'clean-sweep': 'collect',
   // Drop a pin and live with the distance.
+  'heritage-hunt': 'pin',
   'pin-landmark': 'pin',
-  flashpoint: 'pin',
   'ghost-state': 'pin',
+  // Tapped countries read back as distance, like a pin.
+  'hot-cold': 'pin',
   // A pin on a timeline: one guess, scored by how far it lands.
   vintage: 'pin',
-  'no-mans-land': 'collect',
   // Pick from a small table of options.
-  'stat-detective': 'choice',
   'two-truths': 'choice',
-  'flag-palette': 'choice',
   'trend-race': 'choice',
   // Beat the room to the answer while it plays out.
   'anthem-buzz': 'buzz',
   'tongue-buzz': 'buzz',
+  silhouette: 'buzz',
+  'stat-detective': 'buzz',
+  'flag-palette': 'buzz',
+  flashpoint: 'buzz',
+  'ground-plan': 'buzz',
   empire: 'buzz',
   // Seat by seat, around the table.
-  'hot-cold': 'turns',
+  'border-chain': 'turns',
+  atlas: 'turns',
   manhunt: 'turns',
   // Drag things into the right order.
   ranking: 'order',
   timeline: 'order',
   sketch: 'draw',
-  // Drag a party onto its block on the arc.
+  // File each bench with or against the government.
   government: 'match',
   // The same verb on a different target — a flag onto the pyramid it belongs
   // to — so it decays against government rather than reading as a new one.
@@ -213,7 +204,7 @@ export const MIX_TUNING = {
    *  complaint, two is fine, and a theme should come back around. */
   groupBite: 0.6,
   groupHalfLife: 1.5,
-  /** Weakest of the three — eight mechanics over 28 kinds means a hard bite
+  /** Weakest of the three — nine mechanics over 37 kinds means a hard bite
    *  would starve whole mechanics at a small table. */
   mechanicBite: 0.4,
   mechanicHalfLife: 1,
