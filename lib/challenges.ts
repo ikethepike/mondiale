@@ -153,6 +153,7 @@ import {
   TERRA_CADENCE_MS,
 } from './terra-incognita'
 import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
+import { parsePolygons, polylineLength } from './outline'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
@@ -955,15 +956,20 @@ const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[])
 /** More touching countries = a longer clock. */
 const waterBlitzDuration = (countries: number) => Math.min(75, 20 + countries * 6)
 
-const getWaterBlitzChallenge = async (
-  game: gameTypes.Game,
-  kinds: WaterFeatureKind[],
-  poolFraction = 1
-): Promise<WaterBlitzChallenge | undefined> => {
-  const candidates = (await waterFeaturePool(game, kinds)).filter(
+/** The features a water-blitz round may deal at this table: its difficulty's slice of the board. */
+export const waterBlitzCandidates = async (game: gameTypes.Game, tiers: WaterTiers) => {
+  const { kinds, poolFraction } = tiers[game.difficulty]
+  const pool = (await waterFeaturePool(game, kinds)).filter(
     feature => feature.countries.length >= 3
   )
-  const feature = sample(prominenceCandidates(candidates, poolFraction))
+  return prominenceCandidates(pool, poolFraction)
+}
+
+const getWaterBlitzChallenge = async (
+  game: gameTypes.Game,
+  tiers: WaterTiers
+): Promise<WaterBlitzChallenge | undefined> => {
+  const feature = sample(await waterBlitzCandidates(game, tiers))
   if (!feature) return undefined
 
   return {
@@ -984,19 +990,32 @@ const NAME_WATER_DURATION_SECONDS = 45
 /**
  * The dataset carries no fame field, so projected footprint × shore count
  * stands in for prominence — the Mediterranean outscores Antongil Bay by
- * three orders of magnitude.
+ * three orders of magnitude. A river's footprint is its course length — its
+ * box rewards running diagonally, which ranked the Putumayo over the Rhine.
  */
-const waterProminence = (feature: Pick<WaterFeature, 'bounds' | 'countries'>) =>
-  feature.bounds[2] * feature.bounds[3] * Math.max(1, feature.countries.length)
+type ProminenceFeature = Pick<WaterFeature, 'kind' | 'd' | 'bounds' | 'countries'>
+const courseLengths = new Map<string, number>()
+const courseLength = (d: string) => {
+  let length = courseLengths.get(d)
+  if (length === undefined) {
+    length = parsePolygons(d).reduce((total, run) => total + polylineLength(run), 0)
+    courseLengths.set(d, length)
+  }
+  return length
+}
+const waterProminence = (feature: ProminenceFeature) => {
+  const footprint =
+    feature.kind === 'river' ? courseLength(feature.d) : feature.bounds[2] * feature.bounds[3]
+  return footprint * Math.max(1, feature.countries.length)
+}
+
+type WaterTiers = {
+  [difficulty in gameTypes.GameDifficulty]: { kinds: WaterFeatureKind[]; poolFraction: number }
+}
 
 /** Name That Water scales with difficulty: easy deals oceans and famous seas,
  *  normal adds the major lakes, hard deals the whole atlas. */
-export const NAME_WATER_TIERS: {
-  [difficulty in gameTypes.GameDifficulty]: {
-    kinds: WaterFeatureKind[]
-    poolFraction: number
-  }
-} = {
+export const NAME_WATER_TIERS: WaterTiers = {
   easy: { kinds: ['ocean', 'sea'], poolFraction: 0.25 },
   normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.6 },
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
@@ -1004,31 +1023,43 @@ export const NAME_WATER_TIERS: {
 
 /** Highlands scales the same way: easy deals the famous ranges and deserts,
  *  normal opens the plateaus, hard deals the whole set. */
-export const HIGHLANDS_TIERS: {
-  [difficulty in gameTypes.GameDifficulty]: {
-    kinds: WaterFeatureKind[]
-    poolFraction: number
-  }
-} = {
+export const HIGHLANDS_TIERS: WaterTiers = {
   easy: { kinds: ['range', 'desert'], poolFraction: 0.2 },
   normal: { kinds: ['range', 'desert', 'plateau'], poolFraction: 0.5 },
   hard: { kinds: ['range', 'desert', 'plateau'], poolFraction: 1 },
+}
+
+/** River Run and Shared Shores scale the same way: easy deals the great
+ *  rivers and the famous seas, hard deals the whole atlas. */
+export const RIVER_RUN_TIERS: WaterTiers = {
+  easy: { kinds: ['river'], poolFraction: 0.25 },
+  normal: { kinds: ['river'], poolFraction: 0.6 },
+  hard: { kinds: ['river'], poolFraction: 1 },
+}
+
+export const SHARED_SHORES_TIERS: WaterTiers = {
+  easy: { kinds: ['sea', 'lake'], poolFraction: 0.4 },
+  normal: { kinds: ['sea', 'lake'], poolFraction: 0.7 },
+  hard: { kinds: ['sea', 'lake'], poolFraction: 1 },
 }
 
 /** Small variants slice thin — never starve the pool below a replayable spread. */
 const WATER_MINIMUM_POOL = 8
 
 /** A difficulty's slice of a feature pool: prominence-sorted, top fraction. */
-export const prominenceCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
+export const prominenceCandidates = <T extends ProminenceFeature>(
   features: T[],
   poolFraction: number
 ): T[] => {
-  const sorted = [...features].sort((a, b) => waterProminence(b) - waterProminence(a))
+  const sorted = features
+    .map(feature => ({ feature, prominence: waterProminence(feature) }))
+    .sort((a, b) => b.prominence - a.prominence)
+    .map(({ feature }) => feature)
   const take = Math.ceil(sorted.length * poolFraction)
   return sorted.slice(0, Math.max(WATER_MINIMUM_POOL, take))
 }
 
-export const nameWaterCandidates = <T extends Pick<WaterFeature, 'bounds' | 'countries'>>(
+export const nameWaterCandidates = <T extends ProminenceFeature>(
   features: T[],
   difficulty: gameTypes.GameDifficulty
 ): T[] => prominenceCandidates(features, NAME_WATER_TIERS[difficulty].poolFraction)
@@ -2113,12 +2144,9 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   sketch: game => getSketchChallenge({ game }),
   'stat-detective': game => getStatDetectiveChallenge({ game }),
   'two-truths': game => getTwoTruthsChallenge({ game }),
-  'river-run': game => getWaterBlitzChallenge(game, ['river']),
-  'shared-shores': game => getWaterBlitzChallenge(game, ['sea', 'lake']),
-  highlands: game => {
-    const tier = HIGHLANDS_TIERS[game.difficulty]
-    return getWaterBlitzChallenge(game, tier.kinds, tier.poolFraction)
-  },
+  'river-run': game => getWaterBlitzChallenge(game, RIVER_RUN_TIERS),
+  'shared-shores': game => getWaterBlitzChallenge(game, SHARED_SHORES_TIERS),
+  highlands: game => getWaterBlitzChallenge(game, HIGHLANDS_TIERS),
   'name-that-water': game => getNameWaterChallenge(game),
   'mother-tongue': game => getMotherTongueChallenge(game),
   'flag-palette': game => getFlagPaletteChallenge(game),
