@@ -107,7 +107,7 @@ describe('River Run and Shared Shores on easy (via getRoundChallenge)', () => {
       'singapore-strait',
       'gulf-of-aqaba',
       'bab-el-mandeb',
-      'torres-strait',
+      'florida-strait',
       'lake-chad',
     ],
   } as const
