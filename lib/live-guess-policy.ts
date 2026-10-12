@@ -50,9 +50,8 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // hundred of them. Nothing to leak, and the misses are the round's comedy.
   'terra-incognita': 'label',
 
-  // Unlike the other option rounds, composition's table IS the bar's own
-  // origins — a handful, shared by the room — so a named wrong guess strikes a
-  // slice off everyone's list.
+  // Every card is a real origin, so a name says nothing — but WHERE it went
+  // would. Placements travel as a bare count (`placed`), a race not a leak.
   composition: 'presence',
 
   // One hidden target, shared by the room.

@@ -61,7 +61,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
         : ''
     case 'two-truths':
       return '_type' in challenge && challenge._type === 'two-truths-challenge'
-        ? `The lie about ${countryName(challenge.country)} came from ${countryName(challenge.lieSource)}`
+        ? `${challenge.cards.length} claims about ${countryName(challenge.country)}`
         : ''
     case 'lay-of-the-land':
       return '_type' in challenge && challenge._type === 'water-blitz-challenge'

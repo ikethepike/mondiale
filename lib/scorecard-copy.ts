@@ -29,7 +29,7 @@ export interface ScorecardCopyContext {
   /** Ranking rounds only: the stat had countries sharing a value. */
   hasTies?: boolean
   hardMode?: boolean
-  /** Capital-guess, flashpoint and composition: a dealt guess cap changes what pays. */
+  /** Capital-guess and flashpoint: a dealt guess cap changes what pays. */
   maximumGuesses?: number
 }
 
@@ -88,10 +88,11 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
       return 'The fewer clues you needed, the bigger the score.'
     case 'two-truths':
       return context.hardMode
-        ? 'The sooner you call the lie, the more it pays.'
-        : 'The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot.'
-    case 'capital-guess':
+        ? 'Right stamps pay, wrong ones cost, blanks are free — the first perfect sheet takes a bonus.'
+        : 'Right stamps pay, wrong ones cost, blanks are free — a revealed card costs a slice of the pot.'
     case 'composition':
+      return 'The biggest group pays most; every other group placed adds a share. Run out of strikes and the crowd closes.'
+    case 'capital-guess':
       return context.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
         : "The sooner you name it, the more it's worth."
@@ -154,11 +155,11 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
       case 'stat-detective':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'two-truths':
-        return { submitted: 'Your Verdict', correct: 'The Country' }
+        return { submitted: 'Your Perfect Sheet', correct: 'The Country' }
       case 'capital-guess':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'composition':
-        return { submitted: 'Your Answer', correct: 'The Largest Origin' }
+        return { submitted: 'Groups You Placed', correct: 'The Crowd' }
       case 'ground-plan':
         return { submitted: 'Your Answer', correct: 'The City' }
       // The star chart renders StarChartReveal instead of the shared ledger, so

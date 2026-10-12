@@ -1,6 +1,8 @@
 import type { LatLng } from '~~/lib/geo'
 import type { FinalChallengeAnswer } from './challenges/final-challenge.type'
 import type {
+  CompositionBoardView,
+  CompositionPlacement,
   ManhuntPosition,
   ManhuntReading,
   UniqueCategoryId,
@@ -8,6 +10,7 @@ import type {
 } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
+import type { TwoTruthsReceipt, TwoTruthsSheet } from './two-truths.types'
 import { SEAT_STEPS, type SeatStep } from './seat.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
@@ -74,8 +77,9 @@ export type ClientEventData =
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
-      /** Two Truths rounds: the statement the player called the lie. */
-      lie?: number
+      /** Two Truths rounds: a stamp per card, null for a blank. The server
+       *  re-reads it through `toSheet` and grades it against its own deck. */
+      sheet?: TwoTruthsSheet
       /** Sketch rounds: the normalized drawn outline (`sketchSubmission`). The
        *  server scores it against the country itself and draws it on the reveal. */
       sketch?: [number, number][]
@@ -98,6 +102,10 @@ export type ClientEventData =
       parliament?: { placed: string[] }
       /** Vintage rounds: the year the player dated the map to. */
       year?: number
+      /** Composition rounds, BOT seats only: the placements the bot brain
+       *  composed. A person's drops are graded one by one as they land
+       *  ('submit-composition-drop') and read back from the server's sheet. */
+      composition?: { placements: CompositionPlacement[] }
       /** Ground Plan rounds: the cities the player named, in order — the
        *  option board's attempt sequence, or the one typed answer. The country
        *  in `ranking` cannot tell two of its cities apart, so the server
@@ -222,10 +230,31 @@ export type ClientEventData =
        *  the despot's 'manhunt-position', a detective's 'manhunt-sonar'. */
       event: 'fetch-manhunt-intel'
     }
+  | (SeatEcho & {
+      /** Composition: one card dropped on one group. `attempt` echoes how
+       *  many attempts the seat already holds, so a retried send can't spend
+       *  a second strike. Answered with a targeted 'composition-board'. */
+      event: 'submit-composition-drop'
+      isoCode: ISOCountryCode
+      slot: number
+      attempt: number
+    })
+  | {
+      /** Composition: a seat asks for its own board (a reload) or the reveal. */
+      event: 'fetch-composition-board'
+      round: number
+    }
   | {
       /** Vintage: a graded seat (or a spectator) asks for a round's story.
        *  Answered with a targeted 'vintage-story' emit. */
       event: 'fetch-vintage-story'
+      round: number
+    }
+  | {
+      /** Two Truths: a graded seat (or a spectator, or a seat holding a bought
+       *  reveal) asks for a round's receipts. Answered with a targeted
+       *  'two-truths-receipts' emit. */
+      event: 'fetch-two-truths-receipts'
       round: number
     }
   | {
@@ -416,6 +445,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'timeline-reveal-done',
   'gate-reveal-done',
   'submit-unique-answer',
+  'submit-composition-drop',
 ] as const satisfies readonly ClientEvent[]
 export type CriticalClientEvent = (typeof CRITICAL_CLIENT_EVENTS)[number]
 
@@ -502,6 +532,19 @@ export type ServerEventData =
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
+  /** Two Truths: card verdicts and their receipts, emitted ONLY to a socket
+   *  allowed to see them — every card once graded, one for a bought reveal.
+   *  `sheets` carries the table's banked stamps, which the live snapshot
+   *  withholds; empty on a reveal reply. */
+  | {
+      event: 'two-truths-receipts'
+      round: number
+      receipts: TwoTruthsReceipt[]
+      sheets: Record<string, TwoTruthsSheet>
+    }
+  /** Composition: one seat's own board, emitted ONLY to that seat's socket —
+   *  the answer key and a rival's drops never ride a snapshot. */
+  | ({ event: 'composition-board' } & CompositionBoardView)
   /** A `final-light` the server did not keep (too late, or not the stage's),
    *  told to the lighting socket alone so its stage un-lights the name. */
   | { event: 'final-light-refused'; subject: string; name: string }

@@ -78,6 +78,8 @@ export const WATCH_SAFE_EVENTS: ClientEventData['event'][] = [
   'seat-rendered',
   'time-sync',
   'fetch-vintage-story',
+  'fetch-two-truths-receipts',
+  'fetch-composition-board',
 ]
 
 export const useClientEvents = () => {

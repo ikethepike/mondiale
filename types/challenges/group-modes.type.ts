@@ -1,3 +1,4 @@
+import type { TwoTruthsCard } from '../two-truths.types'
 import type { VintageRegionId } from '../vintage.types'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
@@ -148,22 +149,14 @@ export interface StatDetectiveChallenge {
 }
 
 /**
- * Three stat claims about one country — one value secretly belongs to a
- * different country. Spot the lie in one shot.
+ * Four claims about one country, some true and some lies — how many of each is
+ * never said. Only the sentences travel: the verdicts stay in the server's
+ * deck until a seat is graded (`fetch-two-truths-receipts`).
  */
 export interface TwoTruthsChallenge {
   _type: 'two-truths-challenge'
   country: ISOCountryCode
-  statements: {
-    accessorId: GroupChallengeAccessorId
-    /** The claimed value (the lie carries the decoy country's value). */
-    amount: number
-    unit: string
-  }[]
-  /** Index into `statements` of the falsified claim. */
-  lieIndex: number
-  /** Where the lie's value really comes from — shown in the reveal. */
-  lieSource: ISOCountryCode
+  cards: TwoTruthsCard[]
   durationSeconds: number
   maximumPoints: number
 }
@@ -584,8 +577,8 @@ export interface NameWaterChallenge {
  * client-side in data/recognition.gen.ts — only the id travels the wire.
  */
 /**
- * A country's foreign-born population, broken into the places those people
- * were born — the bar is the question, and the largest slice is the answer.
+ * A country's foreign-born population as a crowd of anonymous groups, largest
+ * first — each origin card is placed onto its own group (`lib/composition.ts`).
  *
  * The figures count residents born abroad, NOT ancestry: a country's largest
  * recognised minority is frequently home-born and invisible here (Sweden's
@@ -595,16 +588,43 @@ export interface NameWaterChallenge {
 export interface CompositionChallenge {
   _type: 'composition-challenge'
   country: ISOCountryCode
-  /** Origin shares of the whole foreign-born population, largest first. The
-   *  head is the answer; the listed slices never sum to 1 — the remainder is
-   *  the long tail of smaller origins. */
-  slices: { isoCode: ISOCountryCode; share: number }[]
-  /** Multiple choice outside hard mode, where players free-type instead. */
-  options?: ISOCountryCode[]
-  /** Picks allowed before the round resolves. Set only with `options`. */
-  maximumGuesses?: number
+  /** Each group's share of the whole foreign-born population, largest first.
+   *  WHO each group is never rides the snapshot: the server derives it
+   *  (`compositionOrigins`) and grades every drop itself. */
+  shares: number[]
+  /** Everyone born abroad, not just the groups on the board. */
+  total: number
+  /** The cards: every group's origin, shuffled. */
+  options: ISOCountryCode[]
+  /** Wrong placements that end the seat's round. */
+  strikes: number
+  /** Groups print their percentage; hard shows only their size. */
+  showShares: boolean
   durationSeconds: number
   maximumPoints: number
+}
+
+export interface CompositionPlacement {
+  isoCode: ISOCountryCode
+  /** Index into `shares` — the group the card was dropped on. */
+  slot: number
+}
+
+/** Each seat's attempts, in order — the redis side key under `compositionSheetKey`. */
+export type CompositionSheet = Partial<Record<string, CompositionPlacement[]>>
+
+/** One seat's board as the server tells it to that seat alone. */
+export interface CompositionBoardView {
+  round: number
+  /** Attempts the server holds — the next drop must echo this. */
+  attempts: number
+  placed: Partial<Record<number, ISOCountryCode>>
+  misses: number
+  over: boolean
+  /** The attempt this reply answers, when it answers one. */
+  drop?: CompositionPlacement & { fits: boolean; people?: number }
+  /** Every group's origin and headcount, once the seat can no longer use it. */
+  reveal?: { isoCode: ISOCountryCode; people: number }[]
 }
 
 export interface GhostStateChallenge {

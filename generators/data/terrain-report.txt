@@ -20,10 +20,13 @@ lake-chad  unseen NG,NE
 river-nile  unseen ET,RW,BI,TZ,KE,CD,ER
 river-danube  unseen MD
 river-amazonas  unseen EC,BO,VE
+river-niger  unseen CM
 river-zambezi  unseen BW
 river-congo  unseen CF,ZM,CM
 river-parana  unseen UY  unlisted BO
+river-indus  unseen AF
 river-tigris  unseen SY,IR
+river-brahmaputra  unseen BT
 river-okavango  unseen AO
 river-senegal  unseen GN
 river-syr-darya  unseen KG

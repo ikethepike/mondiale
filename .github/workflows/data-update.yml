@@ -76,6 +76,11 @@ jobs:
       - name: Update countries
         run: bun run generate:countries
 
+      # Two Truths' verdicts are derived from the data above; a refresh that
+      # flips one must re-stamp the deck (pinned in generators/lib/claims.test.ts).
+      - name: Update Two Truths claims
+        run: bun run generate:claims
+
       # Gates — nothing commits unless the refreshed data still holds up.
       - name: Check export parsing
         run: bun run generators/check-exports.ts --strict

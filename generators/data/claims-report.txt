@@ -1,0 +1,101 @@
+Two Truths claim deck — 3547 claims
+
+borders     1918 claims · 618 true · 1300 false · 380 traps
+capital       24 claims · 12 true · 12 false · 11 traps
+clock         20 claims · 6 true · 14 false · 6 traps
+club          91 claims · 59 true · 32 false · 24 traps
+currency      50 claims · 32 true · 18 false · 17 traps
+language     411 claims · 48 true · 363 false · 63 traps
+rank          72 claims · 28 true · 44 false · 32 traps
+river        186 claims · 100 true · 86 false · 33 traps
+trade        177 claims · 66 true · 111 false · 64 traps
+versus       598 claims · 299 true · 299 false · 313 traps
+
+Truths that ring false (spiciest 40):
+  0.20 [obscure] French is an official language of Vanuatu.
+  0.20 [minor] Paraguay is one of the world's three biggest exporters of soybeans.
+  0.20 [minor] Madagascar is the world's biggest exporter of vanilla.
+  0.20 [minor] Uganda is one of the world's three biggest exporters of vanilla.
+  0.21 [major] More people live in Bangladesh than in Russia.
+  0.21 [major] More people live in South Korea than in Canada.
+  0.21 [major] More people live in South Korea than in Canada.
+  0.22 [major] French is an official language of Canada.
+  0.22 [minor] English is an official language of Malta.
+  0.22 [minor] The Democratic Republic of the Congo is the world's biggest exporter of cobalt.
+  0.22 [major] More people live in South Korea than in Australia.
+  0.22 [major] More people live in South Korea than in Australia.
+  0.23 [major] More people live in the United Kingdom than in Canada.
+  0.23 [major] More people live in Italy than in Canada.
+  0.23 [major] More people live in the United Kingdom than in Canada.
+  0.23 [minor] More people live in Ghana than in Australia.
+  0.23 [major] More people live in Italy than in Canada.
+  0.23 [major] More people live in the Philippines than in Canada.
+  0.23 [major] More people live in Uganda than in Canada.
+  0.24 [major] Ethiopia is the second most populous country in Africa.
+  0.24 [major] More people live in the United Kingdom than in Australia.
+  0.24 [major] More people live in Italy than in Australia.
+  0.24 [major] More people live in Germany than in Canada.
+  0.24 [minor] More people live in Côte d'Ivoire than in Australia.
+  0.24 [major] More people live in Germany than in Canada.
+  0.24 [major] More people live in the United Kingdom than in Australia.
+  0.24 [major] More people live in Italy than in Australia.
+  0.24 [major] More people live in South Korea than in Kazakhstan.
+  0.24 [major] More people live in Malaysia than in Australia.
+  0.24 [major] More people live in Poland than in Australia.
+  0.24 [major] More people live in Uganda than in Australia.
+  0.24 [major] More people live in Vietnam than in Canada.
+  0.25 [minor] Estonia shares a land border with Russia.
+  0.25 [minor] Finland shares a land border with Russia.
+  0.25 [minor] Norway shares a land border with Russia.
+  0.25 [minor] Russia shares a land border with Estonia.
+  0.25 [minor] Russia shares a land border with Finland.
+  0.25 [minor] Russia shares a land border with Norway.
+  0.25 [minor] Ecuador uses the US dollar as its currency.
+  0.25 [obscure] The Federated States of Micronesia uses the US dollar as its currency.
+
+Lies that ring true (most tempting 40):
+  0.90 [major] Afghanistan shares a land border with Kazakhstan.
+  0.90 [minor] Albania shares a land border with Bulgaria.
+  0.90 [minor] Angola shares a land border with Botswana.
+  0.90 [major] Austria shares a land border with France.
+  0.90 [major] Austria shares a land border with Croatia.
+  0.90 [major] Austria shares a land border with Poland.
+  0.90 [minor] Bosnia and Herzegovina shares a land border with Hungary.
+  0.90 [major] Belgium shares a land border with Switzerland.
+  0.90 [minor] Burkina Faso shares a land border with Guinea.
+  0.90 [minor] Burkina Faso shares a land border with Nigeria.
+  0.90 [minor] Bulgaria shares a land border with Albania.
+  0.90 [minor] Bulgaria shares a land border with Hungary.
+  0.90 [minor] Burundi shares a land border with Uganda.
+  0.90 [minor] Benin shares a land border with Ghana.
+  0.90 [minor] Benin shares a land border with Mali.
+  0.90 [minor] Botswana shares a land border with Angola.
+  0.90 [minor] Botswana shares a land border with Mozambique.
+  0.90 [major] The Democratic Republic of the Congo shares a land border with Kenya.
+  0.90 [major] The Democratic Republic of the Congo shares a land border with Sudan.
+  0.90 [obscure] Congo shares a land border with Equatorial Guinea.
+  0.90 [major] Switzerland shares a land border with Belgium.
+  0.90 [minor] Switzerland shares a land border with Luxembourg.
+  0.90 [obscure] Côte d'Ivoire shares a land border with Sierra Leone.
+  0.90 [minor] Côte d'Ivoire shares a land border with Togo.
+  0.90 [major] China shares a land border with Thailand.
+  0.90 [minor] Czechia shares a land border with Hungary.
+  0.90 [major] Germany shares a land border with Italy.
+  0.90 [obscure] Germany shares a land border with Liechtenstein.
+  0.90 [major] Ethiopia shares a land border with Uganda.
+  0.90 [major] France shares a land border with Austria.
+  0.90 [major] France shares a land border with the Netherlands.
+  0.90 [minor] Ghana shares a land border with Benin.
+  0.90 [minor] Ghana shares a land border with Mali.
+  0.90 [minor] Guinea shares a land border with Burkina Faso.
+  0.90 [minor] Guinea shares a land border with Mauritania.
+  0.90 [obscure] Equatorial Guinea shares a land border with Congo.
+  0.90 [minor] Greece shares a land border with Serbia.
+  0.90 [major] Croatia shares a land border with Austria.
+  0.90 [minor] Hungary shares a land border with Bosnia and Herzegovina.
+  0.90 [minor] Hungary shares a land border with Bulgaria.
+
+Sheets dealable per difficulty:
+  easy    49 subjects
+  normal  96 subjects
+  hard    110 subjects

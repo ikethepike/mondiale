@@ -1,0 +1,10 @@
+// A pure module: a population drawn as dots at a fixed pitch, cut out of
+// whatever the element paints — an ink fill while the group is anonymous, the
+// country's own flag once it is named. Same pitch everywhere, so dot counts
+// compare honestly between groups sized by area.
+@mixin dot-crowd($pitch: 0.62rem, $dot: 0.2rem) {
+  border-radius: 50%;
+  mask-image: radial-gradient(circle at center, #000 $dot, transparent calc($dot + 0.04rem));
+  mask-size: $pitch $pitch;
+  mask-position: center;
+}

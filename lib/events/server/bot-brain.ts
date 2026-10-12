@@ -1,12 +1,18 @@
 import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import { vintageRuns } from './vintage-grade'
+import { twoTruthsVerdicts } from './two-truths-deck'
+import { stampFor, TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
 import type {
+  CompositionPlacement,
   GovernmentAnswers,
   UniqueCategoryId,
   VintageChallenge,
 } from '~~/types/challenges/group-modes.type'
 import { randomBetween, randomInt, sample, sampleMany, shuffleArray } from '~~/lib/arrays'
+import { clamp } from '~~/lib/number'
 import {
+  BOT_SHEET_CERTAINTY,
+  BOT_SHEET_WRONG,
   botShare,
   isBrainSeat,
   jitteredShare,
@@ -17,6 +23,7 @@ import {
   SWEEP_ACCURACY,
 } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
+import { replayPlacements, type CompositionBoard } from '~~/lib/composition'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { isStepGraded, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-steps'
 import { playableWorldCountries } from '~~/lib/game-rules'
@@ -97,6 +104,7 @@ import { atlasOpenMoves, currentAtlasChain } from './atlas-turns'
 import { borderChainOpenMoves, currentBorderChain } from './chain-turns'
 import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
+import { compositionBoardOf } from './composition-board'
 import { currentGovernment } from './government-beats'
 import { currentHeritageHunt } from './heritage-beats'
 import { currentManhunt, fetchManhuntSecret, isManhuntParticipant } from './manhunt-beats'
@@ -1440,6 +1448,33 @@ export const finalAnswerFor = async (
   return undefined
 }
 
+/**
+ * A bot's run at the crowd: each group it knows (at its share) goes down first,
+ * then it guesses the rest blind until the board fills or its strikes run out.
+ */
+const botPlacements = (board: CompositionBoard, share: number): CompositionPlacement[] => {
+  const attempts: CompositionPlacement[] = board.key
+    .map((isoCode, slot) => ({ isoCode, slot }))
+    .filter(() => Math.random() < share)
+  const ruledOut = new Set<string>()
+  for (;;) {
+    const replay = replayPlacements(board, attempts)
+    if (replay.over) break
+    const standing = new Set(Object.values(replay.placed))
+    const open = board.key.map((_, slot) => slot).filter(slot => !replay.placed[slot])
+    const move = sample(
+      board.key
+        .filter(isoCode => !standing.has(isoCode))
+        .flatMap(isoCode => open.map(slot => ({ isoCode, slot })))
+        .filter(({ isoCode, slot }) => !ruledOut.has(`${isoCode}:${slot}`))
+    )
+    if (!move) break
+    ruledOut.add(`${move.isoCode}:${move.slot}`)
+    attempts.push(move)
+  }
+  return attempts
+}
+
 // --- The classic submission composer: one probe grade surfaces the mode's ---
 // --- correct set, then the seat's share decides how much of it lands.     ---
 
@@ -1505,7 +1540,6 @@ export const composeClassicSubmission = async (
     case 'flashpoint':
     case 'capital-guess':
     case 'flag-palette':
-    case 'composition':
     case 'tongue-buzz': {
       // Tongues: any speaker wins — the correct set is the whole membership.
       const target = kind === 'tongue-buzz' ? sample(correct) : correct[0]
@@ -1515,6 +1549,12 @@ export const composeClassicSubmission = async (
       const miss = wrongPick(game, correct)
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
+    case 'composition': {
+      const { board } = await compositionBoardOf(
+        expectChallengeType(challenge, 'composition-challenge')
+      )
+      return { ranking: [], composition: { placements: botPlacements(board, share) } }
+    }
     case 'ground-plan': {
       const plan = expectChallengeType(challenge, 'ground-plan-challenge')
       const landed = { ranking: [plan.country], cities: [plan.city] }
@@ -1523,11 +1563,25 @@ export const composeClassicSubmission = async (
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'two-truths': {
-      const truths = expectChallengeType(challenge, 'two-truths-challenge')
-      const landed = { ranking: [], lie: truths.lieIndex }
-      if (await lands(landed)) return landed
-      const decoys = truths.statements.map((_, index) => index)
-      return { ranking: [], lie: sample(decoys.filter(index => index !== truths.lieIndex)) }
+      // A seat stamps what it knows, guesses some of the rest wrong and leaves
+      // the remainder blank. The right rate is solved so the net realizes the
+      // dial, and capped so even a strong seat isn't a lock on the perfect-
+      // sheet bonus it would bank before most humans.
+      const verdicts = twoTruthsVerdicts(expectChallengeType(challenge, 'two-truths-challenge'))
+      const right = clamp(
+        (share / TWO_TRUTHS_TUNING.sheetShare + BOT_SHEET_WRONG) / (1 + BOT_SHEET_WRONG),
+        0,
+        BOT_SHEET_CERTAINTY
+      )
+      const wrong = BOT_SHEET_WRONG * (1 - right)
+      return {
+        ranking: [],
+        sheet: verdicts.map(truth => {
+          const roll = Math.random()
+          if (roll < right) return stampFor(truth)
+          return roll < right + wrong ? stampFor(!truth) : null
+        }),
+      }
     }
     case 'hot-cold': {
       // A probe trail: the colder the seat, the longer the wander. Every stray

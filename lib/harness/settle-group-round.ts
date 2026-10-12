@@ -13,6 +13,8 @@ import {
 } from '~~/lib/round-beats'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
+import { stampFor } from '~~/lib/two-truths'
+import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -59,8 +61,18 @@ const RIVAL_SHARES = [0.6, 0.3]
 const rivalSubmission = (
   correct: readonly ISOCountryCode[],
   seat: number,
-  runs?: [number, number][]
+  runs?: [number, number][],
+  verdicts?: boolean[]
 ): GroupSubmission => {
+  // A sheet round: one rival knows all but the last card, the next trusts everything.
+  if (verdicts) {
+    return {
+      ranking: [],
+      sheet: verdicts.map((truth, index) =>
+        seat % 2 ? 'true' : index === verdicts.length - 1 ? null : stampFor(truth)
+      ),
+    }
+  }
   // A year round: one rival dates it inside the band, the next a decade late.
   if (runs?.[0]) {
     const [from, to] = runs[0]
@@ -77,6 +89,7 @@ export const settleGroupRound = async ({
   submission,
   meId,
   onSettled,
+  redis,
 }: {
   game: Game
   round: Round
@@ -85,13 +98,15 @@ export const settleGroupRound = async ({
   meId: string
   /** Runs after the seats reach their scorecards, so the harness can re-render. */
   onSettled?: () => void
+  /** The harness's stand-in for server-held round state (Composition's sheet). */
+  redis?: Parameters<typeof gradeGroupAnswer>[0]['redis']
 }): Promise<void> => {
   // Once only: a redelivered submit must not re-score a settled round.
   if (round.groupAnswers[meId]) return
 
   const seats = Object.keys(game.players)
 
-  const mine = await gradeGroupAnswer({ game, round, playerId: meId, submission })
+  const mine = await gradeGroupAnswer({ game, round, playerId: meId, submission, redis })
   round.groupAnswers[meId] = mine.answer
   round.playerTurns[meId] = { points: mine.scoring }
 
@@ -100,6 +115,10 @@ export const settleGroupRound = async ({
   const correct = mine.answer.correct ?? []
   const vintageRuns = isChallengeOfType(round.groupChallenge, 'vintage-challenge')
     ? (await loadVintageAnswers())?.vintageRuns(round.groupChallenge)
+    : undefined
+
+  const verdicts = isChallengeOfType(round.groupChallenge, 'two-truths-challenge')
+    ? (await loadTwoTruthsAnswers())?.twoTruthsVerdicts(round.groupChallenge)
     : undefined
 
   let rivalSeat = 0
@@ -115,7 +134,7 @@ export const settleGroupRound = async ({
         game,
         round,
         playerId,
-        submission: rivalSubmission(correct, rivalSeat++, vintageRuns),
+        submission: rivalSubmission(correct, rivalSeat++, vintageRuns, verdicts),
       })
     } catch {
       graded = await gradeGroupAnswer({

@@ -66,6 +66,11 @@ const SHARE_HISTORY_ROUNDS = 5
  *  decay, so the wander is bounded rather than scaled without a ceiling. */
 export const HOT_COLD_MAX_WANDER = 3
 
+/** Two Truths: of the cards a bot doesn't know, the share it guesses (wrong)
+ *  rather than leaves blank, and the most it ever knows per card. */
+export const BOT_SHEET_WRONG = 0.3
+export const BOT_SHEET_CERTAINTY = 0.9
+
 /** The Despot: a bot detective pings until its own possible set is this
  *  small, then pounces (also the policy manhunt.test.ts pins balance with). */
 export const MANHUNT_POUNCE_AT = 10

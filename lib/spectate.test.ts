@@ -266,13 +266,7 @@ const ROUND_FIXTURES: RoundChallenge[] = [
   {
     _type: 'two-truths-challenge',
     country: 'FR',
-    statements: [
-      { accessorId: 'people.population', amount: 1, unit: 'people' },
-      { accessorId: 'economics.gdpPerCapita', amount: 2, unit: '$' },
-      { accessorId: 'economics.militarySpending', amount: 3, unit: '%' },
-    ],
-    lieIndex: 1,
-    lieSource: 'DE',
+    cards: [],
     durationSeconds: 40,
     maximumPoints: 8,
   },

@@ -9,20 +9,9 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 interface AttemptChallenge {
   /** The round's subject: the country the prompt is about. */
   country: ISOCountryCode
-  /**
-   * The country that scores, when the subject is not itself the answer.
-   * Recognition modes name their subject, so `country` doubles as the answer
-   * key; composition asks about a board and answers with one of its origins,
-   * and the board is never among its own options.
-   */
-  answer?: ISOCountryCode
   maximumGuesses?: number
   maximumPoints: number
 }
-
-/** What a guess is graded against — the answer key, never the prompt. */
-const answerOf = (challenge: AttemptChallenge): ISOCountryCode =>
-  challenge.answer ?? challenge.country
 
 /**
  * The two-guess option state machine shared by the recognition modes that
@@ -54,7 +43,7 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
    * Named boards only (Ground Plan's cities): every pick is passed to
    * `onGuess` by name and graded, spent and priced by this, so two cities of
    * one country stay two picks. Country boards leave it unset and grade on
-   * the ISO code against `answer ?? country`.
+   * the ISO code against `country`.
    */
   namesAnswer?: (pick: Pick) => boolean
   /** Bank the round; 0 means failed out. `picks` is the attempt sequence the
@@ -71,7 +60,7 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
   )
 
   const isAnswer = (active: AttemptChallenge) =>
-    namesAnswer ?? ((pick: Pick) => pick === answerOf(active))
+    namesAnswer ?? ((pick: Pick) => pick === active.country)
 
   /** Option variants pay by attempt; hard mode free-types against the clock. */
   const scoreFor = (active: AttemptChallenge, picks: Pick[]) =>

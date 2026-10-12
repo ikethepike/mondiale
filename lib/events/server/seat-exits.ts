@@ -37,6 +37,7 @@ import type { EngineContext, ServerSide } from './round-engine'
 import { governmentKey } from '~~/lib/government'
 import { manhuntKey } from '~~/lib/manhunt'
 import { uniqueKey } from '~~/lib/unique-or-bust'
+import { compositionSheetKey } from '~~/lib/composition'
 import { advanceSeat, capDeadline } from './seat-cursor'
 import { recordCheckpoint } from './seat-journal'
 import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
@@ -463,6 +464,7 @@ export const roundSideKeys = (game: Game): string[] => {
     manhuntKey(game.id, roundIndex),
     governmentKey(game.id, roundIndex),
     uniqueKey(game.id, roundIndex),
+    compositionSheetKey(game.id, roundIndex),
   ]
 }
 
