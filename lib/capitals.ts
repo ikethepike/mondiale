@@ -60,7 +60,7 @@ export const capitalCityLight = (isoCode: ISOCountryCode): CityLight | undefined
 /** Every spelling a typed capital answer may arrive as — canonical first. The
  *  row's own names ride along, so an aliased capital answers to both the
  *  official name and the gazetteer's ("Ulaanbaatar" and "Ulan Bator"). */
-const capitalSpellings = (isoCode: ISOCountryCode): string[] => {
+export const capitalSpellings = (isoCode: ISOCountryCode): string[] => {
   const canonical = CAPITALS[isoCode]?.name
   if (!canonical) return []
   const light = capitalCityLight(isoCode)

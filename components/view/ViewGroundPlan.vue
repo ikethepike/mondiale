@@ -228,7 +228,7 @@ watch(
 )
 
 /** The reveal is display-only; the server's flip ends the beat. */
-const resolve = (correct: boolean, score: number, city = challenge.value?.city) => {
+const resolve = (correct: boolean, score: number, city?: string) => {
   if (resolved.value) return
   resolved.value = true
   wasCorrect.value = correct
@@ -238,7 +238,8 @@ const resolve = (correct: boolean, score: number, city = challenge.value?.city) 
   submitOnce(country ? [country] : [], score, undefined, country ? { city } : undefined)
 }
 
-const submitRound = (score: number) => resolve(score > 0, score)
+let tapped: string | undefined
+const submitRound = (score: number) => resolve(score > 0, score, tapped)
 
 const start = () => {
   begin({ onTimeout: () => submitRound(0) })
@@ -271,6 +272,7 @@ const onOption = (option: string) => {
   const active = challenge.value
   const isoCode = cityCountryByName(option)
   if (!isoCode || !active) return
+  tapped = option
   onGuess(getCountry(isoCode), { name: option, correct: namesGroundPlanCity(active, option) })
 }
 

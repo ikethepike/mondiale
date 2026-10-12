@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { CAPITALS } from '~~/data/capitals.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
+import { capitalCityLight } from '~~/lib/capitals'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import { groundPlanCities, namesGroundPlanCity } from '~~/lib/ground-plan'
+import { normalizeAnswer } from '~~/lib/strings'
 import type { GroundPlanChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 
@@ -43,9 +46,48 @@ describe('namesGroundPlanCity', () => {
     expect(namesGroundPlanCity(plan('Rome'), 'Roma')).toBe(true)
   })
 
-  it('refuses an empty or missing name', () => {
+  it('refuses an empty, missing or malformed name', () => {
     expect(namesGroundPlanCity(plan('Chicago'), undefined)).toBe(false)
     expect(namesGroundPlanCity(plan('Chicago'), '   ')).toBe(false)
+    expect(namesGroundPlanCity(plan('Chicago'), 42)).toBe(false)
+    expect(namesGroundPlanCity(plan('Chicago'), { city: 'Chicago' })).toBe(false)
+  })
+
+  it('resolves a capital through its capital row, native spelling included', () => {
+    expect(namesGroundPlanCity(plan('Ulaanbaatar'), 'Ulan Bator')).toBe(true)
+    expect(namesGroundPlanCity(plan('Vientiane'), 'Viangchan')).toBe(true)
+    expect(namesGroundPlanCity(plan('New Delhi'), 'Delhi')).toBe(false)
+  })
+
+  it('refuses a variant that is another city’s own name', () => {
+    expect(CITY_LIGHTS.TG?.find(city => city.name === 'Lomé')?.alt).toContain('rome')
+    expect(namesGroundPlanCity(plan('Lomé'), 'Rome')).toBe(false)
+    expect(namesGroundPlanCity(plan('Lomé'), 'Lome')).toBe(true)
+  })
+
+  it('never accepts another roster city or another gazetteer city’s canonical name', () => {
+    const gazetteer = Object.values(CITY_LIGHTS).flatMap(cities =>
+      (cities ?? []).map(city => city.name)
+    )
+    for (const entry of groundPlanCities()) {
+      const capital = CAPITALS[entry.country]?.name
+      const ownNames = [entry.city, ...(entry.aliases ?? [])]
+      const isCapital =
+        !!capital && ownNames.some(name => normalizeAnswer(name) === normalizeAnswer(capital))
+      const own = new Set(
+        [...ownNames, ...(isCapital ? [capital, capitalCityLight(entry.country)?.name] : [])]
+          .filter((name): name is string => !!name)
+          .map(name => normalizeAnswer(name))
+      )
+      const others = [
+        ...groundPlanCities()
+          .filter(other => other !== entry)
+          .map(other => other.city),
+        ...gazetteer,
+      ].filter(name => !own.has(normalizeAnswer(name)))
+      const accepted = others.filter(name => namesGroundPlanCity(plan(entry.city), name))
+      expect(accepted, entry.city).toEqual([])
+    }
   })
 
   it('answers to its own name for every roster city', () => {
@@ -72,5 +114,9 @@ describe('ground-plan grading', () => {
   it('zeroes another city of the same country, and a bare country', async () => {
     expect((await grade(plan('Chicago'), 'Houston')).scoring.scored).toBe(0)
     expect((await grade(plan('Chicago'), undefined)).scoring.scored).toBe(0)
+  })
+
+  it('zeroes a malformed city instead of throwing', async () => {
+    expect((await grade(plan('Chicago'), 7 as never)).scoring.scored).toBe(0)
   })
 })
