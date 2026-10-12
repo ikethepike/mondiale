@@ -29,7 +29,8 @@ import TrendSparkline from '~/components/challenge/TrendSparkline.vue'
 import CountryTileFlag from '~/components/country/CountryTileFlag.vue'
 import { countryName, getCountry } from '~~/lib/country'
 import { TREND_DUEL_REVEAL_MS } from '~~/lib/gate-timing'
-import { readTrend, TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
+import { trendDuelWon } from '~~/lib/gate-steps'
+import { TREND_METRICS, type TrendMetricId } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
 import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -68,8 +69,7 @@ const answerDuel = (picked: ISOCountryCode) => {
   const duel = currentDuel.value
   if (!duel || status.value || reveal.value) return
 
-  const direction = readTrend(seriesFor(picked, duel.metric), duel.metric)?.direction
-  const correct = direction === duel.seek
+  const correct = trendDuelWon(duel, picked, TRENDS)
   reveal.value = { picked, correct }
 
   const unpicked = picked === duel.a ? duel.b : duel.a
@@ -84,14 +84,15 @@ const answerDuel = (picked: ISOCountryCode) => {
 
   // The decisive pick is sent at once — a lost duel or the streak's last win;
   // its flip holds on the question for the variant's verdict lead.
+  const steps = trendDuelOutcomes.value.map(outcome => outcome.picked)
   if (!correct) {
     missNote.value = `${countryName(unpicked)} is the one ${duel.seek}`
     // Any lost duel fails the challenge: submit a token that can't match
     const wrongToken = props.challenge.country === picked ? unpicked : picked
-    return submitAnswer(wrongToken)
+    return submitAnswer(wrongToken, steps)
   }
   if (index.value >= total.value - 1) {
-    return submitAnswer(props.challenge.country)
+    return submitAnswer(props.challenge.country, steps)
   }
   revealTimer = setTimeout(() => {
     reveal.value = undefined

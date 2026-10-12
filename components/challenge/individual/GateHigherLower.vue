@@ -22,7 +22,7 @@ import { accessorTopicLabel } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { useGateChallenge } from '~~/lib/use-gate-challenge'
-import { getValueByAccessorID } from '~~/lib/values'
+import { higherLowerWon } from '~~/lib/gate-steps'
 import { PAIR_COLORS } from './pair-colors'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -55,9 +55,7 @@ const answerDuel = (picked: ISOCountryCode) => {
   if (!higherLower || !duel || status.value) return
 
   const other = picked === duel.a ? duel.b : duel.a
-  const pickedValue = getValueByAccessorID(picked, higherLower.accessorId)?.amount ?? 0
-  const otherValue = getValueByAccessorID(other, higherLower.accessorId)?.amount ?? 0
-  const won = pickedValue > otherValue
+  const won = higherLowerWon(higherLower.accessorId, duel, picked)
 
   duelOutcomes.value.push({
     picked,
@@ -66,11 +64,12 @@ const answerDuel = (picked: ISOCountryCode) => {
     correct: won,
   })
 
+  const steps = duelOutcomes.value.map(outcome => outcome.picked)
   if (won) {
     if (index.value >= total.value - 1) {
       // Swept the whole streak — submit the winning token
       revealDuelsOnMap()
-      return submitAnswer(props.challenge.country)
+      return submitAnswer(props.challenge.country, steps)
     }
     index.value++
     return
@@ -80,6 +79,6 @@ const answerDuel = (picked: ISOCountryCode) => {
   missNote.value = `${countryName(other)} ranks higher`
   const wrongToken = props.challenge.country === picked ? other : picked
   revealDuelsOnMap()
-  submitAnswer(wrongToken)
+  submitAnswer(wrongToken, steps)
 }
 </script>

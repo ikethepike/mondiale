@@ -104,7 +104,9 @@ export interface GateChallengeContext {
   holdUntil: ComputedRef<number | undefined>
   /** The browsable reveal's explicit exit: end the hold now. */
   finishBeat: () => void
-  submitAnswer: (isoCode: ISOCountryCode) => void
+  /** `steps` answers a step-graded gate (`isStepGraded`): the server grades
+   *  them, and `isoCode` is the country its verdict names. */
+  submitAnswer: (isoCode: ISOCountryCode, steps?: string[]) => void
   /** Record a bought hint with the server — what the leap is docked by. */
   recordHint: (hint: GateHint<keyof typeof GATE_HINTS>) => void
   giveUp: () => void
@@ -242,7 +244,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     void deliver({ event: 'gate-reveal-done', ...seatEcho(subject) })
   }
 
-  const submitAnswer = (isoCode: ISOCountryCode) => {
+  const submitAnswer = (isoCode: ISOCountryCode, steps?: string[]) => {
     // Watch mode: the gates' own reactive clocks reach here with no user
     // input — the booth never answers a gate.
     if (gameStore.watching) return
@@ -255,6 +257,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     void deliver({
       event: 'submit-individual-challenge-answer',
       isoCode,
+      ...(steps ? { steps } : {}),
       ...seatEcho(subject),
     })
 

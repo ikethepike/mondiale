@@ -18,6 +18,7 @@ import {
 } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { isStepGraded, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-steps'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { offsetKm, type LatLng } from '~~/lib/geo'
 import { sketchSubmission, sketchTarget, type OutlinePoint } from '~~/lib/outline'
@@ -86,6 +87,7 @@ import {
   type FinalChallengeAnswer,
   type FinalChallengeItem,
 } from '~~/types/challenges/final-challenge.type'
+import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Game, GameDifficulty, Round } from '~~/types/game.types'
 import { worldRegions, type ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
@@ -923,6 +925,39 @@ const gateActDelay = (game: Game, seat: Player): number => {
   return Math.max(think, deadline - remaining * clock.seconds * 1000 - Date.now())
 }
 
+/**
+ * A step-graded gate's play: the winning steps on a hit; on a miss the same
+ * steps spoiled at their first step — a duel lost, a chain cut short, the
+ * hand reversed, the other ruling or another band.
+ */
+const gateStepsFor = async (
+  challenge: IndividualChallenge,
+  pool: readonly ISOCountryCode[],
+  hit: boolean
+): Promise<string[]> => {
+  const solved = (await solveGateSteps(challenge, pool)) ?? []
+  if (hit) return solved
+  switch (challenge.variant) {
+    case 'higher-lower':
+    case 'trend-duel': {
+      const first = challenge.higherLower?.pairs[0] ?? challenge.trendDuels?.[0]
+      const loser = first && (solved[0] === first.a ? first.b : first.a)
+      return loser ? [loser] : []
+    }
+    case 'chronicle':
+      return [...solved].reverse()
+    case 'logo-politics': {
+      const logo = challenge.partyLogo
+      if (logo?.ask === 'ruling') {
+        return [logo.rules ? LOGO_RULING_STEPS.out : LOGO_RULING_STEPS.governs]
+      }
+      return [sample((logo?.bands ?? []).filter(band => band !== logo?.band)) ?? '']
+    }
+    default:
+      return []
+  }
+}
+
 const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
   const { playerId } = ctx.eventTarget
   scheduleEngineTask(ctx, 0, async fresh => {
@@ -940,10 +975,14 @@ const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
       challenge.options?.length ? challenge.options : playableWorldCountries(fresh)
     ).filter(option => !isCorrectIndividualAnswer(challenge, option))
     const isoCode = hit ? challenge.country : (sample(missPool) ?? challenge.country)
+    const steps = isStepGraded(challenge)
+      ? await gateStepsFor(challenge, playableWorldCountries(fresh), hit)
+      : undefined
     try {
       await botAct(ctx, {
         event: 'submit-individual-challenge-answer',
         isoCode,
+        ...(steps ? { steps } : {}),
         subject: seat.cursor.subject,
         seq,
       })

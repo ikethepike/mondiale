@@ -26,7 +26,7 @@
       type="button"
       :disabled="settled"
       :class="verdictOn(choice === truthOfRuling)"
-      @click="answer(choice === truthOfRuling)"
+      @click="answer(choice ? LOGO_RULING_STEPS.governs : LOGO_RULING_STEPS.out)"
     >
       {{ choice ? 'Yes, they govern' : 'No, they do not' }}
     </button>
@@ -70,11 +70,7 @@
     <!-- The slider rests dead centre, and `centre` is the true band for a
          quarter of the roster — so a player who never touched the control was
          scoring ~1 in 4 for free. The placement has to be a decision. -->
-    <ButtonFilled
-      v-if="!answered"
-      :disabled="!moved || settled"
-      @click="answer(spectrumAt(slid) === challenge.partyLogo?.band)"
-    >
+    <ButtonFilled v-if="!answered" :disabled="!moved || settled" @click="answer(spectrumAt(slid))">
       {{ moved ? 'Place them here' : 'Drag to place them' }}
     </ButtonFilled>
   </div>
@@ -87,6 +83,7 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import { useGateChallenge, useGateClock, wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { LOGO_POLITICS_SECONDS } from '~~/lib/gate-timing'
 import ButtonFilled from '~/components/button/ButtonFilled.vue'
+import { LOGO_RULING_STEPS, logoPoliticsWon } from '~~/lib/gate-steps'
 import {
   logoPoliticsPrompt,
   SPECTRUM_BANDS,
@@ -106,10 +103,9 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * ("Sweden Democrats"). The name only appears in the reveal.
  *
  * `origin` answers with a country and grades on the wire. The other two do
- * not answer with a country at all, so they take the repo's client-trust route
- * (`higher-lower`, `chronicle`, `atlas`): grade here, then submit
- * `challenge.country` on a win or `wrongTokenFor` on a miss. The wash is held
- * briefly first so the player sees which choice was true.
+ * not answer with a country at all, so they submit their choice as a step
+ * (`gradeGateSteps`) beside `challenge.country` on a win or `wrongTokenFor` on
+ * a miss. The wash is held briefly first so the player sees which choice was true.
  */
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
@@ -177,13 +173,15 @@ const answerOrigin = (isoCode: ISOCountryCode) => {
   submitAnswer(isoCode)
 }
 
-const answer = (correct: boolean) => {
-  if (settled.value) return
+const answer = (step: string) => {
+  const logo = props.challenge.partyLogo
+  if (settled.value || !logo) return
+  const correct = logoPoliticsWon(logo, step)
   picked.value = correct
   // Sent at the answer: the wash holds on the question for the variant's
   // verdict lead, which the shell reads off the server clock.
   stop()
-  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge))
+  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), [step])
 }
 </script>
 

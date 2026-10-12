@@ -135,9 +135,8 @@ export interface IndividualChallenge {
     pairs: { a: ISOCountryCode; b: ISOCountryCode }[]
   }
   /** trend-duel: which country's stat trends `seek`-ward — one riser + one
-   *  faller per pair, answered in order; the client submits `country` only on
-   *  a clean streak (same client-trust model as higher-lower, truth derived
-   *  from TRENDS via readTrend). */
+   *  faller per pair, answered in order; the picks are graded on both ends by
+   *  `trendDuelWon` (lib/gate-steps), truth derived from TRENDS via readTrend. */
   trendDuels?: {
     metric: TrendMetricId
     seek: 'rising' | 'falling'
@@ -192,9 +191,9 @@ export interface IndividualChallenge {
     /** What each lineup member is labelled as, exactly as shown. */
     labels: Partial<Record<ISOCountryCode, string>>
   }
-  /** atlas: the name chain. `country` doubles as the seed; links are graded
-   *  client-side through lib/atlas-chain (the rule, the credit and the hint
-   *  all read that one module, on both formats). */
+  /** atlas: the name chain. `country` doubles as the seed; the chain is
+   *  graded through lib/atlas-chain (the rule, the credit and the hint all
+   *  read that one module, on both formats) — on the server by `atlasStepsBank`. */
   atlas?: {
     /** The dealt opening country — the chain's zeroth chip. */
     seed: ISOCountryCode
@@ -213,7 +212,7 @@ export interface IndividualChallenge {
     language: string
   }
   /** chronicle: EVENT slugs in display (shuffled) order. Years stay out of the
-   *  payload — data/events.gen is already client-bundled, and the view grades
+   *  payload — data/events.gen is already client-bundled, and both ends grade
    *  the final order through lib/chronicle. */
   chronicle?: {
     events: string[]

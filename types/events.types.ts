@@ -104,6 +104,11 @@ export type ClientEventData =
   | (SeatEcho & {
       event: 'submit-individual-challenge-answer'
       isoCode: ISOCountryCode
+      /** Step-graded gates (`isStepGraded`): each duel's pick, the chain after
+       *  the seed, the arranged order, the ruling or the band. The server
+       *  grades these (`gradeGateSteps`); `isoCode` then only names the
+       *  verdict's country. */
+      steps?: string[]
     })
   | (SeatEcho & {
       /** A seat bought a hint on the subject it echoes (a gate's outline, a
