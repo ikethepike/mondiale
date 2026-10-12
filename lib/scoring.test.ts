@@ -6,6 +6,8 @@ import {
   getCorrectRanking,
   rankingBreakdown,
   scoreChallengeSubmission,
+  ghostStateAnswers,
+  ghostStateTap,
   scoreGhostState,
   scoreHotCold,
   scoreTraversalSubmission,
@@ -26,11 +28,13 @@ import {
   scorePinDistance,
 } from './scoring'
 import { getValueByAccessorID } from './values'
+import { gradeGroupAnswer } from './events/server/grade-group-answer'
+import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { GameRules } from '~~/types/game.types'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import type { Game, GameRules, Round } from '~~/types/game.types'
+import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
 // Characterization tests: these pin the point outcomes the game produces TODAY,
 // before scoreTraversalSubmission/scoreHotCold delegate to attemptDecayScore.
@@ -671,46 +675,116 @@ describe('answerBreakdown', () => {
   })
 })
 
-// scoreGhostState grades a wrong tap by projected distance from the claimant.
-// It measures each country's mainland (largest ring), NOT its whole bounding
-// box: the US box spans the Pacific to reach Guam, which used to score Canada
-// at zero and Russia at 62%.
-describe('scoreGhostState proximity', () => {
-  const ghostState = (parent: ISOCountryCode): GhostStateChallenge => ({
+describe('scoreGhostState', () => {
+  const ghostState = (territoryId: string): GhostStateChallenge => ({
     _type: 'ghost-state-challenge',
-    territoryId: 'test',
-    parent,
+    territoryId,
+    parent: RECOGNITION_TERRITORIES[territoryId]!.parent!,
     durationSeconds: 25,
     maximumPoints: 100,
   })
 
-  const percentFor = async (tapped: ISOCountryCode, parent: ISOCountryCode) =>
-    (await scoreGhostState({ challenge: ghostState(parent), submittedGuesses: [tapped] })).scored
+  const percentFor = async (territoryId: string, tapped: ISOCountryCode) =>
+    (await scoreGhostState({ challenge: ghostState(territoryId), submittedGuesses: [tapped] }))
+      .scored
 
-  it('pays full marks for naming the claimant', async () => {
-    expect(await percentFor('TR', 'TR')).toBe(100)
+  it('pays full marks for the place itself or its claimant', async () => {
+    expect(await percentFor('taiwan', 'TW')).toBe(100)
+    expect(await percentFor('taiwan', 'CN')).toBe(100)
+    expect(await percentFor('w-sahara', 'MA')).toBe(100)
+    expect(await percentFor('abkhazia', 'GE')).toBe(100)
+    expect(await percentFor('n-cyprus', 'CY')).toBe(100)
   })
 
-  it('credits a land neighbour across a long border', async () => {
-    expect(await percentFor('US', 'CA')).toBe(52)
-    expect(await percentFor('MX', 'US')).toBe(60)
+  it('measures a miss from the place, not from the claimant', async () => {
+    expect(await percentFor('taiwan', 'JP')).toBe(51)
+    expect(await percentFor('taiwan', 'PH')).toBe(39)
+    expect(await percentFor('taiwan', 'KR')).toBe(9)
+    expect(await percentFor('taiwan', 'MN')).toBe(0)
   })
 
-  it('pays nothing across the antimeridian', async () => {
-    expect(await percentFor('RU', 'US')).toBe(0)
+  it('pays a bordering country the near-miss share, however big it is', async () => {
+    expect(await percentFor('w-sahara', 'DZ')).toBe(60)
+    expect(await percentFor('w-sahara', 'MR')).toBe(60)
+    expect(await percentFor('south-ossetia', 'RU')).toBe(60)
+    expect(await percentFor('abkhazia', 'RU')).toBe(60)
+    expect(await percentFor('transnistria', 'UA')).toBe(60)
+    expect(await percentFor('somaliland', 'ET')).toBe(60)
   })
 
-  it('credits a close neighbour whose islands skew its bounding box', async () => {
-    expect(await percentFor('ES', 'PT')).toBe(90)
-    expect(await percentFor('CL', 'AR')).toBe(91)
+  it('pays less the farther the tap lands', async () => {
+    expect(await percentFor('w-sahara', 'ML')).toBe(49)
+    expect(await percentFor('w-sahara', 'SN')).toBe(34)
+    expect(await percentFor('w-sahara', 'ES')).toBe(4)
+    expect(await percentFor('w-sahara', 'NG')).toBe(0)
+    expect(await percentFor('abkhazia', 'TR')).toBe(54)
+    expect(await percentFor('abkhazia', 'AM')).toBe(48)
+    expect(await percentFor('n-cyprus', 'GR')).toBe(35)
+    expect(await percentFor('transnistria', 'BG')).toBe(45)
+    expect(await percentFor('transnistria', 'DE')).toBe(0)
   })
 
-  it('credits an island neighbour with no land border', async () => {
-    expect(await percentFor('CY', 'TR')).toBe(90)
+  it('pays nothing for an unknown territory unless the claimant is named', async () => {
+    const unknown = { ...ghostState('taiwan'), territoryId: 'nowhere' }
+    expect((await scoreGhostState({ challenge: unknown, submittedGuesses: ['TW'] })).scored).toBe(0)
+    expect((await scoreGhostState({ challenge: unknown, submittedGuesses: ['CN'] })).scored).toBe(
+      100
+    )
+  })
+})
+
+describe('ghost-state taps', () => {
+  const challengeFor = (territoryId: string): GhostStateChallenge => ({
+    _type: 'ghost-state-challenge',
+    territoryId,
+    parent: RECOGNITION_TERRITORIES[territoryId]!.parent!,
+    durationSeconds: 25,
+    maximumPoints: 100,
+  })
+  const tap = (mapCode: string) => ghostStateTap(RECOGNITION_TERRITORIES, mapCode)
+  const answers = (territoryId: string) =>
+    ghostStateAnswers(challengeFor(territoryId), RECOGNITION_TERRITORIES[territoryId])
+
+  it('stamps the two ghosts the map draws as shapes of their own', () => {
+    const own = Object.values(RECOGNITION_TERRITORIES)
+      .filter(territory => territory.mapCode)
+      .map(territory => [territory.id, territory.mapCode])
+    expect(own).toEqual([
+      ['taiwan', 'TW'],
+      ['w-sahara', 'EH'],
+    ])
   })
 
-  it('pays nothing for the far side of the world', async () => {
-    expect(await percentFor('NL', 'PE')).toBe(0)
+  // On every deal: a tap that only answered on the Western Sahara deal would
+  // be a free, unspent "is it Western Sahara?" check everywhere else.
+  it("folds Western Sahara's own shape into its claimant on every deal", async () => {
+    expect(isValidISOCode('EH')).toBe(false)
+    expect(tap('EH')).toBe('MA')
+    expect(tap('TW')).toBe('TW')
+    expect(tap('GL')).toBeUndefined()
+    const onSomaliland = await scoreGhostState({
+      challenge: challengeFor('somaliland'),
+      submittedGuesses: [tap('EH')!],
+    })
+    expect(onSomaliland.scored).toBe(0)
+  })
+
+  it('lists every full-marks tap as the answer', () => {
+    expect(answers('taiwan')).toEqual(['CN', 'TW'])
+    expect(answers('w-sahara')).toEqual(['MA'])
+    expect(answers('abkhazia')).toEqual(['GE'])
+  })
+
+  it('grades the place itself as correct on the scorecard', async () => {
+    const challenge = challengeFor('taiwan')
+    const { scoring, answer } = await gradeGroupAnswer({
+      game: {} as Game,
+      round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as unknown as Round,
+      playerId: 'p',
+      submission: { ranking: ['TW'] },
+    })
+    expect(scoring.scored).toBe(100)
+    expect(answer.correct).toEqual(['CN', 'TW'])
   })
 })
 

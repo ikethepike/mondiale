@@ -54,6 +54,7 @@ import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vu
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
+import { ghostStateAnswers, ghostStateTap } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -80,6 +81,7 @@ const {
 } = useGroupChallenge('ghost-state-challenge', { solo: false })
 
 const territory = ref<RecognitionTerritory>()
+let roster: Record<string, RecognitionTerritory> = {}
 const flagSvg = ref('')
 const flagHost = ref<HTMLElement>()
 /** The MISS line only — 'Out of time' or 'It was'. The win says "Well placed"
@@ -213,6 +215,7 @@ const start = async () => {
     import('~~/data/recognition.gen'),
     import('~~/data/recognition-flags.gen'),
   ])
+  roster = RECOGNITION_TERRITORIES
   territory.value = RECOGNITION_TERRITORIES[active.territoryId]
   flagSvg.value = RECOGNITION_FLAGS[active.territoryId] ?? ''
 
@@ -234,7 +237,7 @@ const submitRound = (isoCode: ISOCountryCode | undefined) => {
   const active = challenge.value
   if (!active || submitted.value) return
 
-  const correct = isoCode === active.parent
+  const correct = !!isoCode && ghostStateAnswers(active, territory.value).includes(isoCode)
   resolvedCorrectly.value = correct
   verdictHeadline.value = isoCode ? 'It was' : 'Out of time'
 
@@ -261,8 +264,8 @@ const submitRound = (isoCode: ISOCountryCode | undefined) => {
 
 const onMapClick = (event: Event) => {
   if (!isMapClickEvent(event) || submitted.value || showInterstitial.value) return
-  const { isoCode } = event.detail
-  if (!isValidISOCode(isoCode)) return
+  const isoCode = ghostStateTap(roster, event.detail.isoCode)
+  if (!isoCode) return
   // Presence only, like No Man's Land: the policy strips the isoCode, but a
   // `correct`/`wrong` kind still renders as "got it ✓" in the room's ticker —
   // and in a one-shot round, knowing a rival SOLVED it is most of the answer.

@@ -603,7 +603,7 @@ export interface GhostStateChallenge {
   _type: 'ghost-state-challenge'
   /** Key into RECOGNITION_TERRITORIES. */
   territoryId: string
-  /** The state that claims it, per NE's "Claimed by X". This is the answer. */
+  /** The state that claims it, per NE's "Claimed by X". One of `ghostStateAnswers`. */
   parent: ISOCountryCode
   durationSeconds: number
   maximumPoints: number
