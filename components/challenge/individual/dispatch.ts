@@ -96,7 +96,7 @@ export interface GateView {
  *
  * Variants that share a view share a question: flag-pick and flag-twins differ
  * only in how confusable the decoys are, and the three photo gates are one
- * layout with three subjects (the `river-run`/`shared-shores` precedent).
+ * layout with three subjects (the `lay-of-the-land` precedent).
  */
 export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
   find: { component: GateFind, sideStage: true },

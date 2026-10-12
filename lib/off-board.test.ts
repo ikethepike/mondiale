@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
-import { WATER_FEATURES } from '~~/data/water.gen'
 import { isCountryInPlay, playableCountries } from '~~/lib/game-rules'
-import { bordersButOffKey, touchesButOffKey } from '~~/lib/off-board'
+import { bordersButOffKey } from '~~/lib/off-board'
 import type { Game, GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -60,29 +59,5 @@ describe('bordersButOffKey', () => {
         }
       }
     }
-  })
-})
-
-describe('touchesButOffKey', () => {
-  it('catches a real shore the deal benched', () => {
-    // Monaco is on the Mediterranean; below hard mode it is off the key.
-    const feature = Object.values(WATER_FEATURES).find(entry => entry.name === 'Mediterranean Sea')
-    expect(feature?.countries).toContain('MC')
-    const dealt = (feature?.countries ?? []).filter(isoCode =>
-      isCountryInPlay(rules('normal'), isoCode)
-    )
-    expect(touchesButOffKey(feature?.countries, dealt, 'MC')).toBe(true)
-  })
-
-  it('is silent for a country the feature never touches, and for one on the key', () => {
-    const feature = Object.values(WATER_FEATURES).find(entry => entry.name === 'Mediterranean Sea')
-    const shores = feature?.countries ?? []
-    expect(touchesButOffKey(shores, shores, 'JP')).toBe(false)
-    for (const shore of shores) expect(touchesButOffKey(shores, shores, shore)).toBe(false)
-  })
-
-  it('is silent when the geometry has not loaded yet', () => {
-    expect(touchesButOffKey(undefined, [], 'MC')).toBe(false)
-    expect(touchesButOffKey([], [], 'MC')).toBe(false)
   })
 })

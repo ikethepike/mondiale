@@ -20,7 +20,7 @@
  * TODAY these are belt-and-braces for the typed modes: `CountryGuessInput`
  * already refuses to suggest a benched micro-nation, so San Marino cannot be
  * entered in the first place, and the micro-nation gate is the ONLY axis that
- * narrows a neighbour or shore key (measured across every board). They earn
+ * narrows a neighbour key (measured across every board). They earn
  * their place as the guard for the day that input gate changes, a mode reads a
  * key narrowed some other way, or a non-typed surface (a map tap) reaches the
  * same handler — not as a fix for a live scoring bug.
@@ -44,19 +44,4 @@ export const bordersButOffKey = (
   if (!subject || guess === subject) return false
   if (answerKey.includes(guess)) return false
   return (BORDERS[subject] ?? []).includes(guess)
-}
-
-/**
- * Does this country really touch the feature, while sitting outside the
- * round's answer key? The caller supplies the feature's unfiltered shore list
- * (the view already loads the geometry for its own map work).
- */
-export const touchesButOffKey = (
-  allShores: readonly ISOCountryCode[] | undefined,
-  answerKey: readonly ISOCountryCode[],
-  guess: ISOCountryCode
-): boolean => {
-  if (!allShores?.length) return false
-  if (answerKey.includes(guess)) return false
-  return allShores.includes(guess)
 }

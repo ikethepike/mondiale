@@ -169,20 +169,28 @@ export interface TwoTruthsChallenge {
 }
 
 /** Physical-geography flavours (mirror of data/water.gen's WaterKind). */
-export type WaterFeatureKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+export type WaterFeatureKind =
+  'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau' | 'region'
 
 /**
- * Name the countries a physical feature touches: rivers (river run), seas
- * and lakes (shared shores), ranges/deserts/plateaus (highlands).
- * Geometry stays client-side in data/water.gen — only the id travels.
+ * Lay of the Land: name every country a river, sea, range or region from the
+ * terrain roster touches. Geometry stays client-side in data/water.gen — only
+ * the id travels.
  */
 export interface WaterBlitzChallenge {
   _type: 'water-blitz-challenge'
   featureId: string
   featureName: string
   kind: WaterFeatureKind
-  /** The answers: playable countries the feature touches or crosses. */
+  /** The answers, dealt through `terrainKey`. */
   countries: ISOCountryCode[]
+  /** True of the world but off the key — free to name. Absent on rounds dealt
+   *  before the roster. */
+  accepted?: ISOCountryCode[]
+  /** Reads without "the". */
+  bare?: true
+  /** The board an ocean's key was cut to. */
+  scope?: BoardRegion[]
   durationSeconds: number
   maximumPoints: number
 }

@@ -48,12 +48,8 @@ const mulberry32 = (seed: number) => () => {
  */
 const challengeOf = (kind: RoundChallengeKind): RoundChallenge | undefined => {
   if (kind === 'ranking') return undefined
-  if (kind === 'river-run')
+  if (kind === 'lay-of-the-land')
     return { _type: 'water-blitz-challenge', kind: 'river' } as RoundChallenge
-  if (kind === 'shared-shores')
-    return { _type: 'water-blitz-challenge', kind: 'sea' } as RoundChallenge
-  if (kind === 'highlands')
-    return { _type: 'water-blitz-challenge', kind: 'range' } as RoundChallenge
   if (kind === 'name-that-water') return { _type: 'name-water-challenge' } as RoundChallenge
   return { _type: `${kind}-challenge` } as RoundChallenge
 }
@@ -103,9 +99,7 @@ const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
     'mother-tongue',
     'star-chart',
     'terra-incognita',
-    'river-run',
-    'shared-shores',
-    'highlands',
+    'lay-of-the-land',
     'no-mans-land',
     'clean-sweep',
   ],
@@ -203,10 +197,10 @@ describe('mixWeights', () => {
   it('never returns more than a kind is nominally worth, whatever the history', () => {
     // The formal statement of "decay must not promote a rarity into a staple".
     const histories: RoundChallengeKind[][] = [
-      ['river-run'],
+      ['lay-of-the-land'],
       ['ghost-state', 'ghost-state'],
       ['sketch', 'timeline', 'hot-cold', 'empire', 'ranking', 'silhouette'],
-      ['river-run', 'shared-shores', 'highlands', 'river-run', 'shared-shores', 'highlands'],
+      ['lay-of-the-land', 'name-that-water', 'lay-of-the-land', 'name-that-water'],
     ]
     for (const history of histories) {
       for (const [kind, weight] of mixWeights({ game: gameWith(history), contenders: 4 })) {
@@ -223,10 +217,9 @@ describe('mixWeights', () => {
   })
 
   it('bites a shared group harder than a shared mechanic alone', () => {
-    // river-run is water + collect. shared-shores shares both; two-truths
-    // shares neither; flag-palette shares only the mechanic with… nothing —
-    // so compare a group-only sharer against a mechanic-only sharer.
-    const entries = mixWeights({ game: gameWith(['river-run']), contenders: 4 })
+    // lay-of-the-land is water + collect: compare a group-only sharer against
+    // a mechanic-only sharer.
+    const entries = mixWeights({ game: gameWith(['lay-of-the-land']), contenders: 4 })
     const share = (kind: RoundChallengeKind) => weightOf(entries, kind) / ROUND_WEIGHTS[kind]
 
     // name-that-water: same group (water), different mechanic (typed).

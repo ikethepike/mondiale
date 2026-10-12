@@ -64,9 +64,7 @@ export type RoundChallengeKind =
   | 'sketch'
   | 'stat-detective'
   | 'two-truths'
-  | 'river-run'
-  | 'shared-shores'
-  | 'highlands'
+  | 'lay-of-the-land'
   | 'name-that-water'
   | 'mother-tongue'
   | 'flag-palette'
@@ -118,15 +116,7 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
     case 'two-truths-challenge':
       return 'two-truths'
     case 'water-blitz-challenge':
-      switch (challenge.kind) {
-        case 'river':
-          return 'river-run'
-        case 'sea':
-        case 'lake':
-          return 'shared-shores'
-        default:
-          return 'highlands'
-      }
+      return 'lay-of-the-land'
     case 'name-water-challenge':
       return 'name-that-water'
     case 'mother-tongue-challenge':

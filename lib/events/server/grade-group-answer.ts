@@ -156,14 +156,14 @@ export const gradeGroupAnswer = async ({
 
   /** Blitz modes: name as many of the answer set as the clock allows. */
   const blitzOn = (
-    challenge: { countries: ISOCountryCode[]; maximumPoints: number },
+    challenge: { countries: ISOCountryCode[]; accepted?: ISOCountryCode[]; maximumPoints: number },
     /** What the guesses actually claimed, where a mode accepts more than one
      *  name per answer (Terra Incognita's absorbers). Defaults to the raw
      *  submission, which is every other blitz mode. */
     claimed: ISOCountryCode[] = submission.ranking
   ) => {
     answer = { submitted: claimed, correct: challenge.countries }
-    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints)
+    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints, challenge.accepted)
   }
 
   switch (kind) {
@@ -257,9 +257,7 @@ export const gradeGroupAnswer = async ({
       }
       break
     }
-    case 'river-run':
-    case 'shared-shores':
-    case 'highlands': {
+    case 'lay-of-the-land': {
       blitzOn(expectChallengeType(roundChallenge, 'water-blitz-challenge'))
       break
     }

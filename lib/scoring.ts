@@ -128,19 +128,22 @@ export const hintDockedScore = (scored: number, maximumPoints: number, hintsUsed
 }
 
 /**
- * Blitz-family scoring (water modes, mother-tongue, neighbour-blitz): the
+ * Blitz-family scoring (lay of the land, mother-tongue, neighbour-blitz): the
  * found ratio scales the pot, every wrong guess bites one point. Duplicate
- * guesses count once.
+ * guesses count once; a `free` guess — true, but off the key — neither pays
+ * nor bites.
  */
 export const blitzScore = (
   answers: readonly string[],
   submittedGuesses: readonly string[],
-  maximumPoints: number
+  maximumPoints: number,
+  free: readonly string[] = []
 ): { scored: number; maximum: number } => {
   const answerSet = new Set(answers)
+  const freeSet = new Set(free)
   const unique = [...new Set(submittedGuesses)]
   const correct = unique.filter(guess => answerSet.has(guess)).length
-  const wrong = unique.length - correct
+  const wrong = unique.filter(guess => !answerSet.has(guess) && !freeSet.has(guess)).length
 
   const raw = answerSet.size ? Math.round((maximumPoints * correct) / answerSet.size) - wrong : 0
   return { scored: clampScore(raw, maximumPoints), maximum: maximumPoints }

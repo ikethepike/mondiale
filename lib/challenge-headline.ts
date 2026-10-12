@@ -8,6 +8,7 @@ import { countryName } from '~~/lib/country'
 import { motherTongueScope } from '~~/lib/language-rounds'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { starChartStars } from '~~/lib/star-chart'
+import { terrainHeadline } from '~~/lib/terrain'
 import { formatEventYear, timelineEvent } from '~~/lib/timeline'
 import { sentenceCase } from '~~/lib/strings'
 import { VINTAGE_REGION_NAMES } from '~~/types/vintage.types'
@@ -62,11 +63,9 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'two-truths-challenge'
         ? `The lie about ${countryName(challenge.country)} came from ${countryName(challenge.lieSource)}`
         : ''
-    case 'river-run':
-    case 'shared-shores':
-    case 'highlands':
+    case 'lay-of-the-land':
       return '_type' in challenge && challenge._type === 'water-blitz-challenge'
-        ? `The ${challenge.featureName} touches ${challenge.countries.length} countries`
+        ? terrainHeadline(challenge)
         : ''
     case 'name-that-water':
       return '_type' in challenge && challenge._type === 'name-water-challenge'

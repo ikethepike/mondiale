@@ -5,7 +5,7 @@ import type { GameDifficulty } from '../game.types'
 /**
  * The lobby's challenge toggles. Every group is a tri-state: absent from
  * `challengeOverrides` means AUTO (follow the difficulty's gates), `true`
- * force-enables the group below its gate (highlands on an easy game), `false`
+ * force-enables the group below its gate (no-man's-land on an easy game), `false`
  * switches it off anywhere (no conflict content at this table).
  *
  * Ranking and two truths are 'core' and never toggleable: ranking is the
@@ -93,14 +93,11 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'neighbour-blitz': 'navigation',
   'hot-cold': 'navigation',
   manhunt: 'navigation',
-  'river-run': 'water',
-  'shared-shores': 'water',
+  // Deals on every difficulty — the roster's fame tiers gate the subjects.
+  'lay-of-the-land': 'water',
   // Deals on every difficulty — the pool scales in-dealer (famous seas on
-  // easy, major lakes join on normal, the whole atlas on hard). Highlands,
-  // River Run and Shared Shores scale the same way (HIGHLANDS_TIERS,
-  // RIVER_RUN_TIERS, SHARED_SHORES_TIERS).
+  // easy, major lakes join on normal, the whole atlas on hard).
   'name-that-water': 'water',
-  highlands: 'water',
   sketch: 'flags',
   'flag-palette': 'flags',
   silhouette: 'flags',
@@ -174,9 +171,7 @@ export const CHALLENGE_GROUP_BY_KIND = {
 export const ANSWER_SHAPE_BY_KIND = {
   // Collect-a-set: name everything that qualifies, in any order.
   'neighbour-blitz': 'set',
-  'river-run': 'set',
-  'shared-shores': 'set',
-  highlands: 'set',
+  'lay-of-the-land': 'set',
   'mother-tongue': 'set',
   'no-mans-land': 'set',
   // The night's stars, in any order — the answers are cities, but each one
@@ -238,9 +233,7 @@ export const ANSWER_SHAPE_BY_KIND = {
  */
 export const WRONG_COSTS_A_POINT = new Set<RoundChallengeKind>([
   'neighbour-blitz',
-  'river-run',
-  'shared-shores',
-  'highlands',
+  'lay-of-the-land',
   'mother-tongue',
   'star-chart',
 ])

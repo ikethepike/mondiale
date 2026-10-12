@@ -1,25 +1,16 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  getRoundChallenge,
-  HIGHLANDS_TIERS,
   NAME_WATER_TIERS,
   nameWaterCandidates,
   prominenceCandidates,
-  RIVER_RUN_TIERS,
-  SHARED_SHORES_TIERS,
-  waterBlitzCandidates,
   waterFeaturePool,
 } from '~~/lib/challenges'
-import { isCountryInPlay, playableWorldCountries } from '~~/lib/game-rules'
-import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
-import { gameDifficulties, type Game, type GameRules } from '~~/types/game.types'
-import { worldRegions, type ISOCountryCode, type Region } from '~~/types/geography.types'
+import type { Game } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** A feature whose prominence (footprint × shores) is exactly `rank`. */
 const feature = (id: number, footprint: number, shores = 1) => ({
   id,
-  kind: 'sea' as const,
-  d: '',
   bounds: [0, 0, footprint, 1] as [number, number, number, number],
   countries: Array<ISOCountryCode>(shores).fill('FR'),
 })
@@ -38,21 +29,6 @@ describe('NAME_WATER_TIERS', () => {
   it('widens the pool with difficulty, hard taking everything', () => {
     expect(NAME_WATER_TIERS.easy.poolFraction).toBeLessThan(NAME_WATER_TIERS.normal.poolFraction)
     expect(NAME_WATER_TIERS.hard.poolFraction).toBe(1)
-  })
-})
-
-describe('HIGHLANDS_TIERS', () => {
-  it('keeps easy to ranges and deserts, opens plateaus from normal up', () => {
-    expect(HIGHLANDS_TIERS.easy.kinds).toEqual(['range', 'desert'])
-    expect(HIGHLANDS_TIERS.easy.kinds).not.toContain('plateau')
-    expect(HIGHLANDS_TIERS.normal.kinds).toContain('plateau')
-    expect(HIGHLANDS_TIERS.hard.kinds).toContain('plateau')
-  })
-
-  it('widens the pool with difficulty, hard taking everything', () => {
-    expect(HIGHLANDS_TIERS.easy.poolFraction).toBeLessThan(HIGHLANDS_TIERS.normal.poolFraction)
-    expect(HIGHLANDS_TIERS.normal.poolFraction).toBeLessThan(HIGHLANDS_TIERS.hard.poolFraction)
-    expect(HIGHLANDS_TIERS.hard.poolFraction).toBe(1)
   })
 })
 
@@ -87,193 +63,6 @@ describe('the world Name That Water pools', () => {
       expect.arrayContaining(['lake-erie', 'lake-malawi', 'strait-of-magellan', 'salish-sea'])
     )
     expect(Math.abs(normal.length - 74)).toBeLessThanOrEqual(2)
-  })
-})
-
-describe('the world River Run pool', () => {
-  const dealable = async (difficulty: Game['difficulty']) =>
-    (await waterFeaturePool({ regions: [], difficulty } as unknown as Game, ['river'])).filter(
-      feature => feature.countries.length >= 3
-    )
-
-  it('deals the Nile from Uganda to Egypt, and the Salween to Thailand, at every difficulty', async () => {
-    for (const difficulty of gameDifficulties) {
-      const pool = await dealable(difficulty)
-      const countries = (id: string) => pool.find(feature => feature.id === id)?.countries
-      expect(countries('river-nile'), difficulty).toEqual(
-        expect.arrayContaining(['UG', 'SS', 'SD', 'EG'])
-      )
-      expect(countries('river-salween'), difficulty).toEqual(
-        expect.arrayContaining(['CN', 'MM', 'TH'])
-      )
-    }
-  })
-
-  it('ships the Nile as one river, its named reaches matched as aliases', async () => {
-    const { WATER_FEATURES } = await import('~~/data/water.gen')
-    expect(WATER_FEATURES['river-white-nile']).toBeUndefined()
-    expect(WATER_FEATURES['river-mountain-nile']).toBeUndefined()
-    expect(WATER_FEATURES['river-nile'].aliases).toEqual(
-      expect.arrayContaining(['White Nile', 'Albert Nile', 'Victoria Nile'])
-    )
-    expect(WATER_FEATURES['river-blue-nile']?.countries).toEqual(
-      expect.arrayContaining(['ET', 'SD'])
-    )
-  })
-})
-
-describe('RIVER_RUN_TIERS and SHARED_SHORES_TIERS', () => {
-  it('keep one register per mode and widen the pool with difficulty', () => {
-    for (const tiers of [RIVER_RUN_TIERS, SHARED_SHORES_TIERS]) {
-      expect(tiers.easy.kinds).toEqual(tiers.hard.kinds)
-      expect(tiers.easy.poolFraction).toBeLessThan(tiers.normal.poolFraction)
-      expect(tiers.normal.poolFraction).toBeLessThan(tiers.hard.poolFraction)
-      expect(tiers.hard.poolFraction).toBe(1)
-    }
-    expect(RIVER_RUN_TIERS.easy.kinds).toEqual(['river'])
-    expect(SHARED_SHORES_TIERS.easy.kinds).toEqual(['sea', 'lake'])
-  })
-
-  it('ranks a river by its course, not by the box it runs diagonally across', async () => {
-    const { WATER_FEATURES } = await import('~~/data/water.gen')
-    const rivers = ['river-putumayo', 'river-rhine'].map(id => WATER_FEATURES[id])
-    expect(prominenceCandidates(rivers, 1).map(river => river.id)).toEqual([
-      'river-rhine',
-      'river-putumayo',
-    ])
-  })
-})
-
-describe('River Run and Shared Shores on easy (via getRoundChallenge)', () => {
-  const game = (difficulty: Game['difficulty'], regions: Region[] = []): Game =>
-    ({
-      regions,
-      difficulty,
-      rounds: [{}],
-      players: { a: { phase: 'group-challenge' } },
-    }) as unknown as Game
-
-  const OBSCURE = {
-    'river-run': [
-      'river-kadei',
-      'river-oti',
-      'river-ghaghara',
-      'river-cuando',
-      'river-harirud',
-      'river-zarafshon',
-      'river-putumayo',
-    ],
-    'shared-shores': [
-      'singapore-strait',
-      'gulf-of-aqaba',
-      'bab-el-mandeb',
-      'florida-strait',
-      'lake-chad',
-    ],
-  } as const
-  const TIERS = { 'river-run': RIVER_RUN_TIERS, 'shared-shores': SHARED_SHORES_TIERS }
-
-  afterEach(() => {
-    delete process.env.FORCE_ROUND_TYPE
-  })
-
-  for (const kind of ['river-run', 'shared-shores'] as const) {
-    it(`${kind} deals only the top tier on a world board`, async () => {
-      const easy = (await waterBlitzCandidates(game('easy'), TIERS[kind])).map(f => f.id)
-      const hard = (await waterBlitzCandidates(game('hard'), TIERS[kind])).map(f => f.id)
-      expect(easy.length).toBeLessThan(hard.length / 2)
-      for (const id of OBSCURE[kind]) {
-        expect(hard).toContain(id)
-        expect(easy).not.toContain(id)
-      }
-
-      process.env.FORCE_ROUND_TYPE = kind
-      for (let deal = 0; deal < 40; deal++) {
-        const dealt = (await getRoundChallenge({ game: game('easy') })) as WaterBlitzChallenge
-        expect(dealt._type).toBe('water-blitz-challenge')
-        expect(easy).toContain(dealt.featureId)
-      }
-    })
-
-    it(`${kind} still deals on easy wherever a board deals it at all`, async () => {
-      process.env.FORCE_ROUND_TYPE = kind
-      for (const region of worldRegions) {
-        const hard = await waterBlitzCandidates(game('hard', [region]), TIERS[kind])
-        const easy = await waterBlitzCandidates(game('easy', [region]), TIERS[kind])
-        expect(easy.length, region).toBeGreaterThanOrEqual(Math.min(hard.length, 8))
-        const dealt = await getRoundChallenge({ game: game('easy', [region]) })
-        expect(dealt._type === 'water-blitz-challenge', region).toBe(easy.length > 0)
-      }
-    })
-  }
-})
-
-describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
-  const game = (difficulty: Game['difficulty']): Game =>
-    ({
-      regions: [],
-      difficulty,
-      rounds: [{}],
-      players: { a: { phase: 'group-challenge' } },
-    }) as unknown as Game
-
-  afterEach(() => {
-    delete process.env.FORCE_ROUND_TYPE
-  })
-
-  it('deals only ranges and deserts on easy, never plateaus', async () => {
-    process.env.FORCE_ROUND_TYPE = 'highlands'
-    for (let deal = 0; deal < 15; deal++) {
-      const dealt = (await getRoundChallenge({ game: game('easy') })) as WaterBlitzChallenge
-      expect(dealt._type).toBe('water-blitz-challenge')
-      expect(['range', 'desert']).toContain(dealt.kind)
-    }
-  })
-
-  // The dealt list is the answer key AND the "n of m found" counter, so a
-  // benched micro-nation in it is an unreachable round: the typed console and
-  // the map both refuse to select what the game has taken out of play.
-  it('never requires a country the game has benched', async () => {
-    for (const kind of ['river-run', 'shared-shores', 'highlands'] as const) {
-      process.env.FORCE_ROUND_TYPE = kind
-      for (const difficulty of gameDifficulties) {
-        const rules = game(difficulty)
-        const inPlay = new Set(playableWorldCountries(rules))
-        for (let deal = 0; deal < 15; deal++) {
-          const dealt = (await getRoundChallenge({ game: rules })) as WaterBlitzChallenge
-          expect(dealt._type).toBe('water-blitz-challenge')
-          for (const isoCode of dealt.countries) {
-            expect(inPlay.has(isoCode), `${dealt.featureId} requires benched ${isoCode}`).toBe(true)
-          }
-        }
-      }
-    }
-  })
-})
-
-/**
- * The three-country floor is measured on the key the table can actually reach,
- * never on the shipped list — otherwise benching a micro-nation would leave a
- * "name 3" round with two reachable answers and no third to find. The Ligurian
- * (FR/IT/MC) is a shipped key that falls under it once Monaco is out, so it
- * simply doesn't deal below hard.
- */
-describe('the three-country floor and benched micro-nations', () => {
-  const shores = (
-    id: string,
-    rules: GameRules,
-    features: Record<string, { countries: string[] }>
-  ) => features[id].countries.filter(isoCode => isCountryInPlay(rules, isoCode as ISOCountryCode))
-
-  it('measures the floor on the in-play key, not the shipped one', async () => {
-    const { WATER_FEATURES } = await import('~~/data/water.gen')
-    expect(WATER_FEATURES['ligurian-sea'].countries.length).toBeGreaterThanOrEqual(3)
-    expect(
-      shores('ligurian-sea', { regions: [], difficulty: 'normal' }, WATER_FEATURES).length
-    ).toBe(2)
-    expect(
-      shores('ligurian-sea', { regions: [], difficulty: 'hard' }, WATER_FEATURES).length
-    ).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -364,9 +153,11 @@ describe('water-mode camera frame', () => {
     const { WATER_FEATURES } = await import('~~/data/water.gen')
     const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
     // A waterway runs through the countries it asks for, so their land stays in
-    // frame however tight the crop — only a giant's centroid falls out.
+    // frame however tight the crop. Roster keys are written by hand and reach
+    // past the outline (the Pampas' Uruguay), and an ocean frames its board's
+    // coast instead, so this holds for the geometry's own keys alone.
     for (const feature of Object.values(WATER_FEATURES)) {
-      if (feature.countries.length < 3) continue
+      if (feature.countries.length < 3 || feature.fame) continue
       for (const aspect of ASPECTS) {
         const frame = waterFrame(feature.bounds, aspect, WATER_PAD_FLOOR)
         for (const isoCode of feature.countries) {

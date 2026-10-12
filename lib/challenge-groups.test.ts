@@ -58,11 +58,10 @@ describe('isKindEnabled', () => {
     expect(isKindEnabled({ difficulty: 'normal' }, 'flashpoint')).toBe(false)
     expect(isKindEnabled({ difficulty: 'hard' }, 'flashpoint')).toBe(true)
     expect(isKindEnabled({ difficulty: 'easy' }, 'ghost-state')).toBe(false)
-    // Highlands and pin-landmark deal everywhere — their pools soften in-dealer
-    // (HIGHLANDS_TIERS, PIN_LANDMARK_TIERS).
-    expect(isKindEnabled({ difficulty: 'easy' }, 'highlands')).toBe(true)
+    // These deal everywhere — their pools soften in-dealer (fame tiers,
+    // PIN_LANDMARK_TIERS).
+    expect(isKindEnabled({ difficulty: 'easy' }, 'lay-of-the-land')).toBe(true)
     expect(isKindEnabled({ difficulty: 'easy' }, 'pin-landmark')).toBe(true)
-    expect(isKindEnabled({ difficulty: 'easy' }, 'river-run')).toBe(true)
   })
 
   it('lets an explicit override beat the difficulty gate both ways', () => {
@@ -129,12 +128,10 @@ describe('taxonomy shape', () => {
     expect(autoEnabledKinds('conflicts', 'normal').enabled).toHaveLength(0)
     expect(autoEnabledKinds('conflicts', 'hard').enabled).toEqual(['flashpoint'])
     const water = autoEnabledKinds('water', 'normal')
-    expect(water.total).toHaveLength(4)
-    // name-that-water and highlands deal below hard too — pools scale in-dealer.
-    expect(water.enabled).toEqual(
-      expect.arrayContaining(['river-run', 'shared-shores', 'name-that-water', 'highlands'])
-    )
-    expect(water.enabled).toHaveLength(4)
+    expect(water.total).toHaveLength(2)
+    // Both deal below hard too — pools scale in-dealer.
+    expect(water.enabled).toEqual(expect.arrayContaining(['lay-of-the-land', 'name-that-water']))
+    expect(water.enabled).toHaveLength(2)
   })
 })
 

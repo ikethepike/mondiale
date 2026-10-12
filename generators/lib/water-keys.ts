@@ -1,3 +1,4 @@
+import type { TerrainEntry } from '../../data/static/terrain-roster'
 import type { RosterExpectation, ShoreCorrection } from '../../data/static/water-shore-corrections'
 import type { WaterFeature } from '../../data/water.gen'
 import { ringContains, segmentDistance, type OutlinePoint } from '../../lib/outline'
@@ -234,3 +235,68 @@ export const rosterDrift = (
         `${surplus.length ? ` — should not include ${surplus.join(',')}` : ''}`,
     ]
   })
+
+type Stampable = Pick<
+  WaterFeature,
+  'id' | 'name' | 'aliases' | 'countries' | 'fame' | 'accepted' | 'bare'
+>
+
+/** What a subject's geometry and its hand-written key disagree on, for the report. */
+export interface TerrainDisagreement {
+  id: string
+  /** Curated (required or accepted) but not where the geometry puts the subject. */
+  unseen: ISOCountryCode[]
+  /** Where the geometry puts the subject, but on neither curated list. */
+  unlisted: ISOCountryCode[]
+}
+
+/**
+ * Stamp the curated roster onto the generated features in place: the key, the
+ * free tier, the fame tier, the headline. Throws on any entry that cannot be
+ * stamped honestly; returns the geometry's disagreements, which are the
+ * report's business, not an error — the hand-written key is the answer.
+ */
+export const stampTerrainRoster = (
+  features: Record<string, Stampable>,
+  roster: Record<string, TerrainEntry>,
+  countryCodes: readonly ISOCountryCode[],
+  minimumKey: number
+): TerrainDisagreement[] => {
+  const known = new Set(countryCodes)
+  const faults: string[] = []
+  const disagreements: TerrainDisagreement[] = []
+
+  for (const [id, entry] of Object.entries(roster)) {
+    const feature = features[id]
+    if (!feature) {
+      faults.push(`${id}: no such feature`)
+      continue
+    }
+    const accepted = entry.accepted ?? []
+    const listed = [...entry.required, ...accepted]
+    const unknown = listed.filter(code => !known.has(code))
+    const twice = listed.filter((code, index) => listed.indexOf(code) !== index)
+    if (unknown.length) faults.push(`${id}: unknown countries ${unknown.join(',')}`)
+    if (twice.length) faults.push(`${id}: listed twice ${twice.join(',')}`)
+    if (entry.required.length < minimumKey)
+      faults.push(`${id}: ${entry.required.length} required, a sweep needs ${minimumKey}`)
+
+    const unseen = listed.filter(code => !feature.countries.includes(code))
+    const unlisted = feature.countries.filter(code => !listed.includes(code))
+    if (unseen.length || unlisted.length) disagreements.push({ id, unseen, unlisted })
+
+    const name = entry.name ?? feature.name
+    const aliases = [
+      ...new Set([...(feature.aliases ?? []), feature.name, ...(entry.aliases ?? [])]),
+    ].filter(alias => alias !== name)
+    feature.name = name
+    if (aliases.length) feature.aliases = aliases
+    feature.countries = [...entry.required]
+    feature.fame = entry.fame
+    if (accepted.length) feature.accepted = [...accepted]
+    if (entry.bare) feature.bare = true
+  }
+
+  if (faults.length) throw new Error(`terrain roster:\n  ${faults.join('\n  ')}`)
+  return disagreements
+}

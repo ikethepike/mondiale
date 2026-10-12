@@ -2466,19 +2466,41 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'water-blitz',
-    label: 'Water blitz (shared shores, typed)',
+    label: 'Lay of the Land (river, Ethiopia free)',
     build: () =>
       mockGame('round', [
         groupRound({
           _type: 'water-blitz-challenge',
-          featureId: 'adriatic-sea',
-          featureName: 'Adriatic Sea',
-          kind: 'sea',
-          countries: ['AL', 'BA', 'GR', 'HR', 'IT', 'ME', 'SI'],
-          durationSeconds: 45,
+          featureId: 'river-nile',
+          featureName: 'Nile',
+          kind: 'river',
+          countries: ['UG', 'SS', 'SD', 'EG'],
+          accepted: ['ET', 'RW', 'BI', 'TZ', 'KE', 'CD', 'ER'],
+          durationSeconds: 44,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ]),
+  },
+  {
+    id: 'water-blitz-ocean',
+    label: 'Lay of the Land (Pacific, North America board)',
+    build: () => {
+      const game = mockGame('round', [
+        groupRound({
+          _type: 'water-blitz-challenge',
+          featureId: 'pacific-ocean',
+          featureName: 'Pacific Ocean',
+          kind: 'ocean',
+          countries: ['CA', 'US', 'MX', 'GT', 'SV', 'HN', 'NI', 'CR', 'PA'],
+          accepted: ['CO', 'EC', 'PE', 'CL', 'JP'],
+          scope: ['north-america'],
+          durationSeconds: 74,
+          maximumPoints: MAXIMUM_POINTS,
+        }),
+      ])
+      game.regions = ['north-america']
+      return game
+    },
   },
   {
     id: 'mother-tongue',

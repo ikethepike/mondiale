@@ -3,7 +3,7 @@
     <Interstitial
       v-if="showInterstitial"
       tone="info"
-      :kind="copy.roundKind"
+      kind="lay-of-the-land"
       :title="copy.title"
       :stakes="`${challenge.countries.length} countries — name as many as you can in ${challenge.durationSeconds} seconds. Wrong names cost points.`"
       @done="begin"
@@ -51,9 +51,9 @@ import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import { touchesButOffKey } from '~~/lib/off-board'
-import type { ISOCountryCode } from '~~/types/geography.types'
 import { countryName, getCountry } from '~~/lib/country'
+import { terrainPrompt } from '~~/lib/terrain'
+import type { WaterFeatureKind } from '~~/types/challenges/group-modes.type'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -81,30 +81,18 @@ const {
   previewVerdict,
 } = useGroupChallenge('water-blitz-challenge', { solo: false })
 
-/** One view, three moods — the feature kind decides the copy. */
+const PLACEHOLDERS: Partial<Record<WaterFeatureKind, string>> = {
+  river: 'Type a country along the river…',
+  ocean: 'Type a country on this shore…',
+  sea: 'Type a country on this shore…',
+  lake: 'Type a country on this shore…',
+}
+
 const copy = computed(() => {
   const active = challenge.value
-  const name = active?.featureName ?? ''
-  switch (active?.kind) {
-    case 'river':
-      return {
-        roundKind: 'river-run' as const,
-        title: `The ${name} flows through which countries?`,
-        placeholder: 'Type a country along the river…',
-      }
-    case 'sea':
-    case 'lake':
-      return {
-        roundKind: 'shared-shores' as const,
-        title: `Name every country on the ${name}`,
-        placeholder: 'Type a country on this shore…',
-      }
-    default:
-      return {
-        roundKind: 'highlands' as const,
-        title: `The ${name} spans which countries?`,
-        placeholder: 'Type a country it touches…',
-      }
+  return {
+    title: active ? terrainPrompt(active) : '',
+    placeholder: (active && PLACEHOLDERS[active.kind]) ?? 'Type a country it touches…',
   }
 })
 
@@ -114,9 +102,6 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-/** Every country the feature touches, benched ones included — the veto's truth. */
-const allShores = ref<ISOCountryCode[]>([])
-
 onMounted(async () => {
   const active = challenge.value
   if (!active) return
@@ -124,14 +109,13 @@ onMounted(async () => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const feature = WATER_FEATURES[active.featureId]
   if (!feature || isDisposed()) return
-  // The dataset's OWN shore list, before the deal benched anyone. A guess that
-  // appears here but not in the answer key really does touch the feature.
-  allShores.value = feature.countries
   gameStore.map.feature = {
     d: feature.d,
     kind: feature.kind === 'river' ? 'line' : 'area',
-    bounds: feature.bounds,
+    // An ocean dealt to one board frames that board's coast, not the ocean.
+    ...(active.scope ? {} : { bounds: feature.bounds }),
   }
+  if (active.scope) gameStore.map.focus = active.countries
   // The feature IS the subject here, and the default 60-unit pad floor is wider
   // than most of them — the Drau spans 23. The answer countries stay in frame
   // regardless: a waterway runs through the very countries it asks for.
@@ -149,11 +133,10 @@ const {
   {
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country => `${countryName(country)} isn't one of them`,
-    // Monaco really is on the Mediterranean; below hard mode it's benched out
-    // of the answer key. That's not a wrong answer, so it costs nothing.
+    // Benched, off the board or arguable: true of the world, so it costs nothing.
     reject: country =>
-      touchesButOffKey(allShores.value, challenge.value?.countries ?? [], country.isoCode)
-        ? `${countryName(country)} does touch it — but it's not in play this game`
+      challenge.value?.accepted?.includes(country.isoCode)
+        ? `${countryName(country)} counts too — but it's not on this key, so it's free`
         : undefined,
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }

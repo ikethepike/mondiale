@@ -22,9 +22,7 @@ export type GuessPolicy = 'label' | 'presence' | 'none'
 const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // Independent per-player answer sets: nothing shared to leak.
   'neighbour-blitz': 'label',
-  'river-run': 'label',
-  'shared-shores': 'label',
-  highlands: 'label',
+  'lay-of-the-land': 'label',
   'mother-tongue': 'label',
   traversal: 'label',
   // Dozens of countries share the language, so a named guess is colour rather
