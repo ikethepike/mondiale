@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { regionsForVariant } from '~~/lib/board-regions'
 import type { Game } from '~~/types/game.types'
-import { dealFinalChallenge, dealReplacementChallenge, getFinalChallenges } from './final-challenge'
+import { playableCountries } from '~~/lib/game-rules'
+import {
+  dealFinalChallenge,
+  dealReplacementChallenge,
+  eligibleFinalTypes,
+  getFinalChallenges,
+} from './final-challenge'
 
 vi.mock('~~/lib/sunset-window', async importOriginal => ({
   ...(await importOriginal<typeof import('~~/lib/sunset-window')>()),
@@ -36,5 +42,17 @@ describe('a final dealer that throws', () => {
       expect(replacement?._type).not.toBe('sunset-blitz-challenge')
     }
     expect(error).toHaveBeenCalled()
+  })
+
+  it('tries a crashing type only once per replacement deal', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const exclude = eligibleFinalTypes(game, playableCountries(game)).filter(
+      type => type !== 'sunset-blitz-challenge'
+    )
+    for (let round = 0; round < 100; round++) {
+      error.mockClear()
+      expect(dealReplacementChallenge({ game, exclude })).toBeDefined()
+      expect(error).toHaveBeenCalledTimes(1)
+    }
   })
 })

@@ -131,8 +131,8 @@ describe('getFinalChallenges', () => {
 describe('dealFinalChallenge', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  // Boards too thin for a type that is still offered there: the draw skips
-  // them, and any type missing from this list must deal.
+  // Boards too thin for a type that is still offered there: these must not
+  // deal, and any type missing from this list must.
   const THIN_BOARDS: Partial<Record<GameVariant, string[]>> = {
     'north-america': ['endonym-challenge', 'diaspora-challenge'],
     'south-america': ['born-challenge', 'endonym-challenge'],
@@ -145,7 +145,10 @@ describe('dealFinalChallenge', () => {
         const game = gameFor(variant, difficulty)
         const pool = playableCountries(game)
         for (const type of eligibleFinalTypes(game, pool)) {
-          if (THIN_BOARDS[variant]?.includes(type)) continue
+          if (THIN_BOARDS[variant]?.includes(type)) {
+            expect(dealFinalChallenge(type, game, pool), `${variant}/${difficulty}`).toBeUndefined()
+            continue
+          }
           for (let attempt = 0; attempt < 5; attempt++) {
             expect(dealFinalChallenge(type, game, pool)?._type, `${variant}/${difficulty}`).toBe(
               type

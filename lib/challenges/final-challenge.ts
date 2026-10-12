@@ -203,7 +203,10 @@ export const dealReplacementChallenge = ({
 }): FinalChallengeItem | undefined => {
   const pool = playableCountries(game)
   const types = shuffleArray(eligibleFinalTypes(game, pool))
-  for (const type of [...types.filter(t => !exclude.includes(t)), ...types]) {
+  for (const type of [
+    ...types.filter(t => !exclude.includes(t)),
+    ...types.filter(t => exclude.includes(t)),
+  ]) {
     const item = dealFinalChallenge(type, game, pool)
     if (item) return item
   }
