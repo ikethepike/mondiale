@@ -167,7 +167,11 @@ describe('ground-plan grading', () => {
       game: { difficulty: 'hard' } as Game,
       round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as never,
       playerId: 'p1',
-      submission: { ranking: [challenge.country], clientScore: 20, city },
+      submission: {
+        ranking: [challenge.country],
+        clientScore: 20,
+        cities: city === undefined ? undefined : [city],
+      },
     })
 
   it('pays the dealt city', async () => {

@@ -81,6 +81,22 @@ const ENCUMBERED = /\b(?:non[ -]?commercial|no[ -]?deriv|nc|nd)\b/i
  */
 export const PUBLISH_FAIR_USE = true
 
+/** The {{Derived from}} template's sentence — whole, cut short, or followed only
+ *  by its source file names — standing in the Artist field where a name belongs. */
+const BOILERPLATE_CREDIT =
+  /^this\b[\w\s-]*\bincludes elements that have been taken or adapted from(?:\s+(?:this|these)(?:\s+files?)?)?\s*(?:…|:(?:\s*[^:,;]+?\.(?:svg|png|jpe?g|gif|tiff?|webp)[,;]?)*\s*)?$/i
+
+export const isBoilerplateCredit = (credit: string): boolean => BOILERPLATE_CREDIT.test(credit)
+
+export const artistCredit = (
+  metadata: ExtMetadata | undefined,
+  stripTags: (html: string) => string,
+  shortenCredit: (credit: string) => string
+): string | undefined => {
+  const credit = metadata?.Artist?.value ? stripTags(metadata.Artist.value) : undefined
+  return credit && !isBoilerplateCredit(credit) ? shortenCredit(credit) : undefined
+}
+
 export const classifyLicence = (
   metadata: ExtMetadata | undefined,
   stripTags: (html: string) => string,
@@ -89,7 +105,7 @@ export const classifyLicence = (
   const license = metadata?.LicenseShortName?.value
     ? stripTags(metadata.LicenseShortName.value)
     : undefined
-  const credit = metadata?.Artist?.value ? stripTags(metadata.Artist.value) : undefined
+  const credit = artistCredit(metadata, stripTags, shortenCredit)
   const nonFree = String(metadata?.NonFree?.value ?? '').toLowerCase() === 'true'
   const restrictions = metadata?.Restrictions?.value || undefined
   // A free licence is a FACT about the file. NonCommercial and NoDerivatives
@@ -98,7 +114,7 @@ export const classifyLicence = (
   const free = !nonFree && !!license && FREE_LICENCE.test(license) && !ENCUMBERED.test(license)
   return {
     ...(license ? { license } : {}),
-    ...(credit ? { credit: shortenCredit(credit) } : {}),
+    ...(credit ? { credit } : {}),
     nonFree,
     ...(restrictions ? { restrictions } : {}),
     free,

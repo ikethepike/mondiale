@@ -228,21 +228,20 @@ watch(
 )
 
 /** The reveal is display-only; the server's flip ends the beat. */
-const resolve = (correct: boolean, score: number, city?: string) => {
+const resolve = (correct: boolean, score: number, cities: string[]) => {
   if (resolved.value) return
   resolved.value = true
   wasCorrect.value = correct
   stopCountdown()
   previewVerdict(correct ? 'correct' : undefined)
   const country = correct ? challenge.value?.country : undefined
-  submitOnce(country ? [country] : [], score, undefined, country ? { city } : undefined)
+  submitOnce(country ? [country] : [], score, undefined, { cities })
 }
 
-let tapped: string | undefined
-const submitRound = (score: number) => resolve(score > 0, score, tapped)
+const submitRound = (score: number, picks: string[]) => resolve(score > 0, score, picks)
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0) })
+  begin({ onTimeout: () => submitRound(0, spent.value) })
   nextTick(() => guessInput.value?.focus())
 }
 
@@ -263,17 +262,16 @@ const { spent, onGuess } = useAttemptOptions({
   started,
   remainingFraction,
   announce,
+  namesAnswer: (city: string) => !!challenge.value && namesGroundPlanCity(challenge.value, city),
   submitRound,
 })
 
 const isSpent = (option: string): boolean => spent.value.includes(option)
 
 const onOption = (option: string) => {
-  const active = challenge.value
   const isoCode = cityCountryByName(option)
-  if (!isoCode || !active) return
-  tapped = option
-  onGuess(getCountry(isoCode), { name: option, correct: namesGroundPlanCity(active, option) })
+  if (!isoCode || !challenge.value) return
+  onGuess(getCountry(isoCode), option)
 }
 
 const commit = () => {
@@ -291,7 +289,7 @@ const commit = () => {
   resolve(
     true,
     buzzScore(active.maximumPoints, groundPlanRemainingFraction(active, revealedCount.value)),
-    typed
+    [typed]
   )
 }
 </script>
