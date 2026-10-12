@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { getGroupChallenge, isFlagPaletteMatch } from '~~/lib/challenges'
+import { getGroupChallenge, isFlagPaletteMatch, MINIMUM_RANKING_HAND } from '~~/lib/challenges'
+import { DIFFICULTY_CONFIGURATION } from '~~/lib/game-rules'
+import { MAX_PLAYERS } from '~~/lib/player'
 import { getValueByAccessorID } from '~~/lib/values'
-import { isValidGameConfiguration } from '~~/types/game.types'
+import {
+  boardRegions,
+  isValidGameConfiguration,
+  type BoardRegion,
+  type GameDifficulty,
+} from '~~/types/game.types'
 import {
   autoEnabledKinds,
   CHALLENGE_GROUP_ACCESSORS,
@@ -196,6 +203,38 @@ describe('ranking hands split the field', () => {
       }
     }
   })
+})
+
+describe('ranking deals on every board at a full table', () => {
+  const boards: BoardRegion[][] = [[], ...boardRegions.map(region => [region])]
+  const players = Object.fromEntries(
+    Array.from({ length: MAX_PLAYERS }, (_, seat) => [`p${seat}`, {}])
+  )
+
+  for (const regions of boards) {
+    for (const difficulty of Object.keys(DIFFICULTY_CONFIGURATION) as GameDifficulty[]) {
+      it(`${regions[0] ?? 'world'} on ${difficulty}`, () => {
+        const game = { regions, difficulty, rounds: [], players } as unknown as Parameters<
+          typeof getGroupChallenge
+        >[0]['game']
+        for (let deal = 0; deal < 20; deal++) {
+          const challenge = getGroupChallenge({ game })
+          const hands = Object.values(challenge.countriesPerPlayer)
+          expect(hands).toHaveLength(MAX_PLAYERS)
+          const size = hands[0].length
+          expect(size).toBeGreaterThanOrEqual(MINIMUM_RANKING_HAND)
+          for (const hand of hands) {
+            expect(hand).toHaveLength(size)
+            expect(new Set(hand).size).toBe(size)
+            for (const isoCode of hand) {
+              expect(getValueByAccessorID(isoCode, challenge.id)).toBeTruthy()
+            }
+          }
+          if (!regions.length) expect(new Set(hands.flat()).size).toBe(size * MAX_PLAYERS)
+        }
+      })
+    }
+  }
 })
 
 describe('isValidChallengeOverrides', () => {
