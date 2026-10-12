@@ -106,9 +106,8 @@ describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
  * The three-country floor is measured on the key the table can actually reach,
  * never on the shipped list — otherwise benching a micro-nation would leave a
  * "name 3" round with two reachable answers and no third to find. The Ligurian
- * (FR/IT/MC) and Tyrrhenian (FR/IT/VA) seas are the shipped keys that fall
- * under it once Monaco and the Vatican are out, so they simply don't deal
- * below hard.
+ * (FR/IT/MC) is a shipped key that falls under it once Monaco is out, so it
+ * simply doesn't deal below hard.
  */
 describe('the three-country floor and benched micro-nations', () => {
   const shores = (
@@ -119,13 +118,13 @@ describe('the three-country floor and benched micro-nations', () => {
 
   it('measures the floor on the in-play key, not the shipped one', async () => {
     const { WATER_FEATURES } = await import('~~/data/water.gen')
-    for (const id of ['ligurian-sea', 'tyrrhenian-sea']) {
-      expect(WATER_FEATURES[id].countries.length).toBeGreaterThanOrEqual(3)
-      expect(shores(id, { regions: [], difficulty: 'normal' }, WATER_FEATURES).length).toBe(2)
-      expect(
-        shores(id, { regions: [], difficulty: 'hard' }, WATER_FEATURES).length
-      ).toBeGreaterThanOrEqual(3)
-    }
+    expect(WATER_FEATURES['ligurian-sea'].countries.length).toBeGreaterThanOrEqual(3)
+    expect(
+      shores('ligurian-sea', { regions: [], difficulty: 'normal' }, WATER_FEATURES).length
+    ).toBe(2)
+    expect(
+      shores('ligurian-sea', { regions: [], difficulty: 'hard' }, WATER_FEATURES).length
+    ).toBeGreaterThanOrEqual(3)
   })
 })
 

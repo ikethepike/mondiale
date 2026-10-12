@@ -30,6 +30,18 @@ import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { MAP_PROJECTION, MAP_PATHS } from '../../../data/map.gen'
 import { WATER_NAME_FIXES } from '../../../data/static/water-name-fixes'
 import { WATER_ALIASES, LAKE_DISPLAY_NAMES } from '../../../data/static/water-aliases'
+import {
+  WATER_PARTS,
+  WATER_ROSTER_EXPECTATIONS,
+  WATER_SHORE_CORRECTIONS,
+} from '../../../data/static/water-shore-corrections'
+import {
+  applyShoreCorrections,
+  createShoreTest,
+  foldWaterParts,
+  rosterDrift,
+  unionBounds,
+} from '../../lib/water-keys'
 import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
 
@@ -78,8 +90,9 @@ const NOT_LAKES = new Set(['North Channel', 'Whitefish Bay', 'St. Marys River'])
 
 /** Keep projected points at least this far apart (viewBox units). */
 const DECIMATE_UNITS = 0.7
-/** A shore counts as touching water within this distance (viewBox units). */
-const SHORE_EPSILON = 2.2
+/** A shore counts as touching water within this distance (viewBox units),
+ *  edge to edge. 2.2 put Finland on the Barents and San Marino on the Adriatic. */
+const SHORE_EPSILON = 0.5
 /** Rivers shorter than this on the map aren't playable. */
 const MIN_RIVER_LENGTH = 18
 /** Sample step along rivers for country-crossing tests. */
@@ -135,20 +148,6 @@ const decimate = (points: Point[], minGap = DECIMATE_UNITS): Point[] => {
     output.push([roundTo(last[0]), roundTo(last[1])])
   }
   return output
-}
-
-const unionBounds = (
-  [ax, ay, aw, ah]: [number, number, number, number],
-  [bx, by, bw, bh]: [number, number, number, number]
-): [number, number, number, number] => {
-  const minX = Math.min(ax, bx)
-  const minY = Math.min(ay, by)
-  return [
-    minX,
-    minY,
-    roundTo(Math.max(ax + aw, bx + bw) - minX),
-    roundTo(Math.max(ay + ah, by + bh) - minY),
-  ]
 }
 
 const boundsOf = (pointGroups: Point[][]): [number, number, number, number] => {
@@ -260,33 +259,7 @@ const pointInRings = (point: Point, rings: Point[][]): boolean => {
   return inside
 }
 
-/** Spatial hash of every country's ring vertices, for shore-proximity tests. */
-const GRID = 4
-const shoreGrid = new Map<string, { code: ISOCountryCode; point: Point }[]>()
-for (const { code, rings } of countryShapes)
-  for (const ring of rings)
-    for (const point of ring) {
-      const key = `${Math.floor(point[0] / GRID)}:${Math.floor(point[1] / GRID)}`
-      const bucket = shoreGrid.get(key) ?? []
-      bucket.push({ code, point })
-      shoreGrid.set(key, bucket)
-    }
-
-const countriesNear = (points: Point[], epsilon: number): Set<ISOCountryCode> => {
-  const found = new Set<ISOCountryCode>()
-  for (const [x, y] of points) {
-    const cellX = Math.floor(x / GRID)
-    const cellY = Math.floor(y / GRID)
-    for (let dx = -1; dx <= 1; dx++)
-      for (let dy = -1; dy <= 1; dy++) {
-        for (const { code, point } of shoreGrid.get(`${cellX + dx}:${cellY + dy}`) ?? []) {
-          if (found.has(code)) continue
-          if (Math.hypot(point[0] - x, point[1] - y) <= epsilon) found.add(code)
-        }
-      }
-  }
-  return found
-}
+const shoresOf = createShoreTest(countryShapes, SHORE_EPSILON)
 
 const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
   const ordered: ISOCountryCode[] = []
@@ -305,21 +278,6 @@ const boundsOverlap = (
   [bx, by, bw, bh]: [number, number, number, number]
 ) => ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by
 
-/** Landform rosters whose two failure directions are worth pinning — see the
- *  check in the drift defenses. Andorra and Liechtenstein are benched below
- *  hard, so the gate in waterFeaturePool drops them from the dealt key; they
- *  still have to be IN the shipped roster for a hard game to ask for them. */
-const REGION_ROSTER_EXPECTATIONS: Record<
-  string,
-  { includes: ISOCountryCode[]; excludes: ISOCountryCode[] }
-> = {
-  // Across the Strait of Gibraltar, not on the peninsula.
-  'plateau-iberian-peninsula': { includes: ['AD', 'ES', 'FR', 'PT'], excludes: ['MA'] },
-  // Wholly inside the range, so its outline never crosses them.
-  'range-pyrenees': { includes: ['AD', 'ES', 'FR'], excludes: [] },
-  'range-alps': { includes: ['AT', 'CH', 'IT', 'LI'], excludes: [] },
-}
-
 /**
  * Which countries a landform actually overlaps — the whole question for a
  * range, desert or plateau. A country either holds some of it or does not, so
@@ -328,7 +286,7 @@ const REGION_ROSTER_EXPECTATIONS: Record<
  * land-border check can undo that (Ceuta and Melilla make ES–MA a land
  * border). A shore is the opposite case and still measures distance — a sea
  * touches coastlines rather than covering them, so marine features keep
- * countriesNear.
+ * shoresOf.
  *
  * Overlap is tested both ways because either side can be the one inside:
  * the outline is walked at full decimated resolution rather than resampled
@@ -490,7 +448,7 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    const shoreCountries = countriesNear(rings.flat(), SHORE_EPSILON)
+    const shoreCountries = shoresOf(rings)
     if (!shoreCountries.size) continue
 
     add({
@@ -518,7 +476,7 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    const shoreCountries = countriesNear(rings.flat(), SHORE_EPSILON)
+    const shoreCountries = shoresOf(rings)
     if (!shoreCountries.size) continue
 
     add({
@@ -639,6 +597,10 @@ const main = async () => {
   }
 
   // --- Ranges, deserts, plateaus ---------------------------------------------
+  // NE files some landforms under two classes (Guiana Highlands as a range AND
+  // a plateau, with different hosts). The kind prefix kept both ids apart, so
+  // one name dealt two keys — the region slot is the NAME, not the id.
+  const regionByName = new Map<string, WaterFeature>()
   const regions = await fetchLayer(LAYERS.regions)
   for (const feature of regions.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
@@ -655,7 +617,9 @@ const main = async () => {
     const countries = regionHosts(rings).sort()
     if (!countries.length) continue
 
-    add({
+    const rival = regionByName.get(name)
+    if (rival && rival.countries.length >= countries.length) continue
+    regionByName.set(name, {
       id: `${kind}-${slugify(name)}`,
       name,
       kind,
@@ -664,6 +628,13 @@ const main = async () => {
       countries,
     })
   }
+  for (const feature of regionByName.values()) add(feature)
+
+  // --- Answer keys: the curated overlay, then each sea's named arms ----------
+  for (const line of applyShoreCorrections(features, WATER_SHORE_CORRECTIONS))
+    console.warn(`water-shore-corrections: ${line}`)
+  for (const line of foldWaterParts(features, WATER_PARTS))
+    console.warn(`water-shore-corrections: ${line}`)
 
   // --- Drift defenses: an NE bump must not silently reship broken names ------
   const broken = Object.values(features).filter(feature => /[?]| {2}/.test(feature.name))
@@ -678,25 +649,8 @@ const main = async () => {
       console.warn(`water-aliases: lake display name matched nothing: ${resolved}`)
     }
   }
-  // A landform's roster fails in two silent directions, and both shipped once:
-  // a proximity term reaches across water (Morocco on the Iberian Peninsula),
-  // and an outline-only overlap test drops the countries the outline never
-  // touches (Andorra, Liechtenstein). Neither shows up as a crash or a bad
-  // name — only as a round asking for a country that isn't there, or not
-  // asking for one that is. Pin the three that caught it.
-  for (const [id, { includes, excludes }] of Object.entries(REGION_ROSTER_EXPECTATIONS)) {
-    const feature = features[id]
-    if (!feature) throw new Error(`Region roster check: ${id} no longer deals`)
-    const missing = includes.filter(code => !feature.countries.includes(code))
-    const surplus = excludes.filter(code => feature.countries.includes(code))
-    if (missing.length || surplus.length) {
-      throw new Error(
-        `Region roster drifted for ${id} (${feature.countries.join(' ')})` +
-          `${missing.length ? ` — missing ${missing.join(',')}` : ''}` +
-          `${surplus.length ? ` — should not include ${surplus.join(',')}` : ''}`
-      )
-    }
-  }
+  const drift = rosterDrift(features, WATER_ROSTER_EXPECTATIONS)
+  if (drift.length) throw new Error(`Answer keys drifted:\n  ${drift.join('\n  ')}`)
 
   // --- Emit --------------------------------------------------------------------
   const sorted = Object.fromEntries(
