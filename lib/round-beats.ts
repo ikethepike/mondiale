@@ -1,6 +1,9 @@
 import { clamp, clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
-import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
+import type {
+  StatDetectiveChallenge,
+  TimelineChallenge,
+} from '~~/types/challenges/group-modes.type'
 import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
 import type { Round } from '~~/types/game.types'
 import {
@@ -625,10 +628,9 @@ export const clockRidesRoundDeadline = (challenge: RoundChallenge | undefined): 
  */
 /**
  * How much of a clock is still to run, 0..1 — THE deadline→fraction math.
- * Both sides of the wire price a buzz off this: `useDeadlineClock` repaints
- * the player's shot clock with it and the bot brain stamps its own `buzzAt`
- * with it, so a human and a machine answering at the same moment can never be
- * graded by two different roundings.
+ * Both sides of the wire read a buzz off this: `useDeadlineClock` repaints
+ * the player's shot clock with it and the grader prices the buzz with it, so
+ * the clock a player saw and the pay they got can never round differently.
  *
  * No WINDOW means nothing to be early in, so the clock reads full. An unset
  * DEADLINE is a different thing — a round that hasn't been stamped yet — and
@@ -653,6 +655,51 @@ export const classicPlaySeconds = (challenge: RoundChallenge | undefined): numbe
   if ('durationSeconds' in challenge && challenge.durationSeconds) return challenge.durationSeconds
   return undefined
 }
+
+/** The seat's countdown on a classic round: the challenge's own
+ *  `durationSeconds`, or undefined for a kind with no shot clock. */
+export const seatClockSeconds = (challenge: RoundChallenge | undefined): number | undefined =>
+  challenge && 'durationSeconds' in challenge && challenge.durationSeconds
+    ? challenge.durationSeconds
+    : undefined
+
+/**
+ * When a seat's countdown reaches zero, in server time: the round's play start
+ * plus `seatClockSeconds`, or — on a play-gated kind — the seat's own window,
+ * stamped when its play tap landed. Undefined until a stamp exists. The view's
+ * clock and the server's buzz price both read this, so the moment a player saw
+ * is the moment they are paid on.
+ */
+export const seatClockEndsAt = (
+  round: Pick<Round, 'groupChallenge' | 'playStartsAt'>,
+  seatDeadline: number | undefined
+): number | undefined => {
+  const seconds = seatClockSeconds(round.groupChallenge)
+  if (!seconds) return undefined
+  if (playGateMsFor(round.groupChallenge)) return seatDeadline
+  return round.playStartsAt ? round.playStartsAt + seconds * 1000 : undefined
+}
+
+/** Stat Detective's clues on screen `elapsedMs` into its play window — the
+ *  photo, when dealt, lands as one clue past the stats. */
+export const statDetectiveCluesShown = (
+  challenge: Pick<StatDetectiveChallenge, 'clues' | 'photo' | 'secondsPerClue'>,
+  elapsedMs: number
+): number =>
+  Math.min(
+    challenge.clues.length + (challenge.photo ? 1 : 0),
+    1 + Math.floor(Math.max(0, elapsedMs) / 1000 / challenge.secondsPerClue)
+  )
+
+/** What a correct Stat Detective buzz is still worth, 0..1: fewer stats seen,
+ *  more of the pot. */
+export const statDetectiveRemainingFraction = (
+  challenge: Pick<StatDetectiveChallenge, 'clues'>,
+  cluesShown: number
+): number =>
+  challenge.clues.length
+    ? Math.max(0, (challenge.clues.length - cluesShown) / challenge.clues.length)
+    : 0
 
 /** The classic clock's full budget in ms, or undefined when the kind is
  *  untimed and the caps are off (no server clock — by explicit choice). */

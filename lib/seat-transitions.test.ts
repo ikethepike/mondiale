@@ -133,6 +133,54 @@ describe('applySeatMove', () => {
     expect(seat.cursor).toBe(next)
   })
 
+  it("keeps a subject's hints and lights across its own moves, and drops them with it", () => {
+    const gate = { cursor: cursorOn('gate', { subject: 'gate:w2:t5', deadline: 50 }) }
+    applySeatMove(
+      gate,
+      { step: 'gate', subject: 'gate:w2:t5', deadline: 50, hints: ['iso'] },
+      'event:buy-hint'
+    )
+    applySeatMove(gate, { step: 'gate', subject: 'gate:w2:t5', deadline: 40 }, 'event:round-play')
+    expect(gate.cursor).toMatchObject({ hints: ['iso'], deadline: 40 })
+
+    const final = { cursor: cursorOn('final', { subject: 'final:w2:q0', deadline: 50 }) }
+    applySeatMove(
+      final,
+      { step: 'final', subject: 'final:w2:q0', deadline: 50, lit: ['SE'] },
+      'event:final-light'
+    )
+    applySeatMove(
+      final,
+      { step: 'final', subject: 'final:w2:q0', deadline: 40 },
+      'event:round-play'
+    )
+    expect(final.cursor.lit).toEqual(['SE'])
+    applySeatMove(
+      final,
+      {
+        step: 'final-verdict',
+        subject: 'final:w2:q0',
+        holdUntil: 60,
+        verdict: {
+          kind: 'final',
+          subject: 'final:w2:q0',
+          correct: true,
+          timedOut: false,
+          knockedOut: false,
+          won: false,
+        },
+      },
+      'timer:final-cap'
+    )
+    applySeatMove(
+      final,
+      { step: 'final', subject: 'final:w2:q1', deadline: 90 },
+      'timer:verdict-hold'
+    )
+    expect(final.cursor.lit).toBeUndefined()
+    expect(final.cursor.hints).toBeUndefined()
+  })
+
   it('refuses every pair the table does not list', () => {
     for (const from of SEAT_STEPS) {
       for (const to of SEAT_STEPS) {

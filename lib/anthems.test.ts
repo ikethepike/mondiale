@@ -277,12 +277,15 @@ describe('shared anthem tunes', () => {
         game: { difficulty: 'normal', regions: [] } as unknown as Game,
         round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as never,
         playerId: 'p1',
-        submission: { ranking: [guess], clientScore: 8 },
+        submission: { ranking: [guess] },
+        // Buzzed the moment the seat's play tap opened its window
+        seat: { deadline: 1_030_000 },
+        at: 1_000_000,
       })
 
     for (const guess of ['CY', 'GR'] as const) {
       const { scoring, answer } = await grade(guess)
-      expect(scoring).toEqual({ scored: 8, maximum: 10 })
+      expect(scoring).toEqual({ scored: 10, maximum: 10 })
       expect(answer.correct).toEqual(['CY', 'GR'])
     }
     expect((await grade('TR')).scoring.scored).toBe(0)

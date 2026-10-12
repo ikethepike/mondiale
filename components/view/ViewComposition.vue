@@ -175,11 +175,11 @@ const stakes = computed(() =>
 /** The largest origin — what the round actually asks for. */
 const answer = computed(() => slices.value[0]?.isoCode)
 
-const submitRound = (score: number, picks: ISOCountryCode[]) => {
+const submitRound = (_score: number, picks: ISOCountryCode[]) => {
   if (submitted.value) return
   // No map verdict wash: the question lives entirely on the bar, and a
   // full-board tint would read as a claim about the map itself
-  submitOnce(picks, score)
+  submitOnce(picks)
 }
 
 const start = () => {

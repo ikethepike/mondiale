@@ -18,8 +18,10 @@ import {
 } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
+import { isStepGraded, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-steps'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { offsetKm, type LatLng } from '~~/lib/geo'
+import { sketchSubmission, sketchTarget, type OutlinePoint } from '~~/lib/outline'
 import {
   AUTOPILOT_GRACE_MS,
   BOT_BROWSE_ACK_JITTER_MS,
@@ -46,7 +48,7 @@ import {
   BOT_UNTIMED_THINK_MS,
   classicPlaySeconds,
   isClassicGroupRound,
-  remainingFractionOn,
+  seatWindowMsFor,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { gateClockFor } from '~~/lib/gate-timing'
@@ -84,6 +86,7 @@ import {
   type FinalChallengeAnswer,
   type FinalChallengeItem,
 } from '~~/types/challenges/final-challenge.type'
+import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 import type { Game, GameDifficulty, Round } from '~~/types/game.types'
 import { worldRegions, type ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
@@ -594,20 +597,6 @@ const classicAnswerDelay = (round: Round): number => {
   return remaining * randomBetween(from, to)
 }
 
-/**
- * How much of the play window is still on the clock as the bot answers — the
- * buzz moment it reports, measured rather than guessed. The act was already
- * scheduled into `BOT_CLASSIC_WINDOW`, so this reads back what that wait
- * actually spent; an untimed kind has no window to be early in and buzzes at
- * the middle of the curve.
- */
-const liveRemainingFraction = (round: Round): number => {
-  const playSeconds = classicPlaySeconds(round.groupChallenge)
-  // An untimed kind has no window to be early in — mid-curve, not full marks.
-  if (!round.deadline || !playSeconds) return 0.5
-  return remainingFractionOn(round.deadline, playSeconds, Date.now())
-}
-
 // --- The AFK autopilot: the same brain, borrowed for a vacated human seat ---
 
 /**
@@ -773,9 +762,10 @@ export const releaseAutopilot = (ctx: EngineContext, game: Game, seat: Player) =
  */
 const botAct = async (ctx: EngineContext, eventData: ClientEventData) => {
   const { gameId, playerId } = ctx.eventTarget
+  const receivedAt = Date.now()
   await recordSeatEvent(ctx.redis, gameId, {
     kind: 'event',
-    at: Date.now(),
+    at: receivedAt,
     actor: playerId,
     bot: true,
     event: eventData.event,
@@ -785,6 +775,7 @@ const botAct = async (ctx: EngineContext, eventData: ClientEventData) => {
     ...ctx,
     eventKey: eventData.event,
     eventData,
+    receivedAt,
   })
 }
 
@@ -810,7 +801,18 @@ const dispatchClassicAnswer = (ctx: EngineContext, seq: number) => {
     const roundIndex = fresh.rounds.length - 1
     if (!isClassicGroupRound(round.groupChallenge) || round.groupAnswers[playerId]) return
 
-    const submission = await composeClassicSubmission(fresh, round, playerId)
+    // A kind whose window the seat opens itself (the play tap, Empire's buzz)
+    // prices the answer off that stamp, so the bot opens it as it answers.
+    let table = fresh
+    if (seatWindowMsFor(round.groupChallenge) && seat.cursor.deadline === undefined) {
+      await botAct(ctx, { event: 'round-play', subject: seat.cursor.subject, seq })
+      const played = await server.fetchGame(ctx.eventTarget.gameId)
+      if (!played) return
+      table = played
+    }
+    const live = latestRound(table)
+    if (!live) return
+    const submission = await composeClassicSubmission(table, live, playerId)
     if (!submission) return
 
     // Through the REAL submit handler, exactly like the gate and gauntlet
@@ -910,6 +912,39 @@ const gateActDelay = (game: Game, seat: Player): number => {
   return Math.max(think, deadline - remaining * clock.seconds * 1000 - Date.now())
 }
 
+/**
+ * A step-graded gate's play: the winning steps on a hit; on a miss the same
+ * steps spoiled at their first step — a duel lost, a chain cut short, the
+ * hand reversed, the other ruling or another band.
+ */
+const gateStepsFor = async (
+  challenge: IndividualChallenge,
+  pool: readonly ISOCountryCode[],
+  hit: boolean
+): Promise<string[]> => {
+  const solved = (await solveGateSteps(challenge, pool)) ?? []
+  if (hit) return solved
+  switch (challenge.variant) {
+    case 'higher-lower':
+    case 'trend-duel': {
+      const first = challenge.higherLower?.pairs[0] ?? challenge.trendDuels?.[0]
+      const loser = first && (solved[0] === first.a ? first.b : first.a)
+      return loser ? [loser] : []
+    }
+    case 'chronicle':
+      return [...solved].reverse()
+    case 'logo-politics': {
+      const logo = challenge.partyLogo
+      if (logo?.ask === 'ruling') {
+        return [logo.rules ? LOGO_RULING_STEPS.out : LOGO_RULING_STEPS.governs]
+      }
+      return [sample((logo?.bands ?? []).filter(band => band !== logo?.band)) ?? '']
+    }
+    default:
+      return []
+  }
+}
+
 const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
   const { playerId } = ctx.eventTarget
   scheduleEngineTask(ctx, 0, async fresh => {
@@ -927,11 +962,14 @@ const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
       challenge.options?.length ? challenge.options : playableWorldCountries(fresh)
     ).filter(option => !isCorrectIndividualAnswer(challenge, option))
     const isoCode = hit ? challenge.country : (sample(missPool) ?? challenge.country)
+    const steps = isStepGraded(challenge)
+      ? await gateStepsFor(challenge, playableWorldCountries(fresh), hit)
+      : undefined
     try {
       await botAct(ctx, {
         event: 'submit-individual-challenge-answer',
         isoCode,
-        hintsUsed: 0,
+        ...(steps ? { steps } : {}),
         subject: seat.cursor.subject,
         seq,
       })
@@ -1212,9 +1250,14 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
     const question = item.challenges[0]
     if (!question) return
     const share = jitteredShare(botShare(fresh, playerId))
-    const submittedAnswer = await finalAnswerFor(question, share, fresh)
+    const submittedAnswer = await finalAnswerFor(question, share, fresh, seat.cursor.deadline)
     if (!submittedAnswer) return
     try {
+      // A timed stage is graded on the names the server took in time, so the
+      // bot lights each one as a player would before it submits.
+      for (const name of litNames(submittedAnswer)) {
+        await botAct(ctx, { event: 'final-light', name, subject: seat.cursor.subject, seq })
+      }
       await botAct(ctx, {
         event: 'submit-final-challenge-answer',
         submittedAnswer,
@@ -1225,6 +1268,17 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
       console.warn(`Bot final answer rejected for ${playerId}`, error)
     }
   })
+}
+
+const litNames = (answer: FinalChallengeAnswer): string[] => {
+  switch (answer._type) {
+    case 'sunset-blitz-challenge':
+      return answer.namedCountries
+    case 'city-nocturne-challenge':
+      return answer.namedCities
+    default:
+      return []
+  }
 }
 
 /**
@@ -1238,13 +1292,16 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
 export const finalAnswerFor = async (
   question: FinalChallengeItem,
   share: number,
-  game: Game
+  game: Game,
+  /** The stage's deadline: a timed stage only takes names still in time. */
+  deadline?: number
 ): Promise<FinalChallengeAnswer | undefined> => {
   // Deferred like the submit handler's own import (its comment is the rule):
   // the gauntlet library statically pulls the fat data chunks, and a static
   // edge from the socket middleware graph ballooned the server build past
   // the CI heap ceiling (the pawn-replay job's OOM).
   const {
+    acceptsFinalLight,
     boundaryScene,
     bornAfter,
     changeAccepted,
@@ -1293,9 +1350,15 @@ export const finalAnswerFor = async (
       return pick ? { _type: question._type, isoCode: pick } : undefined
     }
     case 'sunset-blitz-challenge': {
+      const standing =
+        deadline === undefined
+          ? question.countries
+          : question.countries.filter(isoCode =>
+              acceptsFinalLight(question, game.difficulty, deadline, isoCode, Date.now())
+            )
       return {
         _type: question._type,
-        namedCountries: quotaPicks(question.countries, sunsetQuota(question), wantCorrect),
+        namedCountries: quotaPicks(standing, sunsetQuota(question), wantCorrect),
       }
     }
     case 'city-nocturne-challenge': {
@@ -1414,46 +1477,57 @@ export const composeClassicSubmission = async (
   const hit = Math.random() < share
   const challenge = round.groupChallenge
   const kind = roundChallengeKind(challenge)
-  const maximum = 'maximumPoints' in challenge ? (challenge.maximumPoints ?? 0) : 0
-  /** When the bot actually buzzed, off the round's own clock — the act was
-   *  scheduled into `BOT_CLASSIC_WINDOW`, so reporting a share-derived guess
-   *  instead would tax a right answer for being confident. Reveal-only. */
-  const buzzAt = liveRemainingFraction(round)
   /**
-   * The pot a landed buzz claims. The `hit` roll ALREADY spends the share, so
-   * the claim must not spend it again — `share × anything` is what had hard
-   * bots realizing half their dial. The buzz curve can't price it either: a
-   * bot answers mid-window on purpose (never racing a human off the line), and
-   * `buzzFraction` at that moment caps the pot near 0.66, so a hard seat could
-   * not reach 0.65 of the round however well it played. A landed answer is
-   * worth the round; the politeness beat is not a skill discount.
+   * Whether a priced answer lands. The grader prices it off its own clock, and
+   * a bot answers mid-window on purpose (never racing a human off the line), so
+   * a landed buzz is already worth less than the pot: rolling the bare share
+   * would spend it twice. The odds rise by what the moment costs, capped at
+   * certain — only a seat whose share exceeds what the moment still pays
+   * realizes less than its dial.
    */
-  const claim = maximum
+  const lands = async (landed: GroupSubmission, pot?: number): Promise<boolean> => {
+    const { scoring } = await gradeGroupAnswer({
+      game,
+      round,
+      playerId,
+      submission: landed,
+      seat: game.players[playerId]?.cursor,
+    })
+    const outOf = pot ?? scoring.maximum
+    const worth = outOf ? scoring.scored / outOf : 0
+    return worth > 0 && Math.random() < Math.min(1, share / worth)
+  }
 
   switch (kind) {
     case 'silhouette':
     case 'anthem-buzz':
     case 'stat-detective':
-    case 'two-truths':
     case 'flashpoint':
     case 'capital-guess':
     case 'flag-palette':
-    case 'composition': {
-      const target = correct[0]
+    case 'composition':
+    case 'tongue-buzz': {
+      // Tongues: any speaker wins — the correct set is the whole membership.
+      const target = kind === 'tongue-buzz' ? sample(correct) : correct[0]
       if (!target) return { ranking: [] }
-      const pick = hit ? target : (wrongPick(game, correct) ?? target)
-      return { ranking: [pick], clientScore: hit ? claim : 0, buzzAt }
+      const landed = { ranking: [target] }
+      if (await lands(landed)) return landed
+      const miss = wrongPick(game, correct)
+      return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'ground-plan': {
       const plan = expectChallengeType(challenge, 'ground-plan-challenge')
-      if (hit) return { ranking: [plan.country], cities: [plan.city], clientScore: claim, buzzAt }
-      const pick = wrongPick(game, correct)
-      return { ranking: pick ? [pick] : [], clientScore: 0, buzzAt }
+      const landed = { ranking: [plan.country], cities: [plan.city] }
+      if (await lands(landed)) return landed
+      const miss = wrongPick(game, correct)
+      return miss ? { ranking: [miss] } : { ranking: [] }
     }
-    case 'tongue-buzz': {
-      // Any speaker wins — the correct set is the whole membership.
-      const pick = hit ? sample(correct) : wrongPick(game, correct)
-      return pick ? { ranking: [pick], clientScore: hit ? claim : 0, buzzAt } : { ranking: [] }
+    case 'two-truths': {
+      const truths = expectChallengeType(challenge, 'two-truths-challenge')
+      const landed = { ranking: [], lie: truths.lieIndex }
+      if (await lands(landed)) return landed
+      const decoys = truths.statements.map((_, index) => index)
+      return { ranking: [], lie: sample(decoys.filter(index => index !== truths.lieIndex)) }
     }
     case 'hot-cold': {
       // A probe trail: the colder the seat, the longer the wander. Every stray
@@ -1478,25 +1552,16 @@ export const composeClassicSubmission = async (
     }
     case 'empire': {
       const empire = expectChallengeType(challenge, 'empire-challenge')
-      const members = takeShare(correct, share)
-      const pots = empirePots(empire.maximumPoints)
-      return {
-        ranking: members,
-        ...(hit
-          ? {
-              empire: {
-                guessedId: empire.empireId,
-                clientScore: Math.round(pots.name * (0.6 + share * 0.4)),
-              },
-            }
-          : {}),
-      }
+      const named = { guessedId: empire.empireId }
+      const buzzed = await lands(
+        { ranking: [], empire: named },
+        empirePots(empire.maximumPoints).name
+      )
+      return { ranking: takeShare(correct, share), ...(buzzed ? { empire: named } : {}) }
     }
     case 'name-that-water': {
       const water = expectChallengeType(challenge, 'name-water-challenge')
-      return hit
-        ? { ranking: [], water: { guessedId: water.featureId }, clientScore: claim }
-        : { ranking: [] }
+      return hit ? { ranking: [], water: [{ guessedId: water.featureId }] } : { ranking: [] }
     }
     case 'pin-landmark': {
       const pin = expectChallengeType(challenge, 'pin-landmark-challenge')
@@ -1509,12 +1574,11 @@ export const composeClassicSubmission = async (
       return { ranking: [], year: yearScatter(vintage, game.difficulty, share) }
     }
     case 'sketch': {
-      // The one kind with NO correctness gate: `gradeGroupAnswer` clamps the
-      // claim with `correct: true` always, because a sketch's similarity IS
-      // its score. So the share has to ride the CLAIM here — the `hit` roll
-      // never gets to spend it, and claiming the pot drew a flawless outline
-      // at every difficulty.
-      return { ranking: [], clientScore: Math.round(maximum * share) }
+      // The grader scores the drawing itself: a hit traces the country's own
+      // outline (the full pot), a miss scribbles a shape no country resembles.
+      const sketch = expectChallengeType(challenge, 'sketch-challenge')
+      const traced = hit ? await sketchTarget(sketch.country) : undefined
+      return { ranking: [], sketch: sketchSubmission(traced ?? SKETCH_SCRIBBLE) }
     }
     case 'traversal': {
       // The route is graded whole: `optimalPath` carries its endpoints, so a
@@ -1539,6 +1603,22 @@ export const composeClassicSubmission = async (
     }
   }
 }
+
+/** A missed sketch: spokes from a centre, which no country's outline resembles. */
+const SKETCH_SCRIBBLE: OutlinePoint[] = [
+  [0, 0],
+  [1, 0],
+  [0, 0],
+  [0, 1],
+  [0, 0],
+  [-1, 0],
+  [0, 0],
+  [0, -1],
+  [0, 0],
+  [0.7, 0.7],
+  [0, 0],
+  [-0.7, -0.7],
+]
 
 /** A quota-recall answer: the full quota on a hit, one short on a miss —
  *  the near-miss every list-recall final grades as a plain fail. */

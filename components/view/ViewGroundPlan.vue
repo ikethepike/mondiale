@@ -122,12 +122,7 @@ import type { CityPlanPaths } from '~~/types/challenges/group-modes.type'
 import { countryName, getCountry } from '~~/lib/country'
 import { cityCountryByName } from '~~/lib/cities'
 import { loadCityPlan } from '~~/lib/city-plan-tiles'
-import {
-  groundPlanRemainingFraction,
-  namesGroundPlanCity,
-  revealedLayers,
-} from '~~/lib/ground-plan'
-import { buzzScore } from '~~/lib/scoring'
+import { groundPlanLayersShown, namesGroundPlanCity, revealedLayers } from '~~/lib/ground-plan'
 import { classicPlaySeconds, GROUND_PLAN_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
 import { formatNumber } from '~~/lib/number'
 import { useIsPortrait } from '~~/lib/use-viewport'
@@ -173,8 +168,7 @@ const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
 const revealedCount = computed(() => {
   const active = challenge.value
   if (!active || !started.value) return 0
-  const elapsed = totalSeconds.value - secondsLeft.value
-  return Math.min(active.layers.length, Math.floor(elapsed / active.secondsPerLayer) + 1)
+  return groundPlanLayersShown(active, totalSeconds.value - secondsLeft.value)
 })
 
 const shownLayers = computed(() => {
@@ -228,17 +222,17 @@ watch(
 )
 
 /** The reveal is display-only; the server's flip ends the beat. */
-const resolve = (correct: boolean, score: number, cities: string[]) => {
+const resolve = (correct: boolean, cities: string[]) => {
   if (resolved.value) return
   resolved.value = true
   wasCorrect.value = correct
   stopCountdown()
   previewVerdict(correct ? 'correct' : undefined)
   const country = correct ? challenge.value?.country : undefined
-  submitOnce(country ? [country] : [], score, undefined, { cities })
+  submitOnce(country ? [country] : [], { cities })
 }
 
-const submitRound = (score: number, picks: string[]) => resolve(score > 0, score, picks)
+const submitRound = (score: number, picks: string[]) => resolve(score > 0, picks)
 
 const start = () => {
   begin({ onTimeout: () => submitRound(0, spent.value) })
@@ -286,11 +280,7 @@ const commit = () => {
 
   entry.value = ''
   if (!named) return announce({ hint: `${typed} isn't this city`, tone: 'alert' })
-  resolve(
-    true,
-    buzzScore(active.maximumPoints, groundPlanRemainingFraction(active, revealedCount.value)),
-    [typed]
-  )
+  resolve(true, [typed])
 }
 </script>
 <style lang="scss" scoped>

@@ -207,6 +207,9 @@ export interface GameHandlerContext<E extends ClientEvent> {
   redis: Redis
   socket: GameSocket
   io: GameServer
+  /** When the event was taken off the queue (and recorded) — what time-priced
+   *  answers are priced at. */
+  receivedAt: number
 }
 
 /**
@@ -225,7 +228,7 @@ export const defineGameHandler = <E extends ClientEvent>(
   handle: (context: GameHandlerContext<E>) => void | Promise<void>,
   options: { player?: 'require' | 'warn' | 'optional' } = {}
 ): EventHandler => {
-  return async ({ io, redis, socket, eventData, eventTarget }) => {
+  return async ({ io, redis, socket, eventData, eventTarget, receivedAt = Date.now() }) => {
     if (eventData.event !== event) return
 
     const server = useServerSideEvents({ socket, redis, io })
@@ -255,6 +258,7 @@ export const defineGameHandler = <E extends ClientEvent>(
       redis,
       socket,
       io,
+      receivedAt,
     })
   }
 }

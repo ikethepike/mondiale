@@ -89,7 +89,7 @@ import type { IndividualChallenge } from '~~/types/challenges/individual-challen
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, submitAnswer, chronicleOrder } = useGateChallenge()
+const { status, submitAnswer, recordHint, chronicleOrder } = useGateChallenge()
 
 const dealt = computed(() => props.challenge.chronicle?.events ?? [])
 const order = ref<string[]>([...dealt.value])
@@ -113,10 +113,10 @@ const updateOrder = (event: Event) => {
 }
 
 const anchorSlug = ref<string>()
-const hintsUsed = computed(() => (anchorSlug.value ? 1 : 0))
 const buyAnchor = () => {
   if (anchorSlug.value || status.value) return
   anchorSlug.value = chronicleSolution(dealt.value)[0]
+  recordHint('anchor')
 }
 
 const { secondsLeft, stop, elapsedFraction } = useGateClock({
@@ -125,10 +125,9 @@ const { secondsLeft, stop, elapsedFraction } = useGateClock({
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 
 /**
- * Client-trust grading, higher-lower's posture: the order is checked through
- * lib/chronicle (the same module the reveal reads) and the winning token is
- * `country`; a wrong order submits the can't-match token. The submitted order
- * rides the shared ledger so the reveal can ghost each card's placement.
+ * The arranged order is the answer: the server grades it (`gradeGateSteps`)
+ * through the same lib/chronicle check this view previews with. The order
+ * also rides the shared ledger so the reveal can ghost each card's placement.
  *
  * Expiry grades the order AS ARRANGED — the server prices it off its own
  * deadline, so the buzzer pays the floor, same as locking in at the last
@@ -139,9 +138,7 @@ const resolve = () => {
   stop()
   chronicleOrder.value = [...order.value]
   const correct = isChronicleOrdered(order.value)
-  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
-    hintsUsed: hintsUsed.value,
-  })
+  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), [...order.value])
 }
 const submitOrder = () => resolve()
 </script>

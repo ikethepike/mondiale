@@ -77,7 +77,8 @@ import type { Country } from '~~/types/geography.types'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, missNote, atlasChain, isEasy, submitAnswer, giveUp } = useGateChallenge()
+const { status, missNote, atlasChain, isEasy, submitAnswer, recordHint, giveUp } =
+  useGateChallenge()
 const { gameStore } = useClientEvents()
 
 const rule = computed(() => ({ overlaps: !!props.challenge.atlas?.overlaps }))
@@ -115,13 +116,13 @@ const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_E
  *  the purchase stays spent (one hint, one bite). */
 const hintName = ref<string>()
 const hintSpent = ref(false)
-const hintsUsed = computed(() => (hintSpent.value ? 1 : 0))
 const buyHint = () => {
   if (hintSpent.value || status.value || !head.value) return
   const pick = pickAtlasHint(head.value, atlasChain.value, pool.value, rule.value)
   if (!pick) return bounce('No help left on this letter')
   hintSpent.value = true
   hintName.value = countryName(pick)
+  recordHint('continuation')
 }
 
 onMounted(() => {
@@ -172,7 +173,7 @@ const onGuess = (country: Country) => {
   if (banked.value >= props.challenge.atlas.target) {
     stop()
     gameStore.map.pulsing = []
-    return submitAnswer(props.challenge.country, { hintsUsed: hintsUsed.value })
+    return submitAnswer(props.challenge.country, atlasChain.value.slice(1))
   }
   // Mid-round refocus — the keyboard is already up, keep the rally going.
   guessInput.value?.focus()

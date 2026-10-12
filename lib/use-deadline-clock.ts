@@ -11,7 +11,7 @@ export const secondsOnDeadline = (deadline: number | undefined, now: number): nu
 /**
  * The shot clock for a server-stamped deadline: the server stamps it, the
  * view only reads it against the shared server clock. `fractionLeft` is
- * `remainingFractionOn` — the same math the bot brain prices its buzz with —
+ * `remainingFractionOn` — the same math the grader prices a buzz with —
  * which reads full when no `totalSeconds` was supplied (no window to be early
  * in) and empty while the deadline is still unstamped, so it never disagrees
  * with `secondsOnClock` about whether a clock is running.

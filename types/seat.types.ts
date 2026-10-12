@@ -60,6 +60,12 @@ export interface SeatCursor {
   /** Server-stamped answer window (or reading cap) for the step. */
   deadline?: number
   verdict?: SeatVerdict
+  /** Hints bought on this subject (`buy-hint`) — what the leap or the round's
+   *  pay is docked by. Carried across every move that keeps the subject. */
+  hints?: string[]
+  /** Names a timed gauntlet stage took in time (`final-light`) — what its
+   *  verdict counts. Carried like `hints`. */
+  lit?: string[]
   cause: SeatCause
   /** Movesets dealt to this seat so far — names walk subjects, never checked as a token. */
   walk: number

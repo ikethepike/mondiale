@@ -123,7 +123,11 @@ export const createTestTable = async (
   const ctx = (playerId: string): EngineContext => ({
     io,
     redis: redis as unknown as Redis,
-    socket: {} as GameSocket,
+    socket: {
+      emit: (event: string, payload: ServerEnvelope, target: ClientEventTarget) => {
+        if (options.captureEmits !== false) emits.push({ event, payload: clone(payload), target })
+      },
+    } as unknown as GameSocket,
     eventTarget: { gameId: game.id, playerId },
   })
 

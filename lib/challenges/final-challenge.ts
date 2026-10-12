@@ -15,6 +15,7 @@ import { acceptsSpeaker, speaksLanguage, spokenLanguages } from '~~/lib/language
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
 import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
+import { finalLightInTime } from '~~/lib/final-timing'
 import type {
   BornChallenge,
   BoundaryChallenge,
@@ -1241,10 +1242,39 @@ export const weighScalesPicks = (
 /** The dealt cities a nocturne answer may light — the top N of CITY_LIGHTS. */
 /** The dealt city set — exported so the bot brain names the same cities the
  *  verdict validates against, never a second CITY_LIGHTS slice. */
+/** The cities a Nocturne stage deals: its country's top `cityCount` lights. */
+export const nocturneCities = (challenge: Pick<CityNocturneChallenge, 'country' | 'cityCount'>) =>
+  (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount)
+
 export const nocturneDealtCities = (challenge: CityNocturneChallenge): Set<string> =>
-  new Set(
-    (CITY_LIGHTS[challenge.country] ?? []).slice(0, challenge.cityCount).map(city => city.name)
-  )
+  new Set(nocturneCities(challenge).map(city => city.name))
+
+/** Whether a `final-light` name counts: one of the stage's own and in time. */
+export const acceptsFinalLight = (
+  item: FinalChallengeItem,
+  difficulty: GameDifficulty,
+  deadline: number | undefined,
+  name: string,
+  at: number
+): boolean =>
+  finalLightInTime(item, difficulty, deadline, name, at) &&
+  (item._type !== 'city-nocturne-challenge' || nocturneDealtCities(item).has(name))
+
+/** The answer a lit stage is graded on: the names its `final-light` record
+ *  kept, whatever the submit carried. Undefined for every other question. */
+export const recordedFinalAnswer = (
+  item: FinalChallengeItem,
+  lit: readonly string[] | undefined
+): FinalChallengeAnswer | undefined => {
+  switch (item._type) {
+    case 'sunset-blitz-challenge':
+      return { _type: item._type, namedCountries: (lit ?? []).filter(isValidISOCode) }
+    case 'city-nocturne-challenge':
+      return { _type: item._type, namedCities: [...(lit ?? [])] }
+    default:
+      return undefined
+  }
+}
 
 /**
  * The single verdict for a final-challenge answer, shared by the server
@@ -1322,7 +1352,6 @@ export const isCorrectFinalAnswer = ({
     }
     case 'city-nocturne-challenge': {
       if (submittedAnswer._type !== 'city-nocturne-challenge') return throwTypeMismatch()
-      // Client-trust: validate the lit names against the dealt city set
       const dealt = nocturneDealtCities(challenge)
       const lit = [...new Set(submittedAnswer.namedCities)].filter(name => dealt.has(name))
       return lit.length >= challenge.quota
@@ -1376,7 +1405,6 @@ export const isCorrectFinalAnswer = ({
     }
     case 'sunset-blitz-challenge': {
       if (submittedAnswer._type !== 'sunset-blitz-challenge') return throwTypeMismatch()
-      // Client-trust like higher-lower gates: only the dealt field counts
       const named = new Set(
         submittedAnswer.namedCountries.filter(isoCode => challenge.countries.includes(isoCode))
       )

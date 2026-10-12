@@ -694,6 +694,49 @@ export const scoreSketch = (
   return Math.round(maximumPoints * Math.pow(band, 1.3))
 }
 
+/** Points a submitted sketch carries — what the view resamples the drawing to. */
+export const SKETCH_POINTS = 96
+
+/** A drawing as it travels: resampled to `SKETCH_POINTS`, shape-normalized
+ *  and rounded, so the scored outline and the reveal overlay are one thing. */
+export const sketchSubmission = (points: OutlinePoint[]): OutlinePoint[] =>
+  normalizeOutline(resampleClosed(points, SKETCH_POINTS)).map(
+    ([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as OutlinePoint
+  )
+
+/** A wire sketch the grader will score: exactly `SKETCH_POINTS` finite points
+ *  inside the normalized frame. */
+export const isSketchSubmission = (value: unknown): value is OutlinePoint[] =>
+  Array.isArray(value) &&
+  value.length === SKETCH_POINTS &&
+  value.every(
+    point =>
+      Array.isArray(point) &&
+      point.length === 2 &&
+      point.every(axis => typeof axis === 'number' && Number.isFinite(axis) && Math.abs(axis) <= 2)
+  )
+
+/** The outline a sketch is graded against: the country's mainland ring on the
+ *  base map tier. */
+export const sketchTarget = async (
+  isoCode: ISOCountryCode
+): Promise<OutlinePoint[] | undefined> => {
+  const { MAP_PATHS } = await import('~~/data/map.gen')
+  const pathData = (MAP_PATHS as Partial<Record<ISOCountryCode, string>>)[isoCode]
+  return pathData ? largestRing(pathData) : undefined
+}
+
+/** A submitted sketch's points — both ends of the wire score through this. */
+export const scoreSketchFor = async (
+  isoCode: ISOCountryCode,
+  sketch: unknown,
+  maximumPoints: number
+): Promise<number> => {
+  if (!isSketchSubmission(sketch)) return 0
+  const target = await sketchTarget(isoCode)
+  return target ? scoreSketch(sketch, target, maximumPoints) : 0
+}
+
 /** The stretches of `ring` matching `wanted` in `mask`, wrap-aware, each run
  *  extended one vertex past both ends so strokes meet at the junction rather
  *  than stopping short of it. */

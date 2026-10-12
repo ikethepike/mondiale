@@ -140,6 +140,7 @@ import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import { FLASHPOINT_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
 import type { FlashpointHint } from '~~/types/challenges/group-modes.type'
 import type { ConflictField } from '~~/types/vendor/ucdp/ucdp.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 const {
   challenge,
@@ -265,7 +266,7 @@ const start = async () => {
   if (bounds) gameStore.map.feature = { d: '', kind: 'area', bounds }
 
   begin({
-    onTimeout: () => submitRound(0),
+    onTimeout: () => submitRound(0, spent.value),
     onTick: left => {
       const elapsed = active.durationSeconds - left
       shownWaves.value = Math.min(
@@ -277,7 +278,7 @@ const start = async () => {
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
-const submitRound = (score: number) => {
+const submitRound = (score: number, picks: ISOCountryCode[]) => {
   const active = challenge.value
   if (!active || submitted.value) return
   stopCountdown()
@@ -301,7 +302,7 @@ const submitRound = (score: number) => {
   // reads as "the whole world is wrong" rather than "you missed".
   previewVerdict(correct ? 'correct' : undefined)
 
-  submitOnce(correct ? [active.country] : [], score)
+  submitOnce(picks)
 }
 
 // The winning guess is never broadcast — outside hard mode the small option

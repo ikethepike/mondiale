@@ -90,7 +90,6 @@ const {
   guess,
 } = useBuzzRound('silhouette-challenge', {
   isCorrect: (active, isoCode) => active.country === isoCode,
-  maximumPoints: active => active.maximumPoints,
   // No isoCode: a wrong buzz would name a candidate for the shared answer.
   lockoutHint: name => `Not ${name} — locked out for ${LOCKOUT_SECONDS} seconds`,
   onLockoutEnd: () => guessInput.value?.focus(),

@@ -40,6 +40,8 @@ import { isBrowsableGateVariant } from './round-beats'
 import { isEasyMode, isHardMode } from './game-rules'
 import { seatVerdictOn } from './seat-view'
 import { secondsOnDeadline } from './use-deadline-clock'
+import type { GATE_HINTS, GateHint } from './hints'
+import { useSeatRecord } from './use-seat-record'
 import { useSeatClockStart } from './use-seat-clock'
 import { useServerNow } from './use-server-now'
 import { gateAnswerOnHand } from './wire-view'
@@ -54,11 +56,6 @@ const OWN_REVEAL_VARIANTS = new Set<IndividualChallengeVariant>([
   'atlas',
   'chronicle',
 ])
-
-export interface GateSubmitOptions {
-  /** Hints bought, each biting `GATE_HINT_BITE_STEPS` off the leap. */
-  hintsUsed?: number
-}
 
 export interface GateChallengeContext {
   challenge: Ref<IndividualChallenge | undefined>
@@ -110,7 +107,11 @@ export interface GateChallengeContext {
   holdUntil: ComputedRef<number | undefined>
   /** The browsable reveal's explicit exit: end the hold now. */
   finishBeat: () => void
-  submitAnswer: (isoCode: ISOCountryCode, options?: GateSubmitOptions) => void
+  /** `steps` answers a step-graded gate (`isStepGraded`): the server grades
+   *  them, and `isoCode` is the country its verdict names. */
+  submitAnswer: (isoCode: ISOCountryCode, steps?: string[]) => void
+  /** Record a bought hint with the server — what the leap is docked by. */
+  recordHint: (hint: GateHint<keyof typeof GATE_HINTS>) => void
   giveUp: () => void
 }
 
@@ -207,6 +208,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
       now.value < gateInterstitialEndsAt(challenge.value, mountedOn)
   )
   const startSeatClock = useSeatClockStart()
+  const { buyHint: buyHintOn } = useSeatRecord()
   watch(showInterstitial, shown => {
     if (!shown && gateClockFor(variant.value)) startSeatClock(subject)
   })
@@ -252,7 +254,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     void deliver({ event: 'gate-reveal-done', ...seatEcho(subject) })
   }
 
-  const submitAnswer = (isoCode: ISOCountryCode, options: GateSubmitOptions = {}) => {
+  const submitAnswer = (isoCode: ISOCountryCode, steps?: string[]) => {
     // Watch mode: the gates' own reactive clocks reach here with no user
     // input — the booth never answers a gate.
     if (gameStore.watching) return
@@ -265,7 +267,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     void deliver({
       event: 'submit-individual-challenge-answer',
       isoCode,
-      hintsUsed: options.hintsUsed,
+      ...(steps ? { steps } : {}),
       ...seatEcho(subject),
     })
 
@@ -324,6 +326,9 @@ export const provideGateChallenge = (): GateChallengeContext => {
     holdUntil,
     finishBeat,
     submitAnswer,
+    recordHint: hint => {
+      if (!status.value) buyHintOn(subject, hint)
+    },
     giveUp,
   }
 

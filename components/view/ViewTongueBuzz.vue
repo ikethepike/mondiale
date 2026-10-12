@@ -131,7 +131,6 @@ const {
   // The same predicate the server verifies with — a second membership test
   // here would drift the moment the answer set grows a qualifier.
   isCorrect: (active, isoCode) => speaksTongue(active, isoCode),
-  maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `${name} doesn't speak it`,
   // A speaker standing off the board (or a regional statute) is right about
   // the world and wrong only about this round: it must not spend a lockout,

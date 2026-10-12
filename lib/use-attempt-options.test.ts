@@ -156,7 +156,7 @@ describe('useAttemptOptions named picks', () => {
       game: { difficulty: 'normal' } as Game,
       round: { groupChallenge: CHICAGO, groupAnswers: {}, playerTurns: {} } as never,
       playerId: 'p',
-      submission: { ranking: ['US'], clientScore: 20, cities: picks as string[] },
+      submission: { ranking: ['US'], cities: picks as string[] },
     })
 
   it('spends a wrong city of the right country as a miss', () => {

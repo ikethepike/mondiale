@@ -12,6 +12,16 @@ import type {
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, Round } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { randomBetween } from '~~/lib/arrays'
+import {
+  BOT_CLASSIC_WINDOW,
+  classicPlaySeconds,
+  FIRST_TURN_GRACE_MS,
+  GROUND_PLAN_SECONDS_PER_LAYER,
+  groundPlanSeconds,
+  stampClassicClock,
+} from '~~/lib/round-beats'
+import { GROUND_PLAN_LAYERS } from '~~/lib/ground-plan'
 import { gradeGroupAnswer } from './grade-group-answer'
 import { composeClassicSubmission } from './bot-brain'
 
@@ -61,21 +71,42 @@ const buildGame = (challenge: object, difficulty: Game['difficulty']): Game =>
     rounds: [{ groupChallenge: { ...challenge }, groupAnswers: {}, playerTurns: {} }],
   }) as unknown as Game
 
-/** Compose and grade one round `TRIALS` times; returns the mean scored/maximum
- *  over the trials that actually GRADED — dividing by `TRIALS` would let a
- *  fixture that intermittently composes nothing drag the mean toward zero and
- *  read as a strength regression. */
-const realizedFraction = async (challenge: object, difficulty: Game['difficulty']) => {
+/**
+ * Compose and grade one round `TRIALS` times; returns the mean scored/maximum
+ * over the trials that actually GRADED — dividing by `TRIALS` would let a
+ * fixture that intermittently composes nothing drag the mean toward zero and
+ * read as a strength regression.
+ *
+ * Each trial's clock was stamped where the brain really answers — somewhere in
+ * `BOT_CLASSIC_WINDOW` of the budget left at the reveal — because the grader
+ * prices a buzz off the server's clock at the moment it lands.
+ *
+ * `memoize` reuses a grade for an identical submission: the sketch scorer is
+ * deterministic and slow, and the brain only ever draws one of two outlines.
+ */
+const realizedFraction = async (
+  challenge: object,
+  difficulty: Game['difficulty'],
+  { memoize = false } = {}
+) => {
   let total = 0
   let graded = 0
+  const grades = new Map<string, { scored: number; maximum: number }>()
   for (let trial = 0; trial < TRIALS; trial++) {
     // A fresh game per trial: an empty `playerTurns` keeps every draw on the
     // difficulty dial rather than on the previous trial's mirror.
     const game = buildGame(challenge, difficulty)
     const round: Round = game.rounds[0]
+    const seconds = classicPlaySeconds(round.groupChallenge) ?? 0
+    const budget = seconds * 1000 + FIRST_TURN_GRACE_MS
+    stampClassicClock(round, Date.now() - randomBetween(...BOT_CLASSIC_WINDOW) * budget)
     const submission = await composeClassicSubmission(game, round, 'bot:x')
     if (!submission) continue
-    const { scoring } = await gradeGroupAnswer({ game, round, playerId: 'bot:x', submission })
+    const key = memoize ? JSON.stringify(submission) : undefined
+    const scoring =
+      (key && grades.get(key)) ||
+      (await gradeGroupAnswer({ game, round, playerId: 'bot:x', submission })).scoring
+    if (key) grades.set(key, scoring)
     if (!scoring.maximum) continue
     total += scoring.scored / scoring.maximum
     graded++
@@ -114,13 +145,14 @@ const BLITZ: NeighbourBlitzChallenge = {
 const BUZZ: TwoTruthsChallenge = {
   _type: 'two-truths-challenge',
   country: 'SE',
+  statements: [{}, {}, {}],
+  lieIndex: 2,
   durationSeconds: 25,
   maximumPoints: 10,
 } as TwoTruthsChallenge
 
-/** The one kind graded with `correct: true` unconditionally — the similarity
- *  IS the score, so the share must ride the claim or a bot draws a perfect
- *  outline at every difficulty. */
+/** No correctness gate — the similarity IS the score, so a bot that traced the
+ *  outline every time would bank the pot at every difficulty. */
 const SKETCH = {
   _type: 'sketch-challenge',
   country: 'FR',
@@ -165,16 +197,17 @@ const GROUND_PLAN: GroundPlanChallenge = {
   city: 'Chicago',
   cut: { slug: 'chicago-loop', signature: true },
   crossings: 0,
-  layers: ['fabric'],
-  secondsPerLayer: 5,
+  layers: [...GROUND_PLAN_LAYERS],
+  secondsPerLayer: GROUND_PLAN_SECONDS_PER_LAYER,
   secondsPerHint: 5,
-  durationSeconds: 30,
+  durationSeconds: groundPlanSeconds(GROUND_PLAN_LAYERS.length),
   maximumPoints: 10,
 }
 
 describe('bot strength realizes the difficulty dial', () => {
-  // The buzz family: one target, an all-or-nothing pick, a clamped claim. The
-  // share must be spent ONCE (on the hit), never again on the claim.
+  // The buzz family: one target, an all-or-nothing pick, priced off the clock
+  // at the moment the bot answers. The share must be spent ONCE — the odds of
+  // landing cover what the moment costs, never a second roll on the pot.
   it.each(['easy', 'normal', 'hard'] as const)(
     'buzz rounds land near the %s share',
     async difficulty => expectOnDial(await realizedFraction(BUZZ, difficulty), difficulty)
@@ -203,11 +236,12 @@ describe('bot strength realizes the difficulty dial', () => {
     async difficulty => expectOnDial(await realizedFraction(BLITZ, difficulty), difficulty)
   )
 
-  // No correctness gate here, so the claim is the only place the share can
-  // live: claiming the pot banked full marks at every difficulty.
+  // The grader scores the drawing itself, so the share has to ride how often
+  // the bot traces the real outline.
   it.each(['easy', 'normal', 'hard'] as const)(
     'sketch scores its %s share, not the whole pot',
-    async difficulty => expectOnDial(await realizedFraction(SKETCH, difficulty), difficulty)
+    async difficulty =>
+      expectOnDial(await realizedFraction(SKETCH, difficulty, { memoize: true }), difficulty)
   )
 
   // The taper prices the throw, so the scatter radius has to BE the share —

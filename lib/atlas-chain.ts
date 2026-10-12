@@ -106,6 +106,31 @@ export const ATLAS_TARGET_LINKS: Record<GameDifficulty, number> = {
   hard: 6,
 }
 
+/** A chain from `seed` (seed first) banking `target` links, or undefined
+ *  when the pool holds none. */
+export const findAtlasChain = (
+  seed: ISOCountryCode,
+  target: number,
+  pool: readonly ISOCountryCode[],
+  options: AtlasRuleOptions = {}
+): ISOCountryCode[] | undefined => {
+  const chain = [seed]
+  const used = new Set([seed])
+  const walk = (head: ISOCountryCode, banked: number): boolean => {
+    if (banked >= target) return true
+    for (const next of atlasContinuations(head, used, pool, options)) {
+      used.add(next)
+      chain.push(next)
+      const paid = options.overlaps ? atlasLinkOverlap(head, next) : 1
+      if (walk(next, banked + paid)) return true
+      chain.pop()
+      used.delete(next)
+    }
+    return false
+  }
+  return walk(seed, 0) ? chain : undefined
+}
+
 /**
  * Whether a chain banking `target` links exists from `seed`. Credit follows
  * the active rule, but dealers pass the plain rule so overlap play is always
@@ -116,20 +141,7 @@ export const hasAtlasChain = (
   target: number,
   pool: readonly ISOCountryCode[],
   options: AtlasRuleOptions = {}
-): boolean => {
-  const used = new Set([seed])
-  const walk = (head: ISOCountryCode, banked: number): boolean => {
-    if (banked >= target) return true
-    for (const next of atlasContinuations(head, used, pool, options)) {
-      used.add(next)
-      const paid = options.overlaps ? atlasLinkOverlap(head, next) : 1
-      if (walk(next, banked + paid)) return true
-      used.delete(next)
-    }
-    return false
-  }
-  return walk(seed, 0)
-}
+): boolean => !!findAtlasChain(seed, target, pool, options)
 
 /** A gate seed must leave a hand's worth of first moves; a table seed more —
  *  the whole opening rotation plays off the same letter. */

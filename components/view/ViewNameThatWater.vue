@@ -86,11 +86,9 @@ import { countryName } from '~~/lib/country'
 import { isCorrectWaterGuess } from '~~/lib/challenges'
 import { normalizeAnswer } from '~~/lib/strings'
 import {
-  attemptFraction,
   HINT_UNLOCK_FIRST_ELAPSED,
   HINT_UNLOCK_SECOND_ELAPSED,
   hintBitePoints,
-  hintDockedScore,
 } from '~~/lib/scoring'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -117,12 +115,14 @@ const {
   stopCountdown,
   gameStore,
   isDisposed,
+  buyHint,
 } = useGroupChallenge('name-water-challenge', { solo: false })
 
 const resolved = ref(false)
 const resolvedCorrectly = ref(false)
-const attempts = ref(0)
-const attemptsLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - attempts.value)
+/** Every feature named, in order — the trail the server pays by attempt. */
+const guesses = ref<{ guessedId: string; guessedName: string }[]>([])
+const attemptsLeft = computed(() => (challenge.value?.maximumGuesses ?? 0) - guesses.value.length)
 
 /** Candidate names for suggestions, loaded with the geometry chunk. */
 const options = ref<SuggestOption[]>([])
@@ -181,13 +181,13 @@ const shoreHintUnlocked = computed(
 const letterHintUnlocked = computed(
   () => !resolved.value && elapsedFraction.value >= HINT_UNLOCK_SECOND_ELAPSED
 )
-const hintsUsed = computed(() => (shoreHint.value ? 1 : 0) + (letterHint.value ? 1 : 0))
 
 const showShoreHint = () => {
   const active = challenge.value
   if (!active || resolved.value || shoreHint.value) return
   const shores = active.countries.slice(0, 2).map(isoCode => countryName(isoCode))
   shoreHint.value = `Touches ${shores.join(' and ')}`
+  buyHint('shores')
 }
 
 const showLetterHint = () => {
@@ -198,6 +198,7 @@ const showLetterHint = () => {
     .map(word => `${word[0]}…`)
     .join(' ')
   letterHint.value = `Its initials: ${initials}`
+  buyHint('initials')
 }
 
 const shoreLine = computed(() => {
@@ -208,7 +209,7 @@ const shoreLine = computed(() => {
 })
 
 /** Earlier and fewer guesses score higher; the reveal beat lands either way. */
-const resolve = (correct: boolean, guess?: SuggestOption) => {
+const resolve = (correct: boolean) => {
   const active = challenge.value
   if (!active || resolved.value) return
   resolved.value = true
@@ -221,21 +222,9 @@ const resolve = (correct: boolean, guess?: SuggestOption) => {
   gameStore.map.tints = tints
   gameStore.map.labels = true
 
-  const clientScore = correct
-    ? hintDockedScore(
-        Math.round(active.maximumPoints * attemptFraction(attempts.value, active.maximumGuesses)),
-        active.maximumPoints,
-        hintsUsed.value
-      )
-    : 0
-
-  // The named feature rides along so the server can re-check it: the claimed
-  // score alone proves nothing.
-  const water = guess ? { guessedId: guess.id, guessedName: guess.name } : undefined
-
   // Submit at the resolve — the reveal is pure display, and the server's
   // flip (the kind's reveal hold in ROUND_BEATS) ends the beat.
-  submitOnce([], clientScore, undefined, water ? { water } : undefined)
+  submitOnce([], { water: guesses.value })
 }
 
 const begin = () => {
@@ -246,13 +235,12 @@ const begin = () => {
 const pick = (option: SuggestOption) => {
   const active = challenge.value
   if (!active || resolved.value || !started.value) return
-  attempts.value++
+  const guess = { guessedId: option.id, guessedName: option.name }
+  guesses.value = [...guesses.value, guess]
 
-  if (isCorrectWaterGuess(active, { guessedId: option.id, guessedName: option.name })) {
-    return resolve(true, option)
-  }
+  if (isCorrectWaterGuess(active, guess)) return resolve(true)
 
-  if (attempts.value >= active.maximumGuesses) return resolve(false)
+  if (guesses.value.length >= active.maximumGuesses) return resolve(false)
   // No label: the guessed feature narrows the single shared target.
   announce({
     kind: 'wrong',

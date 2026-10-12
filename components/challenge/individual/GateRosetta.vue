@@ -54,7 +54,7 @@ import type { Country } from '~~/types/geography.types'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, isEasy, submitAnswer, giveUp } = useGateChallenge()
+const { status, isEasy, submitAnswer, recordHint, giveUp } = useGateChallenge()
 
 const boughtRelation = ref(false)
 const footerReady = ref(false)
@@ -70,24 +70,21 @@ const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_E
 const shownRelation = computed(() =>
   isEasy.value || boughtRelation.value ? props.challenge.rosetta?.relationLabel : undefined
 )
-/** Only a bought hint bites — the easy-mode freebie is the difficulty, not a
- *  purchase, and must not dock the leap. */
-const hintsUsed = computed(() => (boughtRelation.value ? 1 : 0))
-
 onMounted(() => {
   footerReady.value = true
 })
+/** Only a bought hint bites — the easy-mode freebie is the difficulty, not a
+ *  purchase, and must not dock the leap. */
 const buyRelationHint = () => {
   if (boughtRelation.value || status.value) return
   boughtRelation.value = true
+  recordHint('relation')
 }
 
 const onGuess = (country: Country) => {
   if (status.value) return
   stop()
-  submitAnswer(country.isoCode, {
-    hintsUsed: hintsUsed.value,
-  })
+  submitAnswer(country.isoCode)
 }
 </script>
 <style lang="scss" scoped>

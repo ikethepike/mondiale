@@ -8,9 +8,11 @@ import {
   groundPlanCities,
   groundPlanHints,
   groundPlanImage,
+  groundPlanRemainingFraction,
   namesGroundPlanCity,
 } from '~~/lib/ground-plan'
 import { formatCompact } from '~~/lib/number'
+import { buzzScore } from '~~/lib/scoring'
 import { normalizeAnswer } from '~~/lib/strings'
 import type { GroundPlanChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
@@ -165,18 +167,28 @@ describe('ground-plan grading', () => {
   const grade = (challenge: GroundPlanChallenge, city: string | undefined) =>
     gradeGroupAnswer({
       game: { difficulty: 'hard' } as Game,
-      round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as never,
+      round: {
+        groupChallenge: challenge,
+        groupAnswers: {},
+        playerTurns: {},
+        playStartsAt: 1_000_000,
+      } as never,
       playerId: 'p1',
       submission: {
         ranking: [challenge.country],
-        clientScore: 20,
         cities: city === undefined ? undefined : [city],
       },
+      at: 1_000_000,
     })
 
-  it('pays the dealt city', async () => {
-    const { scoring } = await grade(plan('Chicago'), 'Chicago')
-    expect(scoring).toEqual({ scored: 20, maximum: 20 })
+  it('pays the dealt city, priced by the layers on screen', async () => {
+    const chicago = plan('Chicago')
+    const { scoring } = await grade(chicago, 'Chicago')
+    expect(scoring).toEqual({
+      scored: buzzScore(20, groundPlanRemainingFraction(chicago, 1)),
+      maximum: 20,
+    })
+    expect(scoring.scored).toBeGreaterThan(0)
   })
 
   it('zeroes another city of the same country, and a bare country', async () => {

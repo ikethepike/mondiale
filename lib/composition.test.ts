@@ -13,6 +13,8 @@ import {
   corridorMargin,
   corridorsToDestination,
 } from '~~/lib/migration'
+import { TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { buzzScore } from '~~/lib/scoring'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import type { CompositionChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, Round } from '~~/types/game.types'
@@ -162,10 +164,12 @@ describe('composition grading', () => {
     durationSeconds: 30,
     maximumPoints: MAX,
   } as const
+  const PLAY_STARTS_AT = 1_000_000
+  /** `elapsedMs` into the play window when the answer arrives. */
   const grade = (
     challenge: Partial<CompositionChallenge>,
     ranking: ISOCountryCode[],
-    clientScore = MAX,
+    elapsedMs = 0,
     absent = false
   ) =>
     gradeGroupAnswer({
@@ -174,9 +178,11 @@ describe('composition grading', () => {
         groupChallenge: { ...board, ...challenge },
         groupAnswers: {},
         playerTurns: {},
+        playStartsAt: PLAY_STARTS_AT,
       } as unknown as Round,
       playerId: 'p',
-      submission: { ranking, clientScore },
+      submission: { ranking },
+      at: PLAY_STARTS_AT + elapsedMs,
       absent,
     })
   const options = { options: ['IT', 'RO', 'TR', 'PL'] as ISOCountryCode[], maximumGuesses: 2 }
@@ -207,26 +213,29 @@ describe('composition grading', () => {
         game: {} as Game,
         round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as unknown as Round,
         playerId: 'p',
-        submission: { ranking: banked[0]!.picks, clientScore: banked[0]!.score },
+        submission: { ranking: banked[0]!.picks },
       })
       expect(scoring.scored).toBe(0)
     }
   })
 
-  it('prices the picks by attempt, not the claimed score', async () => {
-    expect((await grade(options, ['PL'], 1)).scoring.scored).toBe(MAX)
+  it('prices the picks by attempt, whenever they land', async () => {
+    expect((await grade(options, ['PL'], 25_000)).scoring.scored).toBe(MAX)
     expect((await grade(options, ['TR', 'PL'])).scoring.scored).toBe(capitalGuessScore(2, 2, MAX))
     expect((await grade(options, ['TR', 'RO'])).scoring.scored).toBe(0)
   })
 
   it('zeroes an absent seat but still reports the largest origin', async () => {
-    const { scoring, answer } = await grade(options, [], MAX, true)
+    const { scoring, answer } = await grade(options, [], 0, true)
     expect(scoring.scored).toBe(0)
     expect(answer.correct).toEqual(['PL'])
   })
 
-  it('still grades the free-typed hard board as a buzz on the largest origin', async () => {
-    expect((await grade({}, ['PL'], 9)).scoring.scored).toBe(9)
-    expect((await grade({}, ['TR'], 9)).scoring.scored).toBe(0)
+  it('grades the free-typed hard board as a buzz on the largest origin, off the clock', async () => {
+    expect((await grade({}, ['PL'])).scoring.scored).toBe(MAX)
+    expect((await grade({}, ['PL'], 15_000 + TIMEOUT_SLACK_MS)).scoring.scored).toBe(
+      buzzScore(MAX, 0.5)
+    )
+    expect((await grade({}, ['TR'])).scoring.scored).toBe(0)
   })
 })

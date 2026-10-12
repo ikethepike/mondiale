@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { EMPIRES } from '~~/data/empires.gen'
-import { clampClientScore, getRoundChallenge } from '~~/lib/challenges'
+import { getRoundChallenge } from '~~/lib/challenges'
 import {
   EMPIRE_TUNING,
   empireAnswerMatches,
@@ -10,12 +10,15 @@ import {
   scoreEmpireExtent,
   subsampleKeyframes,
 } from '~~/lib/empires'
+import { gradeGroupAnswer, type GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import { testSeat } from '~~/lib/events/server/test-seat'
+import { seatWindowMsFor } from '~~/lib/round-beats'
+import { buzzScore } from '~~/lib/scoring'
 import { regionsForVariant } from '~~/lib/board-regions'
 import { variantCountries } from '~~/lib/variant'
 import type { EmpireChallenge } from '~~/types/challenges/group-modes.type'
 import { FAME_BY_DIFFICULTY, FAME_TIERS, isFameDealable } from '~~/types/fame.types'
-import { gameDifficulties, type Game, type GameDifficulty } from '~~/types/game.types'
+import { gameDifficulties, type Game, type GameDifficulty, type Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 describe('empirePots', () => {
@@ -82,35 +85,63 @@ describe('scoreEmpireExtent', () => {
   })
 })
 
-describe('the handler composition (beat 1 clamp + beat 2 jaccard)', () => {
+describe('the grader composition (beat 1 buzz + beat 2 jaccard)', () => {
+  const PLAY_STARTS_AT = 1_000_000
   const challenge = {
+    _type: 'empire-challenge',
     empireId: 'gran-colombia',
-    members: ['CO', 'VE', 'EC', 'PA'] as ISOCountryCode[],
-    partialMembers: ['PE'] as ISOCountryCode[],
+    members: ['CO', 'VE', 'EC', 'PA'],
+    partialMembers: ['PE'],
+    durationSeconds: 20,
+    tapSeconds: 20,
     maximumPoints: 15,
-  }
+  } as unknown as EmpireChallenge
+  const round = {
+    groupChallenge: challenge,
+    groupAnswers: {},
+    playerTurns: {},
+    playStartsAt: PLAY_STARTS_AT,
+  } as unknown as Round
+  const window = seatWindowMsFor(challenge)!
+  const pots = empirePots(challenge.maximumPoints)
 
-  const settle = (
-    empire: { guessedId?: string; clientScore: number } | undefined,
-    taps: ISOCountryCode[]
+  /** `buzzedAt` is when the buzz's `round-play` landed; null = never sent. */
+  const settle = async (
+    empire: Record<string, unknown> | undefined,
+    taps: ISOCountryCode[],
+    buzzedAt: number | null = PLAY_STARTS_AT
   ) => {
-    const pots = empirePots(challenge.maximumPoints)
-    const named = empire?.guessedId === challenge.empireId
-    const beat1 = clampClientScore(empire?.clientScore, pots.name, named)
-    const beat2 = scoreEmpireExtent({ challenge, taps, maximumPoints: pots.extent })
-    return beat1.scored + beat2.scored
+    const { scoring } = await gradeGroupAnswer({
+      game: {} as Game,
+      round,
+      playerId: 'p',
+      submission: { ranking: taps, ...(empire ? { empire } : {}) } as GroupSubmission,
+      seat: { deadline: buzzedAt === null ? undefined : buzzedAt + window },
+      at: PLAY_STARTS_AT + 35_000,
+    })
+    return scoring.scored
   }
 
-  it('pays beat 2 even when the buzz was wrong or absent', () => {
+  it('pays beat 2 even when the buzz was wrong or absent', async () => {
     const taps: ISOCountryCode[] = ['CO', 'VE', 'EC', 'PA']
-    const wrongBuzz = settle({ guessedId: 'inca-empire', clientScore: 6 }, taps)
-    const noBuzz = settle(undefined, taps)
-    expect(wrongBuzz).toBe(empirePots(15).extent)
-    expect(noBuzz).toBe(empirePots(15).extent)
+    expect(await settle({ guessedId: 'inca-empire' }, taps)).toBe(pots.extent)
+    expect(await settle(undefined, taps)).toBe(pots.extent)
   })
 
-  it('clamps an inflated beat-1 claim to the name share', () => {
-    expect(settle({ guessedId: 'gran-colombia', clientScore: 999 }, [])).toBe(empirePots(15).name)
+  it('prices the buzz off the moment it opened the tap window', async () => {
+    expect(await settle({ guessedId: 'gran-colombia' }, [])).toBe(pots.name)
+    expect(await settle({ guessedId: 'gran-colombia' }, [], PLAY_STARTS_AT + 21_000)).toBe(
+      buzzScore(pots.name, 0)
+    )
+    // No `round-play` stamp: the buzz is priced on arrival, long after beat 1.
+    expect(await settle({ guessedId: 'gran-colombia' }, [], null)).toBe(buzzScore(pots.name, 0))
+  })
+
+  it('ignores a claimed beat-1 score', async () => {
+    const late = PLAY_STARTS_AT + 21_000
+    expect(await settle({ guessedId: 'gran-colombia', clientScore: 999 }, [], late)).toBe(
+      buzzScore(pots.name, 0)
+    )
   })
 })
 

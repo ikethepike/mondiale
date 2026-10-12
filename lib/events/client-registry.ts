@@ -7,6 +7,7 @@ import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.event'
 import { manhuntSonarEvent } from '~~/lib/events/client/manhunt-sonar.event'
 import { vintageStoryEvent } from '~~/lib/events/client/vintage-story.event'
+import { finalLightRefusedEvent } from '~~/lib/events/client/final-light-refused.event'
 import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
 import { playerCheeringEvent } from '~~/lib/events/client/player-cheering.event'
 import { playerGuessingEvent } from '~~/lib/events/client/player-guessing.event'
@@ -127,6 +128,10 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // A graded seat's own round story — targeted, no game payload
   'vintage-story': {
     handler: vintageStoryEvent,
+  },
+  // A stage name this seat lit too late — targeted, no game payload
+  'final-light-refused': {
+    handler: finalLightRefusedEvent,
   },
   // Ephemeral taunt relay — no game payload
   'manhunt-taunt': {

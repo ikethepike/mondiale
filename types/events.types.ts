@@ -74,31 +74,23 @@ export type ClientEventData =
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
-      /**
-       * Client-computed points for modes the server can't reproduce (sketch
-       * similarity, silhouette buzz timing). The server clamps it; correctness
-       * itself is still validated server-side where possible.
-       */
-      clientScore?: number
-      /** Buzz rounds: the clock fraction left at the moment of the buzz, for
-       *  the reveal's buzz race. Reveal-only — the score is already clamped
-       *  above, and `buzzScore` can't be inverted back to this. */
-      buzzAt?: number
-      /** Sketch rounds: the normalized drawn outline, for the reveal overlay. */
+      /** Two Truths rounds: the statement the player called the lie. */
+      lie?: number
+      /** Sketch rounds: the normalized drawn outline (`sketchSubmission`). The
+       *  server scores it against the country itself and draws it on the reveal. */
       sketch?: [number, number][]
       /** Pin-landmark rounds: where on the globe the player dropped their pin.
        *  The server scores the distance itself, so this is the whole answer. */
       pin?: LatLng
       /** Ghosts-of-empires rounds: the beat-1 buzz. `guessedId` is the empire
-       *  the player named (absent = never buzzed); `clientScore` is the buzz
-       *  points claimed for beat 1 alone — the server re-checks the name and
-       *  clamps the claim to beat 1's share of the pot. Beat-2 taps travel in
-       *  `ranking` as usual. */
-      empire?: { guessedId?: string; clientScore: number }
-      /** Name-that-water rounds: the feature the player settled on (absent =
-       *  never resolved correctly). The server re-checks it against the dealt
-       *  feature and zeroes the claim on a miss — same posture as `empire`. */
-      water?: { guessedId?: string; guessedName?: string }
+       *  the player named (absent = never buzzed); the server re-checks the
+       *  name and prices it off the moment the buzz opened the seat's tap
+       *  window. Beat-2 taps travel in `ranking` as usual. */
+      empire?: { guessedId?: string }
+      /** Name-that-water rounds: every feature the player named, in order. The
+       *  server grades each against the dealt feature and pays by the attempt
+       *  the answer landed on. */
+      water?: { guessedId?: string; guessedName?: string }[]
       /** Parliament rounds: the benches the player landed on the arc, by name.
        *  The answer is not a country, so `ranking` carries only the chamber;
        *  the server re-derives the score from these against the dealt benches
@@ -115,15 +107,30 @@ export type ClientEventData =
   | (SeatEcho & { event: 'submit-individual-challenge-answer' } & (
         | {
             isoCode: ISOCountryCode
-            /** Timed gates: how many hints were bought (outline, ISO code) — each
-             *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. The clock
-             *  share is the server's own, read off the gate's deadline. */
-            hintsUsed?: number
+            /** Step-graded gates (`isStepGraded`): each duel's pick, the chain after
+             *  the seed, the arranged order, the ruling or the band. The server
+             *  grades these (`gradeGateSteps`); `isoCode` then only names the
+             *  verdict's country. */
+            steps?: string[]
           }
         /** The clock ran out on screen: the seat forfeits now rather than at the
          *  server's cap. Sent where the view holds no answer to preview a miss with. */
         | { timedOut: true }
       ))
+  | (SeatEcho & {
+      /** A seat bought a hint on the subject it echoes (a gate's outline, a
+       *  round's 50/50). Recorded on the cursor, once per hint — the leap or
+       *  the round's pay is docked by that record, never by the submit. */
+      event: 'buy-hint'
+      hint: string
+    })
+  | (SeatEcho & {
+      /** A timed gauntlet stage took a name (Sunset Blitz's country, City
+       *  Nocturne's city). The server keeps it only if it landed in time —
+       *  the stage's verdict counts that record, never the submitted set. */
+      event: 'final-light'
+      name: string
+    })
   | {
       /** Turn-chain rounds (Border Chain, Atlas): the active player extends
        *  the chain. `turn` echoes the
@@ -388,7 +395,9 @@ export const CRITICAL_CLIENT_EVENTS = [
   'round-reveal-done',
   'submit-group-challenge-answers',
   'submit-individual-challenge-answer',
+  'buy-hint',
   'submit-final-challenge-answer',
+  'final-light',
   'submit-chain-move',
   'submit-heritage-pin',
   'submit-timeline-placement',
@@ -493,6 +502,9 @@ export type ServerEventData =
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
+  /** A `final-light` the server did not keep (too late, or not the stage's),
+   *  told to the lighting socket alone so its stage un-lights the name. */
+  | { event: 'final-light-refused'; subject: string; name: string }
   /** Manhunt: a relayed taunt. `role` picks the phrase list; `index` the
    *  line. The sender id is the socket's authenticated id. */
   | {

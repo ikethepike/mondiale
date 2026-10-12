@@ -90,7 +90,7 @@ export const SEAT_TRANSITIONS: readonly SeatTransitionRule[] = [
   rule('lobby', 'tutorial', 'table:start-game'),
   rule('tutorial', 'round', 'event:close-tutorial', 'timer:tutorial-cap'),
   rule('tutorial', 'scores', 'table:settle'),
-  rule('round', 'round', 'event:round-play'),
+  rule('round', 'round', 'event:round-play', 'event:buy-hint'),
   rule('round', 'round-verdict', 'event:submit-group-challenge-answers'),
   rule('round', 'scores', 'event:submit-group-challenge-answers', 'table:settle'),
   rule('round-verdict', 'scores', 'timer:verdict-hold', 'table:settle', 'event:round-reveal-done'),
@@ -100,11 +100,11 @@ export const SEAT_TRANSITIONS: readonly SeatTransitionRule[] = [
   rule('walk', 'settled', 'timer:walk-step'),
   rule('arrive', 'gate', 'timer:landing'),
   rule('arrive', 'final', 'timer:landing'),
-  rule('gate', 'gate', 'event:round-play'),
+  rule('gate', 'gate', 'event:round-play', 'event:buy-hint'),
   rule('gate', 'gate-verdict', 'event:submit-individual-challenge-answer', 'timer:gate-cap'),
   rule('gate-verdict', 'walk', 'timer:verdict-hold', 'event:gate-reveal-done'),
   rule('gate-verdict', 'settled', 'timer:verdict-hold', 'event:gate-reveal-done'),
-  rule('final', 'final', 'event:round-play'),
+  rule('final', 'final', 'event:round-play', 'event:final-light'),
   rule('final', 'final-verdict', 'event:submit-final-challenge-answer', 'timer:final-cap'),
   rule('final-verdict', 'final', 'timer:verdict-hold'),
   rule('final-verdict', 'settled', 'timer:verdict-hold'),
@@ -223,6 +223,8 @@ export interface NextCursor {
   holdUntil?: number
   deadline?: number
   verdict?: SeatVerdict
+  hints?: string[]
+  lit?: string[]
   walk?: number
   leg?: number
 }
@@ -243,6 +245,9 @@ export const applySeatMove = (
     ? stepRequirementGap(next, SERVER_CONTROLLED_CAPS)
     : `no rule ${previous.step} → ${next.step} for ${cause}`
   if (gap) throw new IllegalTransition(gap)
+  const kept = next.subject === previous.subject ? previous : undefined
+  const hints = next.hints ?? kept?.hints
+  const lit = next.lit ?? kept?.lit
   seat.cursor = {
     seq: previous.seq + 1,
     step: next.step,
@@ -254,6 +259,8 @@ export const applySeatMove = (
     ...(next.holdUntil !== undefined ? { holdUntil: next.holdUntil } : {}),
     ...(next.deadline !== undefined ? { deadline: next.deadline } : {}),
     ...(next.verdict ? { verdict: next.verdict } : {}),
+    ...(hints?.length ? { hints } : {}),
+    ...(lit?.length ? { lit } : {}),
   }
   return seat.cursor
 }

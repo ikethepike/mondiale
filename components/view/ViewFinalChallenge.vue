@@ -623,13 +623,17 @@ const pickedCountry = computed(() => {
 const finalReveal = computed(() => {
   const challenge = currentFinalChallenge.value
   if (!challenge) return undefined
+  // The lit stages are graded on the server's record of names taken in time.
+  const recorded = verdict.value?.submittedAnswer
   return finalRevealFor({
     challenge,
     picked: pickedCountry.value,
     regions: game.value?.regions,
     pool: challengePool.value,
-    sunset: sunsetResult.value,
-    nocturneCities: nocturneResult.value,
+    sunset:
+      recorded?._type === 'sunset-blitz-challenge' ? recorded.namedCountries : sunsetResult.value,
+    nocturneCities:
+      recorded?._type === 'city-nocturne-challenge' ? recorded.namedCities : nocturneResult.value,
     endonymPicks: endonymPicks.value,
     diasporaPicks: diasporaPicks.value,
     madeReady: madeRevealReady.value,

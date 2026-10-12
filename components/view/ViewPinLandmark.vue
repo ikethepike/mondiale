@@ -158,7 +158,7 @@ const lockIn = () => {
     result.value = { distanceKm: haversineKm(pin.value, answer) }
   }
 
-  submitOnce([], undefined, undefined, { pin: pin.value })
+  submitOnce([], { pin: pin.value })
 }
 
 watch(secondsLeft, seconds => {

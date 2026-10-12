@@ -122,7 +122,6 @@ const {
   guess,
 } = useBuzzRound('anthem-buzz-challenge', {
   isCorrect: (active, isoCode) => anthemTuneMatches(active.country, isoCode),
-  maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `Not ${name} — locked out for ${LOCKOUT_SECONDS} seconds`,
   onLockoutEnd: () => guessInput.value?.focus(),
   // No map reveal. "Whose anthem" is not a geography question, and flying a

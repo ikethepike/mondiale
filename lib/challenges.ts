@@ -161,6 +161,7 @@ import {
   attemptDecayScore,
   attemptFraction,
   clampScore,
+  hintDockedScore,
   jaccardFraction,
   scorePinDistance,
 } from './scoring'
@@ -2302,19 +2303,11 @@ export const scoreHotCold = ({
   return { scored: attemptDecayScore(probes, maximum), maximum }
 }
 
-/**
- * Silhouette and sketch rounds are judged client-side (buzz timing, shape
- * similarity) — the server validates what it can and clamps the rest.
- */
-export const clampClientScore = (
-  clientScore: number | undefined,
-  maximum: number,
-  correct: boolean
-): { scored: number; maximum: number } => {
-  if (!correct) return { scored: 0, maximum }
-  const scored = Math.round(clientScore ?? 0)
-  return { scored: clampScore(scored, maximum), maximum }
-}
+/** Whether a Two Truths pick is the lie — the view's verdict and the grade. */
+export const isTwoTruthsLie = (
+  challenge: Pick<TwoTruthsChallenge, 'lieIndex'>,
+  pick: unknown
+): boolean => typeof pick === 'number' && pick === challenge.lieIndex
 
 /** Articles a named water feature may shed before matching ("the Baltic Sea"). */
 const WATER_NAME_ARTICLES = ['the', 'el', 'la', 'il']
@@ -2322,8 +2315,8 @@ const WATER_NAME_ARTICLES = ['the', 'el', 'la', 'il']
 /**
  * Does a named-water guess hit the dealt feature? The id is authoritative; the
  * typed name is the fallback for suggestion entries carrying no id. Both the
- * round view and the submit handler resolve through this, so the score the
- * client claims and the correctness the server enforces can never drift.
+ * round view and the grader resolve through this, so what the view accepts and
+ * what the server pays can never drift.
  */
 export const isCorrectWaterGuess = (
   challenge: Pick<NameWaterChallenge, 'featureId' | 'featureName' | 'aliases'>,
@@ -2339,6 +2332,24 @@ export const isCorrectWaterGuess = (
   return [challenge.featureName, ...(challenge.aliases ?? [])].some(
     name => normalize(name) === guessed
   )
+}
+
+/** What a name-that-water guess trail pays: the attempt the dealt feature was
+ *  named on, inside the cap, docked by the hints bought. */
+export const scoreWaterGuesses = (
+  challenge: Pick<
+    NameWaterChallenge,
+    'featureId' | 'featureName' | 'aliases' | 'maximumGuesses' | 'maximumPoints'
+  >,
+  guesses: readonly { guessedId?: string; guessedName?: string }[] | undefined,
+  hintsUsed: number
+): { scored: number; maximum: number } => {
+  const maximum = challenge.maximumPoints
+  const trail = Array.isArray(guesses) ? guesses : []
+  const attempt = trail.findIndex(guess => isCorrectWaterGuess(challenge, guess)) + 1
+  if (attempt < 1 || attempt > challenge.maximumGuesses) return { scored: 0, maximum }
+  const scored = Math.round(maximum * attemptFraction(attempt, challenge.maximumGuesses))
+  return { scored: hintDockedScore(scored, maximum, hintsUsed), maximum }
 }
 
 /** Shuffles a flat hand gets before the dealer tries another stat. */
@@ -3576,8 +3587,8 @@ const dealScriptorium = (
 
 /**
  * Chronicle: one country's events, dragged into order. The pool selector, the
- * spaced-hand picker and the order check live in lib/chronicle — the view
- * grades through the same module (higher-lower's client-trust posture).
+ * spaced-hand picker and the order check live in lib/chronicle — the view and
+ * the server's step grade read the same module.
  */
 const dealChronicle = (
   rules: gameTypes.GameRules

@@ -6,6 +6,8 @@ import { recordSeatEvent } from './seat-journal'
 import { closeTutorialHandler } from './close-tutorial.handler'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { roundPlayHandler } from './round-play.handler'
+import { buyHintHandler } from './buy-hint.handler'
+import { finalLightHandler } from './final-light.handler'
 import { roundRevealDoneHandler } from './round-reveal-done.handler'
 import { joinEventHandler } from './join.event'
 import { setColorHandler } from './set-color.handler'
@@ -71,6 +73,12 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-group-challenge-answers': {
     handler: submitGroupChallengeAnswersHandler,
+  },
+  'buy-hint': {
+    handler: buyHintHandler,
+  },
+  'final-light': {
+    handler: finalLightHandler,
   },
   'submit-chain-move': {
     handler: submitChainMoveHandler,
@@ -248,10 +256,11 @@ export const runClientEvent = ({
 }) => {
   const event = eventData.event
   return enqueueGameTask(eventTarget.gameId, async () => {
+    const receivedAt = Date.now()
     if (!UNRECORDED_CLIENT_EVENTS.includes(event)) {
       await recordSeatEvent(redis, eventTarget.gameId, {
         kind: 'event',
-        at: Date.now(),
+        at: receivedAt,
         actor: eventTarget.playerId,
         event,
         data: eventData,
@@ -264,6 +273,7 @@ export const runClientEvent = ({
       eventTarget,
       eventKey: event,
       eventData,
+      receivedAt,
     })
   })
 }

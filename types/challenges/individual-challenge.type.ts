@@ -15,10 +15,10 @@ import type { ISOCountryCode } from '../geography.types'
  * - 'find' (default / legacy data): locate `country` on the map
  * - 'flag-pick': `country`'s flag among lookalike decoys in `options`
  * - 'odd-one-out': `country` is the impostor among `oddOneOut.countries`
- * - 'higher-lower': three stat duels; the client submits `country` only when
- *   every duel was answered correctly (same client-trust model as the map)
+ * - 'higher-lower': three stat duels, won only when every duel was answered
+ *   correctly — the picks travel as steps (`gradeGateSteps`)
  * - 'trend-duel': which of two countries' stat is rising/falling — a streak of
- *   pairs with one guaranteed riser + one faller (higher-lower's trust model)
+ *   pairs with one guaranteed riser + one faller, graded like higher-lower
  * - 'trajectory-match': a mystery sparkline — whose chart is this? Timed like
  *   border-detective, one buyable strike-out hint
  * - 'leader-pick': whose leader is named — `options` are the candidate
@@ -65,10 +65,9 @@ export interface IndividualChallenge {
    * - `spectrum` — where does it sit left-to-right? `bands` are the choices
    *   and `band` the truth.
    *
-   * The last two grade client-side and submit `challenge.country` on a win or
-   * `wrongTokenFor` on a miss, the same client-trust route `higher-lower` and
-   * `chronicle` take — the wire carries only an ISO code, and neither of these
-   * questions answers with one.
+   * The last two answer with no country, so their choice travels as a step and
+   * the server grades it (`gradeGateSteps`), the route `higher-lower` and
+   * `chronicle` take.
    */
   partyLogo?: {
     /** Path under /public. */
@@ -136,9 +135,8 @@ export interface IndividualChallenge {
     pairs: { a: ISOCountryCode; b: ISOCountryCode }[]
   }
   /** trend-duel: which country's stat trends `seek`-ward — one riser + one
-   *  faller per pair, answered in order; the client submits `country` only on
-   *  a clean streak (same client-trust model as higher-lower, truth derived
-   *  from TRENDS via readTrend). */
+   *  faller per pair, answered in order; the picks are graded on both ends by
+   *  `trendDuelWon` (lib/gate-steps), truth derived from TRENDS via readTrend. */
   trendDuels?: {
     metric: TrendMetricId
     seek: 'rising' | 'falling'
@@ -195,9 +193,9 @@ export interface IndividualChallenge {
     /** What each lineup member is labelled as, exactly as shown. */
     labels: Partial<Record<ISOCountryCode, string>>
   }
-  /** atlas: the name chain. `country` doubles as the seed; links are graded
-   *  client-side through lib/atlas-chain (the rule, the credit and the hint
-   *  all read that one module, on both formats). */
+  /** atlas: the name chain. `country` doubles as the seed; the chain is
+   *  graded through lib/atlas-chain (the rule, the credit and the hint all
+   *  read that one module, on both formats) — on the server by `atlasStepsBank`. */
   atlas?: {
     /** The dealt opening country — the chain's zeroth chip. */
     seed: ISOCountryCode
@@ -216,7 +214,7 @@ export interface IndividualChallenge {
     language: string
   }
   /** chronicle: EVENT slugs in display (shuffled) order. Years stay out of the
-   *  payload — data/events.gen is already client-bundled, and the view grades
+   *  payload — data/events.gen is already client-bundled, and both ends grade
    *  the final order through lib/chronicle. */
   chronicle?: {
     events: string[]

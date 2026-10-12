@@ -69,7 +69,7 @@ const props = defineProps<{ challenge: IndividualChallenge }>()
 /** Non-hard games get the y-axis values free in the final third. */
 const VALUES_REVEAL_ELAPSED = 2 / 3
 
-const { status, isHard, submitAnswer, giveUp } = useGateChallenge()
+const { status, isHard, submitAnswer, recordHint, giveUp } = useGateChallenge()
 
 const struck = ref(new Set<ISOCountryCode>())
 const { secondsLeft, elapsedFraction, stop } = useGateClock({
@@ -99,14 +99,13 @@ const showStrikeHint = () => {
     trajectory.options.filter(option => option !== props.challenge.country)
   )
   struck.value = new Set(decoys.slice(0, Math.ceil(decoys.length / 2)))
+  recordHint('strike')
 }
 
 const onPick = (isoCode: ISOCountryCode) => {
   if (status.value || struck.value.has(isoCode)) return
   stop()
-  submitAnswer(isoCode, {
-    hintsUsed: struck.value.size ? 1 : 0,
-  })
+  submitAnswer(isoCode)
 }
 </script>
 <style lang="scss" scoped>
