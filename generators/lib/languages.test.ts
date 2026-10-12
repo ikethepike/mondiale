@@ -3,12 +3,16 @@ import { FACTBOOK } from '~~/data/factbook.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { spokenLanguages } from '~~/lib/language-rounds'
 import { SPOKEN_LANGUAGE_SHARES } from '~~/data/static/spoken-language-shares'
+import { SPEAKERS } from '~~/data/speakers.gen'
 import {
   ISO_LANGUAGE_NAMES,
   LANGUAGE_ALIASES,
   SPOKEN_POPULATION_FLOOR,
   canonicalLanguage,
+  cldrLanguage,
+  firstLanguageShares,
   isWidelySpoken,
+  namedLanguages,
   officialLanguages,
   regionalOfficialLanguages,
   splitLanguageSegments,
@@ -240,7 +244,7 @@ describe('widely spoken languages', () => {
     for (const isoCode of Object.keys(COUNTRIES) as ISOCountryCode[]) {
       for (const name of spokenFor(isoCode)) {
         expect(ISO_LANGUAGE_NAMES.has(name), `${isoCode}/${name}`).toBe(true)
-        expect(COUNTRIES[isoCode].languages, isoCode).toContain(name)
+        expect(SPEAKERS[isoCode]?.[name]?.named, `${isoCode}/${name}`).toBe(true)
       }
     }
   })
@@ -277,8 +281,44 @@ describe('the curated speaker shares', () => {
         expect(Number.parseFloat(basis.replace(/^\D*?(\d)/, '$1')), where).toBe(share)
         expect(isWidelySpoken(share, population), where).toBe(true)
         expect(ISO_LANGUAGE_NAMES.has(language), where).toBe(true)
-        expect(COUNTRIES[isoCode as ISOCountryCode].languages, where).toContain(language)
+        expect(SPEAKERS[isoCode as ISOCountryCode]?.[language], where).toMatchObject({
+          share,
+          source: 'mondiale-editorial',
+          named: true,
+        })
       }
     }
+  })
+})
+
+describe('the sources the speaker table folds', () => {
+  it('reads each first-language share with its figure', () => {
+    expect(firstLanguageShares(factbookLanguages('UA'))).toEqual([
+      { language: 'Ukrainian', share: 67.5 },
+      { language: 'Russian', share: 29.6 },
+    ])
+    // A can-speak survey sizes nothing.
+    expect(firstLanguageShares(factbookLanguages('HU'))).toEqual([])
+  })
+
+  it('names the languages the prose names, sized or not', () => {
+    expect(namedLanguages(factbookLanguages('NG'))).toEqual(
+      expect.arrayContaining(['English', 'Hausa', 'Yoruba', 'Igbo'])
+    )
+    // Hungary's "English 25.3%" is a survey of schooling: only its official is named.
+    expect(namedLanguages(factbookLanguages('HU'))).toEqual(['Hungarian'])
+  })
+
+  it('folds CLDR varieties into the language the game names', () => {
+    expect(cldrLanguage('ary', {})).toBe('Arabic')
+    expect(cldrLanguage('gsw', {})).toBe('German')
+    expect(cldrLanguage('zh_Hant', {})).toBe('Chinese')
+    expect(cldrLanguage('fil', {})).toBe('Tagalog / Filipino')
+    expect(cldrLanguage('nb', {})).toBe('Norwegian')
+    expect(cldrLanguage('km', {})).toBe('Cambodian')
+    expect(cldrLanguage('rm', {})).toBe('Romansh')
+    expect(cldrLanguage('zgh', {})).toBe('Tamazight')
+    expect(cldrLanguage('tet', { tet: 'Tetum' })).toBe('Tetum')
+    expect(cldrLanguage('xyz', {})).toBeUndefined()
   })
 })

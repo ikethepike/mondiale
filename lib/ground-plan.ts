@@ -22,6 +22,7 @@ import { REGION_LABELS } from '~~/lib/variant'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
 import { isHardMode } from '~~/lib/game-rules'
 import { sample } from '~~/lib/arrays'
+import { spokenLanguages } from '~~/lib/language-rounds'
 
 /**
  * The tile frame in SVG user units. Shared rather than a constant on either
@@ -190,8 +191,8 @@ export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
 
   if (country.currency) hints.push({ kind: 'currency', text: `Paid for in ${country.currency}` })
 
-  const spoken = country.officialLanguages?.length ? country.officialLanguages : country.languages
-  const language = spoken?.[0]
+  const spoken = [...spokenLanguages(entry.country)]
+  const language = spoken[0]
   if (language) {
     hints.push({
       kind: 'language',

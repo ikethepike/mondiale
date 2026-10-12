@@ -144,6 +144,19 @@ export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
   Bokmal: 'Norwegian',
   'Bokmal Norwegian': 'Norwegian',
   'Nynorsk Norwegian': 'Norwegian',
+  'Norwegian Bokmål': 'Norwegian',
+  'Norwegian Nynorsk': 'Norwegian',
+  Māori: 'Maori',
+  'West Frisian': 'Frisian',
+  'Western Frisian': 'Frisian',
+  Tongan: 'Tonga',
+  Nauru: 'Nauruan',
+  Tuvalu: 'Tuvaluan',
+  Fula: 'Peul',
+  Rundi: 'Kirundi',
+  Nyanja: 'Chichewa',
+  'Haitian Creole': 'Haitian',
+  'Raeto Romance': 'Romansh',
   // Only Haiti's entry says a bare official "Creole"; Seychelles and the rest
   // name theirs. `Haitian` is the spelling already in the dataset.
   Creole: 'Haitian',
@@ -274,14 +287,13 @@ export const isWidelySpoken = (share: number, population: number | undefined): b
   share >= SPOKEN_SHARE_THRESHOLD || (share / 100) * (population ?? 0) >= SPOKEN_POPULATION_FLOOR
 
 /**
- * Every language a first-language tally puts past `isWidelySpoken` — Ukraine's,
- * Latvia's and Estonia's Russian, which no other source carries. Empty for a
- * can-speak survey and for the half of the corpus that states no shares at all.
+ * Each typeable ISO 639-1 language a first-language tally gives a share, with
+ * that share. Empty for a can-speak survey and for the half of the corpus that
+ * states no shares at all.
  */
-export const widelySpokenLanguages = (
-  text: string | undefined,
-  population: number | undefined
-): string[] => {
+export const firstLanguageShares = (
+  text: string | undefined
+): { language: string; share: number }[] => {
   if (!text) return []
   const segments = splitLanguageSegments(text).map(segment => ({
     segment,
@@ -290,12 +302,117 @@ export const widelySpokenLanguages = (
   const tally = segments.reduce((sum, { share }) => sum + (share ?? 0), 0)
   if (tally > FIRST_LANGUAGE_TALLY_MAX) return []
 
-  const found: string[] = []
+  const found = new Map<string, number>()
   for (const { segment, share } of segments) {
-    if (share === undefined || !isWidelySpoken(share, population)) continue
+    if (share === undefined || NOT_THE_SAME_LANGUAGE.has(segmentName(segment))) continue
+    const language = typeableLanguage(segment)
+    if (language && ISO_LANGUAGE_NAMES.has(language) && !found.has(language)) {
+      found.set(language, share)
+    }
+  }
+  return [...found].map(([language, share]) => ({ language, share }))
+}
+
+/**
+ * Every language a first-language tally puts past `isWidelySpoken` — Ukraine's,
+ * Latvia's and Estonia's Russian, which no other source carries.
+ */
+export const widelySpokenLanguages = (
+  text: string | undefined,
+  population: number | undefined
+): string[] =>
+  firstLanguageShares(text)
+    .filter(({ share }) => isWidelySpoken(share, population))
+    .map(({ language }) => language)
+
+/**
+ * Every typeable ISO 639-1 language the prose names as the country's own, sized
+ * or not — Nigeria's "Hausa, Yoruba, Igbo (Ibo)". A can-speak survey names
+ * only its officials: Hungary's "English 25.3%" is schooling, not a community.
+ */
+export const namedLanguages = (text: string | undefined): string[] => {
+  if (!text) return []
+  const segments = splitLanguageSegments(text)
+  const tally = segments.reduce((sum, segment) => sum + (segmentShare(segment) ?? 0), 0)
+  const named = new Set(officialLanguages(text))
+  if (tally > FIRST_LANGUAGE_TALLY_MAX) return [...named]
+  for (const segment of segments) {
     if (NOT_THE_SAME_LANGUAGE.has(segmentName(segment))) continue
     const language = typeableLanguage(segment)
-    if (language && ISO_LANGUAGE_NAMES.has(language)) found.push(language)
+    if (language && ISO_LANGUAGE_NAMES.has(language)) named.add(language)
   }
-  return [...new Set(found)]
+  return [...named]
+}
+
+/**
+ * CLDR codes for a variety the game names by its standard language: Maghrebi
+ * and Levantine Arabic are "Arabic", Swiss German is "German", Cantonese and
+ * Min Nan are "Chinese". CLDR files them apart, so the fold takes the larger
+ * share rather than adding them — the same people answer both lines.
+ */
+export const CLDR_LANGUAGE_FOLDS: { [cldrCode: string]: string } = {
+  aeb: 'ar',
+  acm: 'ar',
+  acy: 'ar',
+  afb: 'ar',
+  ajp: 'ar',
+  apc: 'ar',
+  apd: 'ar',
+  arq: 'ar',
+  ars: 'ar',
+  ary: 'ar',
+  arz: 'ar',
+  ayl: 'ar',
+  shu: 'ar',
+  ssh: 'ar',
+  gsw: 'de',
+  yue: 'zh',
+  nan: 'zh',
+  hak: 'zh',
+  wuu: 'zh',
+  hsn: 'zh',
+  gan: 'zh',
+  ckb: 'ku',
+  kmr: 'ku',
+  sdh: 'ku',
+  fil: 'tl',
+  nb: 'no',
+  nn: 'no',
+  prs: 'fa',
+  qug: 'qu',
+  // The Berber varieties the Factbook files under one "Tamazight".
+  zgh: 'tzm',
+  kab: 'tzm',
+  shi: 'tzm',
+  rif: 'tzm',
+  // Comorian's four island varieties.
+  wni: 'zdj',
+  swb: 'zdj',
+}
+
+/** CLDR's English names, where they differ from the game's own spelling for a
+ *  language `countries-list` cannot carry (no ISO 639-1 code). */
+const CLDR_NAMES: { [cldrCode: string]: string } = {
+  crs: 'Seychellois Creole',
+  tzm: 'Tamazight',
+  zdj: 'Shikomoro',
+}
+
+/**
+ * A CLDR language code (script and region subtags allowed) → the language in
+ * the game's spelling: the `countries-list` name the rest of the dataset was
+ * spelled from, else CLDR's English display name. Undefined for a code neither
+ * can name.
+ */
+export const cldrLanguage = (
+  code: string,
+  displayNames: { [cldrCode: string]: string }
+): string | undefined => {
+  const base = code.split('_')[0]!
+  const folded = CLDR_LANGUAGE_FOLDS[base] ?? base
+  const name =
+    CLDR_NAMES[folded] ??
+    (languages as { [code: string]: { name: string } | undefined })[folded]?.name ??
+    displayNames[folded]
+  return name ? canonicalLanguage(name) : undefined
 }

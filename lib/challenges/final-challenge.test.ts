@@ -9,7 +9,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
-import { speaksLanguage } from '~~/lib/language-rounds'
+import { speakerRow, speaksLanguage } from '~~/lib/language-rounds'
 import { politicalLeader } from '~~/lib/leaders'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
@@ -1128,16 +1128,17 @@ describe('isCorrectFinalAnswer', () => {
     ).toBe(false)
   })
 
-  it('accepts a country whose language is official but missing from the spoken list', () => {
-    // "Speaks English" is dealt from anywhere; Burundi makes it official, and
-    // the spoken list alone graded Burundi wrong and left it off the reveal.
+  it('accepts a statute the country barely speaks without listing it among the speakers', () => {
+    // Burundi makes English official and 0.05% speak it: naming Burundi is
+    // right about a statute, so it is accepted, but the reveal does not
+    // pretend Burundi is an English-speaking country.
     for (const [language, isoCode] of [
       ['Guarani', 'BO'],
       ['Swahili', 'RW'],
       ['English', 'BI'],
       ['Portuguese', 'GQ'],
     ] as const) {
-      expect(COUNTRIES[isoCode].languages, `${language}/${isoCode}`).not.toContain(language)
+      expect(speakerRow(isoCode, language)?.official, `${language}/${isoCode}`).toBe('national')
       const challenge = { _type: 'language-challenge', language } as const
       expect(
         isCorrectFinalAnswer({
@@ -1146,7 +1147,7 @@ describe('isCorrectFinalAnswer', () => {
         }),
         `${language}/${isoCode}`
       ).toBe(true)
-      expect(languageSpeakers(language), `${language}/${isoCode}`).toContain(isoCode)
+      expect(languageSpeakers(language), `${language}/${isoCode}`).not.toContain(isoCode)
     }
   })
 
