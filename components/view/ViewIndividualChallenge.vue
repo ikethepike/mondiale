@@ -297,6 +297,8 @@ const interstitialTitle = computed(() => {
       return `Put ${countryName(active.country)}'s history in order`
     case 'far-flung':
       return 'A far-flung piece of a country — whose is it?'
+    case 'rulers':
+      return "One of these is not its country's ruling party"
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
