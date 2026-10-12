@@ -106,6 +106,11 @@ export type ClientEventData =
       parliament?: { placed: string[] }
       /** Vintage rounds: the year the player dated the map to. */
       year?: number
+      /** Ground Plan rounds: the cities the player named, in order — the
+       *  option board's attempt sequence, or the one typed answer. The country
+       *  in `ranking` cannot tell two of its cities apart, so the server
+       *  grades these against the dealt city. */
+      cities?: string[]
     })
   | (SeatEcho & { event: 'submit-individual-challenge-answer' } & (
         | {

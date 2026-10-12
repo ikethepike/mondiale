@@ -10,7 +10,7 @@ import { buildLineup, isMemberOf, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
 import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
-import { titlecaseLeader } from '~~/lib/leaders'
+import { quizLeader } from '~~/lib/leaders'
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
 import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
@@ -1177,15 +1177,13 @@ export const boundaryStory = (countries: [ISOCountryCode, ISOCountryCode]): stri
   BORDER_STORIES[[...countries].sort().join('|')]
 
 const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => {
-  const country = shuffleArray(pool.map(isoCode => COUNTRIES[isoCode])).find(country => {
-    return !!country.government.leader
-  })
+  const country = sample(pool.filter(isoCode => !!quizLeader(isoCode)))
 
   if (!country) throw new ReferenceError(`Unable to find leader for leadership challenge`)
 
   return {
     _type: 'leadership-challenge',
-    country: country.isoCode,
+    country,
   }
 }
 
@@ -1400,9 +1398,8 @@ export const getFinalChallengeDetails = ({
     case 'leadership-challenge': {
       // The DEALT country's leader — asking about anyone else's makes the
       // question unanswerable (validation compares against challenge.country)
-      const { leader } = COUNTRIES[challenge.country].government
       return {
-        question: `Which country is led by ${titlecaseLeader(leader ?? '')}?`,
+        question: `Which country is led by ${quizLeader(challenge.country)?.name ?? ''}?`,
       }
     }
     case 'min-challenge':

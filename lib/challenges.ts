@@ -124,7 +124,7 @@ import {
   FLASHPOINT_SECONDS_PER_HINT,
   flashpointSeconds,
 } from './round-beats'
-import { countryLedBy, politicalLeader } from './leaders'
+import { countryLedBy, quizLeader } from './leaders'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -941,7 +941,7 @@ const getTraversalChallenge = ({
  * dataset (~½ MB gzipped) must not ride along into client bundles through
  * this module's other exports. Clients that need geometry lazy-load it too.
  */
-const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
+export const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const pool = new Set(playableCountries(game))
 
@@ -1023,8 +1023,8 @@ type WaterTiers = {
 /** Name That Water scales with difficulty: easy deals oceans and famous seas,
  *  normal adds the major lakes, hard deals the whole atlas. */
 export const NAME_WATER_TIERS: WaterTiers = {
-  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.25 },
-  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.6 },
+  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.27 },
+  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.66 },
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
 }
 
@@ -1408,14 +1408,17 @@ export const capitalGuessScore = (
   )
 
 /** What an option round's pick sequence pays: `capitalGuessScore` for the
- *  attempt the answer landed on, 0 when it never landed inside the cap. */
-export const attemptPicksScore = (
-  picks: readonly ISOCountryCode[],
-  answer: ISOCountryCode,
+ *  attempt the answer landed on, 0 when it never landed inside the cap.
+ *  `answer` is the winning pick, or a matcher where several spellings win
+ *  (Ground Plan's cities). */
+export const attemptPicksScore = <Pick extends string>(
+  picks: readonly Pick[],
+  answer: Pick | ((pick: Pick) => boolean),
   attempts: number,
   maximumPoints: number
 ): number => {
-  const attempt = picks.indexOf(answer) + 1
+  const hits = typeof answer === 'function' ? answer : (pick: Pick) => pick === answer
+  const attempt = picks.findIndex(hits) + 1
   return attempt > 0 && attempt <= attempts
     ? capitalGuessScore(attempt, attempts, maximumPoints)
     : 0
@@ -3173,22 +3176,24 @@ const dealLogoPolitics = (
   }
 }
 
-/** Leader-pick: who runs this country, millionaire-style (decoys same region). */
+/** Leader-pick: who runs this country, millionaire-style (decoys same region,
+ *  never one whose leader also leads the dealt country). */
 const dealLeaderPick = (
   countryPool: ISOCountryCode[],
   world: ISOCountryCode[]
 ): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
-  const poolLeaders = countryPool.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
-  const withLeaders =
-    poolLeaders.length >= 4
-      ? poolLeaders
-      : world.filter(isoCode => !!COUNTRIES[isoCode].government?.leader)
+  const quizzable = (isoCode: ISOCountryCode) => !!quizLeader(isoCode)
+  const poolLeaders = countryPool.filter(quizzable)
+  const withLeaders = poolLeaders.length >= 4 ? poolLeaders : world.filter(quizzable)
   if (withLeaders.length < 4) return undefined
 
   const country = sample(withLeaders)!
   const decoys = pickDecoys(country, withLeaders, 3, {
     preferRegion: true,
-    eligible: isoCode => !!COUNTRIES[isoCode].government?.leader,
+    eligible: isoCode => {
+      const leader = quizLeader(isoCode)
+      return !!leader && !countryLedBy(country, leader.name)
+    },
     widen: world,
   })
   if (!decoys) return undefined
@@ -3196,9 +3201,9 @@ const dealLeaderPick = (
   return { country, options: shuffleArray([country, ...decoys]) }
 }
 
-/** The face to quiz on: the one political-leader selector, portrait required. */
+/** The face to quiz on: the quiz leader's own portrait, never a stand-in role's. */
 const portraitFor = (isoCode: ISOCountryCode) => {
-  const leader = politicalLeader(isoCode, { requireImage: true })
+  const leader = quizLeader(isoCode)
   return leader?.image ? { image: leader.image, name: leader.name } : undefined
 }
 
@@ -3645,7 +3650,7 @@ const pickThemedFindCountry = (
   }
   switch (accessorId) {
     case 'government.leader':
-      return withProperty(isoCode => !!COUNTRIES[isoCode].government?.leader)
+      return withProperty(isoCode => !!quizLeader(isoCode))
     case 'currency':
       // "Which country spends the Danish krone?" answers itself — only deal
       // currencies whose name betrays no spender

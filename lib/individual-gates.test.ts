@@ -11,12 +11,12 @@ import { mentionsCountry } from '~~/lib/country'
 import { moneyHero } from '~~/lib/currency'
 import { playableCountries } from '~~/lib/game-rules'
 import { flagsIndistinguishable } from '~~/lib/palette'
-import { gameVariants } from '~~/types/game.types'
+import { gameVariants, type BoardRegion } from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { readFileSync } from 'node:fs'
-import { countryLedBy } from '~~/lib/leaders'
+import { countryLedBy, politicalLeader, quizLeader } from '~~/lib/leaders'
 import { governedOutsideFamily, governingParty, partiesOf } from '~~/lib/parties'
 import { processReplacements } from '~~/lib/values'
 import {
@@ -71,7 +71,9 @@ describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => 
     process.env.FORCE_INDIVIDUAL_VARIANT = 'find'
     for (let attempt = 0; attempt < 25; attempt++) {
       const leaderGate = await getIndividualChallenge({ accessorId: 'government.leader' })
-      expect(COUNTRIES[leaderGate.country].government.leader).toBeTruthy()
+      const leader = quizLeader(leaderGate.country)
+      expect(leader).toBeTruthy()
+      expect(processReplacements('{leader}', leaderGate.country)).toBe(leader!.name)
 
       const currencyGate = await getIndividualChallenge({ accessorId: 'currency' })
       expect(COUNTRIES[currencyGate.country].currency).toBeTruthy()
@@ -95,6 +97,24 @@ describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => 
     )
     expect(currencyQuestion).not.toContain('{currency}')
     expect(currencyQuestion.length).toBeGreaterThan('Which country spends the ?'.length)
+  })
+})
+
+describe('dealLeaderPick (via forced variant)', { timeout: TIMEOUT }, () => {
+  it('names, shows and reveals one profile per option', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'leader-pick'
+    for (const regions of [[], ['europe'], ['africa']] as BoardRegion[][]) {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const dealt = await getIndividualChallenge({ accessorId: 'government.leader', regions })
+        expect(dealt.variant).toBe('leader-pick')
+        expect(quizLeader(dealt.country)).toBe(politicalLeader(dealt.country))
+        for (const option of dealt.options ?? []) {
+          const shown = quizLeader(option)
+          expect(shown, option).toBeTruthy()
+          expect(countryLedBy(dealt.country, shown!.name), option).toBe(option === dealt.country)
+        }
+      }
+    }
   })
 })
 
@@ -148,6 +168,21 @@ describe('dealLeaderPortrait (via forced variant)', { timeout: TIMEOUT }, () => 
       if (dealt.variant !== 'leader-portrait' || !dealt.options || !dealt.portrait) continue
       const led = dealt.options.filter(isoCode => countryLedBy(isoCode, dealt.portrait!.name))
       expect(led).toEqual([dealt.country])
+    }
+  })
+
+  it('pictures the leader the reveal headlines', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'leader-portrait'
+    for (const regions of [[], ['europe'], ['africa'], ['asia']] as BoardRegion[][]) {
+      for (let attempt = 0; attempt < 80; attempt++) {
+        const dealt = await getIndividualChallenge({ accessorId: 'government.leader', regions })
+        if (dealt.variant !== 'leader-portrait' || !dealt.portrait) continue
+        const revealed = politicalLeader(dealt.country)
+        expect(dealt.portrait, dealt.country).toEqual({
+          image: revealed?.image,
+          name: revealed?.name,
+        })
+      }
     }
   })
 })

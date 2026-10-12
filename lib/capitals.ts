@@ -37,6 +37,9 @@ const CAPITAL_ROW_ALIASES: Partial<Record<ISOCountryCode, string>> = {
   KI: 'Tarawa',
 }
 
+export const cityLightSpellings = (city: CityLight): string[] =>
+  [city.name, city.local, city.native, ...city.alt].filter((name): name is string => !!name)
+
 /**
  * The capital's row in the city-lights dataset, matched by name — GeoNames
  * spellings drift from Wikidata's, so alt names count, administrative
@@ -51,22 +54,18 @@ export const capitalCityLight = (isoCode: ISOCountryCode): CityLight | undefined
   if (!name) return undefined
   const wanted = normalizeCapital(name)
   return CITY_LIGHTS[isoCode]?.find(city =>
-    [city.name, city.local, city.native, ...city.alt]
-      .filter((candidate): candidate is string => !!candidate)
-      .some(candidate => normalizeCapital(candidate) === wanted)
+    cityLightSpellings(city).some(candidate => normalizeCapital(candidate) === wanted)
   )
 }
 
 /** Every spelling a typed capital answer may arrive as — canonical first. The
  *  row's own names ride along, so an aliased capital answers to both the
  *  official name and the gazetteer's ("Ulaanbaatar" and "Ulan Bator"). */
-const capitalSpellings = (isoCode: ISOCountryCode): string[] => {
+export const capitalSpellings = (isoCode: ISOCountryCode): string[] => {
   const canonical = CAPITALS[isoCode]?.name
   if (!canonical) return []
   const light = capitalCityLight(isoCode)
-  return [canonical, light?.name, light?.local, light?.native, ...(light?.alt ?? [])].filter(
-    (candidate): candidate is string => !!candidate
-  )
+  return [canonical, ...(light ? cityLightSpellings(light) : [])]
 }
 
 /**
