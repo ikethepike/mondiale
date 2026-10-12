@@ -1035,6 +1035,23 @@ describe('isCorrectFinalAnswer', () => {
     }
   })
 
+  it('accepts a regional speaker without listing it among the speakers', () => {
+    const challenge = { _type: 'language-challenge', language: 'Croatian' } as const
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: 'AT' },
+      })
+    ).toBe(true)
+    expect(languageSpeakers('Croatian')).not.toContain('AT')
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: 'FR' },
+      })
+    ).toBe(false)
+  })
+
   it('grades endonym picks positionally against the dealt beats', () => {
     const challenge: EndonymChallenge = {
       _type: 'endonym-challenge',

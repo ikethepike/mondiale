@@ -143,6 +143,11 @@ export const speaksRegionally = (isoCode: ISOCountryCode, language: string): boo
   !speaksLanguage(isoCode, language) &&
   (COUNTRIES[isoCode]?.regionalLanguages ?? []).includes(language)
 
+/** May a single-answer question accept this country for the language? Every
+ *  speaker, plus a regional statute — accepted, never required. */
+export const acceptsSpeaker = (isoCode: ISOCountryCode, language: string): boolean =>
+  speaksLanguage(isoCode, language) || speaksRegionally(isoCode, language)
+
 /**
  * Why a guess outside the answer set bounces free instead of costing a point:
  * the speaker stands off the board, or names a regional statute (Austria's

@@ -11,7 +11,7 @@ import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
-import { speaksLanguage, spokenLanguages } from '~~/lib/language-rounds'
+import { acceptsSpeaker, speaksLanguage, spokenLanguages } from '~~/lib/language-rounds'
 import { MAP_PATHS } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
 import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
@@ -1285,7 +1285,7 @@ export const isCorrectFinalAnswer = ({
     case 'language-challenge': {
       if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
       if (!isValidISOCode(submittedAnswer.isoCode)) return false
-      return speaksLanguage(submittedAnswer.isoCode, challenge.language)
+      return acceptsSpeaker(submittedAnswer.isoCode, challenge.language)
     }
     case 'membership-challenge':
     case 'treaty-challenge': {
