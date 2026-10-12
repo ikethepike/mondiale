@@ -2266,15 +2266,21 @@ export const isCorrectWaterGuess = (
 /** Shuffles a flat hand gets before the dealer tries another stat. */
 const FLAT_HAND_REDEALS = 6
 
+export const MINIMUM_RANKING_HAND = 3
+
 export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   const playerIds = Object.keys(game.players)
   const pool = playableCountries(game)
 
   // Continental pools are small — a full lobby on hard could ask for more
   // countries than the continent has data for. Shrink the hand per player
-  // rather than refusing to deal (never below a rankable three).
+  // (never below a rankable minimum), and once the pool can't give every seat
+  // its own hand, let the hands overlap rather than refuse to deal.
   const configured = DIFFICULTY_CONFIGURATION[game.difficulty].rankingChallengeCountries
-  const perPlayer = Math.max(3, Math.min(configured, Math.floor(pool.length / playerIds.length)))
+  const perPlayer = Math.max(
+    MINIMUM_RANKING_HAND,
+    Math.min(configured, Math.floor(pool.length / playerIds.length))
+  )
   const required = perPlayer * playerIds.length
 
   // Round 1 doubles as the tutorial — it stays on universally comfortable
@@ -2286,23 +2292,30 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   // otherwise players get a question with zero countries to rank. A stat the
   // whole pool agrees on is no question either (a continental pool's
   // electricity access is 100% across the board, and the round would score
-  // itself): the accessor must fill the round AND split the field.
-  const viable = Object.values(GROUP_CHALLENGES).filter(challenge => {
-    if (!isAccessorEnabled(game, challenge.id)) return false
-    if (opener && HEAVY_ACCESSORS.has(challenge.id)) return false
+  // itself): the accessor must split the field, and only the stats covering
+  // the most of the table (all of it, where any can) deal.
+  const coverage = (accessorId: GroupChallengeAccessorId) => {
     let available = 0
     let firstAmount: number | undefined
     let splits = false
     for (const isoCode of pool) {
-      const value = getValueByAccessorID(isoCode, challenge.id)
+      const value = getValueByAccessorID(isoCode, accessorId)
       if (!value) continue
       available++
       if (firstAmount === undefined) firstAmount = value.amount
       else if (value.amount !== firstAmount) splits = true
-      if (available >= required && splits) return true
+      if (available >= required && splits) break
     }
-    return false
-  })
+    return splits ? available : 0
+  }
+  const candidates = Object.values(GROUP_CHALLENGES)
+    .filter(challenge => isAccessorEnabled(game, challenge.id))
+    .filter(challenge => !(opener && HEAVY_ACCESSORS.has(challenge.id)))
+    .map(challenge => ({ challenge, available: coverage(challenge.id) }))
+  const widest = Math.min(required, Math.max(0, ...candidates.map(({ available }) => available)))
+  const viable = candidates
+    .filter(({ available }) => available >= Math.max(perPlayer, widest))
+    .map(({ challenge }) => challenge)
 
   if (!viable.length) {
     throw new EvalError('No group challenge has enough country data to fill a round')
@@ -2312,11 +2325,15 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
     new Set(hand.map(isoCode => getValueByAccessorID(isoCode, accessorId)?.amount)).size <= 1
 
   const dealHands = (accessorId: GroupChallengeAccessorId) => {
-    const deck = shuffleArray<ISOCountryCode>([...pool]).filter(
-      isoCode => !!getValueByAccessorID(isoCode, accessorId)
-    )
+    const dealable = pool.filter(isoCode => !!getValueByAccessorID(isoCode, accessorId))
+    let deck: ISOCountryCode[] = []
     const hands: Record<string, ISOCountryCode[]> = {}
-    for (const playerId of playerIds) hands[playerId] = deck.splice(0, perPlayer)
+    for (const playerId of playerIds) {
+      if (deck.length < perPlayer) {
+        deck = [...deck, ...shuffleArray(dealable.filter(isoCode => !deck.includes(isoCode)))]
+      }
+      hands[playerId] = deck.splice(0, perPlayer)
+    }
     return hands
   }
 
