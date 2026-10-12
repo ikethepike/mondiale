@@ -939,10 +939,11 @@ const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[])
   return Object.values(WATER_FEATURES)
     .filter(feature => {
       if (!kinds.includes(feature.kind)) return false
-      // The feature must belong to the board being played: at least two
-      // playable countries on the variant, and not mostly off-map
+      // The feature must belong to the board being played and not sit mostly
+      // off-map. One shore is enough: naming Hudson Bay needs no second
+      // country, and the blitz dealers' own floor already asks for three.
       const onBoard = feature.countries.filter(isoCode => pool.has(isoCode))
-      return onBoard.length >= 2 && onBoard.length >= feature.countries.length / 3
+      return onBoard.length >= 1 && onBoard.length >= feature.countries.length / 3
     })
     .map(feature => ({
       ...feature,
@@ -950,6 +951,7 @@ const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[])
       // micro-nations (Monaco on the Mediterranean) can't be required.
       countries: feature.countries.filter(isoCode => isCountryInPlay(game, isoCode)),
     }))
+    .filter(feature => feature.countries.length)
 }
 
 /** More touching countries = a longer clock. */

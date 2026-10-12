@@ -31,7 +31,8 @@ export const WATER_PARTS: Record<string, string[]> = {
   'caribbean-sea': ['gulf-of-honduras', 'gulf-of-uraba'],
 }
 
-/** Shores the geometry misses or invents. A part's correction carries into its whole. */
+/** Shores the geometry misses or invents. An arm's correction carries into its whole;
+ *  a whole's own correction is final. */
 export interface ShoreCorrection {
   include?: ISOCountryCode[]
   exclude?: ISOCountryCode[]
@@ -40,6 +41,9 @@ export interface ShoreCorrection {
 export const WATER_SHORE_CORRECTIONS: Record<string, ShoreCorrection> = {
   // Shores NE's coarse polygons hold just past the shore distance.
   'atlantic-ocean': { include: ['TT'] },
+  // India's coast is all Arabian Sea and Bay of Bengal polygons; New Zealand
+  // lies east of the Indian Ocean's limit at Tasmania's meridian.
+  'indian-ocean': { include: ['IN'], exclude: ['NZ'] },
   'ligurian-sea': { include: ['MC'] },
   'gulf-of-oman': { include: ['PK'] },
   'south-china-sea': { include: ['SG', 'TH'] },
@@ -48,6 +52,8 @@ export const WATER_SHORE_CORRECTIONS: Record<string, ShoreCorrection> = {
   'lake-chad': { include: ['NE', 'NG'] },
   // Wholly inside Mongolia, a few km short of the Russian border.
   'lake-khovsgol-nuur': { exclude: ['RU'] },
+  // The Ilemi tip of the map's South Sudan reaches the lake's northern end; its shores are KE and ET.
+  'lake-turkana': { exclude: ['SS'] },
 
   // Landform overlap is against coarse NE outlines: the Sahara polygon runs
   // down to 9°N, deep into the Sahel.
@@ -58,6 +64,7 @@ export const WATER_SHORE_CORRECTIONS: Record<string, ShoreCorrection> = {
   'range-ethiopian-highlands': { exclude: ['SD', 'SS'] },
   'range-annamite-range': { exclude: ['TH'] },
   'range-karakoram': { exclude: ['TJ'] },
+  'range-tatra-mountains': { exclude: ['CZ', 'UA'] },
   'range-alps': { include: ['MC'] },
   'range-himalayas': { include: ['PK'] },
 }
@@ -79,6 +86,7 @@ export const WATER_ROSTER_EXPECTATIONS: Record<string, RosterExpectation> = {
   // Wholly inside the range, so its outline never crosses them.
   'range-pyrenees': { includes: ['AD', 'ES', 'FR'], excludes: [] },
   'range-alps': { includes: ['AT', 'CH', 'IT', 'LI', 'MC'], excludes: [] },
+  'range-stanovoy-range': { includes: ['RU'], excludes: [] },
   'mediterranean-sea': {
     includes: [
       'AL',

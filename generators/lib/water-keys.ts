@@ -12,7 +12,28 @@ export interface ShoreLand {
 
 export type WaterKey = Pick<WaterFeature, 'id' | 'd' | 'bounds' | 'countries'>
 
-const roundTo = (value: number, decimals = 2) => Number(value.toFixed(decimals))
+export const roundTo = (value: number, decimals = 2) => Number(value.toFixed(decimals))
+
+export const boundsOf = (pointGroups: OutlinePoint[][]): WaterBounds => {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const points of pointGroups)
+    for (const [x, y] of points) {
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
+    }
+  return [roundTo(minX), roundTo(minY), roundTo(maxX - minX), roundTo(maxY - minY)]
+}
+
+export const boundsOverlap = (
+  [ax, ay, aw, ah]: WaterBounds,
+  [bx, by, bw, bh]: WaterBounds,
+  pad = 0
+) => ax <= bx + bw + pad && ax + aw >= bx - pad && ay <= by + bh + pad && ay + ah >= by - pad
 
 export const unionBounds = (
   [ax, ay, aw, ah]: WaterBounds,
@@ -28,25 +49,19 @@ export const unionBounds = (
   ]
 }
 
-type Extent = [number, number, number, number]
+/** Even-odd over every ring, so a hole (an island in a sea, a lake in a country) is outside. */
+export const pointInRings = (point: OutlinePoint, rings: OutlinePoint[][]): boolean =>
+  rings.reduce((inside, ring) => (ringContains(ring, point) ? !inside : inside), false)
 
-const extentOf = (rings: OutlinePoint[][]): Extent => {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const ring of rings)
-    for (const [x, y] of ring) {
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x)
-      maxY = Math.max(maxY, y)
-    }
-  return [minX, minY, maxX, maxY]
+/** `source` drawn into `target`, its countries appended in their own order. */
+export const absorbFeature = (target: WaterKey, source: WaterKey) => {
+  target.d = `${target.d} ${source.d}`
+  target.bounds = unionBounds(target.bounds, source.bounds)
+  target.countries = [
+    ...target.countries,
+    ...source.countries.filter(code => !target.countries.includes(code)),
+  ]
 }
-
-const extentsMeet = (a: Extent, b: Extent, pad: number) =>
-  a[0] <= b[2] + pad && a[2] >= b[0] - pad && a[1] <= b[3] + pad && a[3] >= b[1] - pad
 
 interface Segment<T> {
   owner: T
@@ -83,10 +98,6 @@ const segmentGrid = <T>(
     grid.get(`${Math.floor(point[0] / cell)}:${Math.floor(point[1] / cell)}`) ?? []
 }
 
-/** Even-odd over every ring, so a hole (an island in a sea, a lake in a country) is outside. */
-const insideRings = (rings: OutlinePoint[][], point: OutlinePoint) =>
-  rings.reduce((inside, ring) => (ringContains(ring, point) ? !inside : inside), false)
-
 /**
  * The countries a body of water touches: their land comes within `epsilon` of
  * the water's outline, measured edge to edge rather than vertex to vertex, or
@@ -95,7 +106,7 @@ const insideRings = (rings: OutlinePoint[][], point: OutlinePoint) =>
  * country (Ladoga's nearest Russian edge is the Finnish border).
  */
 export const createShoreTest = (lands: ShoreLand[], epsilon: number, cell = 4) => {
-  const shapes = lands.map(land => ({ ...land, extent: extentOf(land.rings) }))
+  const shapes = lands.map(land => ({ ...land, bounds: boundsOf(land.rings) }))
   const landEdgesNear = segmentGrid(
     shapes.map(({ code, rings }) => ({ owner: code, rings })),
     epsilon,
@@ -104,8 +115,8 @@ export const createShoreTest = (lands: ShoreLand[], epsilon: number, cell = 4) =
 
   return (water: OutlinePoint[][]): Set<ISOCountryCode> => {
     const found = new Set<ISOCountryCode>()
-    const extent = extentOf(water)
-    const candidates = shapes.filter(shape => extentsMeet(shape.extent, extent, epsilon))
+    const bounds = boundsOf(water)
+    const candidates = shapes.filter(shape => boundsOverlap(shape.bounds, bounds, epsilon))
 
     for (const ring of water)
       for (const point of ring)
@@ -125,28 +136,20 @@ export const createShoreTest = (lands: ShoreLand[], epsilon: number, cell = 4) =
             )
           )
         ) ||
-        shape.rings.some(ring => ring.length && insideRings(water, ring[0])) ||
-        water.some(ring => ring.length && insideRings(shape.rings, ring[0]))
+        shape.rings.some(ring => ring.length && pointInRings(ring[0], water)) ||
+        water.some(ring => ring.length && pointInRings(ring[0], shape.rings))
       if (touches) found.add(shape.code)
     }
     return found
   }
 }
 
-const sortedUnion = (a: ISOCountryCode[], b: ISOCountryCode[]) => [...new Set([...a, ...b])].sort()
-
-/**
- * Apply the curated shore overlay in place. Returns one line per entry that no
- * longer does anything — a missing feature, an include already there, an
- * exclude already gone — so an NE bump that fixes the geometry retires its
- * own corrections instead of leaving dead rows.
- */
-export const applyShoreCorrections = (
+const applyShoreCorrections = (
   features: Record<string, WaterKey>,
-  corrections: Record<string, ShoreCorrection>
+  corrections: [string, ShoreCorrection][]
 ): string[] => {
   const stale: string[] = []
-  for (const [id, { include = [], exclude = [] }] of Object.entries(corrections)) {
+  for (const [id, { include = [], exclude = [] }] of corrections) {
     const feature = features[id]
     if (!feature) {
       stale.push(`${id}: no such feature`)
@@ -156,25 +159,35 @@ export const applyShoreCorrections = (
       if (feature.countries.includes(code)) stale.push(`${id}: already includes ${code}`)
     for (const code of exclude)
       if (!feature.countries.includes(code)) stale.push(`${id}: already lacks ${code}`)
-    feature.countries = sortedUnion(
-      feature.countries.filter(code => !exclude.includes(code)),
-      include
-    )
+    feature.countries = [
+      ...new Set([...feature.countries.filter(code => !exclude.includes(code)), ...include]),
+    ].sort()
   }
   return stale
 }
 
 /**
- * Fold each named arm into the sea it belongs to: the whole draws the arm and
- * lists its shores, and the arm still deals as itself. NE cuts the Adriatic,
- * the Alboran and the rest out of the Mediterranean polygon, which is what
- * left Croatia and Morocco off the Mediterranean.
+ * Settle the area answer keys in place. Each named arm is folded into the sea
+ * it belongs to — the whole draws the arm and lists its shores, and the arm
+ * still deals as itself (NE cuts the Adriatic and the Alboran out of the
+ * Mediterranean polygon, which left Croatia and Morocco off it). An arm's
+ * corrections land before the fold, so they carry into its whole; every other
+ * correction lands after, so a whole's exclude is never undone by an arm.
+ * Returns one line per entry that no longer does anything — a missing feature,
+ * an include already there, an exclude already gone — so an NE bump that fixes
+ * the geometry retires its own corrections instead of leaving dead rows.
  */
-export const foldWaterParts = (
+export const settleWaterKeys = (
   features: Record<string, WaterKey>,
-  parts: Record<string, string[]>
+  parts: Record<string, string[]>,
+  corrections: Record<string, ShoreCorrection>
 ): string[] => {
-  const stale: string[] = []
+  const arms = new Set(Object.values(parts).flat())
+  const entries = Object.entries(corrections)
+  const stale = applyShoreCorrections(
+    features,
+    entries.filter(([id]) => arms.has(id))
+  )
   for (const [wholeId, partIds] of Object.entries(parts)) {
     const whole = features[wholeId]
     if (!whole) {
@@ -191,11 +204,16 @@ export const foldWaterParts = (
         stale.push(`${wholeId}: no such part ${partId}`)
         continue
       }
-      whole.d = `${whole.d} ${part.d}`
-      whole.bounds = unionBounds(whole.bounds, part.bounds)
-      whole.countries = sortedUnion(whole.countries, part.countries)
+      absorbFeature(whole, part)
     }
+    whole.countries.sort()
   }
+  stale.push(
+    ...applyShoreCorrections(
+      features,
+      entries.filter(([id]) => !arms.has(id))
+    )
+  )
   return stale
 }
 

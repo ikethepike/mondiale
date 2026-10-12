@@ -36,11 +36,14 @@ import {
   WATER_SHORE_CORRECTIONS,
 } from '../../../data/static/water-shore-corrections'
 import {
-  applyShoreCorrections,
+  absorbFeature,
+  boundsOf,
+  boundsOverlap,
   createShoreTest,
-  foldWaterParts,
+  pointInRings,
   rosterDrift,
-  unionBounds,
+  roundTo,
+  settleWaterKeys,
 } from '../../lib/water-keys'
 import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
@@ -79,6 +82,14 @@ const REGION_KINDS: Record<string, 'range' | 'desert' | 'plateau'> = {
   Desert: 'desert',
   Plateau: 'plateau',
 }
+
+const KIND_WORDS: Partial<Record<WaterKind, RegExp>> = {
+  range: /\b(range|mountains)\b/i,
+  desert: /\bdesert\b/i,
+  plateau: /\bplateau\b/i,
+}
+/** Does the name itself say what it is? "Stanovoy Range" is a range, whatever else NE files it as. */
+const namesKind = (name: string, kind: WaterKind) => KIND_WORDS[kind]?.test(name) ?? false
 
 /**
  * NE files these under `lakes`, but they're stretches of the Great Lakes system —
@@ -132,8 +143,6 @@ const fetchLayer = async (file: string): Promise<FeatureCollection> => {
   return JSON.parse(readFileSync(cachePath, 'utf-8'))
 }
 
-const roundTo = (value: number, decimals = 2) => Number(value.toFixed(decimals))
-
 const decimate = (points: Point[], minGap = DECIMATE_UNITS): Point[] => {
   const output: Point[] = []
   for (const point of points) {
@@ -148,21 +157,6 @@ const decimate = (points: Point[], minGap = DECIMATE_UNITS): Point[] => {
     output.push([roundTo(last[0]), roundTo(last[1])])
   }
   return output
-}
-
-const boundsOf = (pointGroups: Point[][]): [number, number, number, number] => {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const points of pointGroups)
-    for (const [x, y] of points) {
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x)
-      maxY = Math.max(maxY, y)
-    }
-  return [roundTo(minX), roundTo(minY), roundTo(maxX - minX), roundTo(maxY - minY)]
 }
 
 const pathFromRings = (rings: Point[][]): string =>
@@ -242,23 +236,6 @@ const countryShapes: CountryShape[] = ISOCountryCodes.map(code => {
 const inBounds = ([x, y]: Point, [bx, by, bw, bh]: [number, number, number, number], pad = 0) =>
   x >= bx - pad && x <= bx + bw + pad && y >= by - pad && y <= by + bh + pad
 
-const pointInRings = (point: Point, rings: Point[][]): boolean => {
-  let inside = false
-  for (const ring of rings) {
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i]
-      const [xj, yj] = ring[j]
-      if (
-        yi > point[1] !== yj > point[1] &&
-        point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi
-      ) {
-        inside = !inside
-      }
-    }
-  }
-  return inside
-}
-
 const shoresOf = createShoreTest(countryShapes, SHORE_EPSILON)
 
 const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
@@ -272,11 +249,6 @@ const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
   }
   return ordered
 }
-
-const boundsOverlap = (
-  [ax, ay, aw, ah]: [number, number, number, number],
-  [bx, by, bw, bh]: [number, number, number, number]
-) => ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by
 
 /**
  * Which countries a landform actually overlaps — the whole question for a
@@ -412,9 +384,8 @@ const add = (feature: WaterFeature) => {
   // NE splits the Pacific and Atlantic into hemispheric halves that share one
   // English name — merge the halves into the canonical ocean.
   if (existing && existing.kind === 'ocean' && feature.kind === 'ocean') {
-    existing.d = `${existing.d} ${feature.d}`
-    existing.bounds = unionBounds(existing.bounds, feature.bounds)
-    existing.countries = [...new Set([...existing.countries, ...feature.countries])].sort()
+    absorbFeature(existing, feature)
+    existing.countries.sort()
     return
   }
   // Some names repeat across the globe (two "North Channel"s) — keep the
@@ -583,12 +554,7 @@ const main = async () => {
         console.warn(`water-aliases: merge stretch missing from NE data: ${name}`)
         continue
       }
-      canonical.d = `${canonical.d} ${stretch.d}`
-      canonical.bounds = unionBounds(canonical.bounds, stretch.bounds)
-      canonical.countries = [
-        ...canonical.countries,
-        ...stretch.countries.filter(code => !canonical.countries.includes(code)),
-      ]
+      absorbFeature(canonical, stretch)
       aliases.push(stretch.name)
       mergedIds.add(id)
     }
@@ -618,7 +584,11 @@ const main = async () => {
     if (!countries.length) continue
 
     const rival = regionByName.get(name)
-    if (rival && rival.countries.length >= countries.length) continue
+    if (rival) {
+      const lead = countries.length - rival.countries.length
+      if (lead < 0 || (lead === 0 && !(namesKind(name, kind) && !namesKind(name, rival.kind))))
+        continue
+    }
     regionByName.set(name, {
       id: `${kind}-${slugify(name)}`,
       name,
@@ -631,9 +601,7 @@ const main = async () => {
   for (const feature of regionByName.values()) add(feature)
 
   // --- Answer keys: the curated overlay, then each sea's named arms ----------
-  for (const line of applyShoreCorrections(features, WATER_SHORE_CORRECTIONS))
-    console.warn(`water-shore-corrections: ${line}`)
-  for (const line of foldWaterParts(features, WATER_PARTS))
+  for (const line of settleWaterKeys(features, WATER_PARTS, WATER_SHORE_CORRECTIONS))
     console.warn(`water-shore-corrections: ${line}`)
 
   // --- Drift defenses: an NE bump must not silently reship broken names ------

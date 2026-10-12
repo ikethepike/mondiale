@@ -7,13 +7,7 @@ import {
 } from '~~/data/static/water-shore-corrections'
 import type { OutlinePoint } from '~~/lib/outline'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import {
-  applyShoreCorrections,
-  createShoreTest,
-  foldWaterParts,
-  rosterDrift,
-  type WaterKey,
-} from './water-keys'
+import { createShoreTest, rosterDrift, settleWaterKeys, type WaterKey } from './water-keys'
 
 const square = (x: number, y: number, size: number): OutlinePoint[] => [
   [x, y],
@@ -66,40 +60,61 @@ const key = (id: string, countries: string[]): WaterKey => ({
   countries: countries as ISOCountryCode[],
 })
 
-describe('applyShoreCorrections', () => {
+describe('settleWaterKeys', () => {
   it('adds and drops, keeping the key sorted', () => {
     const features = { sea: key('sea', ['FI', 'NO', 'RU']) }
-    applyShoreCorrections(features, { sea: { include: ['IS'], exclude: ['FI'] } })
+    settleWaterKeys(features, {}, { sea: { include: ['IS'], exclude: ['FI'] } })
     expect(features.sea.countries).toEqual(['IS', 'NO', 'RU'])
   })
 
   it('reports every entry that no longer does anything', () => {
     const features = { sea: key('sea', ['NO', 'RU']) }
     expect(
-      applyShoreCorrections(features, {
-        sea: { include: ['NO'], exclude: ['FI'] },
-        gone: { include: ['IS'] },
-      })
-    ).toEqual(['sea: already includes NO', 'sea: already lacks FI', 'gone: no such feature'])
+      settleWaterKeys(
+        features,
+        { sea: ['gulf'] },
+        { sea: { include: ['NO'], exclude: ['FI'] }, gone: { include: ['IS'] } }
+      )
+    ).toEqual([
+      'sea: no such part gulf',
+      'sea: already includes NO',
+      'sea: already lacks FI',
+      'gone: no such feature',
+    ])
   })
-})
 
-describe('foldWaterParts', () => {
   it('draws and lists each arm in the whole, and leaves the arm dealing as itself', () => {
     const features = {
       med: key('med', ['FR', 'IT']),
-      adriatic: { ...key('adriatic', ['HR', 'IT']), bounds: [2, 2, 3, 3] as WaterKey['bounds'] },
+      adriatic: { ...key('adriatic', ['IT', 'HR']), bounds: [2, 2, 3, 3] as WaterKey['bounds'] },
     }
-    foldWaterParts(features, { med: ['adriatic'] })
+    settleWaterKeys(features, { med: ['adriatic'] }, {})
     expect(features.med.countries).toEqual(['FR', 'HR', 'IT'])
     expect(features.med.d).toBe('M med M adriatic')
     expect(features.med.bounds).toEqual([0, 0, 5, 5])
-    expect(features.adriatic.countries).toEqual(['HR', 'IT'])
+    expect(features.adriatic.countries).toEqual(['IT', 'HR'])
+  })
+
+  it("carries an arm's correction into its whole", () => {
+    const features = { med: key('med', ['FR']), ligurian: key('ligurian', ['FR', 'IT', 'SM']) }
+    settleWaterKeys(
+      features,
+      { med: ['ligurian'] },
+      { ligurian: { include: ['MC'], exclude: ['SM'] } }
+    )
+    expect(features.med.countries).toEqual(['FR', 'IT', 'MC'])
+  })
+
+  it("never lets an arm undo its whole's exclude", () => {
+    const features = { med: key('med', ['FR']), aegean: key('aegean', ['BG', 'GR']) }
+    settleWaterKeys(features, { med: ['aegean'] }, { med: { exclude: ['BG'] } })
+    expect(features.med.countries).toEqual(['FR', 'GR'])
+    expect(features.aegean.countries).toEqual(['BG', 'GR'])
   })
 
   it('refuses a nested arm', () => {
     const features = { a: key('a', []), b: key('b', []), c: key('c', []) }
-    expect(() => foldWaterParts(features, { a: ['b'], b: ['c'] })).toThrow(/itself a whole/)
+    expect(() => settleWaterKeys(features, { a: ['b'], b: ['c'] }, {})).toThrow(/itself a whole/)
   })
 })
 

@@ -7,7 +7,7 @@ import {
   prominenceCandidates,
 } from '~~/lib/challenges'
 import { isCountryInPlay, playableWorldCountries } from '~~/lib/game-rules'
-import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
+import type { NameWaterChallenge, WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
 import { gameDifficulties, type Game, type GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -56,6 +56,32 @@ describe('prominenceCandidates', () => {
     // the full atlas.
     const pool = Array.from({ length: 40 }, (_, index) => feature(index, 40 - index))
     expect(prominenceCandidates(pool, 1)).toHaveLength(40)
+  })
+})
+
+describe('getNameWaterChallenge (via getRoundChallenge)', () => {
+  afterEach(() => {
+    delete process.env.FORCE_ROUND_TYPE
+  })
+
+  // Naming a body of water needs no second shore: Hudson Bay, Baikal and
+  // Ladoga each touch one country and are still the question.
+  it('deals water that touches a single country', async () => {
+    process.env.FORCE_ROUND_TYPE = 'name-that-water'
+    const rules = {
+      regions: [],
+      difficulty: 'hard',
+      rounds: [{}],
+      players: { a: { phase: 'group-challenge' } },
+    } as unknown as Game
+    const shoreCounts = new Set<number>()
+    for (let deal = 0; deal < 40; deal++) {
+      const dealt = (await getRoundChallenge({ game: rules })) as NameWaterChallenge
+      expect(dealt._type).toBe('name-water-challenge')
+      expect(dealt.countries.length, dealt.featureId).toBeGreaterThanOrEqual(1)
+      shoreCounts.add(Math.min(dealt.countries.length, 2))
+    }
+    expect(shoreCounts.has(1)).toBe(true)
   })
 })
 
