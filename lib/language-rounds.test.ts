@@ -4,7 +4,9 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import {
   boardSpeakers,
+  isSignLanguage,
   speaksLanguage,
+  spokenLanguages,
   tongueBuzzRule,
   tongueBuzzTally,
   motherTongueQuestion,
@@ -201,6 +203,19 @@ describe('the dealt round', () => {
     // And the reverse case the spoken list alone would drop: Burundi's English
     // is official there and reaches no spoken list.
     expect(boardSpeakers(ISOCountryCodes).get('English') ?? []).toContain('BI')
+  })
+})
+
+describe('spoken languages', () => {
+  it('never counts a sign language as spoken', () => {
+    expect(COUNTRIES.NZ.officialLanguages).toContain('New Zealand Sign Language')
+    expect(isSignLanguage('New Zealand Sign Language')).toBe(true)
+    expect(isSignLanguage('English')).toBe(false)
+    for (const isoCode of ISOCountryCodes) {
+      for (const language of spokenLanguages(isoCode)) {
+        expect(isSignLanguage(language), `${isoCode}/${language}`).toBe(false)
+      }
+    }
   })
 })
 

@@ -1,10 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CLASSIC_SETTLE_SLACK_MS, revealBudgetMsFor } from '~~/lib/round-beats'
 import {
   ENGINE_STALL_MS,
   SEAT_OVERDUE_SLACK_MS,
   seatInvariantViolations,
+  subjectStallMs,
 } from '~~/lib/seat-invariants'
+import { createPlayer } from '~~/lib/player'
+import { latestRound } from '~~/lib/rounds'
+import { generateTiles } from '~~/lib/tiles'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
@@ -12,7 +16,7 @@ import { seatFireAt } from '~~/lib/seat-transitions'
 import { sweepGame } from './seat-auditor'
 import { armSeat, armTable, dropArmedTimersForTests } from './seat-cursor'
 import { testCursor, testSeat } from './test-seat'
-import { createTestTable, type TestTable, uniqueGameId } from './test-table'
+import { createTestTable, type TestTable, uniqueGameId, warmDeferredModules } from './test-table'
 
 const TWO_TRUTHS = {
   _type: 'two-truths-challenge',
@@ -180,5 +184,62 @@ describe('the table never waits with no exit', () => {
     expect(kinds(game, { now: now + ENGINE_STALL_MS + 1 })).toEqual([])
     expect(kinds(game, { now: holdUntil + ENGINE_STALL_MS })).toEqual([])
     expect(kinds(game, { now: holdUntil + ENGINE_STALL_MS + 1 })).toEqual(['round-overdue'])
+  })
+})
+
+describe('the round stall bound', () => {
+  beforeAll(warmDeferredModules, 60_000)
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    dropArmedTimersForTests()
+    vi.unstubAllEnvs()
+    vi.useRealTimers()
+  })
+
+  it('holds a four-seat timeline round that every seat sits out', async () => {
+    vi.stubEnv('FORCE_ROUND_TYPE', 'timeline')
+    const seats = [0, 1, 2, 3].map(index => ({
+      ...createPlayer(`idle-${index}`),
+      name: `Idle ${index}`,
+      ready: true,
+    }))
+    const id = uniqueGameId('stall')
+    const game = {
+      id,
+      host: seats[0]!.id,
+      started: false,
+      length: 'short',
+      regions: [],
+      difficulty: 'normal',
+      liveGuesses: true,
+      challengeOverrides: {},
+      tiles: generateTiles('short', id),
+      rounds: [],
+      players: Object.fromEntries(seats.map(seat => [seat.id, seat])),
+    } as unknown as Game
+    const table = await createTestTable(game, {
+      connected: seats.map(seat => seat.id),
+      captureEmits: false,
+    })
+    await table.send(game.host, { event: 'start-game' })
+
+    let enteredAt: number | undefined
+    let challenge: RoundChallenge | undefined
+    for (const until = Date.now() + 20 * 60_000; Date.now() < until;) {
+      await vi.advanceTimersByTimeAsync(1000)
+      const state = await table.read()
+      const { step } = state.players[game.host]!.cursor
+      if (step === 'round' && enteredAt === undefined) {
+        enteredAt = Date.now()
+        challenge = latestRound(state)?.groupChallenge
+      }
+      if (enteredAt !== undefined && step !== 'round') break
+    }
+    table.dispose()
+
+    expect(challenge?._type).toBe('timeline-challenge')
+    const held = Date.now() - enteredAt!
+    expect(held).toBeGreaterThan(subjectStallMs('round')!)
+    expect(held).toBeLessThanOrEqual(subjectStallMs('round', challenge)!)
   })
 })

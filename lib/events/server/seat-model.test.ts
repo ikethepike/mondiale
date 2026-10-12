@@ -454,6 +454,7 @@ const runScenario = async (scenario: Scenario) => {
       else if (elapsed >= VICTORY_LIMIT_MS) break
       await vi.advanceTimersByTimeAsync(LIVENESS_CHUNK_MS)
       state = await check(`liveness +${elapsed}ms`)
+      const live = latestRound(state)?.groupChallenge
       for (const seat of Object.values(state.players)) {
         const subject = `${seat.cursor.step} ${seat.cursor.subject}`
         const last = lastMove.get(seat.id)
@@ -462,14 +463,14 @@ const runScenario = async (scenario: Scenario) => {
           if (last) tableMovedAt = Date.now()
           continue
         }
-        const limit = subjectStallMs(seat.cursor.step)
+        const limit = subjectStallMs(seat.cursor.step, live)
         if (limit === undefined) continue
         expect(Date.now() - last.at, `${seat.id} stalled on ${subject}`).toBeLessThanOrEqual(
           limit + LIVENESS_CHUNK_MS
         )
       }
       expect(Date.now() - tableMovedAt, 'table stalled').toBeLessThanOrEqual(
-        subjectStallMs('round')! + LIVENESS_CHUNK_MS
+        subjectStallMs('round', live)! + LIVENESS_CHUNK_MS
       )
     }
     expect(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FACTBOOK } from '~~/data/factbook.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { spokenLanguages } from '~~/lib/language-rounds'
 import { canonicalLanguage, officialLanguages, splitLanguageSegments } from './languages'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -91,7 +92,7 @@ describe('official languages', () => {
 
   it('drops a truncated share with no percent sign', () => {
     // Spain's entry runs off mid-parenthetical: "Aranese (official"
-    expect(officialFor('ES')).toContain('Aranese')
+    expect(officialFor('ES')).toContain('Occitan')
     expect(officialFor('ES').join(' ')).not.toMatch(/[<>]/)
   })
 
@@ -114,6 +115,21 @@ describe('canonical spelling', () => {
     expect(canonicalLanguage('Bangla')).toBe('Bengali')
     expect(canonicalLanguage('Mandarin')).toBe('Chinese')
     expect(canonicalLanguage('French')).toBe('French')
+  })
+
+  it('spells a language one way across both sources', () => {
+    // A language split across two spellings hides its speakers from each other:
+    // "speaks siSwati" graded South Africa's Swati wrong.
+    expect(canonicalLanguage('Somalia')).toBe('Somali')
+    expect(canonicalLanguage('Somali')).toBe('Somali')
+    expect(officialFor('ET')).toEqual(expect.arrayContaining(['Somali', 'Tigrinya']))
+    expect(officialFor('SZ')).toContain('Swati')
+    expect(officialFor('FJ')).toContain('Fijian')
+    for (const isoCode of Object.keys(COUNTRIES) as ISOCountryCode[]) {
+      for (const name of spokenLanguages(isoCode)) {
+        expect(canonicalLanguage(name), `${isoCode}/${name}`).toBe(name)
+      }
+    }
   })
 
   it('never emits a name carrying source punctuation', () => {

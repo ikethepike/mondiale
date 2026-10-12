@@ -15,7 +15,12 @@
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
 import { CAPITALS } from '~~/data/capitals.gen'
-import { capitalCityLight, capitalCountryByName, capitalSpellings } from '~~/lib/capitals'
+import {
+  capitalCityLight,
+  capitalCountryByName,
+  capitalSpellings,
+  cityLightSpellings,
+} from '~~/lib/capitals'
 import { normalizeAnswer } from '~~/lib/strings'
 import type { CityLight } from '~~/types/city.type'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -58,14 +63,14 @@ const getCityIndex = (): ReadonlyMap<string, ISOCountryCode> => {
 export const cityCountryByName = (typed: string): ISOCountryCode | undefined =>
   getCityIndex().get(normalizeAnswer(typed)) ?? capitalCountryByName(typed)
 
+let canonicalKeys: Set<string> | undefined
+
 /**
  * Every name that belongs to one city alone: roster names and aliases, gazetteer
  * canonicals and official capital names — the keys the indexes claim first. A
  * gazetteer variant that is one of these names another city (Lomé's row lists
  * "Rome"), so it never counts as a spelling of the city it was filed under.
  */
-let canonicalKeys: Set<string> | undefined
-
 const getCanonicalKeys = (): ReadonlySet<string> => {
   if (canonicalKeys) return canonicalKeys
   const names = [
@@ -79,20 +84,38 @@ const getCanonicalKeys = (): ReadonlySet<string> => {
   return canonicalKeys
 }
 
-const rowSpellings = (city: CityLight): string[] =>
-  [city.name, city.local, city.native, ...city.alt].filter((name): name is string => !!name)
-
-/**
- * A non-capital's gazetteer row, joined on its canonical name before any
- * alternate so a smaller town that lists the city among its variants never
- * claims the join. A capital resolves through `capitalCityLight` instead.
- */
 const cityRow = (isoCode: ISOCountryCode, wanted: ReadonlySet<string>): CityLight | undefined => {
   const rows = CITY_LIGHTS[isoCode] ?? []
+  // Canonical names first: a smaller town that lists the city among its variants never claims it.
   return (
     rows.find(city => wanted.has(normalizeAnswer(city.name))) ??
-    rows.find(city => rowSpellings(city).some(name => wanted.has(normalizeAnswer(name))))
+    rows.find(city => cityLightSpellings(city).some(name => wanted.has(normalizeAnswer(name))))
   )
+}
+
+const capitalAmong = (isoCode: ISOCountryCode, wanted: ReadonlySet<string>): string | undefined => {
+  const capital = CAPITALS[isoCode]?.name
+  return capital && wanted.has(normalizeAnswer(capital)) ? capital : undefined
+}
+
+const nameKeys = (names: readonly string[]): ReadonlySet<string> =>
+  new Set(names.map(name => normalizeAnswer(name)))
+
+/** Whether the city known as `names` is `isoCode`'s official capital. */
+export const isCapitalCity = (isoCode: ISOCountryCode, names: readonly string[]): boolean =>
+  !!capitalAmong(isoCode, nameKeys(names))
+
+/**
+ * The gazetteer row of the city known as `names` in `isoCode` — its own row,
+ * never its country's capital's unless it is that capital. Undefined where the
+ * city falls outside the generator's per-country slice.
+ */
+export const cityLightFor = (
+  isoCode: ISOCountryCode,
+  names: readonly string[]
+): CityLight | undefined => {
+  const wanted = nameKeys(names)
+  return capitalAmong(isoCode, wanted) ? capitalCityLight(isoCode) : cityRow(isoCode, wanted)
 }
 
 /**
@@ -105,12 +128,10 @@ export const citySpellingKeys = (
   isoCode: ISOCountryCode,
   names: readonly string[]
 ): ReadonlySet<string> => {
-  const wanted = new Set(names.map(name => normalizeAnswer(name)))
-  const capital = CAPITALS[isoCode]?.name
-  const isCapital = !!capital && wanted.has(normalizeAnswer(capital))
-  const row = isCapital ? capitalCityLight(isoCode) : cityRow(isoCode, wanted)
-  const own = [...names, isCapital ? capital : undefined, row?.name]
-  const variants = isCapital ? capitalSpellings(isoCode) : row ? rowSpellings(row) : []
+  const capital = capitalAmong(isoCode, nameKeys(names))
+  const row = cityLightFor(isoCode, names)
+  const own = [...names, capital, row?.name]
+  const variants = capital ? capitalSpellings(isoCode) : row ? cityLightSpellings(row) : []
   const canonical = getCanonicalKeys()
   return new Set(
     [
