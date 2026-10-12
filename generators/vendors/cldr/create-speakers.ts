@@ -121,14 +121,14 @@ const main = async () => {
       (SPOKEN_LANGUAGE_SHARES[isoCode] ?? []).map(row => [canonicalLanguage(row.language), row])
     )
 
-    const named = new Set([
+    const namedBySources = new Set([
       ...national,
       ...regional,
       ...namedLanguages(text).map(local),
       ...listedLanguages(isoCode),
-      ...curated.keys(),
       ...[...cldr].filter(([, { status }]) => status).map(([language]) => language),
     ])
+    const named = new Set([...namedBySources, ...curated.keys()])
 
     const rows: { [language: string]: SpeakerRow } = {}
     for (const language of new Set([...named, ...cldr.keys()])) {
@@ -152,7 +152,14 @@ const main = async () => {
       if (fromCurated !== undefined) {
         row.share = fromCurated
         row.source = 'mondiale-editorial'
-        if (vouched && fromCldr !== undefined && fromCldr >= fromCurated) {
+        // Redundant only if the row would come out the same without it: named
+        // by another source AND sized by a vouched CLDR figure at least as high.
+        if (
+          vouched &&
+          namedBySources.has(language) &&
+          fromCldr !== undefined &&
+          fromCldr >= fromCurated
+        ) {
           redundant.push(`${isoCode} ${language}: curated ${fromCurated}%, CLDR ${fromCldr}%`)
         }
       } else if (fromFactbook !== undefined && (!vouched || fromFactbook >= (fromCldr ?? 0))) {

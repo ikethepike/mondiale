@@ -157,6 +157,8 @@ export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
   'Haitian Creole': 'Haitian',
   Tagalog: 'Tagalog / Filipino',
   'Raeto Romance': 'Romansh',
+  // Fiji's official Hindustani; the game asks one "Hindi".
+  'Fiji Hindi': 'Hindi',
   // countries-list's name for ISO 639-1 "ng"; Namibians call it Oshiwambo.
   Ndonga: 'Oshiwambo',
   // Only Haiti's entry says a bare official "Creole"; Seychelles and the rest
@@ -362,6 +364,10 @@ export const CLDR_LANGUAGE_FOLDS: { [cldrCode: string]: string } = {
   wuu: 'zh',
   hsn: 'zh',
   gan: 'zh',
+  // Lahnda ("Western Panjabi"); CLDR aliases pnb to it.
+  lah: 'pa',
+  pnb: 'pa',
+  hif: 'hi',
   ckb: 'ku',
   kmr: 'ku',
   sdh: 'ku',

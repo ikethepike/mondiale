@@ -16,6 +16,7 @@ import {
   boardSpeakers,
   isHeadlineLanguage,
   speaksLanguage,
+  worldSpeakers,
 } from '~~/lib/language-rounds'
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
@@ -232,7 +233,9 @@ const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge | undef
   const speakers = boardSpeakers(pool)
   const language = sample(
     [...speakers].flatMap(([language, countries]) =>
-      isHeadlineLanguage(language, languageSpeakers(language)) ? countries.map(() => language) : []
+      isHeadlineLanguage(language, worldSpeakers().get(language) ?? [])
+        ? countries.map(() => language)
+        : []
     )
   )
   if (!language) return undefined

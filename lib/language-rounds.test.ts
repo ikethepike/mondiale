@@ -6,6 +6,7 @@ import {
   boardSpeakers,
   isSignLanguage,
   MOTHER_TONGUE_SPEAKERS,
+  acceptsSpeaker,
   languageBounce,
   isHeadlineLanguage,
   languageBounceLine,
@@ -315,6 +316,55 @@ describe('spoken languages', () => {
     expect(headline('Fiji Hindi')).toBe(false)
   })
 
+  it('bounces a speaker benched from a world board as off the board', () => {
+    // Liechtenstein speaks German; a world deal that benched it must not
+    // tell the player "only 100% speak it".
+    const german = challengeOf('German', ['DE', 'AT', 'CH'])
+    expect(languageBounce(german, 'LI')).toBe('off-board')
+    expect(languageBounceLine(german, 'LI')).toBe(
+      "Liechtenstein does speak German — but it isn't in play this game"
+    )
+  })
+
+  it('never claims a share no source measured', () => {
+    const swahili = challengeOf('Swahili', ['KE', 'TZ', 'UG'])
+    expect(speakerRow('CD', 'Swahili')?.share).toBeUndefined()
+    expect(languageBounceLine(swahili, 'CD')).toBe(
+      'Democratic Republic of the Congo has Swahili speakers, but no source counts how many speak it — not counted'
+    )
+  })
+
+  it('accepts a statute or a named minority, never a school subject', () => {
+    expect(acceptsSpeaker('BI', 'English')).toBe(true)
+    expect(acceptsSpeaker('LT', 'Russian')).toBe(true)
+    expect(acceptsSpeaker('DE', 'English')).toBe(false)
+    expect(acceptsSpeaker('SE', 'English')).toBe(false)
+  })
+
+  it('keeps a buzz round from being probed for free', () => {
+    const english = {
+      ...challengeOf('English', ['GB', 'IE']),
+      _type: 'tongue-buzz-challenge' as const,
+    }
+    // A statute still bounces; a second language or a minority is a real miss.
+    expect(languageBounce(english, 'BI')).toBe('statute')
+    expect(languageBounce(english, 'SE')).toBeUndefined()
+    expect(languageBounce(english, 'NL')).toBeUndefined()
+  })
+
+  it('keeps the curated rows that name a language no other source sizes', () => {
+    // Andorra's Spanish is named only by the curated row; without it CLDR's
+    // 43% filed it as a second language.
+    expect(speakerRow('AD', 'Spanish')).toMatchObject({ named: true, source: 'mondiale-editorial' })
+    expect(speaksLanguage('AD', 'Spanish')).toBe(true)
+  })
+
+  it('folds the varieties CLDR files apart', () => {
+    expect(SPEAKERS.PK?.['Western Panjabi']).toBeUndefined()
+    expect(speaksLanguage('PK', 'Punjabi')).toBe(true)
+    expect(speaksLanguage('FJ', 'Hindi')).toBe(true)
+  })
+
   it('never counts a sign language as spoken', () => {
     expect(SPEAKERS.NZ?.['New Zealand Sign Language']).toBeDefined()
     expect(isSignLanguage('New Zealand Sign Language')).toBe(true)
@@ -356,6 +406,7 @@ describe('tongue buzz', () => {
   it('credits an off-board speaker instead of locking them out', () => {
     // A Europe board dealing French: buzzing Senegal is right about the world.
     const challenge = {
+      _type: 'tongue-buzz-challenge' as const,
       language: 'French',
       countries: ['FR', 'BE', 'LU', 'MC', 'CH'] as ISOCountryCode[],
       scope: ['europe' as const],

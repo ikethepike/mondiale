@@ -1,6 +1,6 @@
 Speaker table from CLDR 48.0.0 territoryInfo, the Factbook snapshot and data/static/spoken-language-shares.ts.
 
-Named by a source but sized by none (186) — a national statute still counts; anything else needs a curated row:
+Named by a source but sized by none (184) — a national statute still counts; anything else needs a curated row:
   AF Uzbek
   AF Turkmen
   AR Italian
@@ -24,7 +24,6 @@ Named by a source but sized by none (186) — a national statute still counts; a
   BR English
   BR Venetian
   BN English
-  BN Chinese
   BI Swahili
   CA Chipewyan
   CA Plains Cree
@@ -54,7 +53,6 @@ Named by a source but sized by none (186) — a national statute still counts; a
   DJ Afar
   ER Afar
   ET English
-  FJ Hindi
   FJ Urdu
   FI Skolt Sami
   GM Peul

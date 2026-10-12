@@ -16,6 +16,7 @@
  * mean the same thing by "speaks".
  */
 import { COUNTRIES } from '~~/data/countries.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { SPEAKERS } from '~~/data/speakers.gen'
 import type {
   MotherTongueChallenge,
@@ -30,7 +31,10 @@ import { isChallengeOfType } from './rounds'
 import { boardLabel } from './variant'
 
 /** Either language round: both name a language and carry a board-scoped set. */
-type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language' | 'scope'> & {
+type LanguageRound = Pick<
+  MotherTongueChallenge | TongueBuzzChallenge,
+  '_type' | 'language' | 'scope'
+> & {
   countries: ISOCountryCode[]
 }
 
@@ -132,6 +136,12 @@ export const boardSpeakers = (pool: readonly ISOCountryCode[]): Map<string, ISOC
   return speakers
 }
 
+let worldIndex: Map<string, ISOCountryCode[]> | undefined
+
+/** `boardSpeakers` over every country, built once. */
+export const worldSpeakers = (): Map<string, ISOCountryCode[]> =>
+  (worldIndex ??= boardSpeakers(ISOCountryCodes))
+
 /** How many board countries a Mother Tongue answer set may hold: one is a
  *  lookup, and past 32 (English on a world board) the round is a typing test. */
 export const MOTHER_TONGUE_SPEAKERS = { min: 2, max: 32 } as const
@@ -221,8 +231,12 @@ export const speaksButOffBoard = (
 
 /** May a single-answer question accept this country for the language? Every
  *  speaker, plus any sourced row below the bar — accepted, never required. */
-export const acceptsSpeaker = (isoCode: ISOCountryCode, language: string): boolean =>
-  speaksLanguage(isoCode, language) || !!speakerRow(isoCode, language)
+export const acceptsSpeaker = (isoCode: ISOCountryCode, language: string): boolean => {
+  if (speaksLanguage(isoCode, language)) return true
+  const row = speakerRow(isoCode, language)
+  // A usage figure alone is schooling: "speaks English" must not take Germany.
+  return !!row?.official || !!row?.named
+}
 
 /**
  * Why a guess outside the answer set bounces free:
@@ -243,15 +257,19 @@ export const languageBounce = (
   isoCode: ISOCountryCode
 ): LanguageBounce | undefined => {
   if (!challenge || challenge.countries.includes(isoCode)) return undefined
-  if (speaksButOffBoard(challenge, isoCode)) return 'off-board'
+  // Off the board, or benched from it (a micro-nation on a world board).
+  if (speaksLanguage(isoCode, challenge.language)) return 'off-board'
   const row = speakerRow(isoCode, challenge.language)
   if (!row) return undefined
   if (row.official) return 'statute'
+  // Tongue Buzz keeps its language secret, and a free "second language" or
+  // "minority" bounce would let a player probe it without spending a lockout.
+  if (challenge._type === 'tongue-buzz-challenge') return undefined
   return row.named ? 'minority' : 'second-language'
 }
 
 const fewSpeakIt = (share: number | undefined): string => {
-  if (share === undefined) return 'too few speak it'
+  if (share === undefined) return 'no source counts how many speak it'
   return share < 1 ? 'under 1% speak it' : `only ${formatProseNumber(share, 1)}% speak it`
 }
 
@@ -272,7 +290,9 @@ export const languageBounceLine = (
   const few = fewSpeakIt(share)
   switch (bounce) {
     case 'off-board':
-      return `${name} does speak ${spoken} — but this round is ${motherTongueScope(challenge)}`
+      return challenge.scope
+        ? `${name} does speak ${spoken} — but this round is ${motherTongueScope(challenge)}`
+        : `${name} does speak ${spoken} — but it isn't in play this game`
     case 'statute':
       return speakerRow(isoCode, challenge.language)?.official === 'regional'
         ? `${name} makes ${spoken} official only regionally — not counted`

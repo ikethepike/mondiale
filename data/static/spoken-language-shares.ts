@@ -18,10 +18,15 @@ export const SPOKEN_LANGUAGE_SHARES: {
     reason: 'unsized' | 'survey'
   }[]
 } = {
-  AD: [{ language: 'Portuguese', share: 10, basis: 'Portuguese 10%', reason: 'survey' }],
+  AD: [
+    { language: 'Spanish', share: 34.3, basis: 'Spanish 34.3%', reason: 'survey' },
+    { language: 'Portuguese', share: 10, basis: 'Portuguese 10%', reason: 'survey' },
+    { language: 'French', share: 5.6, basis: 'French 5.6%', reason: 'survey' },
+  ],
+  BJ: [{ language: 'Yoruba', share: 12, basis: 'Yoruba and related 12%', reason: 'unsized' }],
+  BN: [{ language: 'Chinese', share: 9.6, basis: 'Chinese 9.6%', reason: 'unsized' }],
   // Belize's figures are a can-speak survey (they add to 182%).
   BZ: [{ language: 'Spanish', share: 52.9, basis: 'Mestizo 52.9%', reason: 'survey' }],
-  BJ: [{ language: 'Yoruba', share: 12, basis: 'Yoruba and related 12%', reason: 'unsized' }],
   GM: [{ language: 'Wolof', share: 12.9, basis: 'Wolof 12.9%', reason: 'unsized' }],
   MY: [
     { language: 'Chinese', share: 20.6, basis: 'Chinese 20.6%', reason: 'unsized' },
