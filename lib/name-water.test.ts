@@ -5,15 +5,20 @@ import {
   NAME_WATER_TIERS,
   nameWaterCandidates,
   prominenceCandidates,
+  RIVER_RUN_TIERS,
+  SHARED_SHORES_TIERS,
+  waterBlitzCandidates,
 } from '~~/lib/challenges'
 import { isCountryInPlay, playableWorldCountries } from '~~/lib/game-rules'
 import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
 import { gameDifficulties, type Game, type GameRules } from '~~/types/game.types'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import { worldRegions, type ISOCountryCode, type Region } from '~~/types/geography.types'
 
 /** A feature whose prominence (footprint × shores) is exactly `rank`. */
 const feature = (id: number, footprint: number, shores = 1) => ({
   id,
+  kind: 'sea' as const,
+  d: '',
   bounds: [0, 0, footprint, 1] as [number, number, number, number],
   countries: Array<ISOCountryCode>(shores).fill('FR'),
 })
@@ -52,11 +57,95 @@ describe('HIGHLANDS_TIERS', () => {
 
 describe('prominenceCandidates', () => {
   it('returns the whole pool untouched at fraction 1', () => {
-    // River-run and shared-shores pass no fraction — they must keep dealing
-    // the full atlas.
     const pool = Array.from({ length: 40 }, (_, index) => feature(index, 40 - index))
     expect(prominenceCandidates(pool, 1)).toHaveLength(40)
   })
+})
+
+describe('RIVER_RUN_TIERS and SHARED_SHORES_TIERS', () => {
+  it('keep one register per mode and widen the pool with difficulty', () => {
+    for (const tiers of [RIVER_RUN_TIERS, SHARED_SHORES_TIERS]) {
+      expect(tiers.easy.kinds).toEqual(tiers.hard.kinds)
+      expect(tiers.easy.poolFraction).toBeLessThan(tiers.normal.poolFraction)
+      expect(tiers.normal.poolFraction).toBeLessThan(tiers.hard.poolFraction)
+      expect(tiers.hard.poolFraction).toBe(1)
+    }
+    expect(RIVER_RUN_TIERS.easy.kinds).toEqual(['river'])
+    expect(SHARED_SHORES_TIERS.easy.kinds).toEqual(['sea', 'lake'])
+  })
+
+  it('ranks a river by its course, not by the box it runs diagonally across', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    const rivers = ['river-putumayo', 'river-rhine'].map(id => WATER_FEATURES[id])
+    expect(prominenceCandidates(rivers, 1).map(river => river.id)).toEqual([
+      'river-rhine',
+      'river-putumayo',
+    ])
+  })
+})
+
+describe('River Run and Shared Shores on easy (via getRoundChallenge)', () => {
+  const game = (difficulty: Game['difficulty'], regions: Region[] = []): Game =>
+    ({
+      regions,
+      difficulty,
+      rounds: [{}],
+      players: { a: { phase: 'group-challenge' } },
+    }) as unknown as Game
+
+  const OBSCURE = {
+    'river-run': [
+      'river-kadei',
+      'river-oti',
+      'river-ghaghara',
+      'river-cuando',
+      'river-harirud',
+      'river-zarafshon',
+      'river-putumayo',
+    ],
+    'shared-shores': [
+      'singapore-strait',
+      'gulf-of-aqaba',
+      'bab-el-mandeb',
+      'florida-strait',
+      'lake-chad',
+    ],
+  } as const
+  const TIERS = { 'river-run': RIVER_RUN_TIERS, 'shared-shores': SHARED_SHORES_TIERS }
+
+  afterEach(() => {
+    delete process.env.FORCE_ROUND_TYPE
+  })
+
+  for (const kind of ['river-run', 'shared-shores'] as const) {
+    it(`${kind} deals only the top tier on a world board`, async () => {
+      const easy = (await waterBlitzCandidates(game('easy'), TIERS[kind])).map(f => f.id)
+      const hard = (await waterBlitzCandidates(game('hard'), TIERS[kind])).map(f => f.id)
+      expect(easy.length).toBeLessThan(hard.length / 2)
+      for (const id of OBSCURE[kind]) {
+        expect(hard).toContain(id)
+        expect(easy).not.toContain(id)
+      }
+
+      process.env.FORCE_ROUND_TYPE = kind
+      for (let deal = 0; deal < 40; deal++) {
+        const dealt = (await getRoundChallenge({ game: game('easy') })) as WaterBlitzChallenge
+        expect(dealt._type).toBe('water-blitz-challenge')
+        expect(easy).toContain(dealt.featureId)
+      }
+    })
+
+    it(`${kind} still deals on easy wherever a board deals it at all`, async () => {
+      process.env.FORCE_ROUND_TYPE = kind
+      for (const region of worldRegions) {
+        const hard = await waterBlitzCandidates(game('hard', [region]), TIERS[kind])
+        const easy = await waterBlitzCandidates(game('easy', [region]), TIERS[kind])
+        expect(easy.length, region).toBeGreaterThanOrEqual(Math.min(hard.length, 8))
+        const dealt = await getRoundChallenge({ game: game('easy', [region]) })
+        expect(dealt._type === 'water-blitz-challenge', region).toBe(easy.length > 0)
+      }
+    })
+  }
 })
 
 describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
