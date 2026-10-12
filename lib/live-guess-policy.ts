@@ -44,7 +44,7 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // player who lights a star hands the room tension, not the answer.
   'star-chart': 'label',
   // Benches are dragged and options are tapped, never named — but each pick is
-  // a race beat, and beat 3's bench count rides `placed` like Pyramid Scheme's.
+  // a race beat, and beat 3's bench count rides `placed`.
   government: 'presence',
   // The room shares one failing atlas, but a NAMED guess here is always a
   // wrong one — the composable sends hits as bare presence — and a wrong name
@@ -101,12 +101,8 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // country the room can already see is taken.
   'clean-sweep': 'label',
 
-  // Presence, NOT label. Every country is on every screen from the start, so a
-  // name leaks no identity — but with only four subjects there are just 24
-  // possible arrangements, and watching a confident player seat one would hand
-  // the room most of the puzzle. What travels is the RACE: someone has placed
-  // their third, someone has taken one back. The round is otherwise a silent
-  // minute, and it is the one mode with real intermediate state to broadcast.
+  // Four options on every screen: a named wrong pick strikes a quarter of the
+  // table for everyone still reading the shape.
   'pyramid-scheme': 'presence',
   // One hidden span of years, shared by the room: a guess is a bearing on it.
   vintage: 'presence',
@@ -177,7 +173,6 @@ export const probeCarriesIso = (challenge: RoundChallenge | undefined): boolean 
  */
 export const placedTotalFor = (challenge: RoundChallenge | undefined): number | undefined => {
   if (!challenge || !('_type' in challenge)) return undefined
-  if (challenge._type === 'pyramid-scheme-challenge') return challenge.countries.length
   if (challenge._type === 'government-challenge') return challenge.sorted.length
   return undefined
 }

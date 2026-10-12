@@ -1290,23 +1290,16 @@ export interface TerraBriefingState {
 }
 
 /**
- * Pyramid Scheme: four population pyramids animate across sixty years, and the
- * table drags each country onto its own shape. Age structure is a fingerprint —
- * a wide base is a young country, an inverted top an ageing one, a lopsided
- * working-age slab a Gulf state living on imported labour.
- *
- * `countries` is the dealt set in SLOT order (slot 0 is the first pyramid on
- * screen), and an answer is the same array re-ordered: position i holds whoever
- * the player dropped on slot i. The dealer guarantees every pair is far enough
- * apart to tell apart on screen (`pyramidsAreDistinct`) — without that gate a
- * random four contains a visually identical pair 85% of the time.
+ * Pyramid Scheme: one population pyramid sweeps across sixty years and the
+ * table names whose it is from four options. The decoys are drawn by
+ * difficulty against the subject (`PYRAMID_TUNING`): far apart on easy,
+ * lookalikes on hard that only the sweep tells apart.
  */
 export interface PyramidSchemeChallenge {
   _type: 'pyramid-scheme-challenge'
-  /** The subjects, in the order their pyramids are shown. */
-  countries: ISOCountryCode[]
-  /** The readability floor this set cleared, kept for the reveal to explain. */
-  distinctnessFloor: number
+  country: ISOCountryCode
+  options: ISOCountryCode[]
+  maximumGuesses: number
   durationSeconds: number
   maximumPoints: number
 }

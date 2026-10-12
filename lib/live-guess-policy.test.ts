@@ -96,9 +96,6 @@ describe('placedCount for government benches', () => {
 describe('placedTotalFor (the one home for a race’s full hand)', () => {
   it('reads each racing mode’s own deal', () => {
     expect(
-      placedTotalFor(challenge({ _type: 'pyramid-scheme-challenge', countries: ['DE', 'JP'] }))
-    ).toBe(2)
-    expect(
       placedTotalFor(challenge({ _type: 'government-challenge', sorted: ['A', 'B', 'C'] }))
     ).toBe(3)
   })

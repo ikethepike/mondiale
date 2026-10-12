@@ -301,6 +301,12 @@ const flashpointChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'flashpoint-challenge') ? roundChallenge.value : undefined
 )
 
+const pyramidChallenge = computed(() =>
+  isChallengeOfType(roundChallenge.value, 'pyramid-scheme-challenge')
+    ? roundChallenge.value
+    : undefined
+)
+
 const compositionChallenge = computed(() =>
   isChallengeOfType(roundChallenge.value, 'composition-challenge')
     ? roundChallenge.value
@@ -525,7 +531,8 @@ const explainer = computed(() =>
     maximumGuesses:
       capitalGuessChallenge.value?.maximumGuesses ??
       flashpointChallenge.value?.maximumGuesses ??
-      compositionChallenge.value?.maximumGuesses,
+      compositionChallenge.value?.maximumGuesses ??
+      pyramidChallenge.value?.maximumGuesses,
   })
 )
 
@@ -553,12 +560,7 @@ const breakdown = computed(() => {
 /** The sequence rounds' fallback: rails, but only with something to put in
  *  them — the empty-payload kinds stay silent here as they do in the ledger. */
 const showsAnswerRails = computed(
-  () =>
-    // Pyramid Scheme states both sides per ROW in its own card (each country
-    // beside the shape it belonged to). Two flag rails above that would say the
-    // same thing worse — an order the round never asked for.
-    kind.value !== 'pyramid-scheme' &&
-    (submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0)
+  () => submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0
 )
 
 /** Only the blitz family really pays a point per wrong name (`blitzScore`'s

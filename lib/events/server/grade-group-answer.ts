@@ -34,7 +34,7 @@ import {
 } from '~~/lib/round-beats'
 import { languageBounce } from '~~/lib/language-rounds'
 import { expectChallengeType } from '~~/lib/rounds'
-import { blitzScore, buzzScore, clampScore, hintDockedScore, pairFraction } from '~~/lib/scoring'
+import { blitzScore, buzzScore, hintDockedScore } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp } from '~~/lib/number'
@@ -190,21 +190,7 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'pyramid-scheme': {
-      // Position IS the claim: submitted[i] is whoever the player dropped on
-      // pyramid i, and challenge.countries[i] is whose pyramid that was. Paid
-      // linearly per correct pairing — see pairFraction on why set overlap
-      // would quietly underpay a near-miss.
-      const challenge = expectChallengeType(roundChallenge, 'pyramid-scheme-challenge')
-      answer = { submitted: submission.ranking, correct: challenge.countries }
-      scoring = {
-        scored: clampScore(
-          Math.round(
-            pairFraction(submission.ranking, challenge.countries) * challenge.maximumPoints
-          ),
-          challenge.maximumPoints
-        ),
-        maximum: challenge.maximumPoints,
-      }
+      attemptsOn(expectChallengeType(roundChallenge, 'pyramid-scheme-challenge'))
       break
     }
     case 'silhouette': {

@@ -228,7 +228,7 @@ export const SCORECARD_REVEALS: Partial<Record<RoundChallengeKind, ScorecardReve
   'pyramid-scheme': [
     {
       component: PyramidReveal,
-      eyebrow: 'What the Shapes Were Telling You',
+      eyebrow: 'What the Shape Was Telling You',
       mode: 'append',
       props: ({ challenge, answers }) =>
         isChallengeOfType(challenge, 'pyramid-scheme-challenge')

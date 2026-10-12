@@ -1,46 +1,62 @@
 <template>
-  <figure class="population-pyramid">
-    <svg :viewBox="`0 0 ${WIDTH} ${HEIGHT}`" preserveAspectRatio="xMidYMid meet" role="img">
+  <figure class="population-pyramid" :class="{ annotated }">
+    <svg :viewBox="`0 0 ${width} ${HEIGHT}`" preserveAspectRatio="xMidYMid meet" role="img">
       <title>{{ title }}</title>
-      <g class="male">
-        <rect
-          v-for="bar in bars"
-          :key="`m-${bar.index}`"
-          :x="bar.maleX"
-          :y="bar.y"
-          :width="bar.maleWidth"
-          :height="bar.height"
-          :rx="bar.radius"
-        />
+      <g :transform="`translate(${gutter} 0)`">
+        <template v-if="annotated">
+          <line
+            v-for="guide in guides"
+            :key="guide"
+            class="guide"
+            x1="0"
+            :x2="WIDTH"
+            :y1="guide"
+            :y2="guide"
+          />
+        </template>
+        <g class="male">
+          <rect
+            v-for="bar in bars"
+            :key="`m-${bar.index}`"
+            :x="bar.maleX"
+            :y="bar.y"
+            :width="bar.maleWidth"
+            :height="bar.height"
+            :rx="bar.radius"
+          />
+        </g>
+        <g class="female">
+          <rect
+            v-for="bar in bars"
+            :key="`f-${bar.index}`"
+            :x="MIDLINE"
+            :y="bar.y"
+            :width="bar.femaleWidth"
+            :height="bar.height"
+            :rx="bar.radius"
+          />
+        </g>
+        <line class="spine" :x1="MIDLINE" y1="0" :x2="MIDLINE" :y2="HEIGHT" />
+        <path v-if="ghostPath" class="ghost" :d="ghostPath" />
+        <template v-for="mark in scarBars" :key="mark.key">
+          <rect
+            class="scar"
+            :x="mark.bar.maleX - 1.6"
+            :y="mark.bar.y - 0.5"
+            :width="mark.bar.maleWidth + mark.bar.femaleWidth + 3.2"
+            :height="mark.bar.height + 1"
+            :rx="(mark.bar.height + 1) / 2"
+          />
+          <text class="scar-label" :x="MIDLINE + mark.bar.femaleWidth + 2.6" :y="mark.bar.labelY">
+            {{ PYRAMID_COHORTS[mark.bar.index] }}
+          </text>
+        </template>
       </g>
-      <g class="female">
-        <rect
-          v-for="bar in bars"
-          :key="`f-${bar.index}`"
-          :x="MIDLINE"
-          :y="bar.y"
-          :width="bar.femaleWidth"
-          :height="bar.height"
-          :rx="bar.radius"
-        />
-      </g>
-      <line class="spine" :x1="MIDLINE" y1="0" :x2="MIDLINE" :y2="HEIGHT" />
-      <!-- The scar bracket: the cohort the reveal is talking about, tracked to
-           whichever frame is on screen (a generation climbs a bin every five
-           years, so a fixed index would point at the wrong bar). -->
-      <template v-if="scarBar">
-        <rect
-          class="scar"
-          :x="scarBar.maleX - 1.6"
-          :y="scarBar.y - 0.5"
-          :width="scarBar.maleWidth + scarBar.femaleWidth + 3.2"
-          :height="scarBar.height + 1"
-          :rx="(scarBar.height + 1) / 2"
-        />
-        <text class="scar-label" :x="MIDLINE + scarBar.femaleWidth + 2.6" :y="scarBar.labelY">
-          {{ PYRAMID_COHORTS[scarBar.index] }}
+      <g v-if="annotated" class="ages">
+        <text v-for="tick in ticks" :key="tick.age" :x="gutter - 1.2" :y="tick.y">
+          {{ tick.age }}
         </text>
-      </template>
+      </g>
     </svg>
     <figcaption v-if="caption" class="caption">{{ caption }}</figcaption>
   </figure>
@@ -64,6 +80,10 @@ const HEIGHT = 88
 const MIDLINE = WIDTH / 2
 /** Gap between cohort bars, in viewBox units. */
 const BAR_GAP = 0.55
+const AGE_GUTTER = 7
+/** The cohort boundaries the shape families are defined by: under 15, 65 and over. */
+const CHILD_COHORTS = 3
+const ELDER_FROM_COHORT = 13
 
 const props = defineProps({
   isoCode: { type: String as PropType<ISOCountryCode>, required: true },
@@ -76,11 +96,20 @@ const props = defineProps({
    * a lone pyramid read against itself over time, wrong for a row of rivals.
    */
   peak: { type: Number, default: undefined },
-  scar: { type: Object as PropType<PyramidScar | undefined>, default: undefined },
+  scars: { type: Array as PropType<PyramidScar[]>, default: () => [] },
+  /** Another country's outline at the same frame and scale, for comparison. */
+  ghost: { type: String as PropType<ISOCountryCode>, default: undefined },
+  /** Age ticks, and guides at 15 and 65 — the lines the shape families are drawn on. */
+  annotated: { type: Boolean, default: false },
   caption: { type: String, default: '' },
 })
 
-const ownPeak = computed(() => pyramidPeakShare([props.isoCode]))
+const gutter = computed(() => (props.annotated ? AGE_GUTTER : 0))
+const width = computed(() => WIDTH + gutter.value)
+
+const ownPeak = computed(() =>
+  pyramidPeakShare(props.ghost ? [props.isoCode, props.ghost] : [props.isoCode])
+)
 const domain = computed(() => props.peak ?? ownPeak.value)
 
 const current = computed(() => pyramidFrameAt(props.isoCode, props.frame))
@@ -91,16 +120,18 @@ const title = computed(() =>
     : `Age structure of ${countryName(props.isoCode)}`
 )
 
+const rows = PYRAMID_COHORTS.length
+const rowHeight = (HEIGHT - BAR_GAP * (rows - 1)) / rows
+/** Cohorts run youngest-first in the data and youngest-at-the-BOTTOM on screen. */
+const rowTop = (index: number) => HEIGHT - (index + 1) * rowHeight - index * BAR_GAP
+const half = MIDLINE - 1.5
+
 const bars = computed(() => {
   const frame = current.value
   if (!frame) return []
-  const rows = frame.male.length
-  const rowHeight = (HEIGHT - BAR_GAP * (rows - 1)) / rows
-  const half = MIDLINE - 1.5
   const radius = Math.min(0.5, rowHeight / 3)
   return frame.male.map((maleShare, index) => {
-    // Cohorts run youngest-first in the data and youngest-at-the-BOTTOM on screen.
-    const y = HEIGHT - (index + 1) * rowHeight - index * BAR_GAP
+    const y = rowTop(index)
     const maleWidth = (maleShare / domain.value) * half
     const femaleWidth = (frame.female[index] / domain.value) * half
     return {
@@ -116,11 +147,41 @@ const bars = computed(() => {
   })
 })
 
-const scarBar = computed(() => {
+const ghostPath = computed(() => {
+  if (!props.ghost) return undefined
+  const frame = pyramidFrameAt(props.ghost, props.frame)
+  if (!frame) return undefined
+  const side = (shares: number[], sign: -1 | 1) =>
+    shares
+      .map((share, index) => {
+        const x = MIDLINE + sign * (share / domain.value) * half
+        const bottom = rowTop(index) + rowHeight + BAR_GAP / 2
+        const top = rowTop(index) - BAR_GAP / 2
+        return `${index ? 'L' : 'M'}${x.toFixed(2)} ${bottom.toFixed(2)}L${x.toFixed(2)} ${top.toFixed(2)}`
+      })
+      .join('')
+  return side(frame.male, -1) + side(frame.female, 1)
+})
+
+const boundaryY = (cohort: number) => rowTop(cohort - 1) - BAR_GAP / 2
+
+const guides = [boundaryY(CHILD_COHORTS), boundaryY(ELDER_FROM_COHORT)]
+
+const ticks = [
+  { age: 0, y: HEIGHT },
+  { age: 15, y: boundaryY(CHILD_COHORTS) + 1 },
+  { age: 65, y: boundaryY(ELDER_FROM_COHORT) + 1 },
+  { age: 100, y: 2.4 },
+]
+
+const scarBars = computed(() => {
   const frame = current.value
-  if (!props.scar || !frame) return undefined
-  const index = pyramidScarIndex(props.scar, frame.year)
-  return index === undefined ? undefined : bars.value[index]
+  if (!frame) return []
+  return props.scars.flatMap(scar => {
+    const index = pyramidScarIndex(scar, frame.year)
+    const bar = index === undefined ? undefined : bars.value[index]
+    return bar ? [{ key: scar.bornFrom, bar }] : []
+  })
 })
 </script>
 
@@ -142,15 +203,37 @@ svg {
 }
 
 .male rect {
-  fill: var(--pyramid-male, #{ink(0.85)});
+  fill: var(--pyramid-male);
 }
 .female rect {
-  fill: var(--pyramid-female, hsl(340, 52%, 52%));
+  fill: var(--pyramid-female);
 }
 
 .spine {
   stroke: #{ink(0.2)};
   stroke-width: 0.22;
+}
+
+.guide {
+  stroke: #{ink(0.28)};
+  stroke-width: 0.25;
+  stroke-dasharray: 0.8 0.8;
+}
+
+.ages text {
+  fill: #{ink(0.5)};
+  font-size: 2.8px;
+  font-family: inherit;
+  text-anchor: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.ghost {
+  fill: none;
+  stroke: var(--hior-ange);
+  stroke-width: 0.5;
+  stroke-dasharray: 1.2 0.8;
+  stroke-linejoin: round;
 }
 
 .scar {

@@ -521,10 +521,10 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // The trend-race outcome is browsable: Continue submits and flips inline;
   // the cap only pads the settle budget for tabs that never click.
   'trend-race': { owner: 'classic', revealHoldMs: 0, browseCapMs: 60000 },
-  // The reveal replays sixty years with the scars marked — a war, a policy or
-  // an epidemic showing up as a dent that climbs the chart. The hold is the
-  // time to actually watch one country's century go past.
-  'pyramid-scheme': { owner: 'classic', revealHoldMs: 9000 },
+  // The reveal is the lesson — the scars, the family, the numbers and every
+  // option's own shape — so the player reads it at their own pace and leaves
+  // by Continue, like trend-race.
+  'pyramid-scheme': { owner: 'classic', revealHoldMs: 0, browseCapMs: 45000 },
   // The hold is the forward replay: the map plays from the dealt year back up
   // to 2019 so the seat sees everything that changed since.
   vintage: {

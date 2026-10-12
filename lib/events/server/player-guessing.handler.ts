@@ -70,7 +70,7 @@ export const playerGuessingHandler: EventHandler = async ({
 
 /**
  * A progress count: how many of the round's subjects a player has seated —
- * Pyramid Scheme's placements, Government's filed benches. The TOTAL comes
+ * Government's filed benches. The TOTAL comes
  * from `placedTotalFor` (the deal, shared with the views), never the payload,
  * and the seated figure is clamped into it — a client claiming "9 of 4" only
  * ever reaches the room as a number the round could actually produce.

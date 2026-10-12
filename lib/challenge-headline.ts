@@ -156,7 +156,7 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
     }
     case 'pyramid-scheme': {
       if (!isChallengeOfType(challenge, 'pyramid-scheme-challenge')) return ''
-      return `Four age pyramids: ${challenge.countries.map(countryName).join(', ')}`
+      return `That age pyramid was ${countryName(challenge.country)}'s`
     }
     case 'manhunt': {
       if (!('_type' in challenge) || challenge._type !== 'manhunt-challenge') return ''

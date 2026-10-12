@@ -110,7 +110,7 @@ const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
     'clean-sweep',
   ],
   pin: ['heritage-hunt', 'pin-landmark', 'ghost-state', 'hot-cold', 'vintage'],
-  choice: ['two-truths', 'trend-race'],
+  choice: ['two-truths', 'trend-race', 'pyramid-scheme'],
   buzz: [
     'anthem-buzz',
     'tongue-buzz',
@@ -124,7 +124,7 @@ const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
   turns: ['border-chain', 'atlas', 'manhunt'],
   order: ['ranking', 'timeline'],
   draw: ['sketch'],
-  match: ['government', 'pyramid-scheme'],
+  match: ['government'],
 }
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))

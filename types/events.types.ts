@@ -363,10 +363,8 @@ export type ClientEventData =
       /** Hot & Cold: the clicked point the probe is measured from. Like the
        *  probe's isoCode it feeds the server's radius and is never echoed. */
       latLng?: LatLng
-      /** Pyramid Scheme: how many subjects this player has now seated, and out
-       *  of how many. A count carries the race without naming a placement —
-       *  with four subjects there are only 24 arrangements, so a named one
-       *  would hand the room the puzzle. */
+      /** Government: how many benches this player has now filed, and out of
+       *  how many. A count carries the race without naming a placement. */
       placed?: { seated: number; total: number }
     }
   | {
@@ -527,7 +525,7 @@ export type ServerEventData =
        *  rounded server-side. Broadcast under 'presence' where isoCode is not —
        *  a radius carries no bearing on its own. */
       distanceKm?: number
-      /** Pyramid Scheme: seated-of-total, clamped server-side. Survives under
+      /** Government: seated-of-total, clamped server-side. Survives under
        *  'presence' for the same reason a radius does — a count says how far
        *  along a player is without saying what they decided. */
       placed?: { seated: number; total: number }

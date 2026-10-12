@@ -92,6 +92,7 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
         : 'The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot.'
     case 'capital-guess':
     case 'composition':
+    case 'pyramid-scheme':
       return context.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
         : "The sooner you name it, the more it's worth."
@@ -158,6 +159,7 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
       case 'two-truths':
         return { submitted: 'Your Verdict', correct: 'The Country' }
       case 'capital-guess':
+      case 'pyramid-scheme':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'composition':
         return { submitted: 'Your Answer', correct: 'The Largest Origin' }
