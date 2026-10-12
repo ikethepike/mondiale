@@ -27,7 +27,9 @@
         step="0.01"
         :value="modelValue"
         :aria-label="`Scrub between ${PYRAMID_YEARS[0]} and ${PYRAMID_YEARS.at(-1)}`"
+        :aria-valuetext="String(pyramidYearAt(modelValue))"
         @input="onScrub"
+        @keydown="onKey"
       />
     </div>
     <span class="edge">{{ PYRAMID_YEARS.at(-1) }}</span>
@@ -38,7 +40,8 @@
 /** The pyramid's sixty years as a scrubbable track: it sweeps on its own until
  *  the player grabs it, and the play button hands it back to the sweep. */
 import { prefersReducedMotion } from '~~/lib/motion'
-import { PYRAMID_YEARS } from '~~/lib/pyramids'
+import { clamp } from '~~/lib/number'
+import { PYRAMID_YEARS, pyramidYearAt } from '~~/lib/pyramids'
 
 const SWEEP_MS = 11000
 const HOLD_MS = 1100
@@ -80,6 +83,7 @@ const stop = () => {
 
 const play = () => {
   stop()
+  if (props.modelValue >= last) emit('update:modelValue', 0)
   playing.value = true
   previous = undefined
   heldFor = 0
@@ -91,6 +95,26 @@ const toggle = () => (playing.value ? stop() : play())
 const onScrub = (event: Event) => {
   stop()
   emit('update:modelValue', Number((event.target as HTMLInputElement).value))
+}
+
+/** The fine step is for a dragged thumb; a key moves a whole frame. */
+const KEY_STEPS: Record<string, (frame: number) => number> = {
+  ArrowRight: frame => Math.floor(frame) + 1,
+  ArrowUp: frame => Math.floor(frame) + 1,
+  ArrowLeft: frame => Math.ceil(frame) - 1,
+  ArrowDown: frame => Math.ceil(frame) - 1,
+  PageUp: frame => Math.floor(frame) + 2,
+  PageDown: frame => Math.ceil(frame) - 2,
+  Home: () => 0,
+  End: () => last,
+}
+
+const onKey = (event: KeyboardEvent) => {
+  const step = KEY_STEPS[event.key]
+  if (!step) return
+  event.preventDefault()
+  stop()
+  emit('update:modelValue', clamp(step(props.modelValue), 0, last))
 }
 
 onMounted(() => {

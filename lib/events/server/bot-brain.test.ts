@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AUTOPILOT_GRACE_MS, BOT_PUMP_MS, NEW_ROUND_PAUSE_MS } from '~~/lib/round-beats'
+import {
+  AUTOPILOT_GRACE_MS,
+  BOT_BROWSE_ACK_JITTER_MS,
+  BOT_BROWSE_ACK_MS,
+  BOT_PUMP_MS,
+  NEW_ROUND_PAUSE_MS,
+  revealBudgetMsFor,
+} from '~~/lib/round-beats'
 import type {
   NeighbourBlitzChallenge,
+  PyramidSchemeChallenge,
   TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
@@ -24,6 +32,7 @@ import {
   releaseAutopilot,
 } from './bot-brain'
 import type { EngineContext } from './round-engine'
+import { seatSubject } from '~~/lib/seat-transitions'
 import { testCursor, testSeat } from './test-seat'
 
 const BLITZ: NeighbourBlitzChallenge = {
@@ -331,5 +340,33 @@ describe('the bot pump', () => {
     game.nextRoundAt = Date.now() + NEW_ROUND_PAUSE_MS
     armBotPump(context(game), game)
     expect(await ticked()).toBe(true)
+  })
+
+  it('acks a browsable reveal rather than holding the table to its cap', async () => {
+    const pyramid: PyramidSchemeChallenge = {
+      _type: 'pyramid-scheme-challenge',
+      country: 'JP',
+      options: ['NE', 'JP', 'QA', 'IN'],
+      band: 'easy',
+      maximumGuesses: 2,
+      durationSeconds: 40,
+      maximumPoints: 10,
+    }
+    const game = buildGame(pyramid, [
+      testSeat('bot:x', 'round-verdict', {
+        bot: true,
+        cursor: testCursor('round-verdict', {
+          verdict: { kind: 'round', subject: seatSubject.round(0), scored: 4, maximum: 10 },
+          holdUntil: Date.now() + revealBudgetMsFor(pyramid),
+        }),
+      }),
+    ])
+    game.id = `pump-test-${++gameNumber}`
+    armBotPump(context(game), game)
+    await vi.advanceTimersByTimeAsync(
+      BOT_BROWSE_ACK_MS + BOT_BROWSE_ACK_JITTER_MS + BOT_PUMP_MS * 3
+    )
+    expect(BOT_BROWSE_ACK_MS + BOT_BROWSE_ACK_JITTER_MS).toBeLessThan(revealBudgetMsFor(pyramid))
+    expect(store.get(game.id)!.players['bot:x'].cursor.step).toBe('scores')
   })
 })

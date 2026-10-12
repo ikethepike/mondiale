@@ -6,6 +6,7 @@ import type {
   GhostStateChallenge,
   GroundPlanChallenge,
   NeighbourBlitzChallenge,
+  PyramidSchemeChallenge,
   TrendRaceChallenge,
   TwoTruthsChallenge,
 } from '~~/types/challenges/group-modes.type'
@@ -204,6 +205,16 @@ const GROUND_PLAN: GroundPlanChallenge = {
   maximumPoints: 10,
 }
 
+const PYRAMID: PyramidSchemeChallenge = {
+  _type: 'pyramid-scheme-challenge',
+  country: 'JP',
+  options: ['NE', 'JP', 'QA', 'IN'],
+  band: 'easy',
+  maximumGuesses: 2,
+  durationSeconds: 40,
+  maximumPoints: 10,
+}
+
 describe('bot strength realizes the difficulty dial', () => {
   // The buzz family: one target, an all-or-nothing pick, priced off the clock
   // at the moment the bot answers. The share must be spent ONCE — the odds of
@@ -229,6 +240,13 @@ describe('bot strength realizes the difficulty dial', () => {
         ),
         difficulty
       )
+  )
+
+  // Fell through to the set-slice default, which hands a one-answer kind its
+  // answer every time — every bot banked the whole pot.
+  it.each(['easy', 'normal', 'hard'] as const)(
+    'pyramid-scheme lands near the %s share',
+    async difficulty => expectOnDial(await realizedFraction(PYRAMID, difficulty), difficulty)
   )
 
   it.each(['easy', 'normal', 'hard'] as const)(

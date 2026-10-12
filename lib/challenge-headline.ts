@@ -155,7 +155,8 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return `An old map of ${VINTAGE_REGION_NAMES[challenge.region]}`
     }
     case 'pyramid-scheme': {
-      if (!isChallengeOfType(challenge, 'pyramid-scheme-challenge')) return ''
+      // A round dealt before the redesign carries `countries[]` and no subject.
+      if (!isChallengeOfType(challenge, 'pyramid-scheme-challenge') || !challenge.country) return ''
       return `That age pyramid was ${countryName(challenge.country)}'s`
     }
     case 'manhunt': {

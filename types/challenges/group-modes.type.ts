@@ -2,7 +2,7 @@ import type { VintageRegionId } from '../vintage.types'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
 import type { TrendMetricId } from '~~/lib/trends'
-import type { BoardRegion } from '../game.types'
+import type { BoardRegion, GameDifficulty } from '../game.types'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -1326,6 +1326,8 @@ export interface PyramidSchemeChallenge {
   _type: 'pyramid-scheme-challenge'
   country: ISOCountryCode
   options: ISOCountryCode[]
+  /** The decoy band actually dealt — a thin board borrows a neighbour's. */
+  band: GameDifficulty
   maximumGuesses: number
   durationSeconds: number
   maximumPoints: number

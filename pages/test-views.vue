@@ -1665,6 +1665,7 @@ const scenarios: Scenario[] = [
         groupRound({
           _type: 'pyramid-scheme-challenge',
           ...deal,
+          band: variant?.id === 'hard' ? 'hard' : variant?.id === 'normal' ? 'normal' : 'easy',
           maximumGuesses: 2,
           durationSeconds: 40,
           maximumPoints: MAXIMUM_POINTS,
@@ -1714,6 +1715,7 @@ const scenarios: Scenario[] = [
           _type: 'pyramid-scheme-challenge',
           country: 'CN',
           options: ['TH', 'CN', 'KR', 'BR'],
+          band: 'normal',
           maximumGuesses: 2,
           durationSeconds: 40,
           maximumPoints: MAXIMUM_POINTS,

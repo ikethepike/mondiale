@@ -1,5 +1,5 @@
 <template>
-  <div v-if="challenge" class="pyramid-scheme challenge-shell">
+  <div v-if="challenge?.options" class="pyramid-scheme challenge-shell">
     <Interstitial
       v-if="showInterstitial"
       tone="info"
@@ -46,6 +46,7 @@
             :frame="frame"
             :scars="revealed ? scars : []"
             :ghost="revealed ? wrongPick : undefined"
+            :anonymous="!revealed"
             annotated
           />
           <p class="axis">
@@ -101,7 +102,7 @@
           class="option card-option"
           :class="{ 'is-spent': spent.includes(option) }"
           type="button"
-          :disabled="submitted || !started || spent.includes(option)"
+          :disabled="gameStore.watching || submitted || !started || spent.includes(option)"
           @click="onGuess(getCountry(option))"
         >
           <CountryTileFlag class="option-flag" :country="getCountry(option)" />
@@ -183,7 +184,7 @@ const stakes = computed(() => {
   const active = challenge.value
   if (!active) return ''
   const base = `One country's age structure across sixty years. Pick its owner from ${active.options.length} — ${active.maximumGuesses} guesses, the second worth less.`
-  return gameStore.game?.difficulty === 'hard'
+  return active.band === 'hard'
     ? `${base} Today the options look alike, but they aged decades apart: drag the timeline back.`
     : base
 })
@@ -210,16 +211,15 @@ const scars = computed(() => (challenge.value ? pyramidScars(challenge.value.cou
 
 /** This mount's own picks, once banked. */
 const picks = ref<ISOCountryCode[]>()
-/** The picks the reveal reads: this mount's, the booth's followed seat, or the
- *  seat's banked answer after a remount mid-reveal. */
-const banked = computed<ISOCountryCode[]>(
-  () =>
-    picks.value ??
-    boothAnswer.value?.submitted ??
-    currentRound.value?.round.groupAnswers[gameStore.seatId]?.submitted ??
-    []
+/** The picks the reveal reads: the booth's followed seat (held back while
+ *  hide-spoilers is), this mount's own, or the seat's banked answer after a
+ *  remount mid-reveal. */
+const banked = computed<ISOCountryCode[]>(() =>
+  gameStore.watching
+    ? (boothAnswer.value?.submitted ?? [])
+    : (picks.value ?? currentRound.value?.round.groupAnswers[gameStore.seatId]?.submitted ?? [])
 )
-const revealed = computed(() => submitted.value || !!boothAnswer.value)
+const revealed = computed(() => (gameStore.watching ? !!boothAnswer.value : submitted.value))
 const solved = computed(() => !!challenge.value && banked.value.includes(challenge.value.country))
 const wrongPick = computed(() =>
   banked.value.filter(isoCode => isoCode !== challenge.value?.country).at(-1)
@@ -275,8 +275,6 @@ const { send: finish } = useAckOnce(() => ({ event: 'round-reveal-done', ...seat
 $chart-aspect: calc(107 / 88);
 
 .stage {
-  // The chart is sized from the height it may take; its width follows the
-  // pyramid's own aspect, so the men/women key always spans the bars.
   --chart-height: 52dvh;
   pointer-events: auto;
   display: flex;
@@ -437,8 +435,6 @@ $chart-aspect: calc(107 / 88);
   }
 }
 
-// A phone has no width to spare beside the chart: the readout drops under it
-// as one row and the chart takes the full width.
 @media screen and (max-width: $tablet) {
   .board {
     flex-direction: column;
@@ -470,7 +466,6 @@ $chart-aspect: calc(107 / 88);
   }
 }
 
-// A phone on its side: no height for stacked rows, plenty of width.
 @media screen and (max-height: $short) and (min-width: $tablet) {
   .stage:not(.revealed) {
     --chart-height: 38dvh;

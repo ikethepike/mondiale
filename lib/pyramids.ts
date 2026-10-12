@@ -117,18 +117,15 @@ const frameDistance = (left: PopulationPyramid, right: PopulationPyramid): numbe
   return total
 }
 
-/** Total absolute difference across all 42 bins of the latest frame. Two
- *  countries under ~12 apart are the same picture at a glance — measured over
- *  all 18,721 pairs, 172 of 194 countries have a twin that close. */
+/** Total absolute difference across all 42 bins of the latest frame. */
 export const pyramidDistance = (a: ISOCountryCode, b: ISOCountryCode): number => {
   const left = latestPyramid(a)
   const right = latestPyramid(b)
   return left && right ? frameDistance(left, right) : 0
 }
 
-/** The widest the readout's two shares (under 15, 65 and over) ever stood
- *  apart in one frame, in percentage points — what a player can actually see
- *  separate a pair while scrubbing. */
+/** The widest the readout's two shares (under 15, 65 and over) stand apart
+ *  in any one frame, in percentage points. */
 export const pyramidReadoutGap = (a: ISOCountryCode, b: ISOCountryCode): number => {
   const left = PYRAMIDS[a]
   const right = PYRAMIDS[b]
@@ -143,8 +140,7 @@ export const pyramidReadoutGap = (a: ISOCountryCode, b: ISOCountryCode): number 
   return widest
 }
 
-/** The median age a country has aged past: the demographic transition as one
- *  dated moment a player can reason about. */
+/** The median age that dates a country's demographic transition. */
 export const PYRAMID_AGED_MEDIAN = 25
 
 /** When the median age first reached `PYRAMID_AGED_MEDIAN`: already `before`
@@ -173,7 +169,6 @@ export const pyramidAgedLabel = (aged: PyramidAgedAt): string => {
   return `Median hit ${PYRAMID_AGED_MEDIAN} in ${aged}`
 }
 
-/** Years between two countries ageing — wide when the sweep tells their story apart. */
 export const pyramidAgedApart = (a: ISOCountryCode, b: ISOCountryCode): number => {
   const left = pyramidAgedAt(a)
   const right = pyramidAgedAt(b)
@@ -190,17 +185,10 @@ export interface PyramidDecoyBand {
 }
 
 /**
- * The decoys are the difficulty axis. Easy deals shapes far from the subject
- * (read the family), normal deals the same broad family (read the
- * proportions), and hard deals lookalikes that aged at least fifteen years
- * apart — so on hard the history IS the clue, and it is a story ("France was
- * already old in 1963; the Balkans caught up by 1978") rather than noise. A
- * bare shape gap in some frame left a quarter of hard deals unreadable by the
- * readout in every year.
- *
- * The band is measured against the subject only, never pairwise between the
- * options: a pairwise floor is what forced every easy deal onto the seven Gulf
- * outliers and starved the continental boards.
+ * The decoys are the difficulty axis: far from the subject on easy, the same
+ * broad family on normal, and on hard lookalikes that aged years apart, so the
+ * sweep carries the clue. Measured against the subject only — a pairwise floor
+ * between the options looks equivalent but deals nothing but outliers.
  */
 export const PYRAMID_TUNING = {
   easy: { options: 4, attempts: 2, durationSeconds: 40, decoys: { todayFrom: 25 } },
@@ -237,16 +225,12 @@ export const pyramidDecoyFits = (
 }
 
 /** A band that leaves a board fewer subjects than this (or than half the
- *  board, on a small one) borrows a neighbour: most of Africa has not aged
- *  yet, so its hard table alone held five subjects and dealt them every game. */
+ *  board, on a small one) borrows a neighbour on `BAND_LADDER`. */
 export const PYRAMID_MIN_SUBJECTS = 12
 
-/**
- * How far a country may be shown beyond what its chance of being the answer
- * justifies, as a share of deals. A fair country sits in `options` deals for
- * every one it answers; Montenegro sat in three hard Europe deals of four and
- * answered one in eleven, so its mere presence said "not this one".
- */
+/** How far a country may be shown beyond what its chance of being the answer
+ *  justifies, as a share of deals — past it, its presence alone says "not
+ *  this one". A fair country sits in `options` deals for every one it answers. */
 export const PYRAMID_MAX_TELL = 0.1
 
 /** Which bands a difficulty may borrow, nearest first. */
@@ -261,9 +245,7 @@ interface PyramidTable {
   candidates: ISOCountryCode[]
 }
 
-/** How many subjects list each candidate — a decoy's weight is its inverse,
- *  so one that fits half the board is spread across it rather than dealt in
- *  most of its deals. */
+/** How many subjects list each candidate; a decoy is drawn by its inverse. */
 const listingsOf = (tables: PyramidTable[]): Map<ISOCountryCode, number> => {
   const listings = new Map<ISOCountryCode, number>()
   for (const { candidates } of tables) {
@@ -311,26 +293,30 @@ const pickTable = (
   return { country: table.country, decoys }
 }
 
+const dealFrom = (
+  { band, wanted, tables }: { band: GameDifficulty; wanted: number; tables: PyramidTable[] },
+  random: () => number
+) => {
+  const deal = pickTable(tables, wanted, random)
+  return deal && { ...deal, band }
+}
+
 /**
- * Pick a subject and its decoys from the board's own countries — never the
- * wider world: an off-board option can never be the answer, so on Europe's
- * easy table the one European name gave the round away. A band too thin for
- * the board, or one that would lean on the same decoy deal after deal,
- * borrows the next on `BAND_LADDER`; where none clears both, the least
- * exposed band that still has enough subjects deals. Subjects are drawn
- * uniformly, so no shape is dealt more often than its share of the board.
- * Subjects with a spare decoy come first — one with exactly three was dealt
- * the same trio every time it came up — and a small board that cannot afford
- * that keeps them all.
+ * A subject, uniformly, and its decoys from the board's own countries — never
+ * the wider world, since an off-board option can never be the answer. A band
+ * too thin for the board or past `PYRAMID_MAX_TELL` borrows the next on
+ * `BAND_LADDER`; where none clears both, the least telling band with enough
+ * subjects deals. Subjects with a spare decoy come first, or one with exactly
+ * three is dealt the same trio every time. `band` is the one actually dealt.
  */
 export const drawPyramidDeal = (
   pool: readonly ISOCountryCode[],
   difficulty: GameDifficulty,
   random: () => number = Math.random
-): { country: ISOCountryCode; decoys: ISOCountryCode[] } | undefined => {
+): { country: ISOCountryCode; decoys: ISOCountryCode[]; band: GameDifficulty } | undefined => {
   const board = pool.filter(isoCode => PYRAMIDS[isoCode])
   const enough = Math.min(PYRAMID_MIN_SUBJECTS, Math.ceil(board.length / 2))
-  const bands: { wanted: number; tables: PyramidTable[]; tell: number }[] = []
+  const bands: { band: GameDifficulty; wanted: number; tables: PyramidTable[]; tell: number }[] = []
   for (const band of BAND_LADDER[difficulty]) {
     const wanted = PYRAMID_TUNING[band].options - 1
     const listed = board.flatMap(country => {
@@ -342,16 +328,15 @@ export const drawPyramidDeal = (
     const spare = listed.filter(table => table.candidates.length > wanted)
     for (const tables of [spare, listed]) {
       const tell = tellOf(tables, wanted)
-      if (tables.length >= enough && tell <= PYRAMID_MAX_TELL) {
-        return pickTable(tables, wanted, random)
-      }
-      bands.push({ wanted, tables, tell })
+      const deal = { band, wanted, tables, tell }
+      if (tables.length >= enough && tell <= PYRAMID_MAX_TELL) return dealFrom(deal, random)
+      bands.push(deal)
     }
   }
   const chosen =
     bands.filter(band => band.tables.length >= enough).sort((a, b) => a.tell - b.tell)[0] ??
     [...bands].sort((a, b) => b.tables.length - a.tables.length)[0]
-  return chosen && pickTable(chosen.tables, chosen.wanted, random)
+  return chosen && dealFrom(chosen, random)
 }
 
 // --- Reading a shape --------------------------------------------------------
@@ -364,23 +349,34 @@ const shareBetween = (frame: PopulationPyramid, from: number, to: number): numbe
   return total
 }
 
-/** Share of the country under 15 (cohorts 0-4, 5-9, 10-14). */
-export const shareUnder15 = (frame: PopulationPyramid): number => shareBetween(frame, 0, 3)
+/** The cohort boundaries the shape families are read on: the first
+ *  `PYRAMID_CHILD_COHORTS` bins are under 15, bins from `PYRAMID_ELDER_COHORT`
+ *  on are 65 and over. */
+export const PYRAMID_CHILD_COHORTS = 3
+export const PYRAMID_ELDER_COHORT = 13
+/** Ages 20-49: the working years a migrant-labour slab swells. */
+const WORKING_COHORTS = [4, 10] as const
 
-/** Share of the country 65 and over. */
+export const shareUnder15 = (frame: PopulationPyramid): number =>
+  shareBetween(frame, 0, PYRAMID_CHILD_COHORTS)
+
 export const shareOver65 = (frame: PopulationPyramid): number =>
-  shareBetween(frame, 13, frame.male.length)
+  shareBetween(frame, PYRAMID_ELDER_COHORT, frame.male.length)
 
-/** Men minus women across the working years (20-49) — the migrant-labour axis.
- *  Measured independent of the age ladder (correlation -0.22), so it is a second
- *  way to tell two pyramids apart, not a restatement of the first. */
-export const workingAgeSexSkew = (frame: PopulationPyramid): number => {
+const workingAgeSexes = (frame: PopulationPyramid): { male: number; female: number } => {
   let male = 0
   let female = 0
-  for (let index = 4; index < 10; index++) {
+  for (let index = WORKING_COHORTS[0]; index < WORKING_COHORTS[1]; index++) {
     male += frame.male[index]
     female += frame.female[index]
   }
+  return { male, female }
+}
+
+/** Men minus women across the working years — the migrant-labour axis, and
+ *  independent of the age ladder, so a second way to tell shapes apart. */
+export const workingAgeSexSkew = (frame: PopulationPyramid): number => {
+  const { male, female } = workingAgeSexes(frame)
   return male - female
 }
 
@@ -449,14 +445,9 @@ export const medianAge = (frame: PopulationPyramid): number => {
   return 5 * frame.male.length
 }
 
-/** Men per 100 women across the working years (20-49). */
+/** Men per 100 women across the working years. */
 export const workingAgeSexRatio = (frame: PopulationPyramid): number => {
-  let male = 0
-  let female = 0
-  for (let index = 4; index < 10; index++) {
-    male += frame.male[index]
-    female += frame.female[index]
-  }
+  const { male, female } = workingAgeSexes(frame)
   return female ? (100 * male) / female : 100
 }
 

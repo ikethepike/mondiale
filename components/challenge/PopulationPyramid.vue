@@ -64,7 +64,9 @@
 
 <script lang="ts" setup>
 import {
+  PYRAMID_CHILD_COHORTS,
   PYRAMID_COHORTS,
+  PYRAMID_ELDER_COHORT,
   pyramidFrameAt,
   pyramidPeakShare,
   pyramidScarIndex,
@@ -81,9 +83,6 @@ const MIDLINE = WIDTH / 2
 /** Gap between cohort bars, in viewBox units. */
 const BAR_GAP = 0.55
 const AGE_GUTTER = 7
-/** The cohort boundaries the shape families are defined by: under 15, 65 and over. */
-const CHILD_COHORTS = 3
-const ELDER_FROM_COHORT = 13
 
 const props = defineProps({
   isoCode: { type: String as PropType<ISOCountryCode>, required: true },
@@ -101,6 +100,8 @@ const props = defineProps({
   ghost: { type: String as PropType<ISOCountryCode>, default: undefined },
   /** Age ticks, and guides at 15 and 65 — the lines the shape families are drawn on. */
   annotated: { type: Boolean, default: false },
+  /** Withhold the country from the accessible title while it is the question. */
+  anonymous: { type: Boolean, default: false },
   caption: { type: String, default: '' },
 })
 
@@ -114,11 +115,12 @@ const domain = computed(() => props.peak ?? ownPeak.value)
 
 const current = computed(() => pyramidFrameAt(props.isoCode, props.frame))
 
-const title = computed(() =>
-  current.value
-    ? `Age structure of ${countryName(props.isoCode)} in ${current.value.year}`
+const title = computed(() => {
+  const subject = props.anonymous
+    ? 'Age structure'
     : `Age structure of ${countryName(props.isoCode)}`
-)
+  return current.value ? `${subject} in ${current.value.year}` : subject
+})
 
 const rows = PYRAMID_COHORTS.length
 const rowHeight = (HEIGHT - BAR_GAP * (rows - 1)) / rows
@@ -165,12 +167,12 @@ const ghostPath = computed(() => {
 
 const boundaryY = (cohort: number) => rowTop(cohort - 1) - BAR_GAP / 2
 
-const guides = [boundaryY(CHILD_COHORTS), boundaryY(ELDER_FROM_COHORT)]
+const guides = [boundaryY(PYRAMID_CHILD_COHORTS), boundaryY(PYRAMID_ELDER_COHORT)]
 
 const ticks = [
   { age: 0, y: HEIGHT },
-  { age: 15, y: boundaryY(CHILD_COHORTS) + 1 },
-  { age: 65, y: boundaryY(ELDER_FROM_COHORT) + 1 },
+  { age: 15, y: boundaryY(PYRAMID_CHILD_COHORTS) + 1 },
+  { age: 65, y: boundaryY(PYRAMID_ELDER_COHORT) + 1 },
   { age: 100, y: 2.4 },
 ]
 

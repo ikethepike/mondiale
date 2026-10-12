@@ -54,15 +54,21 @@ describe('pyramid scheme dealer', () => {
     }
   })
 
-  it('draws every decoy from its difficulty band', async () => {
-    for (const difficulty of DIFFICULTIES) {
-      for (let round = 0; round < 30; round++) {
-        const { country, options } = await deal(difficulty)
-        for (const decoy of options.filter(option => option !== country)) {
-          expect(pyramidDecoyFits(country, decoy, PYRAMID_TUNING[difficulty].decoys)).toBe(true)
+  it('draws every decoy from the band it reports, on every board', async () => {
+    for (const variant of gameVariants) {
+      for (const difficulty of DIFFICULTIES) {
+        for (let round = 0; round < 10; round++) {
+          const { country, options, band } = await deal(difficulty, variant)
+          for (const decoy of options.filter(option => option !== country)) {
+            expect(pyramidDecoyFits(country, decoy, PYRAMID_TUNING[band].decoys)).toBe(true)
+          }
         }
       }
     }
+  })
+
+  it('deals the world board its own band at every difficulty', async () => {
+    for (const difficulty of DIFFICULTIES) expect((await deal(difficulty)).band).toBe(difficulty)
   })
 
   it('deals on every board at every difficulty', async () => {
@@ -157,6 +163,7 @@ const gradedRound = (country: string, options: string[]) =>
       _type: 'pyramid-scheme-challenge',
       country,
       options,
+      band: 'easy',
       maximumGuesses: 2,
       durationSeconds: 40,
       maximumPoints: 20,

@@ -216,7 +216,7 @@ describe('server waits', () => {
     'lib/events/server/timeline-turns.ts': { count: 3, owner: 'table', token: 'state.turn' },
     'lib/events/server/unique-beats.ts': { count: 3, owner: 'table', token: 'state.briefing' },
     'lib/events/server/bot-brain.ts': {
-      count: 24,
+      count: 25,
       owner: 'a bot thinking — every act re-checks seq',
       token: 'seq',
     },

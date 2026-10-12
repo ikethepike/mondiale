@@ -1973,6 +1973,7 @@ const getPyramidSchemeChallenge = async (
     _type: 'pyramid-scheme-challenge',
     country: deal.country,
     options: shuffleArray([deal.country, ...deal.decoys]),
+    band: deal.band,
     maximumGuesses: tuning.attempts,
     durationSeconds: tuning.durationSeconds,
     maximumPoints: maximumRoundPoints(game),
