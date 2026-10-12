@@ -7,6 +7,7 @@ import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.event'
 import { manhuntSonarEvent } from '~~/lib/events/client/manhunt-sonar.event'
 import { vintageStoryEvent } from '~~/lib/events/client/vintage-story.event'
+import { compositionBoardEvent } from '~~/lib/events/client/composition-board.event'
 import { finalLightRefusedEvent } from '~~/lib/events/client/final-light-refused.event'
 import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
 import { playerCheeringEvent } from '~~/lib/events/client/player-cheering.event'
@@ -128,6 +129,10 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // A graded seat's own round story — targeted, no game payload
   'vintage-story': {
     handler: vintageStoryEvent,
+  },
+  // This seat's own Composition board — targeted, no game payload
+  'composition-board': {
+    handler: compositionBoardEvent,
   },
   // A stage name this seat lit too late — targeted, no game payload
   'final-light-refused': {

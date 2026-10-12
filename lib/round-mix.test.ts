@@ -97,7 +97,7 @@ describe('the mix tables', () => {
  * the decay spaces it from, so the move is a review here, not a quiet edit.
  */
 const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
-  typed: ['traversal', 'capital-guess', 'composition', 'name-that-water', 'unique-or-bust'],
+  typed: ['traversal', 'capital-guess', 'name-that-water', 'unique-or-bust'],
   collect: [
     'neighbour-blitz',
     'mother-tongue',
@@ -124,7 +124,7 @@ const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
   turns: ['border-chain', 'atlas', 'manhunt'],
   order: ['ranking', 'timeline'],
   draw: ['sketch'],
-  match: ['government', 'pyramid-scheme'],
+  match: ['government', 'pyramid-scheme', 'composition'],
 }
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))

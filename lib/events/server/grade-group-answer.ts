@@ -15,6 +15,8 @@ import {
   speaksTongue,
 } from '~~/lib/challenges'
 import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
+import { compositionPay, parsePlacements, replayPlacements } from '~~/lib/composition'
+import { compositionBoardOf, fetchCompositionSheet } from './composition-board'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import {
   groundPlanLayersShown,
@@ -41,6 +43,7 @@ import { clamp } from '~~/lib/number'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type'
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
+import type { Redis } from '@upstash/redis'
 import type { Game, GroupChallengeAnswer, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { SeatCursor } from '~~/types/seat.types'
@@ -51,6 +54,11 @@ export type GroupSubmission = Omit<
   Extract<ClientEventData, { event: 'submit-group-challenge-answers' }>,
   'event' | keyof SeatEcho
 >
+
+const roundIndexOf = (game: Game, round: Round): number => {
+  const index = game.rounds?.indexOf(round) ?? -1
+  return index >= 0 ? index : (game.rounds?.length ?? 1) - 1
+}
 
 /** An empty submission, for grading a seat that never answered. */
 export const ABSENT_SUBMISSION: GroupSubmission = { ranking: [] }
@@ -78,6 +86,7 @@ export const gradeGroupAnswer = async ({
   seat,
   at = Date.now(),
   absent = false,
+  redis,
 }: {
   /** The rules context modes grade against (the traversal graph). */
   game: Game
@@ -89,6 +98,8 @@ export const gradeGroupAnswer = async ({
   /** When the answer reached the server. */
   at?: number
   absent?: boolean
+  /** Where the rounds that grade server-held state (Composition's sheet) read it. */
+  redis?: Pick<Redis, 'get'>
 }): Promise<{ scoring: { scored: number; maximum: number }; answer: GroupChallengeAnswer }> => {
   // The submitted ISO list means different things per round kind: a
   // ranking, a traversal guess set, named neighbours, a probe trail…
@@ -347,15 +358,26 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'composition': {
-      // The answer is the largest origin — the head slice — NOT `country`,
-      // which is the country whose residents are being split. Same source
-      // the view grades against (slices[0]), so both sides agree.
+      // A bot's placements were composed by the server; a person's are the
+      // drops the drop handler graded, never what the submission claims.
       const challenge = expectChallengeType(roundChallenge, 'composition-challenge')
-      const largestOrigin = challenge.slices[0]?.isoCode
-      if (!largestOrigin) throw new ReferenceError('Composition challenge dealt with no slices')
-      // The option table is every origin on the bar, so the server prices the
-      // picks — tapping them all lands the answer last, outside the cap.
-      attemptsOn({ ...challenge, country: largestOrigin })
+      const { board } = await compositionBoardOf(challenge)
+      const attempts = game.players?.[playerId]?.bot
+        ? parsePlacements(submission.composition?.placements)
+        : redis
+          ? ((await fetchCompositionSheet(redis, game.id, roundIndexOf(game, round)))[playerId] ??
+            [])
+          : []
+      const replay = replayPlacements(board, attempts)
+      const standing = new Set(Object.values(replay.placed))
+      answer = {
+        submitted: challenge.options.filter(isoCode => standing.has(isoCode)),
+        correct: [...challenge.options],
+      }
+      scoring = {
+        scored: compositionPay({ ...board, maximumPoints: challenge.maximumPoints }, replay),
+        maximum: challenge.maximumPoints,
+      }
       break
     }
     case 'ghost-state': {

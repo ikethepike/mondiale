@@ -74,6 +74,7 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
           playerId: seat.id,
           submission: ABSENT_SUBMISSION,
           absent: true,
+          redis: ctx.redis,
         })
         freshRound.groupAnswers[seat.id] = answer
         scores[seat.id] = scoring

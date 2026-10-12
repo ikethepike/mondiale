@@ -168,10 +168,17 @@ import {
   isClassicGroupRound,
 } from '~~/lib/round-beats'
 import { settleGroupRound, stampMockClassicClock } from '~~/lib/harness/settle-group-round'
+import { compositionBoardKey } from '~~/lib/composition'
+import {
+  applyCompositionDrop,
+  compositionBoardOf,
+  compositionBoardView,
+} from '~~/lib/events/server/composition-board'
 import type { GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import type {
   AtlasChallenge,
   BorderChainChallenge,
+  CompositionSheet,
   GovernmentChallenge,
   ManhuntChallenge,
   ManhuntState,
@@ -676,6 +683,7 @@ const simulateGroupSettle = (eventData: Record<string, unknown>) => {
       submission: eventData as unknown as GroupSubmission,
       meId: ME,
       onSettled: () => (renderKey.value += 1),
+      redis: { get: async <T,>() => (compositionSheets.get(game) ?? {}) as T },
     })
   }, SIM_LATENCY_MS)
 }
@@ -695,6 +703,9 @@ const installStubSocket = () => {
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
     if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
+    if (event === 'submit-composition-drop' || event === 'fetch-composition-board') {
+      void simulateComposition(event, eventData ?? {})
+    }
   }
   // Critical events go through timeout().emitWithAck() — stub both paths.
   // `io` is the manager views subscribe to for reconnects; it never fires in
@@ -709,6 +720,43 @@ const installStubSocket = () => {
     io: { on: () => {}, off: () => {} },
   }
   gameStore.socket = stub as never
+}
+
+/** The harness seat's Composition attempts, per dealt game — the server's sheet. */
+const compositionSheets = new WeakMap<Game, CompositionSheet>()
+
+/** The stub's half of Composition's drop and fetch: the same server functions,
+ *  answered after the sim latency like the real targeted emit. */
+const simulateComposition = async (event: string, data: Record<string, unknown>) => {
+  const game = gameStore.game
+  const round = game ? latestRound(game) : undefined
+  const challenge = round?.groupChallenge
+  if (!game || !round || !isChallengeOfType(challenge, 'composition-challenge')) return
+  const sheet = compositionSheets.get(game) ?? {}
+  compositionSheets.set(game, sheet)
+  const { board, origins } = await compositionBoardOf(challenge)
+  const drop = { isoCode: data.isoCode as ISOCountryCode, slot: data.slot as number }
+  const next =
+    event === 'submit-composition-drop'
+      ? applyCompositionDrop(board, sheet[ME] ?? [], { ...drop, attempt: data.attempt as number })
+      : undefined
+  if (next) sheet[ME] = next
+  const index = game.rounds.length - 1
+  const view = compositionBoardView({
+    board,
+    origins,
+    attempts: sheet[ME] ?? [],
+    round: index,
+    revealed: !!round.groupAnswers[ME],
+    ...(next ? { drop } : {}),
+  })
+  window.setTimeout(() => {
+    if (gameStore.game !== game) return
+    gameStore.compositionBoards = {
+      ...gameStore.compositionBoards,
+      [compositionBoardKey(game.id, index)]: view,
+    }
+  }, SIM_LATENCY_MS)
 }
 
 /** The stub's half of fetch-vintage-story: the harness holds the answer key,
@@ -2036,24 +2084,37 @@ const scenarios: Scenario[] = [
   {
     id: 'composition',
     label: 'Composition (foreign-born origins)',
-    build: () =>
+    variants: [
+      { id: 'normal', label: 'Türkiye — shares shown' },
+      { id: 'hard', label: 'United States — hard, sizes only' },
+    ],
+    build: variant =>
       mockGame('round', [
-        groupRound({
-          _type: 'composition-challenge',
-          country: 'TR',
-          slices: [
-            { isoCode: 'SY', share: 0.5221 },
-            { isoCode: 'IQ', share: 0.0591 },
-            { isoCode: 'DE', share: 0.0533 },
-            { isoCode: 'BG', share: 0.051 },
-            { isoCode: 'AF', share: 0.0486 },
-            { isoCode: 'IR', share: 0.0293 },
-          ],
-          options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
-          maximumGuesses: 2,
-          durationSeconds: 30,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
+        groupRound(
+          variant?.id === 'hard'
+            ? {
+                _type: 'composition-challenge',
+                country: 'US',
+                shares: [0.2494, 0.07, 0.055, 0.0501, 0.0347, 0.0328],
+                total: 45_226_788,
+                options: ['PH', 'DO', 'MX', 'SV', 'CN', 'IN'],
+                strikes: 2,
+                showShares: false,
+                durationSeconds: 45,
+                maximumPoints: MAXIMUM_POINTS,
+              }
+            : {
+                _type: 'composition-challenge',
+                country: 'TR',
+                shares: [0.5221, 0.0591, 0.0533, 0.051, 0.0486, 0.0293],
+                total: 6_826_246,
+                options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
+                strikes: 3,
+                showShares: true,
+                durationSeconds: 45,
+                maximumPoints: MAXIMUM_POINTS,
+              }
+        ),
       ]),
   },
   {

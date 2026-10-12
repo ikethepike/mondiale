@@ -86,7 +86,7 @@ describe('scorecardExplainer', () => {
   })
 
   it('changes the guess-cap wording when a cap was dealt', () => {
-    for (const kind of ['capital-guess', 'flashpoint', 'composition'] as const) {
+    for (const kind of ['capital-guess', 'flashpoint'] as const) {
       expect(scorecardExplainer({ kind, maximumGuesses: 2 })).toContain('first try')
       expect(scorecardExplainer({ kind, maximumGuesses: undefined })).not.toContain('first try')
     }
