@@ -107,14 +107,18 @@ export type ClientEventData =
       /** Vintage rounds: the year the player dated the map to. */
       year?: number
     })
-  | (SeatEcho & {
-      event: 'submit-individual-challenge-answer'
-      isoCode: ISOCountryCode
-      /** Timed gates: how many hints were bought (outline, ISO code) — each
-       *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. The clock
-       *  share is the server's own, read off the gate's deadline. */
-      hintsUsed?: number
-    })
+  | (SeatEcho & { event: 'submit-individual-challenge-answer' } & (
+        | {
+            isoCode: ISOCountryCode
+            /** Timed gates: how many hints were bought (outline, ISO code) — each
+             *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. The clock
+             *  share is the server's own, read off the gate's deadline. */
+            hintsUsed?: number
+          }
+        /** The clock ran out on screen: the seat forfeits now rather than at the
+         *  server's cap. Sent where the view holds no answer to preview a miss with. */
+        | { timedOut: true }
+      ))
   | {
       /** Turn-chain rounds (Border Chain, Atlas): the active player extends
        *  the chain. `turn` echoes the

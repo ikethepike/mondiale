@@ -147,6 +147,7 @@ import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import type { VintageRegionId } from '~~/types/vintage.types'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { REGION_LABELS } from '~~/lib/variant'
+import { wireGame } from '~~/lib/wire-view'
 import { resolveSeatView } from '~/components/view/dispatch'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
@@ -2049,6 +2050,7 @@ const scenarios: Scenario[] = [
             { isoCode: 'IR', share: 0.0293 },
           ],
           options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
+          maximumGuesses: 2,
           durationSeconds: 30,
           maximumPoints: MAXIMUM_POINTS,
         }),
@@ -3507,7 +3509,7 @@ const scenarios: Scenario[] = [
         variant: 'money-match',
         country: 'JP',
         options: ['JP', 'KR', 'CN', 'TH'],
-        image: '/currencies/JPY.webp',
+        money: { image: '/currencies/JPY.webp' },
       }),
   },
   {
@@ -3524,17 +3526,14 @@ const scenarios: Scenario[] = [
   {
     id: 'individual-odd-one-out',
     label: 'Individual: odd one out (shared property)',
-    build: () =>
-      individualGame({
-        variant: 'odd-one-out',
-        country: 'BR',
-        oddOneOut: {
-          countries: ['MX', 'BR', 'CO', 'AR'],
-          propertyLabel: 'Three of these share a language: Spanish',
-          kind: 'language',
-          value: 'Spanish',
-        },
-      }),
+    build: () => individualGame(ODD_ONE_OUT_GATE),
+  },
+  {
+    // What a room actually receives: the answer stays off the wire until the
+    // verdict, so a tap latches and waits — with no server here, for good.
+    id: 'individual-odd-one-out-wire',
+    label: 'Individual: odd one out, as the wire sends it (answer withheld)',
+    build: () => wireGame(individualGame(ODD_ONE_OUT_GATE)),
   },
   {
     // Rulers: the real gate, dealt by the real dealer. The map IS the
@@ -4701,6 +4700,17 @@ const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
     .filter(code => code !== isoCode && getCountry(code).region === region && !!quizLeader(code))
     .slice(0, 3)
   return [isoCode, ...neighbours]
+}
+
+const ODD_ONE_OUT_GATE: Partial<IndividualChallenge> = {
+  variant: 'odd-one-out',
+  country: 'BR',
+  oddOneOut: {
+    countries: ['MX', 'BR', 'CO', 'AR'],
+    propertyLabel: 'Three of these share a language: Spanish',
+    kind: 'language',
+    value: 'Spanish',
+  },
 }
 
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
