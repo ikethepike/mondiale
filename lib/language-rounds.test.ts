@@ -1,13 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { COUNTRIES } from '~~/data/countries.gen'
+import { SPEAKERS } from '~~/data/speakers.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { getRoundChallenge } from '~~/lib/challenges'
+import { getRoundChallenge, speaksTongue } from '~~/lib/challenges'
+import { scriptoriumAccepts, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   boardSpeakers,
   isSignLanguage,
+  MOTHER_TONGUE_SPEAKERS,
+  acceptsSpeaker,
   languageBounce,
+  isHeadlineLanguage,
+  languageBounceLine,
+  motherTongueDeck,
+  officialLanguages,
+  speakerRow,
   speaksLanguage,
-  speaksRegionally,
   spokenLanguages,
   tongueBuzzRule,
   tongueBuzzTally,
@@ -98,19 +105,10 @@ describe('off-board veto', () => {
     expect(speaksButOffBoard(challenge, 'FR')).toBe(false)
   })
 
-  it('credits a country on either list', () => {
-    // The two fields legitimately diverge in BOTH directions: Burundi makes
-    // English official without the spoken list carrying it, and Kazakhstan
-    // speaks Russian without a statute saying so. A player who knows either
-    // must not be charged for it.
-    expect(COUNTRIES.BI?.officialLanguages).toContain('English')
-    expect(COUNTRIES.BI?.languages ?? []).not.toContain('English')
-    expect(speaksButOffBoard(challengeOf('English', ['GB', 'IE', 'MT'], ['europe']), 'BI')).toBe(
-      true
-    )
-
-    expect(COUNTRIES.KZ?.officialLanguages ?? []).not.toContain('Russian')
-    expect(COUNTRIES.KZ?.languages).toContain('Russian')
+  it('credits a speaker no statute names', () => {
+    // Kazakhstan speaks Russian whether or not a statute says so; a player who
+    // knows it must not be charged for it.
+    expect(speaksLanguage('KZ', 'Russian')).toBe(true)
     expect(speaksButOffBoard(challengeOf('Russian', ['RU', 'BY', 'UA'], ['europe']), 'KZ')).toBe(
       true
     )
@@ -146,7 +144,12 @@ describe('off-board veto', () => {
       const onBoard = variantSpeakers(variant)
       let vetoed = 0
       for (const [language, countries] of onBoard) {
-        if (countries.length < 3 || countries.length > 12) continue
+        if (
+          countries.length < MOTHER_TONGUE_SPEAKERS.min ||
+          countries.length > MOTHER_TONGUE_SPEAKERS.max
+        ) {
+          continue
+        }
         const challenge = challengeOf(language, countries, [variant])
         vetoed += ISOCountryCodes.filter(isoCode => speaksButOffBoard(challenge, isoCode)).length
       }
@@ -197,54 +200,192 @@ describe('the dealt round', () => {
   it('deals the speakers a statute never named', () => {
     // The bug in the screenshot: "Who speaks Russian?" dealt four countries and
     // called Kazakhstan a miss, because the Factbook files Russian there as
-    // spoken rather than official. Both are answers now.
+    // spoken rather than official.
     const russian = boardSpeakers(ISOCountryCodes).get('Russian') ?? []
-    expect(russian).toContain('RU')
-    expect(russian).toContain('KZ')
-    expect(russian).toContain('UZ')
-    // And the reverse case the spoken list alone would drop: Burundi's English
-    // is official there and reaches no spoken list.
-    expect(boardSpeakers(ISOCountryCodes).get('English') ?? []).toContain('BI')
+    expect(russian).toEqual(expect.arrayContaining(['RU', 'KZ', 'UZ', 'UA', 'LV', 'EE']))
+    // Malaysia's Chinese fifth is larger than Singapore's whole population.
+    expect(boardSpeakers(ISOCountryCodes).get('Chinese')).toContain('MY')
   })
 
-  it('deals the speakers only a population share names', () => {
-    // A third of Ukraine, Latvia and Estonia speaks Russian, and Malaysia's
-    // Chinese fifth is larger than Singapore's whole population — none of
-    // them reached either language field, so naming one cost a point.
-    const speakers = boardSpeakers(ISOCountryCodes)
-    expect(speakers.get('Russian')).toEqual(expect.arrayContaining(['UA', 'LV', 'EE', 'MD']))
-    expect(speakers.get('Chinese')).toContain('MY')
+  it('does not require a statute almost nobody speaks', () => {
+    // Burundi makes English official and CLDR puts 0.05% behind it.
+    expect(speaksLanguage('BI', 'English')).toBe(false)
+    expect(speakerRow('BI', 'English')?.official).toBe('national')
+    expect(languageBounce(challengeOf('English', ['GB', 'IE']), 'BI')).toBe('statute')
+  })
+
+  it('reads a first-language census over a usage estimate', () => {
+    // CLDR has 80% of Lithuania using Russian; 6.8% speak it at home.
+    expect(speakerRow('LT', 'Russian')).toMatchObject({ share: 6.8, source: 'cia-factbook' })
+    expect(speaksLanguage('LT', 'Russian')).toBe(false)
+    expect(languageBounce(challengeOf('Russian', ['RU', 'BY']), 'LT')).toBe('minority')
+  })
+
+  it('takes the larger figure where a statute vouches for the language', () => {
+    // South Africa's English: 8.1% at home, 31% in use — and official.
+    expect(speaksLanguage('ZA', 'English')).toBe(true)
+    // Switzerland's Factbook figures are a survey; CLDR sizes its Italian.
+    expect(speaksLanguage('CH', 'Italian')).toBe(true)
+  })
+
+  it('accepts a second language without requiring it', () => {
+    // Most Swedes speak English; no source names it as Sweden's own.
+    expect(speakerRow('SE', 'English')?.named).toBeUndefined()
+    expect(speaksLanguage('SE', 'English')).toBe(false)
+    expect(languageBounce(challengeOf('English', ['GB', 'IE']), 'SE')).toBe('unlisted')
+    expect(languageBounceLine(challengeOf('English', ['GB', 'IE']), 'SE')).toBe(
+      'Sweden has English speakers, but no source lists it as a language of its own — not counted'
+    )
+  })
+
+  it('deals every language the board speaks in two to 32 countries', () => {
+    const world = motherTongueDeck(playableCountries(rules('world')), new Set())
+    const languages = world.map(([language]) => language)
+    expect(languages).toEqual(
+      expect.arrayContaining(['Spanish', 'French', 'Arabic', 'Russian', 'Portuguese'])
+    )
+    expect(languages).not.toContain('English')
+    expect(world.length).toBeGreaterThan(25)
+    for (const variant of ['north-america', 'south-america'] as const) {
+      expect(
+        motherTongueDeck(playableCountries(rules(variant)), new Set()).map(
+          ([language]) => language
+        ),
+        variant
+      ).toContain('Spanish')
+    }
+  })
+
+  it('asks a fresh language until the board runs out', () => {
+    const pool = playableCountries(rules('south-america'))
+    const all = motherTongueDeck(pool, new Set())
+    const [first] = all[0]!
+    expect(motherTongueDeck(pool, new Set([first])).map(([language]) => language)).not.toContain(
+      first
+    )
+    expect(motherTongueDeck(pool, new Set(all.map(([language]) => language)))).toEqual(all)
   })
 })
 
 describe('spoken languages', () => {
   it('does not count an officiality confined to one region', () => {
     // Croatian is official in Burgenland and spoken by 1.6% of Austria.
-    expect(COUNTRIES.AT.officialLanguages).toContain('Croatian')
-    expect(COUNTRIES.AT.regionalLanguages).toContain('Croatian')
+    expect(speakerRow('AT', 'Croatian')?.official).toBe('regional')
     expect(speaksLanguage('AT', 'Croatian')).toBe(false)
     expect(speaksLanguage('SI', 'Italian')).toBe(false)
     // A regional official the country also speaks at scale still counts.
-    expect(COUNTRIES.ES.regionalLanguages).toContain('Catalan')
+    expect(speakerRow('ES', 'Catalan')?.official).toBe('regional')
     expect(speaksLanguage('ES', 'Catalan')).toBe(true)
   })
 
   it('accepts a regional speaker without requiring it', () => {
     // Naming Austria for Croatian bounces free on any board: right about a
     // statute, never one of the answers.
-    const croatian = challengeOf('Croatian', ['BA', 'HR', 'ME'])
-    expect(speaksRegionally('AT', 'Croatian')).toBe(true)
-    expect(languageBounce(croatian, 'AT')).toBe('regional')
-    expect(languageBounce(challengeOf('Italian', ['IT', 'CH']), 'SI')).toBe('regional')
+    const croatian = challengeOf('Croatian', ['BA', 'HR'])
+    expect(languageBounce(croatian, 'AT')).toBe('statute')
+    expect(languageBounceLine(croatian, 'AT')).toBe(
+      'Austria makes Croatian official only regionally — not counted'
+    )
+    expect(languageBounce(challengeOf('Italian', ['IT', 'CH']), 'SI')).toBe('statute')
     expect(languageBounce(croatian, 'HR')).toBeUndefined()
     expect(languageBounce(croatian, 'FR')).toBeUndefined()
     // Spain speaks Catalan at scale, so it is an answer, never a bounce.
-    expect(speaksRegionally('ES', 'Catalan')).toBe(false)
+    expect(speaksLanguage('ES', 'Catalan')).toBe(true)
     expect(languageBounce(challengeOf('French', ['FR', 'BE'], ['europe']), 'SN')).toBe('off-board')
   })
 
+  it('never names the language in a Tongue Buzz bounce', () => {
+    const line = languageBounceLine(challengeOf('English', ['GB', 'IE']), 'BI', 'it')
+    expect(line).toBe('Burundi makes it official, but under 1% speak it — not counted')
+  })
+
+  it('reads officiality from the statutes alone, in source order', () => {
+    expect(officialLanguages('BI')).toEqual(['Kirundi', 'French', 'English'])
+    // "(state language)" is Kyrgyzstan's word for it.
+    expect(officialLanguages('KG')).toEqual(['Kyrgyz', 'Russian'])
+    // A regional statute is not a national one.
+    expect(officialLanguages('AT')).not.toContain('Croatian')
+    expect(officialLanguages('PT')).toEqual(['Portuguese'])
+  })
+
+  it('names a language on its own only when a player could have met it', () => {
+    const headline = (language: string) =>
+      isHeadlineLanguage(language, [...(boardSpeakers(ISOCountryCodes).get(language) ?? [])])
+    expect(headline('Greek')).toBe(true)
+    expect(headline('Japanese')).toBe(true)
+    expect(headline('Oromo')).toBe(false)
+    expect(headline('Fiji Hindi')).toBe(false)
+  })
+
+  it('bounces a speaker benched from a world board as off the board', () => {
+    // Liechtenstein speaks German; a world deal that benched it must not
+    // tell the player "only 100% speak it".
+    const german = challengeOf('German', ['DE', 'AT', 'CH'])
+    expect(languageBounce(german, 'LI')).toBe('off-board')
+    expect(languageBounceLine(german, 'LI')).toBe(
+      "Liechtenstein does speak German — but it isn't in play this game"
+    )
+  })
+
+  it('never claims a share no source measured', () => {
+    const swahili = challengeOf('Swahili', ['KE', 'TZ', 'UG'])
+    expect(speakerRow('CD', 'Swahili')?.share).toBeUndefined()
+    expect(languageBounceLine(swahili, 'CD')).toBe(
+      'Democratic Republic of the Congo has Swahili speakers, but no source counts how many speak it — not counted'
+    )
+  })
+
+  it('accepts a statute or a named minority, never a school subject', () => {
+    expect(acceptsSpeaker('BI', 'English')).toBe(true)
+    expect(acceptsSpeaker('LT', 'Russian')).toBe(true)
+    expect(acceptsSpeaker('DE', 'English')).toBe(false)
+    expect(acceptsSpeaker('SE', 'English')).toBe(false)
+  })
+
+  it('keeps a buzz round from being probed for free', () => {
+    const english = {
+      ...challengeOf('English', ['GB', 'IE']),
+      _type: 'tongue-buzz-challenge' as const,
+      clips: [],
+    }
+    // Only an off-board speaker bounces. A statute or a named minority is paid,
+    // a bare usage figure is a miss — neither line can be read for free.
+    for (const isoCode of ['BI', 'SE', 'NL'] as const) {
+      expect(languageBounce(english, isoCode), isoCode).toBeUndefined()
+    }
+    expect(speaksTongue(english, 'BI')).toBe(true)
+    expect(speaksTongue(english, 'SE')).toBe(false)
+    const european = {
+      ...english,
+      countries: ['GB', 'IE', 'MT'] as ISOCountryCode[],
+      scope: ['europe' as const],
+    }
+    expect(languageBounce(european, 'US')).toBe('off-board')
+    expect(speaksTongue(european, 'BI')).toBe(false)
+  })
+
+  it('grades a Scriptorium page as the final grades its language', () => {
+    // Singapore makes Tamil official at a 2.5% share: accepted, not listed.
+    expect(scriptoriumAnswers('Tamil')).not.toContain('SG')
+    expect(scriptoriumAccepts('Tamil', 'SG')).toBe(true)
+    expect(scriptoriumAccepts('Tamil', 'FR')).toBe(false)
+  })
+
+  it('keeps the curated rows that name a language no other source sizes', () => {
+    // Andorra's Spanish is named only by the curated row; without it CLDR's
+    // 43% filed it as a second language.
+    expect(speakerRow('AD', 'Spanish')).toMatchObject({ named: true, source: 'mondiale-editorial' })
+    expect(speaksLanguage('AD', 'Spanish')).toBe(true)
+  })
+
+  it('folds the varieties CLDR files apart', () => {
+    expect(SPEAKERS.PK?.['Western Panjabi']).toBeUndefined()
+    expect(speaksLanguage('PK', 'Punjabi')).toBe(true)
+    expect(speaksLanguage('FJ', 'Hindi')).toBe(true)
+  })
+
   it('never counts a sign language as spoken', () => {
-    expect(COUNTRIES.NZ.officialLanguages).toContain('New Zealand Sign Language')
+    expect(SPEAKERS.NZ?.['New Zealand Sign Language']).toBeDefined()
     expect(isSignLanguage('New Zealand Sign Language')).toBe(true)
     expect(isSignLanguage('English')).toBe(false)
     for (const isoCode of ISOCountryCodes) {
@@ -284,6 +425,7 @@ describe('tongue buzz', () => {
   it('credits an off-board speaker instead of locking them out', () => {
     // A Europe board dealing French: buzzing Senegal is right about the world.
     const challenge = {
+      _type: 'tongue-buzz-challenge' as const,
       language: 'French',
       countries: ['FR', 'BE', 'LU', 'MC', 'CH'] as ISOCountryCode[],
       scope: ['europe' as const],

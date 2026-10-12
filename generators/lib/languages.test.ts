@@ -1,18 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { FACTBOOK } from '~~/data/factbook.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { spokenLanguages } from '~~/lib/language-rounds'
+import {
+  officialLanguages as statutes,
+  speaksLanguage,
+  spokenLanguages,
+} from '~~/lib/language-rounds'
 import { SPOKEN_LANGUAGE_SHARES } from '~~/data/static/spoken-language-shares'
+import { SPEAKERS } from '~~/data/speakers.gen'
 import {
   ISO_LANGUAGE_NAMES,
   LANGUAGE_ALIASES,
-  SPOKEN_POPULATION_FLOOR,
   canonicalLanguage,
-  isWidelySpoken,
+  cldrLanguage,
+  countryLanguage,
+  firstLanguageShares,
+  namedLanguages,
   officialLanguages,
   regionalOfficialLanguages,
   splitLanguageSegments,
-  widelySpokenLanguages,
 } from './languages'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -26,11 +32,8 @@ const factbookLanguages = (isoCode: string): string | undefined => {
 
 const officialFor = (isoCode: string) => officialLanguages(factbookLanguages(isoCode))
 const regionalFor = (isoCode: string) => regionalOfficialLanguages(factbookLanguages(isoCode))
-const spokenFor = (isoCode: string) =>
-  widelySpokenLanguages(
-    factbookLanguages(isoCode),
-    COUNTRIES[isoCode as ISOCountryCode]?.people.population?.amount
-  )
+const sharedFor = (isoCode: string) =>
+  firstLanguageShares(factbookLanguages(isoCode)).map(({ language }) => language)
 
 describe('splitting the prose', () => {
   it('splits on top-level separators only', () => {
@@ -179,6 +182,21 @@ describe('the corpus as a whole', () => {
   })
 })
 
+describe('the speaker table reads its statutes from the Factbook', () => {
+  it('takes the parsed marks, not the countries-list fallback, for most countries', () => {
+    // If the official marks stopped matching, every statute would quietly
+    // become the fallback and the clues that claim officiality would guess.
+    const fromMarks = (Object.keys(COUNTRIES) as ISOCountryCode[]).filter(isoCode => {
+      const regional = new Set(regionalFor(isoCode))
+      const marked = officialFor(isoCode)
+        .filter(language => !regional.has(language))
+        .map(language => countryLanguage(isoCode, language))
+      return marked.length > 0 && marked.join('|') === statutes(isoCode).join('|')
+    })
+    expect(fromMarks.length).toBeGreaterThan(150)
+  })
+})
+
 describe('regional officiality', () => {
   it('flags an official confined to a region', () => {
     expect(regionalFor('AT')).toEqual(['Croatian'])
@@ -201,46 +219,49 @@ describe('regional officiality', () => {
   })
 })
 
-describe('widely spoken languages', () => {
+describe('first-language shares', () => {
   it('reads a speaker share no other source carries', () => {
-    expect(spokenFor('UA')).toContain('Russian')
-    expect(spokenFor('LV')).toContain('Russian')
-    expect(spokenFor('EE')).toContain('Russian')
+    expect(sharedFor('UA')).toContain('Russian')
+    expect(sharedFor('LV')).toContain('Russian')
+    expect(sharedFor('EE')).toContain('Russian')
     // Moldova's 9.7%, read past "Moldovan/Romanian 80.2% (official) (56.7% Moldovan; …)".
-    expect(spokenFor('MD')).toEqual(['Romanian', 'Russian'])
-    expect(spokenFor('US')).toContain('Spanish')
+    expect(sharedFor('MD').slice(0, 2)).toEqual(['Romanian', 'Russian'])
+    expect(sharedFor('US')).toContain('Spanish')
   })
 
   it('counts a head count a share undersells', () => {
     // India's 2.7% Punjabi and 4.2% Urdu are each tens of millions of people.
-    expect(spokenFor('IN')).toEqual(expect.arrayContaining(['Punjabi', 'Urdu']))
-    expect(isWidelySpoken(1, SPOKEN_POPULATION_FLOOR * 100)).toBe(true)
-    expect(isWidelySpoken(1, SPOKEN_POPULATION_FLOOR * 99)).toBe(false)
+    expect(sharedFor('IN')).toEqual(expect.arrayContaining(['Punjabi', 'Urdu']))
+    expect(speaksLanguage('IN', 'Punjabi')).toBe(true)
+    expect(speaksLanguage('IN', 'Urdu')).toBe(true)
   })
 
   it('stops at the share threshold', () => {
-    // Austria: "Croatian (official in Burgenland) 1.6%".
-    expect(spokenFor('AT')).toEqual(['German'])
-    expect(spokenFor('RS')).toEqual(['Serbian'])
+    // Austria: "Turkish 2.3%", "Croatian (official in Burgenland) 1.6%".
+    expect([...spokenLanguages('AT')]).toEqual(['German'])
+    expect([...spokenLanguages('RS')]).toEqual(['Serbian'])
   })
 
   it('ignores a can-speak survey', () => {
     // Hungary's shares add to 147%: "English 25.3%, German 12.6%" is schooling.
-    expect(spokenFor('HU')).toEqual([])
-    expect(spokenFor('CH')).toEqual([])
+    expect(sharedFor('HU')).toEqual([])
+    expect(sharedFor('CH')).toEqual([])
   })
 
   it('never reads one language as another that shares its name', () => {
     // Zambia's "Tonga 11.4%" is ChiTonga; Mauritius's "Creole 86.5%" is Morisien.
-    expect(spokenFor('ZM')).not.toContain('Tonga')
-    expect(spokenFor('MU')).not.toContain('Haitian')
+    expect(sharedFor('ZM')).not.toContain('Tonga')
+    expect(sharedFor('MU')).not.toContain('Haitian')
   })
 
-  it('adds only ISO 639-1 languages, in the game spelling', () => {
+  it('adds only ISO 639-1 languages, in the game spelling, to the speaker table', () => {
     for (const isoCode of Object.keys(COUNTRIES) as ISOCountryCode[]) {
-      for (const name of spokenFor(isoCode)) {
+      for (const name of sharedFor(isoCode)) {
         expect(ISO_LANGUAGE_NAMES.has(name), `${isoCode}/${name}`).toBe(true)
-        expect(COUNTRIES[isoCode].languages, isoCode).toContain(name)
+        expect(
+          SPEAKERS[isoCode]?.[countryLanguage(isoCode, name)]?.named,
+          `${isoCode}/${name}`
+        ).toBe(true)
       }
     }
   })
@@ -264,21 +285,55 @@ describe('the curated speaker shares', () => {
 
   it('sizes only what the language prose names but the share parse cannot credit', () => {
     for (const [isoCode, rows] of Object.entries(SPOKEN_LANGUAGE_SHARES)) {
-      const population = COUNTRIES[isoCode as ISOCountryCode].people.population?.amount
       for (const { language, share, basis, reason } of rows) {
         const where = `${isoCode}/${language}`
         expect(proseNames(isoCode, language), where).toBe(true)
-        expect(spokenFor(isoCode), where).not.toContain(language)
+        expect(sharedFor(isoCode), where).not.toContain(language)
         // A survey row's entry is one the parse skipped whole; an unsized one gives no figures.
         const figures = /\d\s*%/.test(factbookLanguages(isoCode) ?? '')
         expect(figures, where).toBe(reason === 'survey')
-        if (reason === 'survey') expect(spokenFor(isoCode), where).toEqual([])
+        if (reason === 'survey') expect(sharedFor(isoCode), where).toEqual([])
         expect(ethnicGroups(isoCode), where).toContain(basis)
         expect(Number.parseFloat(basis.replace(/^\D*?(\d)/, '$1')), where).toBe(share)
-        expect(isWidelySpoken(share, population), where).toBe(true)
         expect(ISO_LANGUAGE_NAMES.has(language), where).toBe(true)
-        expect(COUNTRIES[isoCode as ISOCountryCode].languages, where).toContain(language)
+        expect(SPEAKERS[isoCode as ISOCountryCode]?.[language], where).toMatchObject({
+          share,
+          source: 'mondiale-editorial',
+          named: true,
+        })
       }
     }
+  })
+})
+
+describe('the sources the speaker table folds', () => {
+  it('reads each first-language share with its figure', () => {
+    expect(firstLanguageShares(factbookLanguages('UA'))).toEqual([
+      { language: 'Ukrainian', share: 67.5 },
+      { language: 'Russian', share: 29.6 },
+    ])
+    // A can-speak survey sizes nothing.
+    expect(firstLanguageShares(factbookLanguages('HU'))).toEqual([])
+  })
+
+  it('names the languages the prose names, sized or not', () => {
+    expect(namedLanguages(factbookLanguages('NG'))).toEqual(
+      expect.arrayContaining(['English', 'Hausa', 'Yoruba', 'Igbo'])
+    )
+    // Hungary's "English 25.3%" is a survey of schooling: only its official is named.
+    expect(namedLanguages(factbookLanguages('HU'))).toEqual(['Hungarian'])
+  })
+
+  it('folds CLDR varieties into the language the game names', () => {
+    expect(cldrLanguage('ary', {})).toBe('Arabic')
+    expect(cldrLanguage('gsw', {})).toBe('German')
+    expect(cldrLanguage('zh_Hant', {})).toBe('Chinese')
+    expect(cldrLanguage('fil', {})).toBe('Tagalog / Filipino')
+    expect(cldrLanguage('nb', {})).toBe('Norwegian')
+    expect(cldrLanguage('km', {})).toBe('Cambodian')
+    expect(cldrLanguage('rm', {})).toBe('Romansh')
+    expect(cldrLanguage('zgh', {})).toBe('Tamazight')
+    expect(cldrLanguage('tet', { tet: 'Tetum' })).toBe('Tetum')
+    expect(cldrLanguage('xyz', {})).toBeUndefined()
   })
 })

@@ -263,7 +263,7 @@ export const roundStory = (challenge: RoundChallenge | undefined): SpectateStory
       if (!('language' in challenge) || !('countries' in challenge)) break
       return {
         kicker: 'Mother tongue',
-        prompt: 'Someone is speaking — name a country where that language is official',
+        prompt: 'Someone is speaking — name a country where that language is spoken',
         secret: `${challenge.language} — any of ${challenge.countries.length} countries counts: ${listNames(challenge.countries)}`,
         focus: challenge.countries,
       }

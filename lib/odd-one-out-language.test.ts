@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { COUNTRIES } from '~~/data/countries.gen'
 import { getIndividualChallenge } from '~~/lib/challenges'
-import { speaksLanguage } from '~~/lib/language-rounds'
+import { speakerRow, speaksLanguage } from '~~/lib/language-rounds'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /** Steers every random draw: anything named here is drawn first, the rest keep their order. */
@@ -25,18 +24,19 @@ describe('odd-one-out language lineups', () => {
     delete process.env.FORCE_INDIVIDUAL_VARIANT
   })
 
-  // Each impostor makes the language official without the spoken list carrying
-  // it — Austria only in Burgenland, which is accepted but never required.
+  // Each impostor makes the language official and barely speaks it — accepted
+  // as an answer, never required, so it can never be the one that doesn't.
   const officialOnly: [string, ISOCountryCode][] = [
     ['Swahili', 'RW'],
     ['English', 'BI'],
     ['Portuguese', 'GQ'],
-    ['Guarani', 'BO'],
-    ['Croatian', 'AT'],
+    ['French', 'RW'],
+    ['Arabic', 'ER'],
   ]
 
   it.each(officialOnly)('never deals a %s speaker (%s) as the impostor', async (language, iso) => {
-    expect(COUNTRIES[iso].languages).not.toContain(language)
+    expect(speaksLanguage(iso, language)).toBe(false)
+    expect(speakerRow(iso, language)?.official).toBe('national')
     process.env.FORCE_INDIVIDUAL_VARIANT = 'odd-one-out'
     for (const pick of ['language', language, iso]) preferred.add(pick)
 

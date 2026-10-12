@@ -40,6 +40,7 @@ export type ProviderId =
   | 'openhistoricalmap'
   | 'flag-icons'
   | 'countries-list'
+  | 'unicode'
   | 'mozilla'
   | 'mondiale'
   | 'nasa'
@@ -200,6 +201,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     url: 'https://github.com/annexare/Countries',
     description: 'Currency codes and spoken languages per country.',
   },
+  unicode: {
+    name: 'Unicode CLDR',
+    url: 'https://cldr.unicode.org',
+    description:
+      'The Common Locale Data Repository: which languages each territory uses, and by what share of its people.',
+  },
   mozilla: {
     logo: 'mozilla.svg',
     name: 'Mozilla Common Voice',
@@ -256,6 +263,7 @@ export type SourceId =
   | 'ohm-overpass'
   | 'flag-icons-svg'
   | 'countries-list-package'
+  | 'unicode-cldr'
   | 'common-voice-clips'
   | 'mondiale-editorial'
   | 'nasa-earth-observatory'
@@ -493,6 +501,13 @@ export const SOURCES: Record<SourceId, Source> = {
     url: 'https://github.com/annexare/Countries',
     edition: 'v3.3.0',
     license: 'MIT',
+  },
+  'unicode-cldr': {
+    provider: 'unicode',
+    title: 'CLDR territory information',
+    url: 'https://github.com/unicode-org/cldr-json',
+    edition: '48.0.0',
+    license: 'Unicode License v3',
   },
   'common-voice-clips': {
     provider: 'mozilla',
@@ -827,6 +842,7 @@ export type DataSetId =
   | 'anthems'
   | 'anthem-lyrics'
   | 'tongues'
+  | 'speakers'
   | 'currencies'
   | 'leaders'
   | 'publicFinance'
@@ -993,6 +1009,16 @@ export const DATASETS: Record<DataSetId, DataSet> = {
     origins: [
       { source: 'common-voice-clips', dataset: 'Validated clips by locale' },
       { source: 'wikidata-items', dataset: 'P1098 speakers, P282 scripts' },
+    ],
+  },
+  speakers: {
+    label: 'Who speaks what',
+    files: ['data/speakers.gen.ts'],
+    origins: [
+      { source: 'unicode-cldr', dataset: 'territoryInfo language population' },
+      { source: 'cia-factbook', dataset: 'People and Society › Languages' },
+      { source: 'countries-list-package', dataset: 'ISO 639-1 language codes' },
+      { source: 'mondiale-editorial', dataset: 'data/static/spoken-language-shares.ts' },
     ],
   },
   currencies: {
