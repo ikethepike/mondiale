@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   answerBreakdown,
+  attemptPicksScore,
   capitalGuessScore,
   getCorrectRanking,
   rankingBreakdown,
@@ -29,6 +30,7 @@ import {
 import { getValueByAccessorID } from './values'
 import { gradeGroupAnswer } from './events/server/grade-group-answer'
 import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
 import type { Game, GameRules, Round } from '~~/types/game.types'
@@ -135,11 +137,38 @@ describe('scoreTraversalSubmission', () => {
       'CZ',
       'DE',
     ]
+    const challenge = { ...traversal(21), maximumClicks: submittedGuesses.length }
+    expect(scoreTraversalSubmission({ challenge, submittedGuesses, rules })).toEqual({
+      scored: 2,
+      maximum: 21,
+    })
+  })
+
+  it('pays nothing for a completed route that spent more than maximumClicks', () => {
+    const submittedGuesses: ISOCountryCode[] = ['BE', 'NL', 'LU', 'CH', 'AT', 'IT', 'DE']
     expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
-      {
-        scored: 2,
-        maximum: 21,
-      }
+      { scored: 0, maximum: 21 }
+    )
+  })
+
+  it('pays nothing for a submission naming every country', () => {
+    const submittedGuesses = ISOCountryCodes.filter(isoCode => isoCode !== 'FR' && isoCode !== 'PL')
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      { scored: 0, maximum: 21 }
+    )
+  })
+
+  it('pays a route completed on the last allowed guess', () => {
+    const submittedGuesses: ISOCountryCode[] = ['BE', 'NL', 'LU', 'CH', 'AT', 'DE']
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      { scored: 11, maximum: 21 }
+    )
+  })
+
+  it('counts neither repeats nor endpoints against the budget or the score', () => {
+    const submittedGuesses: ISOCountryCode[] = ['FR', 'BE', 'BE', 'PL', 'BE', 'DE', 'DE', 'FR']
+    expect(scoreTraversalSubmission({ challenge: traversal(21), submittedGuesses, rules })).toEqual(
+      { scored: 19, maximum: 21 }
     )
   })
 })
@@ -345,6 +374,19 @@ describe('capitalGuessScore', () => {
     for (const maximum of [12, 15, 21]) {
       expect(capitalGuessScore(2, 2, maximum)).toBeLessThan(capitalGuessScore(1, 2, maximum))
     }
+  })
+})
+
+describe('attemptPicksScore', () => {
+  it('prices the attempt the answer landed on', () => {
+    expect(attemptPicksScore(['PL'], 'PL', 2, 15)).toBe(capitalGuessScore(1, 2, 15))
+    expect(attemptPicksScore(['TR', 'PL'], 'PL', 2, 15)).toBe(capitalGuessScore(2, 2, 15))
+  })
+
+  it('pays nothing once the answer falls outside the cap', () => {
+    expect(attemptPicksScore(['TR', 'RO', 'PL', 'IT'], 'PL', 2, 15)).toBe(0)
+    expect(attemptPicksScore(['TR', 'RO'], 'PL', 2, 15)).toBe(0)
+    expect(attemptPicksScore([], 'PL', 2, 15)).toBe(0)
   })
 })
 

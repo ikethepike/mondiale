@@ -7,6 +7,8 @@
  * This is distinct from `data/palette.ts` PLAYER_COLORS (pawn identity).
  */
 
+import type { ISOCountryCode } from '~~/types/geography.types'
+
 export type NamedColor = 'red' | 'white' | 'blue' | 'green' | 'yellow' | 'black' | 'orange' | 'cyan'
 
 /** RGB anchors for each bucket, tuned against real flag palettes. */
@@ -98,3 +100,16 @@ export const simplifiedPalette = (rawColors: string[]): NamedColor[] => {
 /** True when two flags share the exact same simplified palette (Flag Twins). */
 export const sameSimplifiedPalette = (a: NamedColor[], b: NamedColor[]): boolean =>
   a.length > 0 && a.length === b.length && a.every((color, index) => color === b[index])
+
+/**
+ * Flags a player cannot tell apart once rendered: every flag ships in a 4:3
+ * box, which erases Monaco's 4:5, and Chad and Romania differ only in a shade
+ * of blue. Rounds that answer with a flag alone must never seat both.
+ */
+const INDISTINGUISHABLE_FLAGS: readonly (readonly [ISOCountryCode, ISOCountryCode])[] = [
+  ['ID', 'MC'],
+  ['TD', 'RO'],
+]
+
+export const flagsIndistinguishable = (a: ISOCountryCode, b: ISOCountryCode): boolean =>
+  a !== b && INDISTINGUISHABLE_FLAGS.some(([x, y]) => (a === x && b === y) || (a === y && b === x))

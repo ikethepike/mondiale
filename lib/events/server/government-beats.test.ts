@@ -321,6 +321,21 @@ describe('the beat verdict', () => {
     await rideVerdict()
     expect(live(game.id).state.beat).toBe('seats')
   })
+
+  // Re-arming the full hold on every restart let back-to-back restarts park
+  // the round on its verdict past the stall budget.
+  it('resumes the hold a restart interrupted rather than restarting it', async () => {
+    const { challenge, game, ctx } = await openRound()
+    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
+    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
+
+    dropArmedTimersForTests()
+    vi.clearAllTimers()
+    vi.setSystemTime(Date.now() + BEAT_VERDICT_HOLD_MS - 100)
+    rearmGovernment(ctx, store.get(game.id) as Game, { armBriefingCaps: true })
+    await vi.advanceTimersByTimeAsync(200)
+    expect(live(game.id).state.beat).toBe('seats')
+  })
 })
 
 describe('staleness', () => {
