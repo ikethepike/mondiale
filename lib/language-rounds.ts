@@ -45,14 +45,20 @@ export const isSignLanguage = (language: string): boolean => /\bsign language$/i
  * makes Croatian official in Burgenland, where 1.6% of the country speaks it,
  * and "Who speaks Croatian?" must not make Austria a required answer.
  */
-export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
+export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> =>
+  new Set(
+    [...nationalLanguages(isoCode), ...(COUNTRIES[isoCode]?.languages ?? [])].filter(
+      language => !isSignLanguage(language)
+    )
+  )
+
+/** The country's nationwide official languages — provincial officiality
+ *  (Austria's Croatian) excluded, for the same reason as above. */
+export const nationalLanguages = (isoCode: ISOCountryCode): string[] => {
   const country = COUNTRIES[isoCode]
   const regional = new Set(country?.regionalLanguages)
-  return new Set(
-    [
-      ...(country?.officialLanguages ?? []).filter(language => !regional.has(language)),
-      ...(country?.languages ?? []),
-    ].filter(language => !isSignLanguage(language))
+  return (country?.officialLanguages ?? []).filter(
+    language => !regional.has(language) && !isSignLanguage(language)
   )
 }
 

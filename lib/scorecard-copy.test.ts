@@ -62,8 +62,10 @@ describe('scorecardExplainer', () => {
   })
 
   it('drops the 50/50 note on hard mode', () => {
-    expect(scorecardExplainer({ kind: 'two-truths', hardMode: false })).toContain('50/50')
-    expect(scorecardExplainer({ kind: 'two-truths', hardMode: true })).not.toContain('50/50')
+    expect(scorecardExplainer({ kind: 'two-truths', hardMode: false })).toContain('revealed card')
+    expect(scorecardExplainer({ kind: 'two-truths', hardMode: true })).not.toContain(
+      'revealed card'
+    )
   })
 
   it('teaches the tie rule only on rankings that leaned on it', () => {

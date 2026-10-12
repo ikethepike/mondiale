@@ -5,7 +5,9 @@ import type {
   IndividualChallenge,
   IndividualChallengeVariant,
 } from '~~/types/challenges/individual-challenge.type'
-import type { Game, PlayerMove, SealedChallenge } from '~~/types/game.types'
+import { isChallengeOfType } from '~~/lib/rounds'
+import { roundSettled } from '~~/lib/spectate'
+import type { Game, PlayerMove, Round, SealedChallenge } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 
 /**
@@ -65,6 +67,29 @@ export const finalQuestion = (item: FinalChallengeItem): FinalChallengeItem =>
 
 const SEALED: SealedChallenge = { _type: 'sealed-challenge' }
 
+/**
+ * A banked Two Truths sheet is an answer key for every card it stamped right
+ * (a bot's especially), so while anyone is still stamping the live round
+ * carries no sheet and no "perfect" mark — those reach a graded seat through
+ * its own receipts.
+ */
+const wireRounds = (game: Game): Round[] => {
+  const live = game.rounds[game.rounds.length - 1]
+  if (
+    !live ||
+    !isChallengeOfType(live.groupChallenge, 'two-truths-challenge') ||
+    roundSettled(Object.values(game.players))
+  )
+    return game.rounds
+  const groupAnswers = Object.fromEntries(
+    Object.entries(live.groupAnswers).map(([id, answer]) => [
+      id,
+      { ...without(answer, ['sheet']), submitted: [] },
+    ])
+  )
+  return [...game.rounds.slice(0, -1), { ...live, groupAnswers }]
+}
+
 const wireMove = (seat: Player, move: PlayerMove, index: number): PlayerMove => {
   const { challenge } = move
   if (!challenge || challenge._type === 'sealed-challenge') return move
@@ -84,6 +109,7 @@ const wireMove = (seat: Player, move: PlayerMove, index: number): PlayerMove => 
  *  only once the verdict holds on it. Server code reads the saved game, never this. */
 export const wireGame = (game: Game): Game => ({
   ...game,
+  rounds: wireRounds(game),
   players: Object.fromEntries(
     Object.entries(game.players).map(([id, seat]) => [
       id,
