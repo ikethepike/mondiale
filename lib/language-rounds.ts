@@ -28,6 +28,9 @@ type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language
   countries: ISOCountryCode[]
 }
 
+/** Signed, not spoken — no "Who speaks X?" question may name one. */
+export const isSignLanguage = (language: string): boolean => /\bsign language$/i.test(language)
+
 /**
  * Every language a country speaks — the UNION of the two language fields, and
  * the one derivation everything else here is built from.
@@ -40,7 +43,11 @@ type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language
  */
 export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
   const country = COUNTRIES[isoCode]
-  return new Set([...(country?.officialLanguages ?? []), ...(country?.languages ?? [])])
+  return new Set(
+    [...(country?.officialLanguages ?? []), ...(country?.languages ?? [])].filter(
+      language => !isSignLanguage(language)
+    )
+  )
 }
 
 /** Does this country speak the language at all? The rounds ask "Who speaks
