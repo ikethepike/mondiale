@@ -20,6 +20,7 @@ import { empirePots } from '~~/lib/empires'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { offsetKm, type LatLng } from '~~/lib/geo'
+import { sketchSubmission, sketchTarget, type OutlinePoint } from '~~/lib/outline'
 import {
   AUTOPILOT_GRACE_MS,
   BOT_BROWSE_ACK_JITTER_MS,
@@ -47,6 +48,7 @@ import {
   classicPlaySeconds,
   isClassicGroupRound,
   remainingFractionOn,
+  seatWindowMsFor,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { gateClockFor } from '~~/lib/gate-timing'
@@ -810,7 +812,18 @@ const dispatchClassicAnswer = (ctx: EngineContext, seq: number) => {
     const roundIndex = fresh.rounds.length - 1
     if (!isClassicGroupRound(round.groupChallenge) || round.groupAnswers[playerId]) return
 
-    const submission = await composeClassicSubmission(fresh, round, playerId)
+    // A kind whose window the seat opens itself (the play tap, Empire's buzz)
+    // prices the answer off that stamp, so the bot opens it as it answers.
+    let table = fresh
+    if (seatWindowMsFor(round.groupChallenge) && seat.cursor.deadline === undefined) {
+      await botAct(ctx, { event: 'round-play', subject: seat.cursor.subject, seq })
+      const played = await server.fetchGame(ctx.eventTarget.gameId)
+      if (!played) return
+      table = played
+    }
+    const live = latestRound(table)
+    if (!live) return
+    const submission = await composeClassicSubmission(table, live, playerId)
     if (!submission) return
 
     // Through the REAL submit handler, exactly like the gate and gauntlet
@@ -1413,21 +1426,30 @@ export const composeClassicSubmission = async (
   const hit = Math.random() < share
   const challenge = round.groupChallenge
   const kind = roundChallengeKind(challenge)
-  const maximum = 'maximumPoints' in challenge ? (challenge.maximumPoints ?? 0) : 0
   /** When the bot actually buzzed, off the round's own clock — the act was
    *  scheduled into `BOT_CLASSIC_WINDOW`, so reporting a share-derived guess
    *  instead would tax a right answer for being confident. Reveal-only. */
   const buzzAt = liveRemainingFraction(round)
   /**
-   * The pot a landed buzz claims. The `hit` roll ALREADY spends the share, so
-   * the claim must not spend it again — `share × anything` is what had hard
-   * bots realizing half their dial. The buzz curve can't price it either: a
-   * bot answers mid-window on purpose (never racing a human off the line), and
-   * `buzzFraction` at that moment caps the pot near 0.66, so a hard seat could
-   * not reach 0.65 of the round however well it played. A landed answer is
-   * worth the round; the politeness beat is not a skill discount.
+   * Whether a priced answer lands. The grader prices it off its own clock, and
+   * a bot answers mid-window on purpose (never racing a human off the line), so
+   * a landed buzz is already worth less than the pot: rolling the bare share
+   * would spend it twice. The odds rise by what the moment costs, capped at
+   * certain — only a seat whose share exceeds what the moment still pays
+   * realizes less than its dial.
    */
-  const claim = maximum
+  const lands = async (landed: GroupSubmission, pot?: number): Promise<boolean> => {
+    const { scoring } = await gradeGroupAnswer({
+      game,
+      round,
+      playerId,
+      submission: landed,
+      seat: game.players[playerId]?.cursor,
+    })
+    const outOf = pot ?? scoring.maximum
+    const worth = outOf ? scoring.scored / outOf : 0
+    return worth > 0 && Math.random() < Math.min(1, share / worth)
+  }
 
   switch (kind) {
     case 'silhouette':
@@ -1438,16 +1460,15 @@ export const composeClassicSubmission = async (
     case 'capital-guess':
     case 'ground-plan':
     case 'flag-palette':
-    case 'composition': {
-      const target = correct[0]
-      if (!target) return { ranking: [] }
-      const pick = hit ? target : (wrongPick(game, correct) ?? target)
-      return { ranking: [pick], clientScore: hit ? claim : 0, buzzAt }
-    }
+    case 'composition':
     case 'tongue-buzz': {
-      // Any speaker wins — the correct set is the whole membership.
-      const pick = hit ? sample(correct) : wrongPick(game, correct)
-      return pick ? { ranking: [pick], clientScore: hit ? claim : 0, buzzAt } : { ranking: [] }
+      // Tongues: any speaker wins — the correct set is the whole membership.
+      const target = kind === 'tongue-buzz' ? sample(correct) : correct[0]
+      if (!target) return { ranking: [] }
+      const landed = { ranking: [target], buzzAt }
+      if (await lands(landed)) return landed
+      const miss = wrongPick(game, correct)
+      return miss ? { ranking: [miss], buzzAt } : { ranking: [] }
     }
     case 'hot-cold': {
       // A probe trail: the colder the seat, the longer the wander. Every stray
@@ -1472,25 +1493,16 @@ export const composeClassicSubmission = async (
     }
     case 'empire': {
       const empire = expectChallengeType(challenge, 'empire-challenge')
-      const members = takeShare(correct, share)
-      const pots = empirePots(empire.maximumPoints)
-      return {
-        ranking: members,
-        ...(hit
-          ? {
-              empire: {
-                guessedId: empire.empireId,
-                clientScore: Math.round(pots.name * (0.6 + share * 0.4)),
-              },
-            }
-          : {}),
-      }
+      const named = { guessedId: empire.empireId }
+      const buzzed = await lands(
+        { ranking: [], empire: named },
+        empirePots(empire.maximumPoints).name
+      )
+      return { ranking: takeShare(correct, share), ...(buzzed ? { empire: named } : {}) }
     }
     case 'name-that-water': {
       const water = expectChallengeType(challenge, 'name-water-challenge')
-      return hit
-        ? { ranking: [], water: { guessedId: water.featureId }, clientScore: claim }
-        : { ranking: [] }
+      return hit ? { ranking: [], water: [{ guessedId: water.featureId }] } : { ranking: [] }
     }
     case 'pin-landmark': {
       const pin = expectChallengeType(challenge, 'pin-landmark-challenge')
@@ -1503,12 +1515,11 @@ export const composeClassicSubmission = async (
       return { ranking: [], year: yearScatter(vintage, game.difficulty, share) }
     }
     case 'sketch': {
-      // The one kind with NO correctness gate: `gradeGroupAnswer` clamps the
-      // claim with `correct: true` always, because a sketch's similarity IS
-      // its score. So the share has to ride the CLAIM here — the `hit` roll
-      // never gets to spend it, and claiming the pot drew a flawless outline
-      // at every difficulty.
-      return { ranking: [], clientScore: Math.round(maximum * share) }
+      // The grader scores the drawing itself: a hit traces the country's own
+      // outline (the full pot), a miss scribbles a shape no country resembles.
+      const sketch = expectChallengeType(challenge, 'sketch-challenge')
+      const traced = hit ? await sketchTarget(sketch.country) : undefined
+      return { ranking: [], sketch: sketchSubmission(traced ?? SKETCH_SCRIBBLE) }
     }
     case 'traversal': {
       // The route is graded whole: `optimalPath` carries its endpoints, so a
@@ -1533,6 +1544,22 @@ export const composeClassicSubmission = async (
     }
   }
 }
+
+/** A missed sketch: spokes from a centre, which no country's outline resembles. */
+const SKETCH_SCRIBBLE: OutlinePoint[] = [
+  [0, 0],
+  [1, 0],
+  [0, 0],
+  [0, 1],
+  [0, 0],
+  [-1, 0],
+  [0, 0],
+  [0, -1],
+  [0, 0],
+  [0.7, 0.7],
+  [0, 0],
+  [-0.7, -0.7],
+]
 
 /** A quota-recall answer: the full quota on a hit, one short on a miss —
  *  the near-miss every list-recall final grades as a plain fail. */

@@ -4,8 +4,10 @@ import { guessPolicyFor, probeCarriesIso } from '~~/lib/live-guess-policy'
 import { DWELL } from '~~/lib/motion'
 import type { LatLng } from '~~/lib/geo'
 import { clamp01 } from '~~/lib/number'
-import { playGateMsFor } from '~~/lib/round-beats'
+import { seatClockEndsAt, seatClockSeconds } from '~~/lib/round-beats'
 import { roundSettled } from '~~/lib/spectate'
+import type { ROUND_HINTS, RoundHint } from '~~/lib/hints'
+import { useBuyHint } from '~~/lib/use-buy-hint'
 import { useSeatClockStart } from '~~/lib/use-seat-clock'
 import { provideSpentInterstitial } from '~~/lib/use-spent-interstitial'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
@@ -24,7 +26,7 @@ export type TypedRoundChallenge = Extract<RoundChallenge, { _type: string }>
  *  the event declares it — and can never drift from what the server reads. */
 export type SubmitExtras = Omit<
   Extract<ClientEventData, { event: 'submit-group-challenge-answers' }>,
-  'event' | 'ranking' | 'clientScore' | 'buzzAt' | keyof SeatEcho
+  'event' | 'ranking' | 'buzzAt' | keyof SeatEcho
 >
 
 const PRUNE_INTERVAL_MS = 250
@@ -46,6 +48,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const { gameStore, update, currentRound, clearBoard, seatCursor, seatEcho, previewVerdict } =
     useClientEvents()
   const startSeatClockOn = useSeatClockStart()
+  const buyHintOn = useBuyHint()
   const { now } = useServerNow()
   // Captured once: the view is keyed on the round's subject, so this is the
   // question every send from this mount answers.
@@ -91,11 +94,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   })
 
   // Optional countdown, driven by a `durationSeconds` on the challenge.
-  const duration = computed(() =>
-    challenge.value && 'durationSeconds' in challenge.value
-      ? (challenge.value.durationSeconds as number)
-      : undefined
-  )
+  const duration = computed(() => seatClockSeconds(challenge.value))
   const cleanups: (() => void)[] = []
   /** Views await data chunks before calling `begin`; one that unmounted
    *  meanwhile must not start anything. */
@@ -110,9 +109,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    */
   const clockEndsAt = computed(() => {
     const round = currentRound.value?.round
-    if (!duration.value || !round) return undefined
-    if (playGateMsFor(challenge.value)) return seatCursor.value?.deadline
-    return round.playStartsAt ? round.playStartsAt + duration.value * 1000 : undefined
+    return round ? seatClockEndsAt(round, seatCursor.value?.deadline) : undefined
   })
   /** A stopped clock holds the reading it stopped on. */
   const frozenSeconds = ref<number>()
@@ -136,20 +133,15 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const elapsedFraction = computed(() => (duration.value ? 1 - remainingFraction.value : 0))
 
   /** Submit exactly once; later calls (e.g. timeout after a manual answer) no-op.
-   *  `extras` carries mode-specific payload the server re-checks (the named
-   *  water feature, say) — a claimed `clientScore` alone never proves an answer. */
-  const submitOnce = (
-    ranking: ISOCountryCode[],
-    clientScore?: number,
-    buzzAt?: number,
-    extras?: SubmitExtras
-  ) => {
+   *  `extras` carries the mode-specific answer the server grades and prices
+   *  (the named water feature, the drawn outline) — no score travels. */
+  const submitOnce = (ranking: ISOCountryCode[], buzzAt?: number, extras?: SubmitExtras) => {
     // Watchers hold no answer: the gate here also keeps the redelivery loop
     // from ever arming (update() would swallow the emit and retry forever).
     if (gameStore.watching) return
     if (submitted.value) return
     submitted.value = true
-    void deliverAnswer(ranking, clientScore, buzzAt, extras)
+    void deliverAnswer(ranking, buzzAt, extras)
   }
 
   /**
@@ -162,12 +154,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
    * never offers a second answer.
    */
   const redeliver = createRedeliver('group answer')
-  const deliverAnswer = (
-    ranking: ISOCountryCode[],
-    clientScore?: number,
-    buzzAt?: number,
-    extras?: SubmitExtras
-  ) => {
+  const deliverAnswer = (ranking: ISOCountryCode[], buzzAt?: number, extras?: SubmitExtras) => {
     // The echo names the subject this mount rendered: a buffered redelivery
     // flushing after the settle advanced the table lands on a spent subject.
     const echo = seatEcho(subject)
@@ -175,7 +162,6 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
       update({
         event: 'submit-group-challenge-answers',
         ranking,
-        clientScore,
         buzzAt,
         ...extras,
         ...echo,
@@ -368,6 +354,8 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     seatEcho,
     previewVerdict: (value: Parameters<typeof previewVerdict>[0]) => previewVerdict(value, subject),
     startSeatClock: () => startSeatClockOn(subject),
+    /** Record a bought hint with the server — what the round's pay is docked by. */
+    buyHint: (hint: RoundHint<keyof typeof ROUND_HINTS>) => buyHintOn(subject, hint),
     boothAnswer,
     clearBoard,
   }

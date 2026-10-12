@@ -42,14 +42,7 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import {
-  countryPathData,
-  largestRing,
-  normalizeOutline,
-  type OutlinePoint,
-  resampleClosed,
-  scoreSketch,
-} from '~~/lib/outline'
+import { type OutlinePoint, scoreSketchFor, sketchSubmission } from '~~/lib/outline'
 
 // The shared scaffolding blanks the map (no reference material while
 // sketching), runs the interstitial, and owns the submit latch + redelivery.
@@ -137,19 +130,13 @@ const submitSketch = () => {
   const active = challenge.value
   if (!active || submitted.value || points.value.length < 12) return
 
-  const pathData = countryPathData(active.country)
-  const target = pathData ? largestRing(pathData) : undefined
-  const clientScore = target ? scoreSketch(points.value, target, active.maximumPoints) : 0
-
-  // Ship the normalized drawing so everyone's attempt overlays on the reveal
-  const normalized = normalizeOutline(resampleClosed(points.value, 96)).map(
-    ([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as OutlinePoint
-  )
-
-  previewVerdict(clientScore > active.maximumPoints * 0.4 ? 'correct' : 'incorrect')
+  const sketch = sketchSubmission(points.value)
   // Pencils-down is the only beat worth telling the room — never the drawing.
   announce({ kind: 'presence' })
-  submitOnce([active.country], clientScore, undefined, { sketch: normalized })
+  submitOnce([active.country], undefined, { sketch })
+  void scoreSketchFor(active.country, sketch, active.maximumPoints).then(score =>
+    previewVerdict(score > active.maximumPoints * 0.4 ? 'correct' : 'incorrect')
+  )
 }
 </script>
 <style lang="scss" scoped>

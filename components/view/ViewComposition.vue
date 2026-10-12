@@ -103,6 +103,7 @@ import { formatCompact } from '~~/lib/number'
 import { corridorsToDestination } from '~~/lib/migration'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * Composition: a country's foreign-born population split by where those people
@@ -174,16 +175,15 @@ const stakes = computed(() =>
 /** The largest origin — what the round actually asks for. */
 const answer = computed(() => slices.value[0]?.isoCode)
 
-const submitRound = (score: number) => {
+const submitRound = (_score: number, picks: ISOCountryCode[]) => {
   if (submitted.value) return
   // No map verdict wash: the question lives entirely on the bar, and a
   // full-board tint would read as a claim about the map itself
-  // Bank the origin that scored, not the board the bar belongs to
-  submitOnce(score > 0 && answer.value ? [answer.value] : [], score)
+  submitOnce(picks)
 }
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0) })
+  begin({ onTimeout: () => submitRound(0, spent.value) })
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 

@@ -122,13 +122,13 @@ import type { CityPlanPaths } from '~~/types/challenges/group-modes.type'
 import { countryName, getCountry } from '~~/lib/country'
 import { cityCountryByName } from '~~/lib/cities'
 import { loadCityPlan } from '~~/lib/city-plan-tiles'
-import { groundPlanRemainingFraction, revealedLayers } from '~~/lib/ground-plan'
-import { buzzScore } from '~~/lib/scoring'
+import { groundPlanLayersShown, revealedLayers } from '~~/lib/ground-plan'
 import { classicPlaySeconds, GROUND_PLAN_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
 import { formatNumber } from '~~/lib/number'
 import { useIsPortrait } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 const {
   challenge,
@@ -169,8 +169,7 @@ const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
 const revealedCount = computed(() => {
   const active = challenge.value
   if (!active || !started.value) return 0
-  const elapsed = totalSeconds.value - secondsLeft.value
-  return Math.min(active.layers.length, Math.floor(elapsed / active.secondsPerLayer) + 1)
+  return groundPlanLayersShown(active, totalSeconds.value - secondsLeft.value)
 })
 
 const shownLayers = computed(() => {
@@ -224,19 +223,19 @@ watch(
 )
 
 /** The reveal is display-only; the server's flip ends the beat. */
-const resolve = (correct: boolean, score: number) => {
+const resolve = (correct: boolean, picks: ISOCountryCode[]) => {
   if (resolved.value) return
   resolved.value = true
   wasCorrect.value = correct
   stopCountdown()
   previewVerdict(correct ? 'correct' : undefined)
-  submitOnce(correct && challenge.value ? [challenge.value.country] : [], score)
+  submitOnce(picks)
 }
 
-const submitRound = (score: number) => resolve(score > 0, score)
+const submitRound = (score: number, picks: ISOCountryCode[]) => resolve(score > 0, picks)
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0) })
+  begin({ onTimeout: () => submitRound(0, spent.value) })
   nextTick(() => guessInput.value?.focus())
 }
 
@@ -290,10 +289,7 @@ const commit = () => {
   if (isoCode !== active.country) {
     return announce({ hint: `${typed} isn't this city`, tone: 'alert' })
   }
-  resolve(
-    true,
-    buzzScore(active.maximumPoints, groundPlanRemainingFraction(active, revealedCount.value))
-  )
+  resolve(true, [active.country])
 }
 </script>
 <style lang="scss" scoped>

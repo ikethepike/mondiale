@@ -117,7 +117,6 @@ const answerRound = async (table: TestTable, id: string, correct = true) =>
   table.send(id, {
     event: 'submit-group-challenge-answers',
     ranking: correct ? ['SE'] : ['NO'],
-    clientScore: correct ? 10 : 0,
     ...(await echo(table, id)),
   } as ClientEventData)
 

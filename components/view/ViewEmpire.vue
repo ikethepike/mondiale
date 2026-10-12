@@ -260,7 +260,6 @@ const onProgress = (t: number) => timebar.value?.setT(t)
 
 /** Beat-1 outcome, carried into the single end-of-round submit. */
 let beat1Guess: string | undefined
-let beat1Score = 0
 
 // Beat 1 is resolved and the stamped tap beat has begun: the overlay lifts.
 watch(
@@ -432,15 +431,14 @@ const onNameMiss = (typed: string) => {
  * short memorize hold, then the overlay lifts and the modern borders bloom
  * back for the tap beat. The camera never moves.
  */
-const resolveBeat1 = (guessedId: string | undefined, clientScore: number) => {
+const resolveBeat1 = (guessedId: string | undefined, score: number) => {
   const active = challenge.value
   if (!active || beat.value !== 'guess') return
   stopCountdown()
   beat1Guess = guessedId
-  beat1Score = clientScore
   verdict.value = {
     tone: guessedId ? 'won' : 'missed',
-    eyebrow: guessedId ? `Well named · +${clientScore} on the buzz` : 'Time runs out — it was',
+    eyebrow: guessedId ? `Well named · +${score} on the buzz` : 'Time runs out — it was',
     name: EMPIRES[active.empireId]?.name ?? active.empireId,
   }
 
@@ -513,8 +511,8 @@ const onScrub = (t: number) => ghostField.value?.seek(t)
 /** One submit carries both beats: taps in `ranking`, the buzz through
  *  SubmitExtras' `empire` field. */
 const submitRound = () => {
-  submitOnce(picks.value, undefined, undefined, {
-    empire: { ...(beat1Guess ? { guessedId: beat1Guess } : {}), clientScore: beat1Score },
+  submitOnce(picks.value, undefined, {
+    empire: beat1Guess ? { guessedId: beat1Guess } : {},
   })
 }
 </script>

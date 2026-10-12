@@ -86,6 +86,7 @@ import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 const {
   challenge,
@@ -119,14 +120,14 @@ const stakes = computed(() =>
     : "Name the country from its capital's skyline before the clock runs out. The sooner you name it, the more it's worth."
 )
 
-const submitRound = (score: number) => {
+const submitRound = (score: number, picks: ISOCountryCode[]) => {
   if (submitted.value) return
   previewVerdict(score > 0 ? 'correct' : undefined)
-  submitOnce(score > 0 && challenge.value ? [challenge.value.country] : [], score)
+  submitOnce(picks)
 }
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0) })
+  begin({ onTimeout: () => submitRound(0, spent.value) })
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 

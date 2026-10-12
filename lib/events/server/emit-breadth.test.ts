@@ -192,7 +192,6 @@ describe('every emit leaves the client equal to server truth', () => {
     await table.send('a', {
       event: 'submit-group-challenge-answers',
       ranking: ['SE'],
-      clientScore: 10,
       ...(await echo(table, 'a')),
     } as ClientEventData)
     expect(table.emits.at(-1)?.event).toBe('seat-advanced')
@@ -214,7 +213,6 @@ describe('every emit leaves the client equal to server truth', () => {
     await table.send('a', {
       event: 'submit-group-challenge-answers',
       ranking: [],
-      clientScore: 7,
       ...(await echo(table, 'a')),
     } as ClientEventData)
     expect(table.emits.map(emitted => emitted.event)).toEqual(['seat-advanced'])

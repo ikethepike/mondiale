@@ -105,8 +105,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
-import { classicPlaySeconds } from '~~/lib/round-beats'
-import { buzzScore } from '~~/lib/scoring'
+import { classicPlaySeconds, statDetectiveCluesShown } from '~~/lib/round-beats'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { LOCKOUT_SECONDS, useLockoutBeat } from '~~/lib/use-lockout-beat'
@@ -194,10 +193,7 @@ const revealedCount = computed(() => {
   const active = challenge.value
   if (!active || !started.value) return 0
   if (resolved.value) return Math.max(1, frozenCount.value)
-  return Math.min(
-    totalClues.value,
-    1 + Math.floor(playWindow.elapsedMs.value / 1000 / active.secondsPerClue)
-  )
+  return statDetectiveCluesShown(active, playWindow.elapsedMs.value)
 })
 /** The clue count the round resolved on — a resolved round stops dripping. */
 const frozenCount = ref(0)
@@ -217,12 +213,12 @@ const displayClues = computed(() => {
 
 const { lockedOut, lockOut } = useLockoutBeat({ onEnd: () => guessInput.value?.focus() })
 
-const submitRound = (guess: ISOCountryCode | undefined, clientScore: number) => {
-  submitOnce(guess ? [guess] : [], clientScore)
+const submitRound = (guess: ISOCountryCode | undefined) => {
+  submitOnce(guess ? [guess] : [])
 }
 
 /** Same resolution beat as the silhouette: land the answer as a PLACE. */
-const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
+const resolve = (guess: ISOCountryCode | undefined) => {
   const active = challenge.value
   if (!active || resolved.value) return
   frozenCount.value = revealedCount.value
@@ -242,7 +238,7 @@ const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
 
   // Submit at the resolve — the reveal is pure display, and the server's
   // flip (the kind's reveal hold in ROUND_BEATS) ends the beat.
-  submitRound(guess, clientScore)
+  submitRound(guess)
 }
 
 const begin = () => {
@@ -253,13 +249,13 @@ const begin = () => {
 watch(
   () => playWindow.expired.value && started.value && !gameStore.watching,
   ran => {
-    if (ran) resolve(undefined, 0)
+    if (ran) resolve(undefined)
   }
 )
 watch(
   boothAnswer,
   answer => {
-    if (answer) resolve(answer.submitted[0], 0)
+    if (answer) resolve(answer.submitted[0])
   },
   { immediate: true }
 )
@@ -269,13 +265,7 @@ const onGuess = (country: Country) => {
   if (!active || submitted.value || resolved.value || lockedOut.value || !started.value) return
 
   if (country.isoCode === active.country) {
-    // Fewer clues seen, bigger score
-    const remainingFraction = Math.max(
-      0,
-      (active.clues.length - revealedCount.value) / active.clues.length
-    )
-    const clientScore = buzzScore(active.maximumPoints, remainingFraction)
-    resolve(country.isoCode, clientScore)
+    resolve(country.isoCode)
     return
   }
 

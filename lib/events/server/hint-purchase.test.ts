@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gateRemainingFraction } from '~~/lib/gate-timing'
-import { gateLeapSteps, gatePot } from '~~/lib/scoring'
+import { gateLeapSteps, gatePot, hintBitePoints } from '~~/lib/scoring'
 import { seatSubject } from '~~/lib/seat-transitions'
 import type { ClientEventData } from '~~/types/events.types'
 import type { Game, PlayerMove, Tile } from '~~/types/game.types'
@@ -106,5 +106,35 @@ describe('gate hints are charged from the server record', () => {
     )
     await table.send('a', { event: 'buy-hint', hint: 'iso', subject: 'gate:w1:t9', seq: 1 })
     expect((await seatA(table)).cursor.hints).toBeUndefined()
+  })
+})
+
+describe('round hints are charged from the server record', () => {
+  const MAX = 10
+  const water = {
+    _type: 'name-water-challenge',
+    featureId: 'baltic',
+    featureName: 'Baltic Sea',
+    kind: 'sea',
+    countries: ['SE', 'FI'],
+    maximumGuesses: 3,
+    durationSeconds: 40,
+    maximumPoints: MAX,
+  }
+
+  it('docks a name-that-water answer by the hints bought on its subject', async () => {
+    const table = await open(buildGame([testSeat('a', 'round'), testSeat('b', 'round')], water))
+    await send(table, { event: 'buy-hint', hint: 'shores' })
+    await send(table, { event: 'buy-hint', hint: 'initials' })
+    await send(table, {
+      event: 'submit-group-challenge-answers',
+      ranking: [],
+      water: [{ guessedId: 'baltic' }],
+    })
+    const game = await table.read()
+    expect(game.rounds[0]!.playerTurns.a!.points).toEqual({
+      scored: MAX - 2 * hintBitePoints(MAX),
+      maximum: MAX,
+    })
   })
 })

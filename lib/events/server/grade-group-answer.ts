@@ -1,7 +1,6 @@
 import {
-  clampClientScore,
+  attemptPicksScore,
   getCorrectRanking,
-  isCorrectWaterGuess,
   isFlagPaletteMatch,
   scoreChallengeSubmission,
   scoreGhostState,
@@ -10,11 +9,24 @@ import {
   scorePinLandmark,
   scoreTraversalSubmission,
   scoreTrendRace,
+  scoreWaterGuesses,
   speaksTongue,
 } from '~~/lib/challenges'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
+import { groundPlanLayersShown, groundPlanRemainingFraction } from '~~/lib/ground-plan'
+import { hintsBought, roundHintsOnSale } from '~~/lib/hints'
+import { isSketchSubmission, scoreSketchFor } from '~~/lib/outline'
+import {
+  remainingFractionOn,
+  seatClockEndsAt,
+  seatClockSeconds,
+  seatWindowMsFor,
+  statDetectiveCluesShown,
+  statDetectiveRemainingFraction,
+  TIMEOUT_SLACK_MS,
+} from '~~/lib/round-beats'
 import { expectChallengeType } from '~~/lib/rounds'
-import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
+import { blitzScore, buzzScore, clampScore, hintDockedScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp, clamp01 } from '~~/lib/number'
@@ -23,6 +35,7 @@ import { roundChallengeKind } from '~~/types/challenges/traversal-challenge.type
 import type { ClientEventData, SeatEcho } from '~~/types/events.types'
 import type { Game, GroupChallengeAnswer, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { SeatCursor } from '~~/types/seat.types'
 
 /** The wire submission minus its event tag — derived, so a new mode field is
  *  available here the moment the event declares it (the SubmitExtras trick). */
@@ -43,12 +56,19 @@ export const ABSENT_SUBMISSION: GroupSubmission = { ranking: [] }
  * `correct` set is still graded in for the scorecard, but the pay is zero —
  * an empty submission only counts as a correct play (no-mans-land's Bir
  * Tawil) when a live player actually locked it in.
+ *
+ * Nothing the submission claims is paid as-is: a buzz is priced off the
+ * server's own clock at `at` (less the wire's `TIMEOUT_SLACK_MS`), an option
+ * board off the submitted pick sequence, a sketch off the drawing itself, and
+ * every hint off the seat cursor's record.
  */
 export const gradeGroupAnswer = async ({
   game,
   round,
   playerId,
   submission,
+  seat,
+  at = Date.now(),
   absent = false,
 }: {
   /** The rules context modes grade against (the traversal graph). */
@@ -56,6 +76,10 @@ export const gradeGroupAnswer = async ({
   round: Round
   playerId: string
   submission: GroupSubmission
+  /** The answering seat's cursor: its own play window and its bought hints. */
+  seat?: Pick<SeatCursor, 'deadline' | 'hints'>
+  /** When the answer reached the server. */
+  at?: number
   absent?: boolean
 }): Promise<{ scoring: { scored: number; maximum: number }; answer: GroupChallengeAnswer }> => {
   // The submitted ISO list means different things per round kind: a
@@ -67,14 +91,52 @@ export const gradeGroupAnswer = async ({
   let scoring!: { scored: number; maximum: number }
   let answer!: GroupChallengeAnswer
 
-  /** Buzz modes are all-or-nothing: one target country, a client-claimed
-   *  score the server clamps to the pot when the pick was right. */
+  const pricedAt = at - TIMEOUT_SLACK_MS
+  /** The seat's shot clock still to run when the answer left the player. */
+  const clockFraction = (moment = pricedAt) =>
+    remainingFractionOn(
+      seatClockEndsAt(round, seat?.deadline),
+      seatClockSeconds(roundChallenge),
+      moment
+    )
+  /** How far into the round's play window the answer left the player, in ms;
+   *  undefined while the window is unstamped. */
+  const elapsedMs = () =>
+    round.playStartsAt === undefined ? undefined : Math.max(0, pricedAt - round.playStartsAt)
+  const bought = hintsBought(seat, roundHintsOnSale(roundChallenge))
+
+  /** Buzz modes are all-or-nothing: one target country, paid on the buzz
+   *  curve at `fraction` when the pick was right. */
   const buzzOn = (
     challenge: { country: ISOCountryCode; maximumPoints: number },
-    correct = submission.ranking[0] === challenge.country
+    correct = submission.ranking[0] === challenge.country,
+    fraction = clockFraction()
   ) => {
     answer = { submitted: submission.ranking, correct: [challenge.country] }
-    scoring = clampClientScore(submission.clientScore, challenge.maximumPoints, correct)
+    scoring = {
+      scored: correct ? buzzScore(challenge.maximumPoints, fraction) : 0,
+      maximum: challenge.maximumPoints,
+    }
+  }
+
+  /** The recognition modes with a small option table outside hard mode: the
+   *  table pays by the attempt the answer landed on in the submitted pick
+   *  sequence, the free-typed board by the clock. */
+  const attemptsOn = (
+    challenge: { country: ISOCountryCode; maximumGuesses?: number; maximumPoints: number },
+    fraction?: number
+  ) => {
+    if (!challenge.maximumGuesses) return buzzOn(challenge, undefined, fraction)
+    answer = { submitted: submission.ranking, correct: [challenge.country] }
+    scoring = {
+      scored: attemptPicksScore(
+        submission.ranking,
+        challenge.country,
+        challenge.maximumGuesses,
+        challenge.maximumPoints
+      ),
+      maximum: challenge.maximumPoints,
+    }
   }
 
   /** Blitz modes: name as many of the answer set as the clock allows. */
@@ -146,17 +208,34 @@ export const gradeGroupAnswer = async ({
       const guess = submission.ranking[0]
       const correct = !!guess && speaksTongue(challenge, guess)
       answer = { submitted: submission.ranking, correct: challenge.countries }
-      scoring = clampClientScore(submission.clientScore, challenge.maximumPoints, correct)
+      scoring = {
+        scored: correct ? buzzScore(challenge.maximumPoints, clockFraction()) : 0,
+        maximum: challenge.maximumPoints,
+      }
       break
     }
     case 'stat-detective': {
-      buzzOn(expectChallengeType(roundChallenge, 'stat-detective-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'stat-detective-challenge')
+      const elapsed = elapsedMs()
+      buzzOn(
+        challenge,
+        undefined,
+        elapsed === undefined
+          ? 0
+          : statDetectiveRemainingFraction(challenge, statDetectiveCluesShown(challenge, elapsed))
+      )
       break
     }
     case 'two-truths': {
       // Spotting the lie is all-or-nothing; the client reports the pick as
-      // the mystery country when the lie was found
-      buzzOn(expectChallengeType(roundChallenge, 'two-truths-challenge'))
+      // the mystery country when the lie was found. The 50/50 bites whatever
+      // the buzz was worth.
+      const challenge = expectChallengeType(roundChallenge, 'two-truths-challenge')
+      buzzOn(challenge)
+      scoring = {
+        ...scoring,
+        scored: hintDockedScore(scoring.scored, challenge.maximumPoints, bought),
+      }
       break
     }
     case 'river-run':
@@ -177,22 +256,29 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'capital-guess': {
-      buzzOn(expectChallengeType(roundChallenge, 'capital-guess-challenge'))
+      attemptsOn(expectChallengeType(roundChallenge, 'capital-guess-challenge'))
       break
     }
     case 'ground-plan': {
       // The typed answer was a CITY, resolved to its country by the view before
       // it left (`cityCountryByName`), so this grades as a plain buzz on the
-      // country — the same wire shape every other mode uses.
-      buzzOn(expectChallengeType(roundChallenge, 'ground-plan-challenge'))
+      // country — the same wire shape every other mode uses. The typed board
+      // pays by the layers on screen, not the seconds.
+      const challenge = expectChallengeType(roundChallenge, 'ground-plan-challenge')
+      const elapsed = elapsedMs()
+      attemptsOn(
+        challenge,
+        elapsed === undefined
+          ? 0
+          : groundPlanRemainingFraction(challenge, groundPlanLayersShown(challenge, elapsed / 1000))
+      )
       break
     }
     case 'star-chart': {
       // The typed answers were CITIES, but each one resolves to the country
       // whose capital it is before it leaves the view (`capitalCountryByName`),
       // so the round grades as a plain collect-a-set: the stars are the answer
-      // list, and the server re-derives the overlap rather than trusting a
-      // claimed score. Nothing about the round needs a `clientScore`.
+      // list, and the server re-derives the overlap.
       const challenge = expectChallengeType(roundChallenge, 'star-chart-challenge')
       blitzOn({
         countries: starChartAnswers(challenge),
@@ -221,7 +307,7 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'flashpoint': {
-      buzzOn(expectChallengeType(roundChallenge, 'flashpoint-challenge'))
+      attemptsOn(expectChallengeType(roundChallenge, 'flashpoint-challenge'))
       break
     }
     case 'composition': {
@@ -254,12 +340,18 @@ export const gradeGroupAnswer = async ({
     case 'empire': {
       const challenge = expectChallengeType(roundChallenge, 'empire-challenge')
       const pots = empirePots(challenge.maximumPoints)
-      // Beat 1: the server re-derives correctness from the id and clamps the
-      // claimed buzz points to beat 1's share — a wrong or absent buzz pays
-      // nothing there, but beat 2 still scores in full.
+      // Beat 1: the server re-derives correctness from the id and prices the
+      // buzz on beat 1's clock at the moment it opened the seat's tap window
+      // (`round-play`) — a wrong or absent buzz pays nothing there, but beat 2
+      // still scores in full.
       const guessedId = submission.empire?.guessedId
       const named = guessedId === challenge.empireId
-      const beat1 = clampClientScore(submission.empire?.clientScore, pots.name, named)
+      const window = seatWindowMsFor(challenge)
+      const buzzedAt =
+        seat?.deadline !== undefined && window
+          ? seat.deadline - window - TIMEOUT_SLACK_MS
+          : pricedAt
+      const beat1 = named ? buzzScore(pots.name, clockFraction(buzzedAt)) : 0
       // Beat 2: server-derived Jaccard over the pinned core; partials forgiven.
       const beat2 = scoreEmpireExtent({
         challenge,
@@ -271,7 +363,7 @@ export const gradeGroupAnswer = async ({
         correct: challenge.members,
         ...(guessedId !== undefined ? { empireGuess: { id: guessedId, correct: named } } : {}),
       }
-      scoring = { scored: beat1.scored + beat2.scored, maximum: challenge.maximumPoints }
+      scoring = { scored: beat1 + beat2.scored, maximum: challenge.maximumPoints }
       break
     }
     case 'trend-race': {
@@ -310,25 +402,27 @@ export const gradeGroupAnswer = async ({
     }
     case 'name-that-water': {
       const challenge = expectChallengeType(roundChallenge, 'name-water-challenge')
-      // The guess isn't an ISO code, so the server re-checks the named
-      // feature itself and clamps the claim — a claim with no matching guess
-      // pays nothing. The scorecard shows the shore countries as the answer.
-      const named = isCorrectWaterGuess(challenge, submission.water)
+      // The guesses aren't ISO codes, so the server grades the named features
+      // itself. The scorecard shows the shore countries as the answer.
       answer = { submitted: submission.ranking, correct: challenge.countries }
-      scoring = clampClientScore(submission.clientScore, challenge.maximumPoints, named)
+      scoring = scoreWaterGuesses(challenge, submission.water, bought)
       break
     }
     case 'sketch': {
       const challenge = expectChallengeType(roundChallenge, 'sketch-challenge')
+      const drawn = isSketchSubmission(submission.sketch) ? submission.sketch : undefined
       answer = {
         // An absent seat drew nothing — the scorecard must not show it as
         // having "submitted" the answer.
         submitted: absent ? [] : [challenge.country],
         correct: [challenge.country],
-        ...(submission.sketch ? { sketch: submission.sketch } : {}),
+        ...(drawn ? { sketch: drawn } : {}),
       }
-      // Sketches always "count" — the client-computed similarity IS the score
-      scoring = clampClientScore(submission.clientScore, challenge.maximumPoints, true)
+      // The similarity IS the score, measured here against the country itself
+      scoring = {
+        scored: drawn ? await scoreSketchFor(challenge.country, drawn, challenge.maximumPoints) : 0,
+        maximum: challenge.maximumPoints,
+      }
       break
     }
     default: {

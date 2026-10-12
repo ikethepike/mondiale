@@ -139,12 +139,7 @@ import { attributionFor, dedupeAttributions } from '~~/lib/attribution'
 import { accessorTopicLabel, getChallengeDetails, getScaleProps } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
-import {
-  buzzScore,
-  HINT_UNLOCK_FIRST_ELAPSED,
-  hintBitePoints,
-  hintDockedScore,
-} from '~~/lib/scoring'
+import { HINT_UNLOCK_FIRST_ELAPSED, hintBitePoints } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { formatAmount } from '~~/lib/number'
@@ -163,6 +158,7 @@ const {
   remainingFraction,
   elapsedFraction,
   stopCountdown,
+  buyHint,
 } = useGroupChallenge('two-truths-challenge')
 
 // The stage only scrolls where the claims stack (phones); on a wider board the
@@ -178,7 +174,7 @@ const start = () =>
   begin({
     onTimeout: () => {
       timedOut.value = true
-      submitOnce([], 0)
+      submitOnce([])
     },
   })
 
@@ -186,7 +182,6 @@ const start = () =>
 // a third of the clock in (the buzz curve pays most early — an instant 50/50
 // would be a strictly optimal buy), and hard mode stays unassisted.
 const eliminatedIndex = ref<number>()
-const hintsUsed = computed(() => (eliminatedIndex.value === undefined ? 0 : 1))
 const fiftyFiftyUnlocked = computed(
   () =>
     !isHardMode(gameStore.game) &&
@@ -201,6 +196,7 @@ const buyFiftyFifty = () => {
     .map((_, index) => index)
     .filter(index => index !== active.lieIndex)
   eliminatedIndex.value = sample(truths)
+  buyHint('fifty-fifty')
 }
 
 /** One panel for all three claims — the cards themselves are buttons, so the
@@ -266,18 +262,11 @@ const pick = (index: number) => {
   announce({ kind: 'presence' })
 
   const correct = index === active.lieIndex
-  // A round dealt without a duration has no clock to race — pay it in full.
+  // A round dealt without a duration has no clock to race.
   const fraction = active.durationSeconds ? remainingFraction.value : 1
-  const score = correct
-    ? hintDockedScore(
-        buzzScore(active.maximumPoints, fraction),
-        active.maximumPoints,
-        hintsUsed.value
-      )
-    : 0
   // Submit at the pick — the reveal is pure display, and the server's flip
   // (the kind's reveal hold in ROUND_BEATS) ends the beat.
-  submitOnce(correct ? [active.country] : [], score, fraction)
+  submitOnce(correct ? [active.country] : [], fraction)
 }
 </script>
 <style lang="scss" scoped>

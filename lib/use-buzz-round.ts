@@ -1,5 +1,4 @@
 import { computed, ref, watch } from 'vue'
-import { buzzScore } from './scoring'
 import { seatWindowMsFor } from './round-beats'
 import { useLockoutBeat } from './use-lockout-beat'
 import { useGroupChallenge, type TypedRoundChallenge } from './useGroupChallenge'
@@ -41,8 +40,6 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
       challenge: Extract<TypedRoundChallenge, { _type: T }>,
       guess: ISOCountryCode
     ) => boolean
-    /** The pot, off the narrowed challenge. */
-    maximumPoints: (challenge: Extract<TypedRoundChallenge, { _type: T }>) => number
     /** Copy for a wrong buzz; the country is already named for the guesser. */
     lockoutHint: (guessName: string) => string
     /**
@@ -99,7 +96,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     lyricsUnmask: started.value && elapsedFraction.value >= HINT_UNLOCK_AT.lyricsUnmask,
   }))
 
-  const resolve = (guess: ISOCountryCode | undefined, clientScore: number) => {
+  const resolve = (guess: ISOCountryCode | undefined) => {
     if (resolved.value) return
     resolved.value = true
     stopCountdown()
@@ -108,7 +105,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
     // Submit at the resolve — the reveal (mask lifts, the translated verse)
     // is pure display, and the server's flip (the kind's reveal hold in
     // ROUND_BEATS) ends the beat.
-    submitOnce(guess ? [guess] : [], clientScore, buzzedAt.value)
+    submitOnce(guess ? [guess] : [], buzzedAt.value)
   }
 
   /**
@@ -129,7 +126,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
    */
   const begin = (afterStart?: () => void) => {
     if (started.value) return
-    beginRound({ onTick: options.onTick, onTimeout: () => resolve(undefined, 0) })
+    beginRound({ onTick: options.onTick, onTimeout: () => resolve(undefined) })
     if (seatWindowMsFor(challenge.value)) round.startSeatClock()
     afterStart?.()
   }
@@ -164,7 +161,7 @@ export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
 
     if (options.isCorrect(active, isoCode)) {
       buzzedAt.value = remainingFraction.value
-      resolve(isoCode, buzzScore(options.maximumPoints(active), remainingFraction.value))
+      resolve(isoCode)
       return 'correct'
     }
 

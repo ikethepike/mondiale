@@ -28,6 +28,8 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       round: currentRound,
       playerId,
       submission: eventData,
+      seat: cursor,
+      at: Date.now(),
     })
     currentRound.groupAnswers[playerId] = answer
     currentRound.playerTurns[playerId] = { points: scoring }

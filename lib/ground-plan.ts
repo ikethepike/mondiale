@@ -83,6 +83,16 @@ export const revealedLayers = (
   revealedCount: number
 ): GroundPlanLayer[] => challenge.layers.slice(0, Math.max(0, revealedCount))
 
+/** Layers on screen `elapsedSeconds` into the play window. */
+export const groundPlanLayersShown = (
+  challenge: Pick<GroundPlanChallenge, 'layers' | 'secondsPerLayer'>,
+  elapsedSeconds: number
+): number =>
+  Math.min(
+    challenge.layers.length,
+    Math.floor(Math.max(0, elapsedSeconds) / challenge.secondsPerLayer) + 1
+  )
+
 /**
  * What a correct answer is worth as a fraction of the pot: the LADDER, not the
  * clock. How much of the city you needed is the tension in this mode, so a

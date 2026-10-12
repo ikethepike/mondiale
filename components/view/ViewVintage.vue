@@ -292,7 +292,7 @@ const shownScene = ref<number>()
 const lockIn = () => {
   if (submitted.value || gameStore.watching) return
   stopCountdown()
-  submitOnce([], undefined, undefined, touched.value ? { year: guess.value } : {})
+  submitOnce([], undefined, touched.value ? { year: guess.value } : {})
 }
 
 watch(phase, (now, before) => {

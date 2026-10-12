@@ -62,7 +62,6 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { attributionFor } from '~~/lib/attribution'
 import { isFlagPaletteMatch } from '~~/lib/challenges'
 import { countryName, flagMarkup, loadFlags } from '~~/lib/country'
-import { buzzScore } from '~~/lib/scoring'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { Country } from '~~/types/geography.types'
 
@@ -123,9 +122,7 @@ const submitRound = (correct: boolean, guessed?: Country['isoCode']) => {
   if (submitted.value) return
   const active = challenge.value
   previewVerdict(correct ? 'correct' : undefined)
-  // Name it sooner, keep more of the pot.
-  const score = correct && active ? buzzScore(active.maximumPoints, remainingFraction.value) : 0
-  submitOnce(correct && active ? [guessed ?? active.country] : [], score)
+  submitOnce(correct && active ? [guessed ?? active.country] : [])
 }
 
 const start = () => {

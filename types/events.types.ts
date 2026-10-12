@@ -74,31 +74,25 @@ export type ClientEventData =
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
-      /**
-       * Client-computed points for modes the server can't reproduce (sketch
-       * similarity, silhouette buzz timing). The server clamps it; correctness
-       * itself is still validated server-side where possible.
-       */
-      clientScore?: number
       /** Buzz rounds: the clock fraction left at the moment of the buzz, for
-       *  the reveal's buzz race. Reveal-only — the score is already clamped
-       *  above, and `buzzScore` can't be inverted back to this. */
+       *  the reveal's buzz race. Reveal-only — the server prices the buzz off
+       *  its own clock at receipt. */
       buzzAt?: number
-      /** Sketch rounds: the normalized drawn outline, for the reveal overlay. */
+      /** Sketch rounds: the normalized drawn outline (`sketchSubmission`). The
+       *  server scores it against the country itself and draws it on the reveal. */
       sketch?: [number, number][]
       /** Pin-landmark rounds: where on the globe the player dropped their pin.
        *  The server scores the distance itself, so this is the whole answer. */
       pin?: LatLng
       /** Ghosts-of-empires rounds: the beat-1 buzz. `guessedId` is the empire
-       *  the player named (absent = never buzzed); `clientScore` is the buzz
-       *  points claimed for beat 1 alone — the server re-checks the name and
-       *  clamps the claim to beat 1's share of the pot. Beat-2 taps travel in
-       *  `ranking` as usual. */
-      empire?: { guessedId?: string; clientScore: number }
-      /** Name-that-water rounds: the feature the player settled on (absent =
-       *  never resolved correctly). The server re-checks it against the dealt
-       *  feature and zeroes the claim on a miss — same posture as `empire`. */
-      water?: { guessedId?: string; guessedName?: string }
+       *  the player named (absent = never buzzed); the server re-checks the
+       *  name and prices it off the moment the buzz opened the seat's tap
+       *  window. Beat-2 taps travel in `ranking` as usual. */
+      empire?: { guessedId?: string }
+      /** Name-that-water rounds: every feature the player named, in order. The
+       *  server grades each against the dealt feature and pays by the attempt
+       *  the answer landed on. */
+      water?: { guessedId?: string; guessedName?: string }[]
       /** Parliament rounds: the benches the player landed on the arc, by name.
        *  The answer is not a country, so `ranking` carries only the chamber;
        *  the server re-derives the score from these against the dealt benches
