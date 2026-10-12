@@ -13,6 +13,7 @@ import {
   scoreTrendRace,
   speaksTongue,
 } from '~~/lib/challenges'
+import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
@@ -136,7 +137,10 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'anthem-buzz': {
-      buzzOn(expectChallengeType(roundChallenge, 'anthem-buzz-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'anthem-buzz-challenge')
+      const guess = submission.ranking[0]
+      buzzOn(challenge, !!guess && anthemTuneMatches(challenge.country, guess))
+      answer.correct = sharedTuneCountries(challenge.country)
       break
     }
     case 'tongue-buzz': {
