@@ -24,7 +24,7 @@ export const GATE_HINTS = {
 } as const satisfies Partial<Record<IndividualChallengeVariant, readonly string[]>>
 
 export const ROUND_HINTS = {
-  'two-truths': ['fifty-fifty'],
+  'two-truths': ['reveal'],
   'name-that-water': ['shores', 'initials'],
 } as const satisfies Partial<Record<RoundChallengeKind, readonly string[]>>
 

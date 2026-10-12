@@ -852,6 +852,7 @@ export type DataSetId =
   | 'changes'
   | 'empires'
   | 'vintage'
+  | 'claims'
   | 'conflicts'
   | 'conflict-events'
   | 'commodity-exporters'
@@ -1103,6 +1104,17 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       { source: 'cshapes-2' },
       { source: 'commons-media', dataset: 'Historical flags' },
       { source: 'mondiale-editorial', dataset: 'generators/data/empire-seeds.ts' },
+    ],
+  },
+  claims: {
+    label: 'Two Truths claims',
+    files: ['data/claims.gen.ts'],
+    // Every claim is derived from the datasets above; the curation (split
+    // capitals, contested borders, the river allowlist) is ours.
+    origins: [
+      { source: 'mondiale-editorial', dataset: 'generators/data/claim-curation.ts' },
+      { source: 'cia-factbook' },
+      { source: 'geonames-cities15000' },
     ],
   },
   vintage: {

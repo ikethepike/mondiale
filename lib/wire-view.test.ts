@@ -123,3 +123,40 @@ describe('the gauntlet', () => {
     expect(finalAnswerOnHand(item)).toBe(true)
   })
 })
+
+describe('a live Two Truths round', () => {
+  const sheet = ['true', 'lie', null, 'true'] as const
+  const tableWith = (steps: SeatStep[]): Game =>
+    ({
+      id: 'wire',
+      host: 'a',
+      tiles: [],
+      regions: [],
+      difficulty: 'normal',
+      started: true,
+      players: Object.fromEntries(
+        steps.map((step, index) => [`p${index}`, testSeat(`p${index}`, step)])
+      ),
+      rounds: [
+        {
+          groupChallenge: { _type: 'two-truths-challenge', country: 'SE', cards: [] },
+          groupAnswers: { p0: { submitted: ['SE'], correct: ['SE'], sheet: [...sheet] } },
+          playerTurns: {},
+        },
+      ],
+    }) as unknown as Game
+
+  it('carries no banked sheet and no perfect mark while anyone is still stamping', () => {
+    const game = tableWith(['round-verdict', 'round'])
+    const saved = structuredClone(game)
+    const banked = wireGame(game).rounds[0]!.groupAnswers.p0!
+    expect(game, 'the saved game is never touched').toEqual(saved)
+    expect(banked).not.toHaveProperty('sheet')
+    expect(banked.submitted).toEqual([])
+  })
+
+  it('shows the sheets once the table is past the round', () => {
+    const banked = wireGame(tableWith(['scores', 'scores'])).rounds[0]!.groupAnswers.p0!
+    expect(banked.sheet).toEqual(sheet)
+  })
+})

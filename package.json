@@ -42,6 +42,7 @@
     "generate:speakers": "bun run generators/vendors/cldr/create-speakers.ts",
     "generate:currencies": "bun run generators/create-currencies-file.ts",
     "generate:places": "bun run generators/create-places-file.ts",
+    "generate:claims": "bun run generators/create-claims-file.ts",
     "generate:events": "bun run generators/create-events-file.ts",
     "generate:changes": "bun run generators/create-change-file.ts",
     "generate:city-plans": "bun run generators/vendors/osm/create-city-plans.ts",

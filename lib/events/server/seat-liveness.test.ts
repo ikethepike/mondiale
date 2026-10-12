@@ -21,9 +21,7 @@ import { createTestTable, type TestTable, uniqueGameId, warmDeferredModules } fr
 const TWO_TRUTHS = {
   _type: 'two-truths-challenge',
   country: 'SE',
-  statements: [],
-  lieIndex: 0,
-  lieSource: 'NO',
+  cards: [],
   durationSeconds: 25,
   maximumPoints: 10,
 } as unknown as RoundChallenge

@@ -269,7 +269,7 @@ export const MINIMUM_TABLE_BY_KIND: Partial<Record<RoundChallengeKind, number>> 
   'clean-sweep': 2,
 }
 
-/** Accessors pulled from the stat pool (ranking, stat detective, two truths,
+/** Accessors pulled from the stat pool (ranking, stat detective,
  *  higher/lower) with their group. Keys are compile-checked against the real
  *  accessor union, so a renamed accessor fails loudly. Every accessor is
  *  sorted here; a new accessor without a topic is a compile error via

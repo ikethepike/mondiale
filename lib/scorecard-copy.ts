@@ -88,8 +88,8 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
       return 'The fewer clues you needed, the bigger the score.'
     case 'two-truths':
       return context.hardMode
-        ? 'The sooner you call the lie, the more it pays.'
-        : 'The sooner you call the lie, the more it pays — a 50/50 costs a slice of the pot.'
+        ? 'Right stamps pay, wrong ones cost, blanks are free — the first perfect sheet takes a bonus.'
+        : 'Right stamps pay, wrong ones cost, blanks are free — a revealed card costs a slice of the pot.'
     case 'composition':
       return 'The biggest group pays most; every other group placed adds a share. Run out of strikes and the crowd closes.'
     case 'capital-guess':
@@ -157,7 +157,7 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
       case 'stat-detective':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'two-truths':
-        return { submitted: 'Your Verdict', correct: 'The Country' }
+        return { submitted: 'Your Perfect Sheet', correct: 'The Country' }
       case 'capital-guess':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'composition':
