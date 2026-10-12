@@ -13,10 +13,11 @@ import {
   ROUND_BEATS,
   SEAT_DEADLINE_GRACE_MS,
   TIMELINE_BROWSE_CAP_MS,
+  timelineRoundMs,
   TUTORIAL_CAP_MS,
   UNTIMED_CLASSIC_CAP_SECONDS,
 } from '~~/lib/round-beats'
-import { latestRound } from '~~/lib/rounds'
+import { isChallengeOfType, latestRound } from '~~/lib/rounds'
 import {
   ROUND_SETTLE_STEPS,
   SEAT_STEP_SPECS,
@@ -252,26 +253,36 @@ const SEAT_CAP_STALL_MS =
   SEAT_DEADLINE_GRACE_MS +
   SEAT_OVERDUE_SLACK_MS
 
-const ROUND_STALL_MS =
+const ROUND_OVERHEAD_MS =
   BRIEFING_CAP_MS +
   PLAY_GATE_CAP_MS +
-  UNTIMED_CLASSIC_CAP_SECONDS * 1000 +
-  Math.max(...Object.values(ROUND_BEATS).map(beat => beat.revealHoldMs + (beat.browseCapMs ?? 0))) +
   CLASSIC_SETTLE_SLACK_MS +
   ENGINE_STALL_MS +
   SEAT_OVERDUE_SLACK_MS
+
+const ROUND_STALL_MS =
+  ROUND_OVERHEAD_MS +
+  UNTIMED_CLASSIC_CAP_SECONDS * 1000 +
+  Math.max(...Object.values(ROUND_BEATS).map(beat => beat.revealHoldMs + (beat.browseCapMs ?? 0)))
+
+const roundStallMs = (challenge: unknown): number =>
+  isChallengeOfType(challenge, 'timeline-challenge')
+    ? Math.max(ROUND_STALL_MS, ROUND_OVERHEAD_MS + timelineRoundMs(challenge))
+    : ROUND_STALL_MS
 
 /**
  * The longest the server may keep a live seat on one (step, subject): the
  * longest seat cap for a timer step, the round's whole clock for the question.
  * Undefined where the seat waits on the table (`settled`), or before or after
- * the game. The playtest and the model test hold the server to it.
+ * the game. The playtest and the model test hold the server to it. Pass the
+ * live round's challenge where it is known: a timeline round's clock grows
+ * with the table.
  */
-export const subjectStallMs = (step: SeatStep): number | undefined =>
+export const subjectStallMs = (step: SeatStep, challenge?: unknown): number | undefined =>
   SEAT_STEP_SPECS[step].exit === 'timer'
     ? SEAT_CAP_STALL_MS
     : step === 'round'
-      ? ROUND_STALL_MS
+      ? roundStallMs(challenge)
       : undefined
 
 const engineStateNote = (challenge: unknown): string => {
