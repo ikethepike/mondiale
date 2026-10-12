@@ -15,6 +15,7 @@ import {
   speaksTongue,
 } from '~~/lib/challenges'
 import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
+import { parsePlacements, replayPlacements, scoreComposition } from '~~/lib/composition'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import {
   groundPlanLayersShown,
@@ -347,15 +348,19 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'composition': {
-      // The answer is the largest origin — the head slice — NOT `country`,
-      // which is the country whose residents are being split. Same source
-      // the view grades against (slices[0]), so both sides agree.
+      // The server replays the seat's placements itself: a card counts only
+      // where `replayPlacements` stands it, inside the strike limit.
       const challenge = expectChallengeType(roundChallenge, 'composition-challenge')
-      const largestOrigin = challenge.slices[0]?.isoCode
-      if (!largestOrigin) throw new ReferenceError('Composition challenge dealt with no slices')
-      // The option table is every origin on the bar, so the server prices the
-      // picks — tapping them all lands the answer last, outside the cap.
-      attemptsOn({ ...challenge, country: largestOrigin })
+      const placements = parsePlacements(submission.composition?.placements)
+      const { placed } = replayPlacements(challenge, placements)
+      answer = {
+        submitted: challenge.slices.flatMap((_, slot) => placed[slot] ?? []),
+        correct: challenge.slices.map(slice => slice.isoCode),
+      }
+      scoring = {
+        scored: scoreComposition(challenge, placements),
+        maximum: challenge.maximumPoints,
+      }
       break
     }
     case 'ghost-state': {

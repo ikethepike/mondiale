@@ -174,6 +174,7 @@ import {
 } from './rosetta'
 import { organizationsOf } from './odd-one-out'
 import { dealGovernment } from './government'
+import { COMPOSITION_SECONDS, COMPOSITION_SLOTS, COMPOSITION_STRIKES } from './composition'
 import { isChallengeOfType } from './rounds'
 import {
   countriesGovernedByFamily,
@@ -1344,8 +1345,6 @@ const getTerraIncognitaChallenge = (game: gameTypes.Game): TerraIncognitaChallen
   }
 }
 
-const COMPOSITION_SECONDS = 30
-
 const getCompositionChallenge = async (
   gameState: gameTypes.Game
 ): Promise<CompositionChallenge | undefined> => {
@@ -1356,12 +1355,9 @@ const getCompositionChallenge = async (
   const boards = compositionBoards(pool)
   if (!boards.length) return undefined
 
-  // The option table is always the bar's own origins, so it can't narrow with
-  // difficulty the way capital-guess's decoy list does — hiding a slice the
-  // player can see would make it unnameable. The board itself is the lever:
-  // easy leads with the blowouts, hard with the boards whose top two are
-  // close enough that the bar alone won't tell you. Both tiers backfill, so a
-  // thin variant still deals.
+  // Easy leads with the blowouts, hard with the boards whose top two are close
+  // enough that the crowd alone won't tell you. Both tiers backfill, so a thin
+  // variant still deals.
   const clear = boards.filter(hasClearLeader)
   const close = boards.filter(isoCode => !hasClearLeader(isoCode))
   const ranked =
@@ -1373,23 +1369,17 @@ const getCompositionChallenge = async (
   const country = ranked[0]
   if (!country) return undefined
 
-  const slices: CompositionChallenge['slices'] = corridorsToDestination(country).map(origin => ({
-    isoCode: origin.isoCode,
-    share: origin.share,
-  }))
-
-  // Outside hard mode the origins on the bar are the option table — the answer
-  // is already on screen, and the question is which slice leads. Hard mode
-  // free-types, so the bar stays anonymous until the reveal.
-  const options =
-    gameState.difficulty === 'hard' ? undefined : shuffleArray(slices.map(slice => slice.isoCode))
+  const slices: CompositionChallenge['slices'] = corridorsToDestination(country)
+    .slice(0, COMPOSITION_SLOTS[gameState.difficulty])
+    .map(origin => ({ isoCode: origin.isoCode, share: origin.share }))
 
   return {
     _type: 'composition-challenge',
     country,
     slices,
-    options,
-    ...(options ? { maximumGuesses: CAPITAL_GUESS_ATTEMPTS } : {}),
+    options: shuffleArray(slices.map(slice => slice.isoCode)),
+    strikes: COMPOSITION_STRIKES[gameState.difficulty],
+    showShares: gameState.difficulty !== 'hard',
     durationSeconds: COMPOSITION_SECONDS,
     maximumPoints: maximumRoundPoints(gameState),
   }

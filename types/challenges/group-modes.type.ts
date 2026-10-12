@@ -576,8 +576,8 @@ export interface NameWaterChallenge {
  * client-side in data/recognition.gen.ts — only the id travels the wire.
  */
 /**
- * A country's foreign-born population, broken into the places those people
- * were born — the bar is the question, and the largest slice is the answer.
+ * A country's foreign-born population as a crowd of anonymous groups, largest
+ * first — each origin card is placed onto its own group (`lib/composition.ts`).
  *
  * The figures count residents born abroad, NOT ancestry: a country's largest
  * recognised minority is frequently home-born and invisible here (Sweden's
@@ -587,16 +587,24 @@ export interface NameWaterChallenge {
 export interface CompositionChallenge {
   _type: 'composition-challenge'
   country: ISOCountryCode
-  /** Origin shares of the whole foreign-born population, largest first. The
-   *  head is the answer; the listed slices never sum to 1 — the remainder is
-   *  the long tail of smaller origins. */
+  /** Origin shares of the whole foreign-born population, largest first — one
+   *  group per slice. They never sum to 1: the remainder is the long tail of
+   *  smaller origins. */
   slices: { isoCode: ISOCountryCode; share: number }[]
-  /** Multiple choice outside hard mode, where players free-type instead. */
-  options?: ISOCountryCode[]
-  /** Picks allowed before the round resolves. Set only with `options`. */
-  maximumGuesses?: number
+  /** The cards: every slice's origin, shuffled. */
+  options: ISOCountryCode[]
+  /** Wrong placements that end the seat's round. */
+  strikes: number
+  /** Groups print their percentage; hard shows only their size. */
+  showShares: boolean
   durationSeconds: number
   maximumPoints: number
+}
+
+export interface CompositionPlacement {
+  isoCode: ISOCountryCode
+  /** Index into `slices` — the group the card was dropped on. */
+  slot: number
 }
 
 export interface GhostStateChallenge {

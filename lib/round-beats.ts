@@ -497,7 +497,9 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // while `state.briefing` holds, and terra-beats stamps it on the last ready
   // (or this cap) — one stamp, one world failing for the whole table.
   'terra-incognita': { owner: 'classic', revealHoldMs: 6000, briefingCapMs: BRIEFING_CAP_MS },
-  composition: { owner: 'classic', revealHoldMs: 0 },
+  // The reveal fills every group the seat left grey and flies the rest of the
+  // crowd in across the map — at 0 the scorecard covered the arcs mid-flight.
+  composition: { owner: 'classic', revealHoldMs: REVEAL_HOLD_MS },
   // The reveal is the mode's whole teaching payload — the profile card's
   // sides, years, decade strip and UCDP note, plus the amber abroad-dots
   // layer. At 0 the scorecard covered all of it while the card was still

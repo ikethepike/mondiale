@@ -1,6 +1,8 @@
 import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import { vintageRuns } from './vintage-grade'
 import type {
+  CompositionChallenge,
+  CompositionPlacement,
   GovernmentAnswers,
   UniqueCategoryId,
   VintageChallenge,
@@ -17,6 +19,7 @@ import {
   SWEEP_ACCURACY,
 } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
+import { replayPlacements } from '~~/lib/composition'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { isStepGraded, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-steps'
 import { playableWorldCountries } from '~~/lib/game-rules'
@@ -1440,6 +1443,28 @@ export const finalAnswerFor = async (
   return undefined
 }
 
+/**
+ * A bot's run at the crowd: each group it knows (at its share) goes down first,
+ * then it guesses the rest blind until the board fills or its strikes run out.
+ */
+const botPlacements = (board: CompositionChallenge, share: number): CompositionPlacement[] => {
+  const attempts: CompositionPlacement[] = board.slices
+    .map((slice, slot) => ({ isoCode: slice.isoCode, slot }))
+    .filter(() => Math.random() < share)
+  for (let guard = 0; guard < board.slices.length * board.slices.length; guard++) {
+    const replay = replayPlacements(board, attempts)
+    if (replay.over) break
+    const standing = new Set(Object.values(replay.placed))
+    const card = sample(board.options.filter(isoCode => !standing.has(isoCode)))
+    const slot = sample(
+      board.slices.map((_, index) => index).filter(index => !replay.placed[index])
+    )
+    if (card === undefined || slot === undefined) break
+    attempts.push({ isoCode: card, slot })
+  }
+  return attempts
+}
+
 // --- The classic submission composer: one probe grade surfaces the mode's ---
 // --- correct set, then the seat's share decides how much of it lands.     ---
 
@@ -1505,7 +1530,6 @@ export const composeClassicSubmission = async (
     case 'flashpoint':
     case 'capital-guess':
     case 'flag-palette':
-    case 'composition':
     case 'tongue-buzz': {
       // Tongues: any speaker wins — the correct set is the whole membership.
       const target = kind === 'tongue-buzz' ? sample(correct) : correct[0]
@@ -1514,6 +1538,10 @@ export const composeClassicSubmission = async (
       if (await lands(landed)) return landed
       const miss = wrongPick(game, correct)
       return miss ? { ranking: [miss] } : { ranking: [] }
+    }
+    case 'composition': {
+      const board = expectChallengeType(challenge, 'composition-challenge')
+      return { ranking: [], composition: { placements: botPlacements(board, share) } }
     }
     case 'ground-plan': {
       const plan = expectChallengeType(challenge, 'ground-plan-challenge')

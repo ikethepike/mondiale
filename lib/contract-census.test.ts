@@ -258,6 +258,7 @@ describe('client timers', () => {
     'lib/use-map-viewbox.ts': { count: 2, category: 'cosmetic' },
     'lib/events/client-side.ts': { count: 2, category: 'transport' },
     'components/view/ViewPyramidScheme.vue': { count: 2, category: 'cosmetic' },
+    'components/view/ViewComposition.vue': { count: 1, category: 'cosmetic' },
     'components/map/ContourBackdropGl.client.vue': { count: 2, category: 'cosmetic' },
     'components/challenge/ZoomableImage.vue': { count: 2, category: 'cosmetic' },
     'components/challenge/FinalChangeFrames.vue': { count: 2, category: 'cosmetic' },

@@ -2036,24 +2036,49 @@ const scenarios: Scenario[] = [
   {
     id: 'composition',
     label: 'Composition (foreign-born origins)',
-    build: () =>
+    variants: [
+      { id: 'normal', label: 'Türkiye — shares shown' },
+      { id: 'hard', label: 'United States — hard, sizes only' },
+    ],
+    build: variant =>
       mockGame('round', [
-        groupRound({
-          _type: 'composition-challenge',
-          country: 'TR',
-          slices: [
-            { isoCode: 'SY', share: 0.5221 },
-            { isoCode: 'IQ', share: 0.0591 },
-            { isoCode: 'DE', share: 0.0533 },
-            { isoCode: 'BG', share: 0.051 },
-            { isoCode: 'AF', share: 0.0486 },
-            { isoCode: 'IR', share: 0.0293 },
-          ],
-          options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
-          maximumGuesses: 2,
-          durationSeconds: 30,
-          maximumPoints: MAXIMUM_POINTS,
-        }),
+        groupRound(
+          variant?.id === 'hard'
+            ? {
+                _type: 'composition-challenge',
+                country: 'US',
+                slices: [
+                  { isoCode: 'MX', share: 0.2494 },
+                  { isoCode: 'IN', share: 0.07 },
+                  { isoCode: 'CN', share: 0.055 },
+                  { isoCode: 'PH', share: 0.0501 },
+                  { isoCode: 'SV', share: 0.0347 },
+                  { isoCode: 'DO', share: 0.0328 },
+                ],
+                options: ['PH', 'DO', 'MX', 'SV', 'CN', 'IN'],
+                strikes: 2,
+                showShares: false,
+                durationSeconds: 45,
+                maximumPoints: MAXIMUM_POINTS,
+              }
+            : {
+                _type: 'composition-challenge',
+                country: 'TR',
+                slices: [
+                  { isoCode: 'SY', share: 0.5221 },
+                  { isoCode: 'IQ', share: 0.0591 },
+                  { isoCode: 'DE', share: 0.0533 },
+                  { isoCode: 'BG', share: 0.051 },
+                  { isoCode: 'AF', share: 0.0486 },
+                  { isoCode: 'IR', share: 0.0293 },
+                ],
+                options: ['DE', 'SY', 'BG', 'IQ', 'AF', 'IR'],
+                strikes: 3,
+                showShares: true,
+                durationSeconds: 45,
+                maximumPoints: MAXIMUM_POINTS,
+              }
+        ),
       ]),
   },
   {
