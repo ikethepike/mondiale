@@ -1349,6 +1349,7 @@ const getCompositionChallenge = async (
     country,
     slices,
     options,
+    ...(options ? { maximumGuesses: CAPITAL_GUESS_ATTEMPTS } : {}),
     durationSeconds: COMPOSITION_SECONDS,
     maximumPoints: maximumRoundPoints(gameState),
   }
@@ -1367,6 +1368,20 @@ export const capitalGuessScore = (
       maximumPoints * attemptFraction(attempt, attempts, CAPITAL_GUESS_LAST_ATTEMPT_FRACTION)
     )
   )
+
+/** What an option round's pick sequence pays: `capitalGuessScore` for the
+ *  attempt the answer landed on, 0 when it never landed inside the cap. */
+export const attemptPicksScore = (
+  picks: readonly ISOCountryCode[],
+  answer: ISOCountryCode,
+  attempts: number,
+  maximumPoints: number
+): number => {
+  const attempt = picks.indexOf(answer) + 1
+  return attempt > 0 && attempt <= attempts
+    ? capitalGuessScore(attempt, attempts, maximumPoints)
+    : 0
+}
 
 /** Sparse dot clouds aren't a readable shape. */
 const FLASHPOINT_MIN_POINTS = 40
