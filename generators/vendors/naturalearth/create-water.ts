@@ -5,7 +5,9 @@
  *   geography_marine_polys → seas, gulfs, bays, straits   (name that water,
  *   lakes                  → major lakes                    shared shores)
  *   rivers_lake_centerlines → rivers                        (river run)
- *   geography_regions_polys → ranges, deserts, plateaus     (highlands)
+ *   geography_regions_polys → ranges, deserts, plateaus,     (lay of the land)
+ *                             and the plains, basins and
+ *                             peninsulas the terrain roster names
  *
  * Everything is projected with the SAME fitted Robinson as the country map
  * (MAP_PROJECTION from data/map.gen.ts), so features overlay the world
@@ -30,6 +32,7 @@ import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { MAP_PROJECTION, MAP_PATHS } from '../../../data/map.gen'
 import { WATER_NAME_FIXES } from '../../../data/static/water-name-fixes'
 import { WATER_ALIASES, LAKE_DISPLAY_NAMES } from '../../../data/static/water-aliases'
+import { TERRAIN_ROSTER } from '../../../data/static/terrain-roster'
 import {
   WATER_PARTS,
   WATER_ROSTER_EXPECTATIONS,
@@ -44,8 +47,11 @@ import {
   rosterDrift,
   roundTo,
   settleWaterKeys,
+  stampTerrainRoster,
 } from '../../lib/water-keys'
 import { parsePolygons } from '../../../lib/outline'
+import { TERRAIN_TUNING, terrainFamily } from '../../../lib/terrain'
+import type { Fame } from '../../../types/fame.types'
 import type { ISOCountryCode } from '../../../types/geography.types'
 
 const NE_TAG = 'v5.1.2'
@@ -53,6 +59,7 @@ const NE_TAG = 'v5.1.2'
 // import.meta.dir which the IDE's TS config doesn't know about
 const CACHE_DIR = `${import.meta.dirname}/.cache`
 const OUT_FILE = 'data/water.gen.ts'
+const REPORT_FILE = 'generators/data/terrain-report.txt'
 
 const LAYERS = {
   marine: 'ne_10m_geography_marine_polys',
@@ -82,6 +89,24 @@ const REGION_KINDS: Record<string, 'range' | 'desert' | 'plateau'> = {
   Desert: 'desert',
   Plateau: 'plateau',
 }
+
+/** Landform classes shipped only for the subjects the terrain roster names —
+ *  NE's hundreds of islands and capes are no question at all. */
+const ROSTER_REGION_CLASSES = new Set([
+  'Plain',
+  'Basin',
+  'Wetlands',
+  'Lowland',
+  'Valley',
+  'Pen/cape',
+  'Isthmus',
+  'Island group',
+  'Geoarea',
+])
+
+/** A roster subject ships even where the generic filters would drop it
+ *  (Lake Constance's scalerank, the Skagerrak's `fjord` class). */
+const onRoster = (id: string) => id in TERRAIN_ROSTER
 
 const KIND_WORDS: Partial<Record<WaterKind, RegExp>> = {
   range: /\b(range|mountains)\b/i,
@@ -118,7 +143,8 @@ const RIVER_SAMPLE_STEP = 1.2
 
 type Point = [number, number]
 
-export type WaterKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+export type WaterKind =
+  'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau' | 'region'
 
 export interface WaterFeature {
   id: string
@@ -129,8 +155,16 @@ export interface WaterFeature {
   /** Projected path: closed rings for areas, open polylines for rivers. */
   d: string
   bounds: [number, number, number, number]
-  /** Playable countries the feature touches/crosses (rivers: in flow order of appearance). */
+  /** Playable countries the feature touches/crosses; a roster subject's hand-written key. */
   countries: ISOCountryCode[]
+  /** Roster subjects only: true of the world but never required. */
+  accepted?: ISOCountryCode[]
+  /** The part of `accepted` held only through an overseas territory. */
+  overseas?: ISOCountryCode[]
+  /** Roster subjects only — and only they deal in Lay of the Land. */
+  fame?: Fame
+  /** Reads without "the". */
+  bare?: true
 }
 
 const projection = geoRobinson().scale(MAP_PROJECTION.scale).translate(MAP_PROJECTION.translate)
@@ -416,8 +450,10 @@ const main = async () => {
   const marine = await fetchLayer(LAYERS.marine)
   for (const feature of marine.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const kind = MARINE_KINDS[property(properties, 'featurecla').toLowerCase()]
     const name = featureName(properties)
+    const kind =
+      MARINE_KINDS[property(properties, 'featurecla').toLowerCase()] ??
+      (onRoster(slugify(name)) ? 'sea' : undefined)
     if (!kind || !name) continue
 
     const rings = asPolygonGroups(feature.geometry)
@@ -445,8 +481,9 @@ const main = async () => {
     const properties = feature.properties as Record<string, unknown>
     const resolved = lakeName(properties)
     const scalerank = Number(property(properties, 'scalerank') || 99)
-    if (!resolved || scalerank > 3 || NOT_LAKES.has(resolved)) continue
+    if (!resolved || NOT_LAKES.has(resolved)) continue
     const name = displayLakeName(resolved)
+    if (scalerank > 3 && !onRoster(featureId('lake', name))) continue
 
     const rings = asPolygonGroups(feature.geometry)
       .flat()
@@ -569,7 +606,9 @@ const main = async () => {
     for (const name of stretches)
       if (!foldedStretches.has(name))
         console.warn(`water-aliases: merge stretch missing from NE data: ${name}`)
-    const aliases = [...stretches.filter(name => foldedStretches.has(name)), ...group.alt]
+    const aliases = [
+      ...new Set([...stretches.filter(name => foldedStretches.has(name)), ...group.alt]),
+    ]
     if (aliases.length) canonical.aliases = aliases
   }
 
@@ -581,8 +620,13 @@ const main = async () => {
   const regions = await fetchLayer(LAYERS.regions)
   for (const feature of regions.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const kind = REGION_KINDS[property(properties, 'featurecla')]
+    const featureClass = property(properties, 'featurecla')
     const name = featureName(properties)
+    const kind =
+      REGION_KINDS[featureClass] ??
+      (ROSTER_REGION_CLASSES.has(featureClass) && onRoster(`region-${slugify(name)}`)
+        ? 'region'
+        : undefined)
     if (!kind || !name) continue
 
     const rings = asPolygonGroups(feature.geometry)
@@ -631,14 +675,55 @@ const main = async () => {
   const drift = rosterDrift(features, WATER_ROSTER_EXPECTATIONS)
   if (drift.length) throw new Error(`Answer keys drifted:\n  ${drift.join('\n  ')}`)
 
+  // --- The terrain roster: hand-written keys over the geometry's -------------
+  const overlap = [
+    ...Object.keys(WATER_SHORE_CORRECTIONS),
+    ...Object.keys(WATER_ROSTER_EXPECTATIONS),
+  ].filter(onRoster)
+  if (overlap.length)
+    throw new Error(
+      `On the terrain roster, so its key lives there — drop from water-shore-corrections: ${overlap.join(', ')}`
+    )
+  const disagreements = stampTerrainRoster(
+    features,
+    TERRAIN_ROSTER,
+    ISOCountryCodes,
+    TERRAIN_TUNING.minimumKey
+  )
+  writeFileSync(
+    REPORT_FILE,
+    [
+      '# Terrain roster vs Natural Earth geometry',
+      '# Generated by create-water.ts. The roster is the answer key; each line is where the',
+      '# geometry disagrees. "unseen": listed but not where NE draws it (a border river, a',
+      '# coarse polygon); "unlisted": NE puts it there but the roster names it nowhere —',
+      '# rule on each after an NE bump, by editing data/static/terrain-roster.ts.',
+      '',
+      ...disagreements.map(
+        ({ id, unseen, unlisted }) =>
+          `${id}` +
+          (unseen.length ? `  unseen ${unseen.join(',')}` : '') +
+          (unlisted.length ? `  unlisted ${unlisted.join(',')}` : '')
+      ),
+      '',
+    ].join('\n')
+  )
+
   // --- Emit --------------------------------------------------------------------
-  const sorted = Object.fromEntries(Object.entries(features).sort(([a], [b]) => a.localeCompare(b)))
+  // Only a dealt subject is drawn — a roster subject, or Name That Water's shores.
+  const drawn = (feature: WaterFeature) => !!feature.fame || terrainFamily(feature.kind) === 'shore'
+  const sorted = Object.fromEntries(
+    Object.entries(features)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, feature]) => [id, drawn(feature) ? feature : { ...feature, d: undefined }])
+  )
   const output = `// Generated by generators/vendors/naturalearth/create-water.ts — do not edit by hand.
 // Source: Natural Earth 1:10m physical layers (${NE_TAG}, public domain),
 // projected with the map's fitted Robinson (see data/map.gen.ts).
+import type { Fame } from '~~/types/fame.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-export type WaterKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau'
+export type WaterKind = 'ocean' | 'sea' | 'lake' | 'river' | 'range' | 'desert' | 'plateau' | 'region'
 
 export interface WaterFeature {
   id: string
@@ -646,11 +731,21 @@ export interface WaterFeature {
   kind: WaterKind
   /** Accepted alternate names (merged NE stretches, common alternates) — matched, never displayed. */
   aliases?: string[]
-  /** Projected path in map space: closed rings for areas, open polylines for rivers. */
-  d: string
+  /** Projected path in map space: closed rings for areas, open polylines for rivers.
+   *  Only on what a round draws: roster subjects and every ocean, sea and lake. */
+  d?: string
   bounds: [number, number, number, number]
-  /** Playable countries the feature touches/crosses (rivers: in order of appearance). */
+  /** Countries the feature touches/crosses; for a roster subject, its hand-written key
+   *  (data/static/terrain-roster.ts). */
   countries: ISOCountryCode[]
+  /** Roster subjects only: true of the world but never required — naming one is free. */
+  accepted?: ISOCountryCode[]
+  /** The part of \`accepted\` held only through an overseas territory — never a sea lane. */
+  overseas?: ISOCountryCode[]
+  /** Roster subjects only, and only they deal in Lay of the Land. */
+  fame?: Fame
+  /** Reads without "the" (Lake Victoria, Central America). */
+  bare?: true
 }
 
 export const WATER_FEATURES: Record<string, WaterFeature> = ${jsonParseLiteral(sorted)}

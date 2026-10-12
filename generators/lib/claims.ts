@@ -967,8 +967,9 @@ const riverClaims = (): Claim[] =>
         note: sentence(`${sentenceCase(name)} touches ${names(along)}`),
         evidence,
       }))
+      const arguable = [...disputed, ...(feature.accepted ?? [])]
       const lies = [...new Set(along.flatMap(neighboursOf))]
-        .filter(subject => !along.includes(subject) && !disputed.includes(subject))
+        .filter(subject => !along.includes(subject) && !arguable.includes(subject))
         .filter(
           subject => (neighbourShare(subject, isoCode => along.includes(isoCode)) ?? 0) >= 0.4
         )

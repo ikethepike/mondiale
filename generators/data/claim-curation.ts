@@ -59,25 +59,24 @@ export const RECENT_EURO: ReadonlySet<ISOCountryCode> = new Set<ISOCountryCode>(
 
 /**
  * Rivers the deck may name, with their prose name and the countries a lie may
- * NOT claim: Natural Earth splits rivers into segments and its touch lists
- * trace those segments, so headwaters, source lakes and border reaches the
- * geometry misses would turn an honest reading into a wrong "lie". A river
- * whose touch list is itself wrong (the Paraná "touches" Bolivia) is left out.
+ * NOT claim. A river on the terrain roster already carries both in its key —
+ * its `accepted` tier is never a lie — so `disputed` only covers the rivers off
+ * it, whose touch lists still trace Natural Earth's segments.
  */
 export const CLAIM_RIVERS: Record<string, { name: string; disputed?: ISOCountryCode[] }> = {
-  'river-danube': { name: 'the Danube', disputed: ['MD'] },
+  'river-danube': { name: 'the Danube' },
   'river-rhine': { name: 'the Rhine' },
   'river-elbe': { name: 'the Elbe' },
   'river-dnieper': { name: 'the Dnieper' },
-  'river-nile': { name: 'the Nile', disputed: ['ET', 'KE', 'TZ', 'RW', 'BI', 'CD'] },
+  'river-nile': { name: 'the Nile' },
   'river-congo': { name: 'the Congo River' },
-  'river-niger': { name: 'the Niger River', disputed: ['CM'] },
-  'river-zambezi': { name: 'the Zambezi', disputed: ['BW'] },
+  'river-niger': { name: 'the Niger River' },
+  'river-zambezi': { name: 'the Zambezi' },
   'river-limpopo': { name: 'the Limpopo' },
   'river-orange': { name: 'the Orange River' },
-  'river-okavango': { name: 'the Okavango', disputed: ['AO'] },
-  'river-senegal': { name: 'the Senegal River', disputed: ['GN'] },
-  'river-amazonas': { name: 'the Amazon', disputed: ['BO'] },
+  'river-okavango': { name: 'the Okavango' },
+  'river-senegal': { name: 'the Senegal River' },
+  'river-amazonas': { name: 'the Amazon' },
   'river-orinoco': { name: 'the Orinoco' },
   'river-uruguay': { name: 'the Uruguay River' },
   'river-rio-grande': { name: 'the Rio Grande' },
@@ -85,14 +84,14 @@ export const CLAIM_RIVERS: Record<string, { name: string; disputed?: ISOCountryC
   'river-columbia': { name: 'the Columbia River' },
   'river-yukon': { name: 'the Yukon' },
   'river-euphrates': { name: 'the Euphrates' },
-  'river-tigris': { name: 'the Tigris', disputed: ['SY'] },
-  'river-indus': { name: 'the Indus', disputed: ['AF'] },
+  'river-tigris': { name: 'the Tigris' },
+  'river-indus': { name: 'the Indus' },
   'river-ganges': { name: 'the Ganges', disputed: ['NP'] },
-  'river-brahmaputra': { name: 'the Brahmaputra', disputed: ['BT'] },
+  'river-brahmaputra': { name: 'the Brahmaputra' },
   'river-mekong': { name: 'the Mekong' },
   'river-salween': { name: 'the Salween' },
   'river-amu-darya': { name: 'the Amu Darya' },
-  'river-syr-darya': { name: 'the Syr Darya', disputed: ['KG'] },
+  'river-syr-darya': { name: 'the Syr Darya' },
   'river-amur': { name: 'the Amur', disputed: ['MN'] },
 }
 

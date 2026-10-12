@@ -86,6 +86,7 @@ import type {
 import type { ScaleTone } from '~~/types/challenge.type'
 import type { MoneyHero } from '~~/types/currency.type'
 import { ORGANIZATION_FACTS, type OrganizationVector } from '~~/types/organization.type'
+import { isFameDealable } from '~~/types/fame.types'
 import type * as gameTypes from '~~/types/game.types'
 import { isValidISOCode, type Amount, type ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -160,7 +161,7 @@ import {
   TERRA_CADENCE_MS,
 } from './terra-incognita'
 import { haversineKm, isLabelableBox, labelBoxFor, pointBoxGap, type LatLng } from './geo'
-import { parsePolygons, polylineLength } from './outline'
+import { parsePolygons } from './outline'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
 import {
@@ -182,6 +183,7 @@ import { organizationsOf } from './odd-one-out'
 import { dealGovernment } from './government'
 import { COMPOSITION_SECONDS, COMPOSITION_SLOTS, COMPOSITION_STRIKES } from './composition'
 import { isChallengeOfType } from './rounds'
+import { terrainKey, terrainSeconds } from './terrain'
 import {
   countriesGovernedByFamily,
   countriesWithGoverningLogo,
@@ -909,31 +911,43 @@ export const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeature
     }))
 }
 
-/** More touching countries = a longer clock. */
-const waterBlitzDuration = (countries: number) => Math.min(75, 20 + countries * 6)
-
-export const waterBlitzCandidates = async (game: gameTypes.Game, tiers: WaterTiers) => {
-  const { kinds, poolFraction } = tiers[game.difficulty]
-  const pool = (await waterFeaturePool(game, kinds)).filter(
-    feature => feature.countries.length >= 3
+/**
+ * Lay of the Land deals only the terrain roster: hand-written keys, fame
+ * stamped by the generator. Each subject at most once a game — a spent board
+ * buys another kind rather than a rerun.
+ */
+export const layOfTheLandCandidates = async (game: gameTypes.Game) => {
+  const { WATER_FEATURES } = await import('~~/data/water.gen')
+  const dealt = new Set(
+    game.rounds.flatMap(({ groupChallenge }) =>
+      isChallengeOfType(groupChallenge, 'water-blitz-challenge') ? [groupChallenge.featureId] : []
+    )
   )
-  return prominenceCandidates(pool, poolFraction)
+  return Object.values(WATER_FEATURES).flatMap(feature => {
+    if (!feature.fame || dealt.has(feature.id) || !isFameDealable(feature.fame, game.difficulty))
+      return []
+    const key = terrainKey(game, feature)
+    return key ? [{ feature, key }] : []
+  })
 }
 
-const getWaterBlitzChallenge = async (
-  game: gameTypes.Game,
-  tiers: WaterTiers
+const getLayOfTheLandChallenge = async (
+  game: gameTypes.Game
 ): Promise<WaterBlitzChallenge | undefined> => {
-  const feature = sample(await waterBlitzCandidates(game, tiers))
-  if (!feature) return undefined
+  const pick = sample(await layOfTheLandCandidates(game))
+  if (!pick) return undefined
+  const { feature, key } = pick
 
   return {
     _type: 'water-blitz-challenge',
     featureId: feature.id,
     featureName: feature.name,
     kind: feature.kind,
-    countries: feature.countries,
-    durationSeconds: waterBlitzDuration(feature.countries.length),
+    countries: key.countries,
+    ...(key.accepted.length ? { accepted: key.accepted } : {}),
+    ...(feature.bare ? { bare: true } : {}),
+    ...(key.scope ? { scope: key.scope } : {}),
+    durationSeconds: terrainSeconds(key.countries.length),
     maximumPoints: maximumRoundPoints(game),
   }
 }
@@ -943,26 +957,13 @@ const NAME_WATER_ATTEMPTS = 3
 const NAME_WATER_DURATION_SECONDS = 45
 
 /**
- * The dataset carries no fame field, so projected footprint × shore count
- * stands in for prominence — the Mediterranean outscores Antongil Bay by
- * three orders of magnitude. A river's footprint is its course length — its
- * box rewards running diagonally, which ranked the Putumayo over the Rhine.
+ * Name That Water's seas carry no fame field, so projected footprint × shore
+ * count stands in for prominence — the Mediterranean outscores Antongil Bay by
+ * three orders of magnitude.
  */
-type ProminenceFeature = Pick<WaterFeature, 'kind' | 'd' | 'bounds' | 'countries'>
-const courseLengths = new Map<string, number>()
-const courseLength = (d: string) => {
-  let length = courseLengths.get(d)
-  if (length === undefined) {
-    length = parsePolygons(d).reduce((total, run) => total + polylineLength(run), 0)
-    courseLengths.set(d, length)
-  }
-  return length
-}
-const waterProminence = (feature: ProminenceFeature) => {
-  const footprint =
-    feature.kind === 'river' ? courseLength(feature.d) : feature.bounds[2] * feature.bounds[3]
-  return footprint * Math.max(1, feature.countries.length)
-}
+type ProminenceFeature = Pick<WaterFeature, 'bounds' | 'countries'>
+const waterProminence = (feature: ProminenceFeature) =>
+  feature.bounds[2] * feature.bounds[3] * Math.max(1, feature.countries.length)
 
 type WaterTiers = {
   [difficulty in gameTypes.GameDifficulty]: { kinds: WaterFeatureKind[]; poolFraction: number }
@@ -974,28 +975,6 @@ export const NAME_WATER_TIERS: WaterTiers = {
   easy: { kinds: ['ocean', 'sea'], poolFraction: 0.27 },
   normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.66 },
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
-}
-
-/** Highlands scales the same way: easy deals the famous ranges and deserts,
- *  normal opens the plateaus, hard deals the whole set. */
-export const HIGHLANDS_TIERS: WaterTiers = {
-  easy: { kinds: ['range', 'desert'], poolFraction: 0.2 },
-  normal: { kinds: ['range', 'desert', 'plateau'], poolFraction: 0.5 },
-  hard: { kinds: ['range', 'desert', 'plateau'], poolFraction: 1 },
-}
-
-/** River Run and Shared Shores scale the same way: easy deals the great
- *  rivers and the famous seas, hard deals the whole atlas. */
-export const RIVER_RUN_TIERS: WaterTiers = {
-  easy: { kinds: ['river'], poolFraction: 0.25 },
-  normal: { kinds: ['river'], poolFraction: 0.6 },
-  hard: { kinds: ['river'], poolFraction: 1 },
-}
-
-export const SHARED_SHORES_TIERS: WaterTiers = {
-  easy: { kinds: ['sea', 'lake'], poolFraction: 0.4 },
-  normal: { kinds: ['sea', 'lake'], poolFraction: 0.7 },
-  hard: { kinds: ['sea', 'lake'], poolFraction: 1 },
 }
 
 /** Small variants slice thin — never starve the pool below a replayable spread. */
@@ -2116,9 +2095,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   sketch: game => getSketchChallenge({ game }),
   'stat-detective': game => getStatDetectiveChallenge({ game }),
   'two-truths': game => getTwoTruthsChallenge(game),
-  'river-run': game => getWaterBlitzChallenge(game, RIVER_RUN_TIERS),
-  'shared-shores': game => getWaterBlitzChallenge(game, SHARED_SHORES_TIERS),
-  highlands: game => getWaterBlitzChallenge(game, HIGHLANDS_TIERS),
+  'lay-of-the-land': game => getLayOfTheLandChallenge(game),
   'name-that-water': game => getNameWaterChallenge(game),
   'mother-tongue': game => getMotherTongueChallenge(game),
   'flag-palette': game => getFlagPaletteChallenge(game),

@@ -7,6 +7,7 @@ import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
+import { terrainFamily, type TerrainFamily } from '~~/lib/terrain'
 import { boardLabel } from '~~/lib/variant'
 
 /**
@@ -108,10 +109,8 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
       return "The sooner you name it, the more it's worth."
     case 'star-chart':
       return 'Points scale with stars named — wrong capitals each cost one. Where a city sits is the whole question.'
-    case 'river-run':
-    case 'shared-shores':
-    case 'highlands':
-      return 'Points scale with countries found — wrong names each cost one.'
+    case 'lay-of-the-land':
+      return 'Points scale with countries found — wrong names each cost one, arguable ones nothing.'
     case 'terra-incognita':
       return 'Points scale with countries put back — naming one that was never gone costs you. Noticing the gap is the whole question.'
     case 'name-that-water':
@@ -138,6 +137,12 @@ export interface ScorecardLabels {
 /** The stray tail reads the same everywhere: whatever the round asked for,
  *  these are names the player gave that weren't in the set. */
 const STRAY_LABEL = 'Wrong Names'
+
+const TERRAIN_LEDGER: Record<TerrainFamily, string> = {
+  river: 'Every Country It Crosses',
+  shore: 'All the Shores',
+  land: 'Everywhere It Reaches',
+}
 
 /** What to call each of the scorecard's two answer rows. */
 export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels => {
@@ -172,12 +177,13 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'flag-palette':
         return { submitted: 'Your Answer', correct: 'The Country' }
-      case 'river-run':
-        return { submitted: 'Your Answers', correct: 'Every Country It Crosses' }
-      case 'shared-shores':
-        return { submitted: 'Your Answers', correct: 'All the Shores' }
-      case 'highlands':
-        return { submitted: 'Your Answers', correct: 'Everywhere It Reaches' }
+      case 'lay-of-the-land': {
+        const family =
+          context.challenge && isChallengeOfType(context.challenge, 'water-blitz-challenge')
+            ? terrainFamily(context.challenge.kind)
+            : 'land'
+        return { submitted: 'Your Answers', correct: TERRAIN_LEDGER[family] }
+      }
       case 'name-that-water':
         return { submitted: 'Your Answer', correct: 'Its Shores' }
       case 'mother-tongue': {
