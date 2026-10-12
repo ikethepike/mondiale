@@ -64,15 +64,30 @@ export const toSheet = (raw: unknown, cards: number): TwoTruthsSheet =>
     Array.isArray(raw) && isStamp(raw[index]) ? raw[index] : null
   )
 
-const stampFor = (truth: boolean): TwoTruthsStamp => (truth ? 'true' : 'lie')
+/** The stamp a card's verdict calls for. */
+export const stampFor = (truth: boolean): TwoTruthsStamp => (truth ? 'true' : 'lie')
+
+/** How a sheet's stamps landed against the verdicts. */
+export const sheetCounts = (
+  sheet: TwoTruthsSheet,
+  truths: readonly boolean[]
+): { right: number; wrong: number; blank: number } =>
+  truths.reduce(
+    (counts, truth, index) => {
+      const stamp = sheet[index]
+      if (!stamp) return { ...counts, blank: counts.blank + 1 }
+      return stamp === stampFor(truth)
+        ? { ...counts, right: counts.right + 1 }
+        : { ...counts, wrong: counts.wrong + 1 }
+    },
+    { right: 0, wrong: 0, blank: 0 }
+  )
 
 /** Right stamps minus wrong ones; a blank is neither. */
-export const sheetNet = (sheet: TwoTruthsSheet, truths: readonly boolean[]): number =>
-  truths.reduce((net, truth, index) => {
-    const stamp = sheet[index]
-    if (!stamp) return net
-    return net + (stamp === stampFor(truth) ? 1 : -1)
-  }, 0)
+export const sheetNet = (sheet: TwoTruthsSheet, truths: readonly boolean[]): number => {
+  const { right, wrong } = sheetCounts(sheet, truths)
+  return right - wrong
+}
 
 export const isPerfectSheet = (sheet: TwoTruthsSheet, truths: readonly boolean[]): boolean =>
   truths.length > 0 && truths.every((truth, index) => sheet[index] === stampFor(truth))

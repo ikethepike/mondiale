@@ -145,7 +145,8 @@ import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/ro
 import { vintageStoryKey } from '~~/lib/vintage-story'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
-import { revealedCardIndex, twoTruthsReceiptKey } from '~~/lib/two-truths'
+import { revealedCardIndex } from '~~/lib/two-truths'
+import { twoTruthsReceiptsEvent } from '~~/lib/events/client/two-truths-receipts.event'
 import type { VintageRegionId } from '~~/types/vintage.types'
 import { countryName, getCountry, searchCountriesByName } from '~~/lib/country'
 import { REGION_LABELS } from '~~/lib/variant'
@@ -970,14 +971,30 @@ const simulateTwoTruthsReceipts = ({ round }: Record<string, unknown>) => {
     return
   const answers = twoTruthsAnswers
   window.setTimeout(() => {
-    const indices = dealt.groupAnswers[ME]
+    const banked = !!dealt.groupAnswers[ME]
+    const indices = banked
       ? undefined
       : [revealedCardIndex(`${game.id}:${round}:${ME}`, challenge.cards.length)]
-    const key = twoTruthsReceiptKey(game.id, round as number)
-    const merged = { ...gameStore.twoTruthsReceipts[key] }
-    for (const receipt of answers.twoTruthsReceipts(challenge, indices))
-      merged[receipt.index] = receipt
-    gameStore.twoTruthsReceipts = { ...gameStore.twoTruthsReceipts, [key]: merged }
+    const sheets = banked
+      ? Object.fromEntries(
+          Object.entries(dealt.groupAnswers).flatMap(([id, answer]) =>
+            answer.sheet ? [[id, answer.sheet]] : []
+          )
+        )
+      : {}
+    const payload = {
+      event: 'two-truths-receipts' as const,
+      round: round as number,
+      receipts: answers.twoTruthsReceipts(challenge, indices),
+      sheets,
+    }
+    twoTruthsReceiptsEvent({
+      eventKey: payload.event,
+      payload,
+      gameStore,
+      eventTarget: {} as never,
+      playerId: ME,
+    })
   }, SIM_LATENCY_MS * 2)
 }
 

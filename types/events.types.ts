@@ -512,8 +512,15 @@ export type ServerEventData =
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
   /** Two Truths: card verdicts and their receipts, emitted ONLY to a socket
-   *  allowed to see them — every card once graded, one for a bought reveal. */
-  | { event: 'two-truths-receipts'; round: number; receipts: TwoTruthsReceipt[] }
+   *  allowed to see them — every card once graded, one for a bought reveal.
+   *  `sheets` carries the table's banked stamps, which the live snapshot
+   *  withholds; empty on a reveal reply. */
+  | {
+      event: 'two-truths-receipts'
+      round: number
+      receipts: TwoTruthsReceipt[]
+      sheets: Record<string, TwoTruthsSheet>
+    }
   /** A `final-light` the server did not keep (too late, or not the stage's),
    *  told to the lighting socket alone so its stage un-lights the name. */
   | { event: 'final-light-refused'; subject: string; name: string }

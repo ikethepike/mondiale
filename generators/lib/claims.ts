@@ -564,6 +564,9 @@ const RANKED = [
  */
 const RANKED_REGIONS = ['africa', 'north-america', 'south-america', 'oceania'] as const
 
+/** World-rank claims run this far down, and their evidence shows every rank they reach. */
+const WORLD_RANK_REACH = 16
+
 /** Neighbouring values this close are a data-vintage coin flip, not a fact. */
 const RANK_MARGIN = 1.03
 
@@ -632,8 +635,8 @@ const rankClaims = (): Claim[] =>
       const cutoff = stat.values.get(ordered[9])! / stat.values.get(ordered[10])!
       const worldEvidence: ClaimEvidence = {
         kind: 'bars',
-        label: `${stat.label} · world top 12`,
-        rows: ordered.slice(0, 12).map(isoCode => ({
+        label: `${stat.label} · world top ${WORLD_RANK_REACH}`,
+        rows: ordered.slice(0, WORLD_RANK_REACH).map(isoCode => ({
           isoCode,
           name: countryName(isoCode),
           value: stat.values.get(isoCode)!,
@@ -641,7 +644,7 @@ const rankClaims = (): Claim[] =>
         })),
       }
       // The giants are no question; only the band around the cut-off is.
-      const worldClaims = ordered.slice(0, 16).flatMap((subject, index): Draft[] => {
+      const worldClaims = ordered.slice(0, WORLD_RANK_REACH).flatMap((subject, index): Draft[] => {
         const rank = index + 1
         if (rank < 6) return []
         if ((rank === 10 || rank === 11) && cutoff < RANK_MARGIN) return []
@@ -734,12 +737,14 @@ const versusClaims = (): Claim[] => {
           const evidence: ClaimEvidence = {
             kind: 'bars',
             label: stat.label,
-            rows: [subject, anchor].map(isoCode => ({
-              isoCode,
-              name: countryName(isoCode),
-              value: stat.values.get(isoCode)!,
-              display: stat.display(stat.values.get(isoCode)!),
-            })),
+            rows: [subject, anchor]
+              .sort((a, b) => stat.values.get(b)! - stat.values.get(a)!)
+              .map(isoCode => ({
+                isoCode,
+                name: countryName(isoCode),
+                value: stat.values.get(isoCode)!,
+                display: stat.display(stat.values.get(isoCode)!),
+              })),
           }
           const topic = `versus:${stat.key}:${[subject, anchor].sort().join(':')}`
           const fame = renown(subject, anchor)
@@ -783,6 +788,8 @@ const versusClaims = (): Claim[] => {
 // --- Trade: the small economy at the top of a market. -----------------------
 
 const TRADE_MARGIN = 1.05
+/** Trade claims reach this far down the exporter table, and so does their evidence. */
+const TRADE_RANK_REACH = 6
 
 const tradeClaims = (): Claim[] =>
   family(
@@ -794,7 +801,7 @@ const tradeClaims = (): Claim[] =>
       const evidence: ClaimEvidence = {
         kind: 'bars',
         label: `Share of world ${phrase} exports, ${market.world.year ?? ''}`.trim(),
-        rows: top.slice(0, 5).map(row => ({
+        rows: top.slice(0, TRADE_RANK_REACH).map(row => ({
           isoCode: row.isoCode,
           name: countryName(row.isoCode),
           value: row.share,
@@ -808,7 +815,7 @@ const tradeClaims = (): Claim[] =>
       const plausibilityFor = (isoCode: ISOCountryCode) =>
         ring(Math.max(0.2, 0.75 - 0.007 * ((GDP_RANK.get(isoCode) ?? 150) - 1)))
 
-      return top.slice(0, 6).flatMap((row, index): Draft[] => {
+      return top.slice(0, TRADE_RANK_REACH).flatMap((row, index): Draft[] => {
         const rank = index + 1
         const subject = row.isoCode
         const topic = `trade:${commodity}:${subject}`

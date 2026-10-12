@@ -138,6 +138,15 @@ describe('the dealer', () => {
     }
   )
 
+  it('deals every lie count about equally often', () => {
+    const counts = new Map<number, number>()
+    for (let deal = 0; deal < 300; deal++) {
+      const lies = twoTruthsVerdicts(pickTwoTruths(game('normal'), MAX)!).filter(t => !t).length
+      counts.set(lies, (counts.get(lies) ?? 0) + 1)
+    }
+    for (const lies of TWO_TRUTHS_TUNING.lies) expect(counts.get(lies) ?? 0).toBeGreaterThan(60)
+  })
+
   it('never deals a claim this game has already seen', () => {
     const first = pickTwoTruths(game('normal'), MAX)!
     const played = [{ groupChallenge: first, groupAnswers: {}, playerTurns: {} }] as never

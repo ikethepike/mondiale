@@ -1,14 +1,17 @@
 import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import { vintageRuns } from './vintage-grade'
 import { twoTruthsVerdicts } from './two-truths-deck'
-import { TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
+import { stampFor, TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
 import type {
   GovernmentAnswers,
   UniqueCategoryId,
   VintageChallenge,
 } from '~~/types/challenges/group-modes.type'
 import { randomBetween, randomInt, sample, sampleMany, shuffleArray } from '~~/lib/arrays'
+import { clamp } from '~~/lib/number'
 import {
+  BOT_SHEET_CERTAINTY,
+  BOT_SHEET_WRONG,
   botShare,
   isBrainSeat,
   jitteredShare,
@@ -1525,13 +1528,24 @@ export const composeClassicSubmission = async (
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'two-truths': {
-      // A seat stamps what it knows and leaves the rest blank: each card lands
-      // at the rate that makes the sheet's share of the pot realize the dial.
+      // A seat stamps what it knows, guesses some of the rest wrong and leaves
+      // the remainder blank. The right rate is solved so the net realizes the
+      // dial, and capped so even a strong seat isn't a lock on the perfect-
+      // sheet bonus it would bank before most humans.
       const verdicts = twoTruthsVerdicts(expectChallengeType(challenge, 'two-truths-challenge'))
-      const sure = Math.min(1, share / TWO_TRUTHS_TUNING.sheetShare)
+      const right = clamp(
+        (share / TWO_TRUTHS_TUNING.sheetShare + BOT_SHEET_WRONG) / (1 + BOT_SHEET_WRONG),
+        0,
+        BOT_SHEET_CERTAINTY
+      )
+      const wrong = BOT_SHEET_WRONG * (1 - right)
       return {
         ranking: [],
-        sheet: verdicts.map(truth => (Math.random() < sure ? (truth ? 'true' : 'lie') : null)),
+        sheet: verdicts.map(truth => {
+          const roll = Math.random()
+          if (roll < right) return stampFor(truth)
+          return roll < right + wrong ? stampFor(!truth) : null
+        }),
       }
     }
     case 'hot-cold': {

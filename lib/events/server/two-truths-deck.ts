@@ -1,5 +1,5 @@
 import { CLAIMS } from '~~/data/claims.gen'
-import { sample, sampleMany } from '~~/lib/arrays'
+import { sample, sampleMany, shuffleArray } from '~~/lib/arrays'
 import { playableCountries, playableWorldCountries } from '~~/lib/game-rules'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { assembleSheet, isTrap, TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
@@ -38,21 +38,28 @@ export const pickTwoTruths = (
   const inPlay = new Set(playableWorldCountries(game))
   const dealt = dealtClaimIds(game)
 
-  for (const subject of sampleMany(playableCountries(game), TWO_TRUTHS_TUNING.subjectTries)) {
-    const claims = (BY_SUBJECT.get(subject) ?? []).filter(
-      claim =>
-        isFameDealable(claim.fame, game.difficulty) &&
-        claim.countries.every(isoCode => inPlay.has(isoCode)) &&
-        !dealt.has(claim.id)
-    )
-    const sheet = assembleSheet(claims, sample(TWO_TRUTHS_TUNING.lies) ?? 1)
-    if (!sheet) continue
-    return {
-      _type: 'two-truths-challenge',
-      country: subject,
-      cards: sheet.map(({ id, family, text, countries }) => ({ id, family, text, countries })),
-      durationSeconds: TWO_TRUTHS_TUNING.seconds,
-      maximumPoints,
+  // The lie count is drawn ONCE and subjects are tried against it: redrawing
+  // per subject let the harder three-lie sheets fail more often, skewing the
+  // mix a player could learn to lean on. Other counts are only a fallback.
+  const drawn = sample(TWO_TRUTHS_TUNING.lies) ?? 1
+  const counts = [drawn, ...shuffleArray(TWO_TRUTHS_TUNING.lies.filter(lies => lies !== drawn))]
+  for (const lies of counts) {
+    for (const subject of sampleMany(playableCountries(game), TWO_TRUTHS_TUNING.subjectTries)) {
+      const claims = (BY_SUBJECT.get(subject) ?? []).filter(
+        claim =>
+          isFameDealable(claim.fame, game.difficulty) &&
+          claim.countries.every(isoCode => inPlay.has(isoCode)) &&
+          !dealt.has(claim.id)
+      )
+      const sheet = assembleSheet(claims, lies)
+      if (!sheet) continue
+      return {
+        _type: 'two-truths-challenge',
+        country: subject,
+        cards: sheet.map(({ id, family, text, countries }) => ({ id, family, text, countries })),
+        durationSeconds: TWO_TRUTHS_TUNING.seconds,
+        maximumPoints,
+      }
     }
   }
   return undefined

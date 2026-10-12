@@ -13,6 +13,7 @@ import {
 } from '~~/lib/round-beats'
 import { isChallengeOfType } from '~~/lib/rounds'
 import { applySeatMove, ROUND_SETTLE_STEPS, seatSubject } from '~~/lib/seat-transitions'
+import { stampFor } from '~~/lib/two-truths'
 import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
 import type { Game, Round } from '~~/types/game.types'
@@ -68,7 +69,7 @@ const rivalSubmission = (
     return {
       ranking: [],
       sheet: verdicts.map((truth, index) =>
-        seat % 2 ? 'true' : index === verdicts.length - 1 ? null : truth ? 'true' : 'lie'
+        seat % 2 ? 'true' : index === verdicts.length - 1 ? null : stampFor(truth)
       ),
     }
   }

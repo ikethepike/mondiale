@@ -82,7 +82,7 @@
             <Transition name="caption">
               <div v-if="revealed && receipts?.[index]" class="receipt">
                 <div class="verdict-row">
-                  <span class="verdict-ink" :class="receipts[index]!.truth ? 'true' : 'lie'">
+                  <span class="verdict-ink" :class="stampFor(receipts[index]!.truth)">
                     {{ receipts[index]!.truth ? 'True' : 'Lie' }}
                   </span>
                   <span class="your-stamp">{{ stampLine(index) }}</span>
@@ -158,7 +158,15 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { isHardMode } from '~~/lib/game-rules'
 import { seatLabel } from '~~/lib/player'
 import { HINT_UNLOCK_FIRST_ELAPSED, hintBitePoints } from '~~/lib/scoring'
-import { CLAIM_DATASETS, isPerfectSheet, sheetNet, toSheet } from '~~/lib/two-truths'
+import { roundSettled } from '~~/lib/spectate'
+import {
+  CLAIM_DATASETS,
+  isPerfectSheet,
+  sheetCounts,
+  sheetNet,
+  stampFor,
+  toSheet,
+} from '~~/lib/two-truths'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useTwoTruthsReceipts } from '~~/lib/use-two-truths-receipts'
@@ -227,30 +235,49 @@ const roundIndex = computed(() => (gameStore.game ? gameStore.game.rounds.length
 const round = computed(() =>
   roundIndex.value === undefined ? undefined : gameStore.game?.rounds[roundIndex.value]
 )
+const viewerId = computed(() => (gameStore.watching ? gameStore.seatId : me.value?.id))
 const banked = computed(() =>
   gameStore.watching
     ? boothAnswer.value
-    : me.value
-      ? round.value?.groupAnswers[me.value.id]
+    : viewerId.value
+      ? round.value?.groupAnswers[viewerId.value]
       : undefined
 )
-
-/** The sheet on screen: what this seat stamped, or the followed racer's once banked. */
-const shownSheet = computed<TwoTruthsSheet>(() =>
-  gameStore.watching
-    ? toSheet(banked.value?.sheet, challenge.value?.cards.length ?? 0)
-    : sheet.value
-)
 const revealed = computed(() => (gameStore.watching ? !!banked.value : submitted.value))
+const settled = computed(() => roundSettled(Object.values(gameStore.game?.players ?? {})))
 
 const hintBought = computed(() => (seatCursor.value?.hints ?? []).includes('reveal'))
-const receipts = useTwoTruthsReceipts(roundIndex, () =>
-  banked.value
-    ? 'all'
-    : hintBought.value && !revealed.value && !gameStore.watching
-      ? 'reveal'
-      : 'none'
+const held = useTwoTruthsReceipts(
+  roundIndex,
+  () =>
+    banked.value
+      ? 'all'
+      : hintBought.value && !revealed.value && !gameStore.watching
+        ? 'reveal'
+        : 'none',
+  () => `${Object.keys(round.value?.groupAnswers ?? {}).length}:${settled.value}`
 )
+const receipts = computed(() => held.value?.receipts)
+
+/** Every banked sheet this socket may see: the receipts carry them while the
+ *  snapshot withholds them, the snapshot once the round has settled. */
+const tableSheets = computed<Record<string, TwoTruthsSheet>>(() => ({
+  ...Object.fromEntries(
+    Object.entries(round.value?.groupAnswers ?? {}).flatMap(([id, answer]) =>
+      answer.sheet ? [[id, answer.sheet]] : []
+    )
+  ),
+  ...held.value?.sheets,
+}))
+
+/** The sheet on screen: the banked one once it is known (a remount mid-verdict
+ *  has no local stamps), this seat's live stamps before that. */
+const shownSheet = computed<TwoTruthsSheet>(() => {
+  const cards = challenge.value?.cards.length ?? 0
+  const bankedSheet = viewerId.value ? tableSheets.value[viewerId.value] : undefined
+  if (bankedSheet) return toSheet(bankedSheet, cards)
+  return gameStore.watching ? toSheet(undefined, cards) : sheet.value
+})
 
 /** The card a bought reveal checked, once its receipt is in. */
 const checkedIndex = computed(() => {
@@ -262,7 +289,7 @@ watch(checkedIndex, index => {
   const receipt = index === undefined ? undefined : receipts.value?.[index]
   if (!receipt) return
   sheet.value = sheet.value.map((stamp, at) =>
-    at === receipt.index ? (receipt.truth ? 'true' : 'lie') : stamp
+    at === receipt.index ? stampFor(receipt.truth) : stamp
   )
 })
 
@@ -309,14 +336,13 @@ const graded = computed(() => {
   const truths = verdicts.value
   if (!truths || !revealed.value) return undefined
   const stamps = shownSheet.value
-  const right = truths.filter((truth, index) => stamps[index] === (truth ? 'true' : 'lie')).length
-  const stamped = stamps.filter(Boolean).length
+  const { right, wrong, blank } = sheetCounts(stamps, truths)
   return {
     cards: truths.length,
     lies: truths.filter(truth => !truth).length,
     right,
-    wrong: stamped - right,
-    stamped,
+    wrong,
+    stamped: truths.length - blank,
     net: sheetNet(stamps, truths),
     perfect: isPerfectSheet(stamps, truths),
   }
@@ -332,10 +358,10 @@ const sources = computed(() =>
 
 const stampLine = (index: number) => {
   const stamp = shownSheet.value[index]
-  const truth = receipts.value?.[index]?.truth
+  const receipt = receipts.value?.[index]
   const owner = gameStore.watching ? 'They' : 'You'
   if (!stamp) return `${owner} left it blank`
-  return stamp === (truth ? 'true' : 'lie')
+  return receipt && stamp === stampFor(receipt.truth)
     ? `${owner} called it`
     : `${owner} stamped ${STAMP_LABELS[stamp]}`
 }
@@ -343,19 +369,19 @@ const stampLine = (index: number) => {
 /** Every banked sheet's stamp on each card — the table's verdict beside the truth. */
 const tallies = computed(() => {
   const players = gameStore.game?.players ?? {}
-  const answers = round.value?.groupAnswers ?? {}
   return (challenge.value?.cards ?? []).map((_, index) =>
-    Object.entries(answers).flatMap(([id, answer]) => {
-      if (!answer.sheet || !players[id]) return []
-      return [
-        {
-          id,
-          stamp: answer.sheet[index] ?? null,
-          color: players[id].color,
-          name: seatLabel(players, id, me.value?.id),
-        },
-      ]
-    })
+    Object.entries(tableSheets.value).flatMap(([id, banked]) =>
+      players[id]
+        ? [
+            {
+              id,
+              stamp: banked[index] ?? null,
+              color: players[id].color,
+              name: seatLabel(players, id, me.value?.id),
+            },
+          ]
+        : []
+    )
   )
 })
 
@@ -364,7 +390,7 @@ const cardClass = (index: number) => {
   if (!revealed.value) return { stamped: !!stamp, checked: index === checkedIndex.value }
   const receipt = receipts.value?.[index]
   if (!receipt) return { pending: true }
-  const right = stamp === (receipt.truth ? 'true' : 'lie')
+  const right = stamp === stampFor(receipt.truth)
   return {
     'is-true': receipt.truth,
     'is-lie': !receipt.truth,
