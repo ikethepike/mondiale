@@ -31,14 +31,32 @@ const createClaimsFile = () => {
     return `${difficulty.padEnd(7)} ${dealable.length} subjects`
   })
 
+  // Evidence repeats across a subject's claims (every border claim shows the
+  // same neighbours), so it ships once and claims point at it — the inline
+  // deck was a 2MB string the preview builder ran out of memory on.
+  const evidence: string[] = []
+  const evidenceIndex = new Map<string, number>()
+  const rows = claims.map(claim => {
+    const key = JSON.stringify(claim.evidence)
+    if (!evidenceIndex.has(key)) {
+      evidenceIndex.set(key, evidence.length)
+      evidence.push(key)
+    }
+    return { ...claim, evidence: evidenceIndex.get(key)! }
+  })
+
   writeFileSync(REPORT_FILE, claimsReport(claims, coverage))
   writeFileSync(
     OUTPUT_FILE,
     `// This is a generated file, don't touch it.
 // Generated at: ${new Date().toISOString()}
-import type { Claim } from '~~/types/two-truths.types'
+import type { Claim, ClaimEvidence } from '~~/types/two-truths.types'
 
-export const CLAIMS: Claim[] = JSON.parse(${JSON.stringify(JSON.stringify(claims))})
+const EVIDENCE: ClaimEvidence[] = JSON.parse(${JSON.stringify(`[${evidence.join(',')}]`)})
+
+const ROWS: (Omit<Claim, 'evidence'> & { evidence: number })[] = JSON.parse(${JSON.stringify(JSON.stringify(rows))})
+
+export const CLAIMS: Claim[] = ROWS.map(row => ({ ...row, evidence: EVIDENCE[row.evidence]! }))
 `
   )
   console.log(`Claims: ${claims.length}. ${coverage.join(' · ')}`)
