@@ -131,6 +131,8 @@ export const WATER_ROSTER_EXPECTATIONS: Record<string, RosterExpectation> = {
   'plateau-guiana-highlands': { includes: ['BR', 'GY', 'SR', 'VE'], excludes: [] },
   // NE names the Nile's upper reaches apart and breaks it at Lake Nasser.
   'river-nile': { includes: ['EG', 'SD', 'SS', 'UG'], excludes: [] },
+  // The Alpine Rhine is the CH–LI border.
+  'river-rhine': { includes: ['AT', 'CH', 'DE', 'FR', 'LI', 'NL'], excludes: [] },
   // NE's "Nu" splits the Salween, which dropped its Thai border reach.
   'river-salween': { includes: ['CN', 'MM', 'TH'], excludes: [] },
 }
