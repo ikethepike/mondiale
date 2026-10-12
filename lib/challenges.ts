@@ -2292,7 +2292,8 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
   // otherwise players get a question with zero countries to rank. A stat the
   // whole pool agrees on is no question either (a continental pool's
   // electricity access is 100% across the board, and the round would score
-  // itself): the accessor must fill the round AND split the field.
+  // itself): the accessor must split the field, and only the stats covering
+  // the most of the table (all of it, where any can) deal.
   const coverage = (accessorId: GroupChallengeAccessorId) => {
     let available = 0
     let firstAmount: number | undefined
@@ -2311,10 +2312,10 @@ export const getGroupChallenge = ({ game }: { game: gameTypes.Game }) => {
     .filter(challenge => isAccessorEnabled(game, challenge.id))
     .filter(challenge => !(opener && HEAVY_ACCESSORS.has(challenge.id)))
     .map(challenge => ({ challenge, available: coverage(challenge.id) }))
-  const fillsTable = candidates.filter(({ available }) => available >= required)
-  const viable = (
-    fillsTable.length ? fillsTable : candidates.filter(({ available }) => available >= perPlayer)
-  ).map(({ challenge }) => challenge)
+  const widest = Math.min(required, Math.max(0, ...candidates.map(({ available }) => available)))
+  const viable = candidates
+    .filter(({ available }) => available >= Math.max(perPlayer, widest))
+    .map(({ challenge }) => challenge)
 
   if (!viable.length) {
     throw new EvalError('No group challenge has enough country data to fill a round')

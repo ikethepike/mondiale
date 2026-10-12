@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { getGroupChallenge, isFlagPaletteMatch, MINIMUM_RANKING_HAND } from '~~/lib/challenges'
-import { DIFFICULTY_CONFIGURATION } from '~~/lib/game-rules'
+import { DIFFICULTY_CONFIGURATION, playableCountries } from '~~/lib/game-rules'
 import { MAX_PLAYERS } from '~~/lib/player'
 import { getValueByAccessorID } from '~~/lib/values'
 import {
@@ -235,6 +235,25 @@ describe('ranking deals on every board at a full table', () => {
       })
     }
   }
+})
+
+describe('ranking on a board too small for separate hands', () => {
+  it('deals South America at a full table from a stat covering the whole board', () => {
+    const game = {
+      regions: ['south-america'],
+      difficulty: 'normal',
+      rounds: [],
+      players: Object.fromEntries(
+        Array.from({ length: MAX_PLAYERS }, (_, seat) => [`p${seat}`, {}])
+      ),
+    } as unknown as Parameters<typeof getGroupChallenge>[0]['game']
+    const pool = playableCountries(game)
+    for (let deal = 0; deal < 200; deal++) {
+      const challenge = getGroupChallenge({ game })
+      const covered = pool.filter(isoCode => getValueByAccessorID(isoCode, challenge.id))
+      expect(covered, challenge.id).toHaveLength(pool.length)
+    }
+  })
 })
 
 describe('isValidChallengeOverrides', () => {
