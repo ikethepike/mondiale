@@ -16,6 +16,7 @@ import {
 } from '~~/lib/challenges'
 import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
+import { languageBounce } from '~~/lib/language-rounds'
 import { namesGroundPlanCity } from '~~/lib/ground-plan'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
@@ -173,7 +174,11 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'mother-tongue': {
-      blitzOn(expectChallengeType(roundChallenge, 'mother-tongue-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'mother-tongue-challenge')
+      blitzOn(
+        challenge,
+        submission.ranking.filter(isoCode => !languageBounce(challenge, isoCode))
+      )
       break
     }
     case 'flag-palette': {

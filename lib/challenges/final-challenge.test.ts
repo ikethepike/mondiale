@@ -1129,15 +1129,15 @@ describe('isCorrectFinalAnswer', () => {
   })
 
   it('accepts a country whose language is official but missing from the spoken list', () => {
-    // "Speaks Quechua" is dealt from Bolivia; Peru makes it official, and the
-    // spoken list alone graded Peru wrong and left it off the reveal.
-    expect(COUNTRIES.PE.languages).not.toContain('Quechua')
+    // "Speaks English" is dealt from anywhere; Burundi makes it official, and
+    // the spoken list alone graded Burundi wrong and left it off the reveal.
     for (const [language, isoCode] of [
-      ['Quechua', 'PE'],
+      ['Guarani', 'BO'],
       ['Swahili', 'RW'],
       ['English', 'BI'],
-      ['Somali', 'ET'],
+      ['Portuguese', 'GQ'],
     ] as const) {
+      expect(COUNTRIES[isoCode].languages, `${language}/${isoCode}`).not.toContain(language)
       const challenge = { _type: 'language-challenge', language } as const
       expect(
         isCorrectFinalAnswer({
@@ -1148,6 +1148,23 @@ describe('isCorrectFinalAnswer', () => {
       ).toBe(true)
       expect(languageSpeakers(language), `${language}/${isoCode}`).toContain(isoCode)
     }
+  })
+
+  it('accepts a regional speaker without listing it among the speakers', () => {
+    const challenge = { _type: 'language-challenge', language: 'Croatian' } as const
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: 'AT' },
+      })
+    ).toBe(true)
+    expect(languageSpeakers('Croatian')).not.toContain('AT')
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: 'FR' },
+      })
+    ).toBe(false)
   })
 
   it('grades endonym picks positionally against the dealt beats', () => {

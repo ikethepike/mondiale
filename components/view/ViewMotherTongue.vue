@@ -54,7 +54,7 @@ import {
   motherTongueQuestion,
   motherTongueScope,
   motherTongueStakes,
-  speaksButOffBoard,
+  languageBounce,
 } from '~~/lib/language-rounds'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
@@ -92,15 +92,19 @@ const { guesses, answerSet, found, start, onGuess } = useCollectSetRound(
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country =>
       `${countryName(country)} doesn't speak ${challenge.value?.language ?? 'it'}`,
-    // A speaker standing off the board is RIGHT about the world and wrong only
-    // about this round, so it bounces free instead of costing a point — and it
-    // says so, because being told "Burundi doesn't speak French" is a lie.
+    // A speaker standing off the board (or a regional statute) is RIGHT about
+    // the world and wrong only about this round, so it bounces free instead of
+    // costing a point — and it says so, because being told "Burundi doesn't
+    // speak French" is a lie.
     // Terra Incognita refuses this hook for the opposite reason: a free bounce
     // there would leak a country that hasn't vanished yet.
     reject: country => {
       const round = challenge.value
-      if (!round || !speaksButOffBoard(round, country.isoCode)) return undefined
-      return `${countryName(country)} does speak ${round.language} — but this round is ${motherTongueScope(round)}`
+      const bounce = languageBounce(round, country.isoCode)
+      if (!round || !bounce) return undefined
+      return bounce === 'regional'
+        ? `${countryName(country)} makes ${round.language} official only regionally — not counted`
+        : `${countryName(country)} does speak ${round.language} — but this round is ${motherTongueScope(round)}`
     },
     focusInput: () => guessInput.value?.focus({ auto: true }),
   }

@@ -867,8 +867,9 @@ export const DATASETS: Record<DataSetId, DataSet> = {
       // The markup itself lives in the flags dataset; only the derived
       // national colours (identity.colors) remain here.
       { source: 'flag-icons-svg', dataset: 'National colours from flag SVGs' },
-      { source: 'countries-list-package', dataset: 'Currencies and languages' },
+      { source: 'countries-list-package', dataset: 'Currencies and ISO 639-1 language codes' },
       { source: 'mondiale-editorial', dataset: 'Membership and marriage-rights corrections' },
+      { source: 'mondiale-editorial', dataset: 'data/static/spoken-language-shares.ts' },
     ],
   },
   'commodity-exporters': {

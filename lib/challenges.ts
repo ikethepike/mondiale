@@ -135,7 +135,7 @@ import {
 } from './game-rules'
 import { pickChainSeed } from './chain'
 import { flagSwatches } from './audio-palette'
-import { boardSpeakers, speaksLanguage } from './language-rounds'
+import { acceptsSpeaker, boardSpeakers } from './language-rounds'
 import { seededTongueSample } from './tongue-samples'
 import {
   initialManhuntCandidates,
@@ -2799,7 +2799,7 @@ const dealOddOneOut = (
         const [language, speakers] = entry
         const same = sampleMany(speakers, 3)
         const odd = shuffleArray([...countryPool]).find(
-          isoCode => !speaksLanguage(isoCode, language)
+          isoCode => !acceptsSpeaker(isoCode, language)
         )
         if (!odd) return undefined
         return {
