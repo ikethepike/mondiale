@@ -1,6 +1,6 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import { currencyName } from '~~/lib/currency'
-import { phrasedLeader } from '~~/lib/leaders'
+import { quizLeader } from '~~/lib/leaders'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import { type Amount, type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
@@ -79,7 +79,7 @@ export const processReplacements = (text: string, isoCode: ISOCountryCode) => {
         text = text.replaceAll(replacement, country.name.english)
         break
       case '{leader}':
-        text = text.replaceAll(replacement, phrasedLeader(isoCode)?.name ?? '')
+        text = text.replaceAll(replacement, quizLeader(isoCode)?.name ?? '')
         break
       case '{currency}':
         text = text.replaceAll(replacement, currencyName(country.currency))

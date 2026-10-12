@@ -14,7 +14,7 @@ import { regionsForVariant } from '~~/lib/board-regions'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
 import { wrongTokenFor } from '~~/lib/use-gate-challenge'
 import { readFileSync } from 'node:fs'
-import { countryLedBy, phrasedLeader, politicalLeader } from '~~/lib/leaders'
+import { countryLedBy, politicalLeader, quizLeader } from '~~/lib/leaders'
 import { governedOutsideFamily, governingParty, partiesOf } from '~~/lib/parties'
 import { processReplacements } from '~~/lib/values'
 import {
@@ -68,7 +68,7 @@ describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => 
     process.env.FORCE_INDIVIDUAL_VARIANT = 'find'
     for (let attempt = 0; attempt < 25; attempt++) {
       const leaderGate = await getIndividualChallenge({ accessorId: 'government.leader' })
-      const leader = phrasedLeader(leaderGate.country)
+      const leader = quizLeader(leaderGate.country)
       expect(leader).toBeTruthy()
       expect(processReplacements('{leader}', leaderGate.country)).toBe(leader!.name)
 
@@ -104,9 +104,9 @@ describe('dealLeaderPick (via forced variant)', { timeout: TIMEOUT }, () => {
       for (let attempt = 0; attempt < 40; attempt++) {
         const dealt = await getIndividualChallenge({ accessorId: 'government.leader', regions })
         expect(dealt.variant).toBe('leader-pick')
-        expect(phrasedLeader(dealt.country)).toBe(politicalLeader(dealt.country))
+        expect(quizLeader(dealt.country)).toBe(politicalLeader(dealt.country))
         for (const option of dealt.options ?? []) {
-          const shown = phrasedLeader(option)
+          const shown = quizLeader(option)
           expect(shown, option).toBeTruthy()
           expect(countryLedBy(dealt.country, shown!.name), option).toBe(option === dealt.country)
         }

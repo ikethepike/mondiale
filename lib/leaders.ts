@@ -32,14 +32,22 @@ const LEADER_TITLE_NOISE = new Set([
   'leader',
 ])
 
-/** Name tokens robust to titles, diacritics and punctuation. */
-const leaderNameTokens = (name: string) =>
-  name
+/** Name tokens robust to titles, diacritics and punctuation. A particle is
+ *  also read fused to its neighbour, so "el-Sisi" meets the factbook's "ELSISI". */
+const leaderNameTokens = (name: string) => {
+  const words = name
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .split(/[^a-z]+/)
-    .filter(token => token.length >= 3 && !LEADER_TITLE_NOISE.has(token))
+    .filter(word => word && !LEADER_TITLE_NOISE.has(word))
+  const fused = words
+    .slice(1)
+    .map((word, index) => [words[index]!, word])
+    .filter(([left, right]) => Math.min(left.length, right.length) < 3)
+    .map(([left, right]) => left + right)
+  return [...words, ...fused].filter(token => token.length >= 3)
+}
 
 /**
  * Same person? Tokens match fuzzily (Christodoulidis≈Christodoulides,
@@ -141,18 +149,32 @@ export const leaderTitle = (leader: LeaderProfile): string | undefined => {
 }
 
 /**
- * The leader every leader quiz deals, names, shows and hints: the political
- * leader, but only where the factbook's `government.leader` names the SAME
- * person. It returns `politicalLeader`'s own profile, so the reveal headlines
- * whoever the question asked about. Where the two sources disagree — a
- * contested office, a stale record, or a collective body like Switzerland's
- * Federal Council that no person-phrased record can match — the country sits
- * the quiz out rather than ask about a name one source disputes.
+ * The leader as a `government.leader`-phrased prompt names them: the
+ * political leader, but only when the profile is the SAME person the
+ * factbook string phrases — a drifted profile would hint the wrong face or
+ * party. Any surface hinting against a phrased leader selects through here.
  */
 export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
   const profile = politicalLeader(isoCode)
   const phrased = COUNTRIES[isoCode]?.government?.leader
   return profile && leaderNamesOverlap(profile.name, phrased) ? profile : undefined
+}
+
+/** A profile naming a body (Haiti's Transitional Presidential Council) or a
+ *  pair (San Marino's Captains Regent) rather than one person. */
+const COLLECTIVE_NAME = /\b(?:council|committee|junta|presidency|directorate)\b|\s(?:and|&)\s/i
+
+/**
+ * The leader every leader quiz deals, names, pictures and hints. It is
+ * `politicalLeader`'s own profile, so the reveal headlines whoever the question
+ * asked about, but only when that profile is one person: a collective executive
+ * ("Which country is led by the Swiss Federal Council?") asks about nobody and
+ * usually names its own country, so the country sits the quiz out.
+ */
+export const quizLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
+  if (LEADERS[isoCode]?.executivePower === 'collective') return undefined
+  const leader = politicalLeader(isoCode)
+  return leader && !COLLECTIVE_NAME.test(leader.name) ? leader : undefined
 }
 
 /** Wikidata's stand-in for a partyless politician; never a real answer. */

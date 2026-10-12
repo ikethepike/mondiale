@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { leaderHintFacts, partyLabel, phrasedLeader, politicalLeader } from './leaders'
+import { leaderHintFacts, partyLabel, phrasedLeader, politicalLeader, quizLeader } from './leaders'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 describe('partyLabel', () => {
@@ -98,28 +98,35 @@ describe('politicalLeader', () => {
   })
 })
 
-describe('phrasedLeader', () => {
-  it("hands back politicalLeader's own profile, so a reveal headlines the person quizzed", () => {
-    for (const isoCode of ISOCountryCodes) {
-      const quizzed = phrasedLeader(isoCode)
-      if (quizzed) expect(politicalLeader(isoCode), isoCode).toBe(quizzed)
+describe('quizLeader', () => {
+  it('quizzes the leader politicalLeader chose, even where the factbook names another', () => {
+    for (const isoCode of ['PT', 'SZ', 'TG', 'SL', 'EG'] as ISOCountryCode[]) {
+      expect(quizLeader(isoCode)?.name, isoCode).toBe(politicalLeader(isoCode)?.name)
     }
   })
 
-  it('sits out a country whose factbook names someone else', () => {
-    // Seguro, Albert II, Russell Dlamini and Savi De Tove in the factbook
-    for (const isoCode of ['PT', 'MC', 'SZ', 'TG'] as ISOCountryCode[]) {
+  it('sits out a collective executive', () => {
+    for (const isoCode of ['CH', 'HT', 'SM'] as ISOCountryCode[]) {
       expect(politicalLeader(isoCode), isoCode).toBeTruthy()
-      expect(phrasedLeader(isoCode), isoCode).toBeUndefined()
+      expect(quizLeader(isoCode), isoCode).toBeUndefined()
     }
   })
 
-  it('never quizzes a collective body', () => {
-    for (const isoCode of ['CH', 'HT'] as ISOCountryCode[]) {
-      expect(phrasedLeader(isoCode), isoCode).toBeUndefined()
-    }
+  it('only ever names one person', () => {
     for (const isoCode of ISOCountryCodes) {
-      expect(phrasedLeader(isoCode)?.name ?? '', isoCode).not.toMatch(/\bcouncil\b/i)
+      expect(quizLeader(isoCode)?.name ?? '', isoCode).not.toMatch(
+        /\b(?:council|committee|junta|presidency)\b|\s(?:and|&)\s/i
+      )
     }
+  })
+})
+
+describe('phrasedLeader', () => {
+  it('reads a fused particle as the same name (el-Sisi = ELSISI)', () => {
+    expect(phrasedLeader('EG' as ISOCountryCode)?.name).toBe('Abdel Fattah el-Sisi')
+  })
+
+  it('still drops a profile the factbook phrases as someone else', () => {
+    expect(phrasedLeader('PT' as ISOCountryCode)).toBeUndefined()
   })
 })

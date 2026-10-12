@@ -24,7 +24,7 @@
 </template>
 <script lang="ts" setup>
 import { countryName } from '~~/lib/country'
-import { leaderHintFacts, phrasedLeader } from '~~/lib/leaders'
+import { leaderHintFacts, quizLeader } from '~~/lib/leaders'
 import { useGateChallenge } from '~~/lib/use-gate-challenge'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
 
@@ -35,7 +35,7 @@ const { isHard, submitAnswer } = useGateChallenge()
 // Hard mode gets bare names; easy/normal see party and tenure under each option.
 const cards = computed(() =>
   (props.challenge.options ?? []).map(option => {
-    const leader = phrasedLeader(option)
+    const leader = quizLeader(option)
     const facts = leader && !isHard.value ? leaderHintFacts(leader, option) : []
     return { option, leader, facts }
   })
