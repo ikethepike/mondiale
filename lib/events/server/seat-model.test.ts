@@ -4,7 +4,12 @@ import { sample } from '~~/lib/arrays'
 import { BOT_ID_PREFIX, createBot } from '~~/lib/bots'
 import { createPlayer } from '~~/lib/player'
 import { seededRandom } from '~~/lib/random'
-import { isClassicGroupRound, ROUND_BEATS, seatWindowMsFor } from '~~/lib/round-beats'
+import {
+  isClassicGroupRound,
+  ROUND_BEATS,
+  seatWindowMsFor,
+  TIMEOUT_SLACK_MS,
+} from '~~/lib/round-beats'
 import { ROUND_KINDS } from '~~/lib/round-mix'
 import { latestRound } from '~~/lib/rounds'
 import { seatInvariantViolations, subjectStallMs } from '~~/lib/seat-invariants'
@@ -380,7 +385,9 @@ const runScenario = async (scenario: Scenario) => {
         vi.clearAllTimers()
         vi.setSystemTime(downAt + RESTART_DOWNTIME_MS)
         rearmLiveRound(table.ctx(game.host), await table.read())
-        return vi.advanceTimersByTimeAsync(0)
+        // A rearm arms an overdue clock at its buzzer slack; a machine that went down
+        // again before that ran nothing, so stacked restarts would only stack downtime.
+        return vi.advanceTimersByTimeAsync(TIMEOUT_SLACK_MS)
       }
       case 'disconnect': {
         const id = pick(
@@ -506,5 +513,23 @@ describe('the seat contract under random play', () => {
       })
     },
     Math.max(20 * 60_000, RUNS * 2000)
+  )
+
+  it(
+    'a chain of back-to-back restarts never leaves a live clock unrun',
+    () =>
+      runScenario({
+        seed: 1,
+        host: 'active',
+        others: ['active'],
+        difficulty: 'normal',
+        forced: 'timeline',
+        gauntlet: false,
+        commands: [
+          { kind: 'until', seat: 0, step: 'round' },
+          ...Array.from({ length: 7 }, () => ({ kind: 'restart' as const })),
+        ],
+      }),
+    5 * 60_000
   )
 })
