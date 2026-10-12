@@ -90,7 +90,7 @@ export const GAUNTLET_LIVES: { [difficulty in GameDifficulty]: number } = {
 
 // "Which region is X in?" answers itself on a continental board, and the
 // heavier modes stay out of easy runs.
-const eligibleTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[] => {
+export const eligibleFinalTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[] => {
   const types: FinalChallengeType[] = [
     'leadership-challenge',
     'language-challenge',
@@ -145,16 +145,20 @@ const FINAL_DEALERS: Record<FinalChallengeType, FinalDealer> = {
   'change-challenge': (pool, difficulty) => getChangeChallenge(pool, difficulty),
 }
 
-// A dealer returns undefined (or throws, on source-data gaps) when the board
-// can't support its type — the draw just moves on to the next type.
-const dealChallenge = (
+/**
+ * Undefined means the board can't support the type and the draw moves on. A
+ * THROW is a code or data fault: logged with the type and skipped like a miss,
+ * because an escaped throw here aborts the seat's walk onto the final tile.
+ */
+export const dealFinalChallenge = (
   type: FinalChallengeType,
-  pool: ISOCountryCode[],
-  difficulty: GameDifficulty
+  game: Game,
+  pool: ISOCountryCode[] = playableCountries(game)
 ): FinalChallengeItem | undefined => {
   try {
-    return FINAL_DEALERS[type](pool, difficulty)
-  } catch {
+    return FINAL_DEALERS[type](pool, game.difficulty)
+  } catch (error) {
+    console.error(`Final dealer '${type}' crashed for ${game.id} — skipping it`, error)
     return undefined
   }
 }
@@ -164,9 +168,9 @@ export const getFinalChallenges = ({ game }: { game: Game }): FinalChallenge => 
   const count = GAUNTLET_LENGTH[game.difficulty]
 
   const drawn: FinalChallengeItem[] = []
-  for (const type of shuffleArray(eligibleTypes(game, pool))) {
+  for (const type of shuffleArray(eligibleFinalTypes(game, pool))) {
     if (drawn.length >= count) break
-    const item = dealChallenge(type, pool, game.difficulty)
+    const item = dealFinalChallenge(type, game, pool)
     if (item) drawn.push(item)
   }
   if (!drawn.length) throw new ReferenceError('Unable to deal any final challenge')
@@ -200,24 +204,25 @@ export const dealReplacementChallenge = ({
   exclude: FinalChallengeType[]
 }): FinalChallengeItem | undefined => {
   const pool = playableCountries(game)
-  const types = shuffleArray(eligibleTypes(game, pool))
-  for (const type of [...types.filter(t => !exclude.includes(t)), ...types]) {
-    const item = dealChallenge(type, pool, game.difficulty)
+  const types = shuffleArray(eligibleFinalTypes(game, pool))
+  for (const type of [
+    ...types.filter(t => !exclude.includes(t)),
+    ...types.filter(t => exclude.includes(t)),
+  ]) {
+    const item = dealFinalChallenge(type, game, pool)
     if (item) return item
   }
   return undefined
 }
 
-const getRegionChallenge = (pool: ISOCountryCode[]): RegionChallenge => {
-  return {
-    _type: 'region-challenge',
-    country: pickSizedCountry(pool, 'large')!,
-  }
+const getRegionChallenge = (pool: ISOCountryCode[]): RegionChallenge | undefined => {
+  const country = pickSizedCountry(pool, 'large')
+  return country ? { _type: 'region-challenge', country } : undefined
 }
 
-const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge => {
+const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge | undefined => {
   const language = sample(pool.flatMap(isoCode => [...spokenLanguages(isoCode)]))
-  if (!language) throw new ReferenceError(`No language found in language challenge`)
+  if (!language) return undefined
 
   return {
     _type: 'language-challenge',
@@ -272,14 +277,15 @@ const getSortedRanking = (pool: ISOCountryCode[]) => {
     const sortedcountries = buildSortedRanking(candidate, pool)
     if (sortedcountries.length >= 6) return { accessorId: candidate, sortedcountries }
   }
-
-  throw new ReferenceError('No min/max accessor has enough country data')
+  return undefined
 }
 
-const getMaxChallenge = (pool: ISOCountryCode[]): MaxChallenge => {
-  const { accessorId, sortedcountries } = getSortedRanking(pool)
+const getMaxChallenge = (pool: ISOCountryCode[]): MaxChallenge | undefined => {
+  const ranking = getSortedRanking(pool)
+  if (!ranking) return undefined
+  const { accessorId, sortedcountries } = ranking
   const country = sortedcountries.shift()
-  if (!country) throw new ReferenceError('Unable to find any country for max challenge')
+  if (!country) return undefined
 
   return {
     _type: 'max-challenge',
@@ -289,10 +295,12 @@ const getMaxChallenge = (pool: ISOCountryCode[]): MaxChallenge => {
   }
 }
 
-const getMinChallenge = (pool: ISOCountryCode[]): MinChallenge => {
-  const { accessorId, sortedcountries } = getSortedRanking(pool)
+const getMinChallenge = (pool: ISOCountryCode[]): MinChallenge | undefined => {
+  const ranking = getSortedRanking(pool)
+  if (!ranking) return undefined
+  const { accessorId, sortedcountries } = ranking
   const country = sortedcountries.pop()
-  if (!country) throw new ReferenceError('Unable to find any country for min challenge')
+  if (!country) return undefined
 
   return {
     _type: 'min-challenge',
@@ -1176,10 +1184,10 @@ export const BORDER_STORIES: Partial<Record<string, string>> = {
 export const boundaryStory = (countries: [ISOCountryCode, ISOCountryCode]): string | undefined =>
   BORDER_STORIES[[...countries].sort().join('|')]
 
-const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge => {
+const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge | undefined => {
   const country = sample(pool.filter(isoCode => !!quizLeader(isoCode)))
 
-  if (!country) throw new ReferenceError(`Unable to find leader for leadership challenge`)
+  if (!country) return undefined
 
   return {
     _type: 'leadership-challenge',
