@@ -19,7 +19,7 @@ import {
   viableSweepSets,
 } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
-import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
+import { flagsIndistinguishable, hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
@@ -2446,6 +2446,8 @@ const flagPaletteDistance = (a: string[], b: string[]): number => {
  *                   most-similar candidates (flag-pick's colour distance), then
  *                   randomised. Takes precedence over `preferRegion`.
  *  - `preferRegion` — put same-region candidates first, then the rest.
+ *  - `distinctFlags` — the options are told apart by flag alone, so no two of
+ *                   them (subject included) may be `flagsIndistinguishable`.
  *
  * Returns `undefined` when even the world pool can't supply `count` — callers
  * fall back (skip the variant) rather than deal an unanswerable board.
@@ -2463,20 +2465,30 @@ const pickDecoys = (
     /** The widen set when `pool` can't fill the table — pass the game's
      *  in-play world pool so benched micro-nations never turn up as decoys. */
     widen?: ISOCountryCode[]
+    distinctFlags?: boolean
   } = {}
 ): ISOCountryCode[] | undefined => {
   const eligible = (list: ISOCountryCode[]) =>
     list.filter(isoCode => isoCode !== country && (opts.eligible?.(isoCode) ?? true))
+  const distinct = (ordered: ISOCountryCode[]) => {
+    if (!opts.distinctFlags) return ordered
+    const kept: ISOCountryCode[] = []
+    for (const isoCode of ordered) {
+      if (![country, ...kept].some(other => flagsIndistinguishable(isoCode, other)))
+        kept.push(isoCode)
+    }
+    return kept
+  }
 
   // Widen to the whole (in-play) world when the board pool can't fill the table.
   let candidates = eligible(pool)
-  if (candidates.length < count) candidates = eligible(opts.widen ?? [...ISOCountryCodes])
-  if (candidates.length < count) return undefined
+  if (distinct(candidates).length < count) candidates = eligible(opts.widen ?? [...ISOCountryCodes])
+  if (distinct(candidates).length < count) return undefined
 
   if (opts.similarity) {
-    const shortlist = [...candidates]
-      .sort((a, b) => opts.similarity!(a) - opts.similarity!(b))
-      .slice(0, Math.max(count, opts.similarityShortlist ?? 8))
+    const shortlist = distinct(
+      [...candidates].sort((a, b) => opts.similarity!(a) - opts.similarity!(b))
+    ).slice(0, Math.max(count, opts.similarityShortlist ?? 8))
     return shuffleArray(shortlist).slice(0, count)
   }
 
@@ -2486,10 +2498,10 @@ const pickDecoys = (
       candidates.filter(isoCode => COUNTRIES[isoCode].region === region)
     )
     const filler = shuffleArray(candidates.filter(isoCode => !regional.includes(isoCode)))
-    return [...regional, ...filler].slice(0, count)
+    return distinct([...regional, ...filler]).slice(0, count)
   }
 
-  return shuffleArray(candidates).slice(0, count)
+  return distinct(shuffleArray(candidates)).slice(0, count)
 }
 
 /** Flag-pick: the real flag among the three most colour-confusable decoys. */
@@ -2502,6 +2514,7 @@ const dealFlagPick = (
   const decoys = pickDecoys(country, pool, 3, {
     similarity: isoCode => flagPaletteDistance(palette, COUNTRIES[isoCode].identity?.colors ?? []),
     widen: world,
+    distinctFlags: true,
   })
   if (!decoys) return undefined
 
@@ -2530,7 +2543,7 @@ const dealFlagTwins = (
     if (!palette.length) return false
     let twins = 0
     for (const other of world) {
-      if (other === isoCode) continue
+      if (other === isoCode || flagsIndistinguishable(other, isoCode)) continue
       if (sameSimplifiedPalette(palette, COUNTRIES[other].identity.simplifiedColors)) twins++
       if (twins >= 3) return true
     }
@@ -2547,6 +2560,7 @@ const dealFlagTwins = (
     eligible: isoCode =>
       sameSimplifiedPalette(palette, COUNTRIES[isoCode].identity.simplifiedColors),
     widen: world,
+    distinctFlags: true,
   })
   if (!decoys) return undefined
 
@@ -2641,6 +2655,8 @@ export const isCorrectIndividualAnswer = (
     const language = challenge.scriptorium?.language
     return !!language && scriptoriumAnswers(language).includes(isoCode)
   }
+  if (variant === 'find' && challenge.id === 'flag')
+    return flagsIndistinguishable(challenge.country, isoCode)
   const asksForCurrency =
     variant === 'money-match' || (variant === 'find' && challenge.id === 'currency')
   if (!asksForCurrency) return false
@@ -3008,6 +3024,7 @@ const dealTrajectoryMatch = async (
             relativeGap(reading.endAmount, answer.endAmount) >= minSeparation
           )
         },
+        distinctFlags: true,
       })
       if (!decoys) continue
 
