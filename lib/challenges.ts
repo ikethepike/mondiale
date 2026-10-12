@@ -1976,11 +1976,7 @@ const getPyramidSchemeChallenge = async (
   // (issue #110), the same way trend-race defers its series table.
   const { PYRAMID_TUNING, drawPyramidDeal } = await import('./pyramids')
   const tuning = PYRAMID_TUNING[game.difficulty]
-  const deal = drawPyramidDeal(
-    playableCountries(game),
-    playableWorldCountries(game),
-    game.difficulty
-  )
+  const deal = drawPyramidDeal(playableCountries(game), game.difficulty)
   if (!deal) return undefined
 
   return {

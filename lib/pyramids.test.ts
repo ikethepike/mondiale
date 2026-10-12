@@ -5,7 +5,10 @@ import {
   pyramidFrameAt,
   pyramidYearAt,
   pyramidDistance,
-  pyramidHistoryGap,
+  pyramidReadoutGap,
+  pyramidAgedAt,
+  pyramidAgedApart,
+  pyramidAgedLabel,
   pyramidFamily,
   frameFamily,
   medianAge,
@@ -48,17 +51,19 @@ describe('pyramids lib', () => {
     expect(pyramidDistance('NE', 'JP')).toBeGreaterThan(60)
     expect(pyramidDistance('QA', 'NE')).toBeGreaterThan(60)
   })
-  it('separates a converged pair by its history', () => {
+  it('dates when a country aged', () => {
+    expect(pyramidAgedAt('GB')).toBe('before')
+    expect(pyramidAgedAt('NE')).toBe('never')
+    expect(pyramidAgedAt('ME')).toBe(1978)
+    expect(pyramidAgedApart('GB', 'ME')).toBe(20)
+    expect(pyramidAgedLabel('before')).toBe('Median 25+ before 1963')
+    expect(pyramidAgedLabel(1978)).toBe('Median hit 25 in 1978')
+  })
+  it('separates a converged pair by what the readout shows', () => {
     // Britain and Montenegro look alike today; in 1963 Montenegro was young.
     expect(pyramidDistance('GB', 'ME')).toBeLessThan(12)
-    expect(pyramidHistoryGap('GB', 'ME')).toBeGreaterThan(30)
-    for (const [a, b] of [
-      ['GB', 'NO'],
-      ['JP', 'IT'],
-      ['NE', 'QA'],
-    ] as const) {
-      expect(pyramidHistoryGap(a, b)).toBeGreaterThanOrEqual(pyramidDistance(a, b))
-    }
+    expect(pyramidReadoutGap('GB', 'ME')).toBeGreaterThan(6)
+    expect(pyramidReadoutGap('GB', 'NO')).toBeLessThan(6)
   })
   it('makes hard decoys lookalikes and easy decoys strangers', () => {
     expect(pyramidDecoyFits('GB', 'ME', PYRAMID_TUNING.hard.decoys)).toBe(true)
@@ -124,6 +129,8 @@ describe('pyramids lib', () => {
   })
 
   it('leaves every difficulty a wide pool of subjects on the world board', () => {
+    // Hard is narrower by design: only lookalikes that aged decades apart.
+    const SUBJECT_FLOOR = { easy: 100, normal: 100, hard: 60 }
     // A subject needs three decoys in its band; if a data revision narrows
     // this, the round degrades to the same handful of countries every game.
     for (const difficulty of ['easy', 'normal', 'hard'] as const) {
@@ -134,7 +141,7 @@ describe('pyramids lib', () => {
           ).length >=
           PYRAMID_TUNING[difficulty].options - 1
       )
-      expect(usable.length, difficulty).toBeGreaterThan(100)
+      expect(usable.length, difficulty).toBeGreaterThan(SUBJECT_FLOOR[difficulty])
     }
   })
 })

@@ -64,6 +64,7 @@
             <span v-if="option.isAnswer" class="mark">✓</span>
             <span v-else-if="option.picked" class="mark miss">✗</span>
           </span>
+          <span v-if="option.aged" class="aged">{{ pyramidAgedLabel(option.aged) }}</span>
         </li>
       </ol>
     </section>
@@ -80,6 +81,8 @@ import {
   PYRAMID_FAMILY_LABELS,
   PYRAMID_FAMILY_LESSONS,
   PYRAMID_YEARS,
+  pyramidAgedAt,
+  pyramidAgedLabel,
   pyramidFactRows,
   pyramidFacts,
   pyramidFamily,
@@ -107,6 +110,7 @@ const peak = computed(() => pyramidPeakShare(props.challenge.options))
 const lineup = computed(() =>
   props.challenge.options.map(isoCode => ({
     isoCode,
+    aged: pyramidAgedAt(isoCode),
     isAnswer: isoCode === props.challenge.country,
     picked: props.submitted.includes(isoCode),
   }))
@@ -252,6 +256,12 @@ const lineup = computed(() =>
 .name {
   font-weight: 700;
   font-size: 1.3rem;
+}
+
+.aged {
+  font-size: 1.1rem;
+  color: #{ink(0.6)};
+  font-variant-numeric: tabular-nums;
 }
 
 .mark {

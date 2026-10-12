@@ -1,6 +1,14 @@
+import Alea from 'alea'
 import { afterEach, describe, expect, it } from 'vitest'
 import { getRoundChallenge } from '~~/lib/challenges'
-import { PYRAMID_TUNING, pyramidDecoyFits, pyramidFamily } from '~~/lib/pyramids'
+import {
+  PYRAMID_TUNING,
+  drawPyramidDeal,
+  pyramidAgedApart,
+  pyramidDecoyFits,
+  pyramidFamily,
+  pyramidReadoutGap,
+} from '~~/lib/pyramids'
 import type { PyramidSchemeChallenge } from '~~/types/challenges/group-modes.type'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import { guessPolicyFor } from '~~/lib/live-guess-policy'
@@ -12,6 +20,7 @@ import {
   type Round,
 } from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
+import { playableCountries } from '~~/lib/game-rules'
 
 const DIFFICULTIES = ['easy', 'normal', 'hard'] as const
 
@@ -65,6 +74,62 @@ describe('pyramid scheme dealer', () => {
       }
     }
   })
+
+  it('makes every hard decoy a story the readout can tell', async () => {
+    // A bare shape gap in some frame left a quarter of hard deals unreadable:
+    // every decoy must have aged years apart and show a readout gap a player can see.
+    for (let round = 0; round < 40; round++) {
+      const { country, options } = await deal('hard')
+      for (const decoy of options.filter(option => option !== country)) {
+        expect(pyramidAgedApart(country, decoy)).toBeGreaterThanOrEqual(15)
+        expect(pyramidReadoutGap(country, decoy)).toBeGreaterThanOrEqual(6)
+      }
+    }
+  })
+
+  it('steps a thin board down a band rather than repeating a handful', async () => {
+    // Africa's hard table alone held five subjects.
+    const seen = new Set<string>()
+    for (let round = 0; round < 60; round++) seen.add((await deal('hard', 'africa')).country)
+    expect(seen.size).toBeGreaterThan(15)
+  })
+
+  it('deals every option from the board itself', async () => {
+    // An off-board option can never be the answer — on Europe's easy table the
+    // one European name gave the round away.
+    for (const variant of gameVariants) {
+      for (const difficulty of DIFFICULTIES) {
+        const board = new Set(playableCountries(game(difficulty, variant)))
+        const { options } = await deal(difficulty, variant)
+        for (const option of options) expect(board.has(option), `${variant} ${option}`).toBe(true)
+      }
+    }
+  })
+
+  it('never lets an option give the answer away', () => {
+    // A fair option is the answer in one deal of `options`. One that is shown
+    // often but rarely answers (Montenegro, three deals in four on Europe's
+    // hard table) is eliminated without reading the pyramid.
+    const deals = 600
+    for (const variant of gameVariants) {
+      for (const difficulty of DIFFICULTIES) {
+        const random = Alea(`${variant}:${difficulty}`)
+        const pool = playableCountries(game(difficulty, variant))
+        const shown = new Map<string, number>()
+        const answered = new Map<string, number>()
+        for (let round = 0; round < deals; round++) {
+          const { country, decoys } = drawPyramidDeal(pool, difficulty, random)!
+          answered.set(country, (answered.get(country) ?? 0) + 1)
+          for (const option of [country, ...decoys]) shown.set(option, (shown.get(option) ?? 0) + 1)
+        }
+        for (const [option, count] of shown) {
+          if (count < deals * 0.1) continue
+          const rate = (answered.get(option) ?? 0) / count
+          expect(rate, `${variant} ${difficulty} ${option}`).toBeGreaterThan(0.06)
+        }
+      }
+    }
+  }, 60_000)
 
   it('keeps the Gulf slab near its share of the board', async () => {
     // Under the pairwise floor one of the seven slabs sat in 86% of easy deals.

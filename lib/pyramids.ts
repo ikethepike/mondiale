@@ -2,7 +2,7 @@ import { PYRAMIDS } from '~~/data/pyramids.gen'
 import type { PopulationPyramid, PyramidSeries } from '~~/generators/vendors/unwpp/create-wpp'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { shuffleArray } from './arrays'
+import { sample, weightedPick } from './arrays'
 import { clamp } from './number'
 
 /**
@@ -126,31 +126,77 @@ export const pyramidDistance = (a: ISOCountryCode, b: ISOCountryCode): number =>
   return left && right ? frameDistance(left, right) : 0
 }
 
-/** The widest the two shapes ever stood apart in a single frame of the sweep —
- *  what still separates a pair that has converged by today. */
-export const pyramidHistoryGap = (a: ISOCountryCode, b: ISOCountryCode): number => {
+/** The widest the readout's two shares (under 15, 65 and over) ever stood
+ *  apart in one frame, in percentage points — what a player can actually see
+ *  separate a pair while scrubbing. */
+export const pyramidReadoutGap = (a: ISOCountryCode, b: ISOCountryCode): number => {
   const left = PYRAMIDS[a]
   const right = PYRAMIDS[b]
   if (!left || !right) return 0
   let widest = 0
   for (let index = 0; index < Math.min(left.length, right.length); index++) {
-    widest = Math.max(widest, frameDistance(left[index], right[index]))
+    const gap =
+      Math.abs(shareUnder15(left[index]) - shareUnder15(right[index])) +
+      Math.abs(shareOver65(left[index]) - shareOver65(right[index]))
+    widest = Math.max(widest, gap)
   }
   return widest
 }
 
-/** How alike a decoy may be to the subject, in `pyramidDistance` units. */
+/** The median age a country has aged past: the demographic transition as one
+ *  dated moment a player can reason about. */
+export const PYRAMID_AGED_MEDIAN = 25
+
+/** When the median age first reached `PYRAMID_AGED_MEDIAN`: already `before`
+ *  the sweep, in a frame's year, or `never` within it. */
+export type PyramidAgedAt = number | 'before' | 'never'
+
+export const pyramidAgedAt = (isoCode: ISOCountryCode): PyramidAgedAt | undefined => {
+  const series = PYRAMIDS[isoCode]
+  if (!series?.length) return undefined
+  const index = series.findIndex(frame => medianAge(frame) >= PYRAMID_AGED_MEDIAN)
+  if (index < 0) return 'never'
+  return index === 0 ? 'before' : series[index].year
+}
+
+/** The aged moment on one axis: a step outside the sweep at either end. */
+const agedYear = (aged: PyramidAgedAt): number => {
+  const step = PYRAMID_YEARS[1] - PYRAMID_YEARS[0]
+  if (aged === 'before') return PYRAMID_YEARS[0] - step
+  if (aged === 'never') return PYRAMID_YEARS[PYRAMID_YEARS.length - 1] + step
+  return aged
+}
+
+export const pyramidAgedLabel = (aged: PyramidAgedAt): string => {
+  if (aged === 'before') return `Median ${PYRAMID_AGED_MEDIAN}+ before ${PYRAMID_YEARS[0]}`
+  if (aged === 'never') return `Median still under ${PYRAMID_AGED_MEDIAN}`
+  return `Median hit ${PYRAMID_AGED_MEDIAN} in ${aged}`
+}
+
+/** Years between two countries ageing — wide when the sweep tells their story apart. */
+export const pyramidAgedApart = (a: ISOCountryCode, b: ISOCountryCode): number => {
+  const left = pyramidAgedAt(a)
+  const right = pyramidAgedAt(b)
+  return left === undefined || right === undefined ? 0 : Math.abs(agedYear(left) - agedYear(right))
+}
+
+/** How alike a decoy may be to the subject: `today*` in `pyramidDistance`
+ *  units, `agedApart` in years, `readoutFrom` in `pyramidReadoutGap` points. */
 export interface PyramidDecoyBand {
   todayFrom?: number
   todayBelow?: number
-  historyFrom?: number
+  agedApart?: number
+  readoutFrom?: number
 }
 
 /**
  * The decoys are the difficulty axis. Easy deals shapes far from the subject
  * (read the family), normal deals the same broad family (read the
- * proportions), and hard deals lookalikes that only the sixty-year sweep tells
- * apart — so on hard the history IS the clue.
+ * proportions), and hard deals lookalikes that aged at least fifteen years
+ * apart — so on hard the history IS the clue, and it is a story ("France was
+ * already old in 1963; the Balkans caught up by 1978") rather than noise. A
+ * bare shape gap in some frame left a quarter of hard deals unreadable by the
+ * readout in every year.
  *
  * The band is measured against the subject only, never pairwise between the
  * options: a pairwise floor is what forced every easy deal onto the seven Gulf
@@ -168,7 +214,7 @@ export const PYRAMID_TUNING = {
     options: 4,
     attempts: 2,
     durationSeconds: 45,
-    decoys: { todayBelow: 12, historyFrom: 18 },
+    decoys: { todayBelow: 14, agedApart: 15, readoutFrom: 6 },
   },
 } as const satisfies Record<
   GameDifficulty,
@@ -184,35 +230,128 @@ export const pyramidDecoyFits = (
   const today = pyramidDistance(subject, candidate)
   if (band.todayFrom !== undefined && today < band.todayFrom) return false
   if (band.todayBelow !== undefined && today >= band.todayBelow) return false
-  return band.historyFrom === undefined || pyramidHistoryGap(subject, candidate) >= band.historyFrom
+  if (band.agedApart !== undefined && pyramidAgedApart(subject, candidate) < band.agedApart) {
+    return false
+  }
+  return band.readoutFrom === undefined || pyramidReadoutGap(subject, candidate) >= band.readoutFrom
+}
+
+/** A band that leaves a board fewer subjects than this (or than half the
+ *  board, on a small one) borrows a neighbour: most of Africa has not aged
+ *  yet, so its hard table alone held five subjects and dealt them every game. */
+export const PYRAMID_MIN_SUBJECTS = 12
+
+/**
+ * How far a country may be shown beyond what its chance of being the answer
+ * justifies, as a share of deals. A fair country sits in `options` deals for
+ * every one it answers; Montenegro sat in three hard Europe deals of four and
+ * answered one in eleven, so its mere presence said "not this one".
+ */
+export const PYRAMID_MAX_TELL = 0.1
+
+/** Which bands a difficulty may borrow, nearest first. */
+const BAND_LADDER: Record<GameDifficulty, GameDifficulty[]> = {
+  easy: ['easy', 'normal'],
+  normal: ['normal', 'easy', 'hard'],
+  hard: ['hard', 'normal'],
+}
+
+interface PyramidTable {
+  country: ISOCountryCode
+  candidates: ISOCountryCode[]
+}
+
+/** How many subjects list each candidate — a decoy's weight is its inverse,
+ *  so one that fits half the board is spread across it rather than dealt in
+ *  most of its deals. */
+const listingsOf = (tables: PyramidTable[]): Map<ISOCountryCode, number> => {
+  const listings = new Map<ISOCountryCode, number>()
+  for (const { candidates } of tables) {
+    for (const isoCode of candidates) listings.set(isoCode, (listings.get(isoCode) ?? 0) + 1)
+  }
+  return listings
+}
+
+/** How much the options alone give away: the largest share of deals any
+ *  country is shown beyond `options` times its share as the answer. */
+const tellOf = (tables: PyramidTable[], wanted: number): number => {
+  const listings = listingsOf(tables)
+  const deals = tables.length || 1
+  const excess = new Map<ISOCountryCode, number>()
+  const add = (isoCode: ISOCountryCode, share: number) =>
+    excess.set(isoCode, (excess.get(isoCode) ?? 0) + share / deals)
+  for (const { country, candidates } of tables) {
+    add(country, 1 - (wanted + 1))
+    const total = candidates.reduce((sum, isoCode) => sum + 1 / listings.get(isoCode)!, 0)
+    for (const isoCode of candidates) {
+      add(isoCode, Math.min(1, wanted / listings.get(isoCode)! / total))
+    }
+  }
+  return Math.max(0, ...excess.values())
+}
+
+const pickTable = (
+  tables: PyramidTable[],
+  wanted: number,
+  random: () => number
+): { country: ISOCountryCode; decoys: ISOCountryCode[] } | undefined => {
+  const table = sample(tables, random)
+  if (!table) return undefined
+  const listings = listingsOf(tables)
+  const remaining = [...table.candidates]
+  const decoys: ISOCountryCode[] = []
+  while (decoys.length < wanted && remaining.length) {
+    const decoy = weightedPick(
+      remaining.map(isoCode => [isoCode, 1 / listings.get(isoCode)!] as const),
+      random
+    )!
+    decoys.push(decoy)
+    remaining.splice(remaining.indexOf(decoy), 1)
+  }
+  return { country: table.country, decoys }
 }
 
 /**
- * Pick a subject from `pool` and its decoys from the band — the board's own
- * countries first, `widen` (the in-play world) when the board is too thin.
- * Subjects are drawn uniformly, so no shape is dealt more often than its share
- * of the board. Undefined only when no subject on the board has a full table.
+ * Pick a subject and its decoys from the board's own countries — never the
+ * wider world: an off-board option can never be the answer, so on Europe's
+ * easy table the one European name gave the round away. A band too thin for
+ * the board, or one that would lean on the same decoy deal after deal,
+ * borrows the next on `BAND_LADDER`; where none clears both, the least
+ * exposed band that still has enough subjects deals. Subjects are drawn
+ * uniformly, so no shape is dealt more often than its share of the board.
+ * Subjects with a spare decoy come first — one with exactly three was dealt
+ * the same trio every time it came up — and a small board that cannot afford
+ * that keeps them all.
  */
 export const drawPyramidDeal = (
   pool: readonly ISOCountryCode[],
-  widen: readonly ISOCountryCode[],
   difficulty: GameDifficulty,
   random: () => number = Math.random
 ): { country: ISOCountryCode; decoys: ISOCountryCode[] } | undefined => {
-  const { options, decoys: band } = PYRAMID_TUNING[difficulty]
-  const wanted = options - 1
-  for (const country of shuffleArray(
-    pool.filter(isoCode => PYRAMIDS[isoCode]),
-    random
-  )) {
-    const fits = (list: readonly ISOCountryCode[]) =>
-      list.filter(isoCode => pyramidDecoyFits(country, isoCode, band))
-    let candidates = fits(pool)
-    if (candidates.length < wanted) candidates = fits(widen)
-    if (candidates.length < wanted) continue
-    return { country, decoys: shuffleArray(candidates, random).slice(0, wanted) }
+  const board = pool.filter(isoCode => PYRAMIDS[isoCode])
+  const enough = Math.min(PYRAMID_MIN_SUBJECTS, Math.ceil(board.length / 2))
+  const bands: { wanted: number; tables: PyramidTable[]; tell: number }[] = []
+  for (const band of BAND_LADDER[difficulty]) {
+    const wanted = PYRAMID_TUNING[band].options - 1
+    const listed = board.flatMap(country => {
+      const candidates = board.filter(isoCode =>
+        pyramidDecoyFits(country, isoCode, PYRAMID_TUNING[band].decoys)
+      )
+      return candidates.length < wanted ? [] : [{ country, candidates }]
+    })
+    const spare = listed.filter(table => table.candidates.length > wanted)
+    for (const tables of [spare, listed]) {
+      const tell = tellOf(tables, wanted)
+      if (tables.length >= enough && tell <= PYRAMID_MAX_TELL) {
+        return pickTable(tables, wanted, random)
+      }
+      bands.push({ wanted, tables, tell })
+    }
   }
-  return undefined
+  const chosen =
+    bands.filter(band => band.tables.length >= enough).sort((a, b) => a.tell - b.tell)[0] ??
+    [...bands].sort((a, b) => b.tables.length - a.tables.length)[0]
+  return chosen && pickTable(chosen.tables, chosen.wanted, random)
 }
 
 // --- Reading a shape --------------------------------------------------------

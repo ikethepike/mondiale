@@ -184,7 +184,7 @@ const stakes = computed(() => {
   if (!active) return ''
   const base = `One country's age structure across sixty years. Pick its owner from ${active.options.length} — ${active.maximumGuesses} guesses, the second worth less.`
   return gameStore.game?.difficulty === 'hard'
-    ? `${base} Today the options look alike: drag the timeline back to tell them apart.`
+    ? `${base} Today the options look alike, but they aged decades apart: drag the timeline back.`
     : base
 })
 

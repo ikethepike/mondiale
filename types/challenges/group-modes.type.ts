@@ -1293,7 +1293,7 @@ export interface TerraBriefingState {
  * Pyramid Scheme: one population pyramid sweeps across sixty years and the
  * table names whose it is from four options. The decoys are drawn by
  * difficulty against the subject (`PYRAMID_TUNING`): far apart on easy,
- * lookalikes on hard that only the sweep tells apart.
+ * lookalikes on hard that aged decades apart. All four come from the board.
  */
 export interface PyramidSchemeChallenge {
   _type: 'pyramid-scheme-challenge'
