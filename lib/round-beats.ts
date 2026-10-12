@@ -1,5 +1,6 @@
 import { clamp, clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
+import type { TimelineChallenge } from '~~/types/challenges/group-modes.type'
 import type { IndividualChallengeVariant } from '~~/types/challenges/individual-challenge.type'
 import type { Round } from '~~/types/game.types'
 import {
@@ -195,6 +196,15 @@ export const BROWSE_HINT_S = 10
  *  protocol tests read the SAME number the spec row carries, never a private
  *  fallback that would keep tests green while the engine drifted. */
 export const TIMELINE_BROWSE_CAP_MS = 60000
+/** The longest a dealt timeline round's server clock can run: every card times
+ *  out and holds its story card, then the chronicle waits out its whole cap.
+ *  It grows with the table — one hand per seat — so no fixed round cap holds it. */
+export const timelineRoundMs = (challenge: TimelineChallenge): number =>
+  FIRST_TURN_GRACE_MS +
+  (challenge.state.deck.length - 1) *
+    ((challenge.turnSeconds + challenge.revealSeconds) * 1000 + 2 * TIMEOUT_SLACK_MS) +
+  revealBudgetMsFor(challenge) +
+  TIMEOUT_SLACK_MS
 /** The mid-gauntlet reveal (`final-verdict`): the teachable scorecards —
  *  rankings, lessons, the fact you missed — need longer on screen than a
  *  gate's verdict pill. The knockout keeps the shorter gate hold: its exit

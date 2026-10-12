@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyLicence, PUBLISH_FAIR_USE, type ExtMetadata } from './licence'
+import { classifyLicence, isBoilerplateCredit, PUBLISH_FAIR_USE, type ExtMetadata } from './licence'
 
 /**
  * This rule decides what we PUBLISH on our own domain, so it is pinned without
@@ -140,5 +140,54 @@ describe('classifyLicence', () => {
     expect(classified.license).toBe('CC BY-SA 4.0')
     expect(classified.restrictions).toBe('trademarked')
     expect(classified.free).toBe(true)
+  })
+
+  it('reads template prose in the Artist field as no credit at all', () => {
+    const classified = classifyLicence(
+      meta({
+        LicenseShortName: { value: 'Public domain' },
+        Artist: {
+          value: 'This image includes elements that have been taken or adapted from this file:',
+        },
+      }),
+      strip,
+      shorten
+    )
+    expect(classified.credit).toBeUndefined()
+  })
+})
+
+describe('isBoilerplateCredit', () => {
+  it('names template prose and leaves real credits alone', () => {
+    expect(
+      isBoilerplateCredit(
+        'This image includes elements that have been taken or adapted from this file:'
+      )
+    ).toBe(true)
+    expect(
+      isBoilerplateCredit(
+        'This vector image includes elements that have been taken or adapted from this file:'
+      )
+    ).toBe(true)
+    expect(
+      isBoilerplateCredit(
+        'This vector image includes elements that have been taken or adapted from this…'
+      )
+    ).toBe(true)
+    expect(isBoilerplateCredit('This file was derived from: Flag.svg, by Jane Doe')).toBe(false)
+    expect(
+      isBoilerplateCredit(
+        'This image includes elements that have been taken or adapted from this file: Flag of Japan.svg'
+      )
+    ).toBe(true)
+    expect(
+      isBoilerplateCredit(
+        'This image includes elements that have been taken or adapted from this file: Flag.svg by Jane Doe'
+      )
+    ).toBe(false)
+    expect(isBoilerplateCredit('Original: Nina R from Africa Derivative work: UnpetitproleX')).toBe(
+      false
+    )
+    expect(isBoilerplateCredit('United States Navy Band')).toBe(false)
   })
 })

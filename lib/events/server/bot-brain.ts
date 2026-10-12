@@ -1437,13 +1437,18 @@ export const composeClassicSubmission = async (
     case 'two-truths':
     case 'flashpoint':
     case 'capital-guess':
-    case 'ground-plan':
     case 'flag-palette':
     case 'composition': {
       const target = correct[0]
       if (!target) return { ranking: [] }
       const pick = hit ? target : (wrongPick(game, correct) ?? target)
       return { ranking: [pick], clientScore: hit ? claim : 0, buzzAt }
+    }
+    case 'ground-plan': {
+      const plan = expectChallengeType(challenge, 'ground-plan-challenge')
+      if (hit) return { ranking: [plan.country], cities: [plan.city], clientScore: claim, buzzAt }
+      const pick = wrongPick(game, correct)
+      return { ranking: pick ? [pick] : [], clientScore: 0, buzzAt }
     }
     case 'tongue-buzz': {
       // Any speaker wins — the correct set is the whole membership.
