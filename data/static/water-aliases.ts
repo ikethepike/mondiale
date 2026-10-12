@@ -2,8 +2,8 @@
  * Same-feature reconciliation. NE names stretches of one river differently
  * (Rhein in CH/AT, Rhine in DE/NL), which shipped them as separate features —
  * and at a Scattergories table two players could then hold the same river yet
- * both score "unique". `merge` folds those features into the canonical one
- * (bounds-adjacency of every pair verified against the generated data);
+ * both score "unique". `merge` folds those stretches into the canonical one
+ * (a river's before its reaches are clustered, so none falls away between them);
  * `alt` adds typeable alternates that have no NE feature of their own.
  * Both end up in the feature's `aliases` — matched, never displayed.
  * Names are POST-fix (see water-name-fixes.ts); the generator warns for any
@@ -25,6 +25,12 @@ export const WATER_ALIASES: WaterAliasGroup[] = [
   { kind: 'river', canonical: 'Brahmaputra', merge: ['Dihang'], alt: [] },
   { kind: 'river', canonical: 'Irrawaddy', merge: ['Irrawaddy Delta'], alt: ['Ayeyarwady'] },
   { kind: 'river', canonical: 'Salween', merge: ['Nu'], alt: ['Thanlwin'] },
+  {
+    kind: 'river',
+    canonical: 'Nile',
+    merge: ['White Nile', 'Mountain Nile', 'Albert Nile', 'Victoria Nile'],
+    alt: [],
+  },
   { kind: 'river', canonical: 'Tajo', merge: [], alt: ['Tagus'] },
   { kind: 'river', canonical: 'Maas', merge: [], alt: ['Meuse'] },
   { kind: 'river', canonical: 'Duero', merge: [], alt: ['Douro'] },

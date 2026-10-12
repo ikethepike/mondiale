@@ -87,6 +87,38 @@ describe('the world Name That Water pools', () => {
   })
 })
 
+describe('the world River Run pool', () => {
+  const dealable = async (difficulty: Game['difficulty']) =>
+    (await waterFeaturePool({ regions: [], difficulty } as unknown as Game, ['river'])).filter(
+      feature => feature.countries.length >= 3
+    )
+
+  it('deals the Nile from Uganda to Egypt, and the Salween to Thailand, at every difficulty', async () => {
+    for (const difficulty of gameDifficulties) {
+      const pool = await dealable(difficulty)
+      const countries = (id: string) => pool.find(feature => feature.id === id)?.countries
+      expect(countries('river-nile'), difficulty).toEqual(
+        expect.arrayContaining(['UG', 'SS', 'SD', 'EG'])
+      )
+      expect(countries('river-salween'), difficulty).toEqual(
+        expect.arrayContaining(['CN', 'MM', 'TH'])
+      )
+    }
+  })
+
+  it('ships the Nile as one river, its named reaches matched as aliases', async () => {
+    const { WATER_FEATURES } = await import('~~/data/water.gen')
+    expect(WATER_FEATURES['river-white-nile']).toBeUndefined()
+    expect(WATER_FEATURES['river-mountain-nile']).toBeUndefined()
+    expect(WATER_FEATURES['river-nile'].aliases).toEqual(
+      expect.arrayContaining(['White Nile', 'Albert Nile', 'Victoria Nile'])
+    )
+    expect(WATER_FEATURES['river-blue-nile']?.countries).toEqual(
+      expect.arrayContaining(['ET', 'SD'])
+    )
+  })
+})
+
 describe('getWaterBlitzChallenge for highlands (via getRoundChallenge)', () => {
   const game = (difficulty: Game['difficulty']): Game =>
     ({

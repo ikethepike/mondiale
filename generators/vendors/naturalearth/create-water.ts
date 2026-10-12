@@ -106,6 +106,13 @@ const DECIMATE_UNITS = 0.7
 const SHORE_EPSILON = 0.5
 /** Rivers shorter than this on the map aren't playable. */
 const MIN_RIVER_LENGTH = 18
+/** A river stretch → the river it belongs to. Folded before clustering, so a
+ *  reach between two stretches is never dropped as a separate river. */
+const RIVER_OF_STRETCH = new Map(
+  WATER_ALIASES.filter(group => group.kind === 'river').flatMap(group =>
+    group.merge.map(stretch => [stretch, group.canonical] as const)
+  )
+)
 /** Sample step along rivers for country-crossing tests. */
 const RIVER_SAMPLE_STEP = 1.2
 
@@ -463,13 +470,21 @@ const main = async () => {
   // --- Rivers: merge segments by name ----------------------------------------
   const rivers = await fetchLayer(LAYERS.rivers)
   const riverSegments = new Map<string, Point[][]>()
+  const lakeCenterlines = new Set<Point[]>()
+  const foldedStretches = new Set<string>()
   for (const feature of rivers.features as Feature<LineString | MultiLineString>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = featureName(properties)
-    if (!name || property(properties, 'featurecla').includes('Lake')) continue
-    const projected = asLines(feature.geometry).map(line => decimate(line.map(project), 0.5))
+    const stretch = featureName(properties)
+    if (!stretch) continue
+    const name = RIVER_OF_STRETCH.get(stretch) ?? stretch
+    if (name !== stretch) foldedStretches.add(stretch)
+    const projected = asLines(feature.geometry)
+      .map(line => decimate(line.map(project), 0.5))
+      .filter(line => line.length >= 2)
+    if (property(properties, 'featurecla').includes('Lake'))
+      for (const line of projected) lakeCenterlines.add(line)
     const bucket = riverSegments.get(name) ?? []
-    bucket.push(...projected.filter(line => line.length >= 2))
+    bucket.push(...projected)
     riverSegments.set(name, bucket)
   }
 
@@ -514,7 +529,12 @@ const main = async () => {
           total += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1])
       return total
     }
-    const main = clusters.reduce((a, b) => (lengthOf(a) >= lengthOf(b) ? a : b))
+    // A lake's centerline joins the reaches either side (Lake Nasser parted Egypt's Nile
+    // from Sudan's) but is never drawn or sampled: its water touches every shore.
+    const reaches = (cluster: Point[][]) => cluster.filter(line => !lakeCenterlines.has(line))
+    const main = reaches(
+      clusters.reduce((a, b) => (lengthOf(reaches(a)) >= lengthOf(reaches(b)) ? a : b))
+    )
     if (lengthOf(main) < MIN_RIVER_LENGTH) continue
 
     // Chain the cluster's segments into flow order and bridge the small NE
@@ -548,6 +568,10 @@ const main = async () => {
     }
     const aliases: string[] = []
     for (const name of group.merge) {
+      if (foldedStretches.has(name)) {
+        aliases.push(name)
+        continue
+      }
       const id = featureId(group.kind, name)
       const stretch = features[id]
       if (!stretch) {
