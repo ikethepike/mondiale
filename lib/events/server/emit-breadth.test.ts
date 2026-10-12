@@ -1,5 +1,5 @@
 import { seatInvariantViolations } from '~~/lib/seat-invariants'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BOARD_TO_CHALLENGE_HOLD_MS,
   CLASSIC_SETTLE_SLACK_MS,
@@ -14,7 +14,7 @@ import {
 } from '~~/lib/round-beats'
 import { seatSubject } from '~~/lib/seat-transitions'
 import type { RoundChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { ClientEventData } from '~~/types/events.types'
+import { hasGame, type ClientEventData } from '~~/types/events.types'
 import type { Game, PlayerMove, Tile } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
 import { unsentRevFor } from '../server-side'
@@ -28,7 +28,17 @@ import {
   type CapturedEmit,
   type TestTable,
 } from './test-table'
-import { scriptDraws, testCursor, testSeat } from './test-seat'
+import { wireGame } from '~~/lib/wire-view'
+import {
+  FLAG_PICK_GATE,
+  passingFinalAnswer,
+  scriptDraws,
+  testCursor,
+  testGauntlet,
+  testSeat,
+  WITHHELD_FINALS,
+  WITHHELD_GATES,
+} from './test-seat'
 
 /**
  * The protocol-convergence harness. A client rebuilds its game from the emit
@@ -164,7 +174,7 @@ let tables: TestTable[] = []
 const open = async (game: Game) => {
   const table = await createTestTable(game)
   tables.push(table)
-  return { table, joined: await table.read() }
+  return { table, joined: wireGame(await table.read()) }
 }
 
 beforeEach(() => {
@@ -308,5 +318,110 @@ describe('every emit leaves the client equal to server truth', () => {
     expect(client.rounds).toHaveLength(2)
     expect(client.players.b!.cursor).toMatchObject({ step: 'round', subject: seatSubject.round(1) })
     await expectNothingUnsent(table)
+  })
+})
+
+describe('the wire carries the question a seat is on, and its answer only with the verdict', () => {
+  beforeAll(() => import('~~/lib/challenges/final-challenge'))
+
+  const SEALED = { _type: 'sealed-challenge' }
+  const BEHIND: PlayerMove = { ...FLAG_PICK_GATE, endTile: tile(10, 'flag') }
+  /** The seat answers once on a stale subject (the resync) and once for real. */
+  const seatOnWire = (table: TestTable) => {
+    expect(table.emits.map(emitted => emitted.event)).toEqual(['update', 'seat-advanced'])
+    return table.emits.map(({ payload }) => (hasGame(payload) ? payload.game.players.a! : null!))
+  }
+
+  it.each(WITHHELD_GATES)('$name gate', async ({ move, keys, answer }) => {
+    const { table } = await open(
+      buildGame(
+        [
+          testSeat('a', 'gate', {
+            moves: [move, BEHIND],
+            cursor: testCursor('gate', { deadline: Date.now() + INDIVIDUAL_GATE_CAP_MS }),
+          }),
+          testSeat('b', 'round'),
+        ],
+        TWO_TRUTHS
+      )
+    )
+    const stale = { subject: seatSubject.gate(1, 99), seq: 1 }
+    await table.send('a', {
+      event: 'submit-individual-challenge-answer',
+      isoCode: answer,
+      ...stale,
+    })
+    await table.send('a', {
+      event: 'submit-individual-challenge-answer',
+      isoCode: answer,
+      ...(await echo(table, 'a')),
+    })
+
+    const [asked, judged] = seatOnWire(table)
+    for (const key of keys) expect(asked!.moves[0]!.challenge).not.toHaveProperty(key)
+    expect(judged!.cursor.verdict).toMatchObject({ kind: 'gate', correct: true })
+    expect(judged!.moves[0]!.challenge).toEqual(move.challenge)
+    for (const seat of [asked, judged]) expect(seat!.moves[1]!.challenge).toEqual(SEALED)
+  })
+
+  it('a clock run out on screen forfeits at once, and the verdict brings the answer', async () => {
+    const [{ move }] = WITHHELD_GATES
+    const { table } = await open(
+      buildGame(
+        [
+          testSeat('a', 'gate', {
+            moves: [move],
+            cursor: testCursor('gate', { deadline: Date.now() + INDIVIDUAL_GATE_CAP_MS }),
+          }),
+          testSeat('b', 'round'),
+        ],
+        TWO_TRUTHS
+      )
+    )
+    await table.send('a', {
+      event: 'submit-individual-challenge-answer',
+      timedOut: true,
+      ...(await echo(table, 'a')),
+    })
+    const [forfeited] = table.emits.map(({ payload }) => (hasGame(payload) ? payload.game : null!))
+    expect(forfeited!.players.a!.cursor.verdict).toMatchObject({
+      kind: 'gate',
+      correct: false,
+      timedOut: true,
+      steps: 0,
+    })
+    expect(forfeited!.players.a!.moves[0]!.challenge).toEqual(move.challenge)
+  })
+
+  it.each(WITHHELD_FINALS)('$name gauntlet question', async ({ item, keys }) => {
+    const { table } = await open(
+      buildGame(
+        [
+          testSeat('a', 'final', {
+            moves: [testGauntlet([item, WITHHELD_FINALS[0].item])],
+            cursor: testCursor('final', { deadline: Date.now() + 60_000 }),
+          }),
+          testSeat('b', 'round'),
+        ],
+        TWO_TRUTHS
+      )
+    )
+    const submittedAnswer = passingFinalAnswer(item)
+    const stale = { subject: seatSubject.final(1, 9), seq: 1 }
+    await table.send('a', { event: 'submit-final-challenge-answer', submittedAnswer, ...stale })
+    await table.send('a', {
+      event: 'submit-final-challenge-answer',
+      submittedAnswer,
+      ...(await echo(table, 'a')),
+    })
+
+    const [asked, judged] = seatOnWire(table).map(seat => {
+      const gauntlet = seat!.moves[0]!.challenge
+      return { seat, questions: gauntlet?._type === 'final-challenge' ? gauntlet.challenges : [] }
+    })
+    expect(asked!.questions).toHaveLength(1)
+    for (const key of keys) expect(asked!.questions[0]).not.toHaveProperty(key)
+    expect(judged!.seat!.cursor.verdict).toMatchObject({ kind: 'final', correct: true })
+    expect(judged!.questions).toEqual([item])
   })
 })

@@ -1,16 +1,18 @@
 import type { Server, Socket, DefaultEventsMap } from 'socket.io'
 
-import type {
-  ClientEvent,
-  ClientEventData,
-  ClientEventTarget,
-  ServerEventData,
+import {
+  hasGame,
+  type ClientEvent,
+  type ClientEventData,
+  type ClientEventTarget,
+  type ServerEventData,
 } from '../../types/events.types'
 import { type Game, isValidGame } from '../../types/game.types'
 import type { Player } from '../../types/player.type'
 import type { EventHandler } from '~~/server/middleware/socket.server'
 import { secretsKey } from '~~/lib/player-secret'
 import { syncLegacyBoard } from '~~/lib/board-regions'
+import { wireGame } from '~~/lib/wire-view'
 import type { Redis } from '@upstash/redis'
 
 /** Game-state artifacts (game, secrets, hidden seeds) all expire together. */
@@ -159,9 +161,10 @@ export const useServerSideEvents = ({
       if (unsent !== undefined && 'game' in eventData && (eventData.game.rev ?? 0) >= unsent) {
         unsentRevs.delete(eventTarget.gameId)
       }
+      const wire = hasGame(eventData) ? { ...eventData, game: wireGame(eventData.game) } : eventData
       io.in(eventTarget.gameId).emit(
         eventData.event,
-        { ...eventData, serverNow: Date.now() },
+        { ...wire, serverNow: Date.now() },
         eventTarget
       )
     },

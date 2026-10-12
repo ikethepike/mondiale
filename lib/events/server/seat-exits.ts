@@ -208,6 +208,17 @@ export const gateVerdict = (
   )
 }
 
+/** The gate's clock ran out unanswered. */
+export const gateTimeout = (game: Game, seat: Player, cause: SeatCause) =>
+  gateVerdict(
+    game,
+    seat,
+    { correct: false, timedOut: true, steps: 0 },
+    GATE_RESULT_HOLD_MS,
+    false,
+    cause
+  )
+
 /**
  * A blocked gate: the record lands before the moves are forfeited — without
  * it a blocked walk is indistinguishable from a clean one, on the board and
@@ -396,14 +407,7 @@ export const SEAT_TIMER_EXITS: Record<SeatTimerKind, (exit: SeatExit) => Promise
   },
   'gate-cap': async ({ game, server, seat }) => {
     console.warn(`Gate cap forfeiting unanswered gate for ${seat.id} in ${game.id}`)
-    gateVerdict(
-      game,
-      seat,
-      { correct: false, timedOut: true, steps: 0 },
-      GATE_RESULT_HOLD_MS,
-      false,
-      'timer:gate-cap'
-    )
+    gateTimeout(game, seat, 'timer:gate-cap')
     await commitSeat(server, game, seat)
   },
   'final-cap': async ({ game, server, seat }) => {

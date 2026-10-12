@@ -69,7 +69,13 @@ export type GameRules = Pick<Game, 'regions' | 'difficulty' | 'includeMicroNatio
 
 export interface PlayerMove {
   endTile: Tile
-  challenge?: IndividualChallenge | FinalChallenge
+  challenge?: IndividualChallenge | FinalChallenge | SealedChallenge
+}
+
+/** The wire's stand-in for a gate the seat has not reached (`wireGame`):
+ *  something waits on that tile, and nothing of what it asks. Never saved. */
+export interface SealedChallenge {
+  _type: 'sealed-challenge'
 }
 
 export interface PlayerTurn {

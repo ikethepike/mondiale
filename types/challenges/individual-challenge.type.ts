@@ -2,6 +2,7 @@ import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { Spectrum } from '../../lib/parties'
 import type { RosettaRelationId } from '../../lib/rosetta'
 import type { TrendMetricId } from '../../lib/trends'
+import type { MoneyHero } from '../currency.type'
 import type { ISOCountryCode } from '../geography.types'
 
 /**
@@ -165,6 +166,8 @@ export interface IndividualChallenge {
   /** capital-match / photo gates: a photo (capital skyline, landmark) whose
    *  country the player names from `options`. */
   image?: string
+  /** money-match: the question on screen, stamped by the dealer. */
+  money?: MoneyHero
   /** landmark-quiz: which curated landmark (PLACES key, `curated` facet). The reveal shows
    *  its dossier (name, description) and marks its true spot on the map. */
   landmarkSlug?: string

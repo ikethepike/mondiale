@@ -34,8 +34,9 @@ export const HINT_UNLOCK_AT = {
 export const useBuzzRound = <T extends TypedRoundChallenge['_type']>(
   typeName: T,
   options: {
-    /** Whether this guess wins the round. Anthem: one country. Tongues: any of
-     *  a set — through the same predicate the server verifies with. */
+    /** Whether this guess wins the round. Anthem: any country sung to the
+     *  tune. Tongues: any of a set. Both through the predicate the server
+     *  verifies with. */
     isCorrect: (
       challenge: Extract<TypedRoundChallenge, { _type: T }>,
       guess: ISOCountryCode

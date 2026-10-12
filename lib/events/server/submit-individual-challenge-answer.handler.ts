@@ -5,7 +5,7 @@ import { gradeGateSteps, isStepGraded } from '~~/lib/gate-steps'
 import { gateResultHoldMsFor, isBrowsableGateVariant } from '~~/lib/round-beats'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import { defineGameHandler } from '../server-side'
-import { commitSeat, gateVerdict } from './seat-exits'
+import { commitSeat, gateTimeout, gateVerdict } from './seat-exits'
 
 /**
  * A gate answer. Accepted only on the seat's live gate subject; the verdict
@@ -24,6 +24,11 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
     const gate = player.moves[0]
     if (gate?.challenge?._type !== 'individual-challenge') {
       return console.warn(`Gate submit with no gate at the head for ${player.id}`)
+    }
+
+    if ('timedOut' in eventData) {
+      gateTimeout(game, player, 'event:submit-individual-challenge-answer')
+      return commitSeat(server, game, player)
     }
 
     const { challenge } = gate

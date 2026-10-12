@@ -78,15 +78,18 @@ describe('buzz pay is priced off the server clock, never the claim', () => {
   it('prices a typed Ground Plan by the layers on screen', async () => {
     const plan = {
       _type: 'ground-plan-challenge',
-      country: 'FR',
+      country: 'US',
+      city: 'Chicago',
       layers: ['fabric', 'arterials', 'rail', 'bridges'],
       secondsPerLayer: 8,
       durationSeconds: 40,
       maximumPoints: MAX,
     }
-    expect(await grade(plan, { ranking: ['FR'], clientScore: MAX }, { at: into(17_000) })).toBe(
+    const typed = { ranking: ['US'], cities: ['Chicago'], clientScore: MAX }
+    expect(await grade(plan, typed, { at: into(17_000) })).toBe(
       buzzScore(MAX, groundPlanRemainingFraction(plan as never, 3))
     )
+    expect(await grade(plan, { ...typed, cities: ['Houston'] }, { at: into(0) })).toBe(0)
   })
 
   it('pays an option board by the attempt its pick sequence landed on', async () => {

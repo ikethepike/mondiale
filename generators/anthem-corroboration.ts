@@ -29,6 +29,9 @@ export const ATTRIBUTION_FREE = /public domain|^CC0|^PD/i
 export const isPlayable = (file: string): boolean =>
   !/\.(mid|midi)$/i.test(file) && !UNUSABLE.test(file)
 
+export const isInstrumental = (file: string): boolean =>
+  /instrumental|orchestr|band|organ/i.test(file)
+
 /** Words that carry no identifying weight — matching on these alone would let
  *  any anthem recording answer for any country. */
 const STOPWORDS = new Set([

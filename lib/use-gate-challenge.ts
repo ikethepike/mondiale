@@ -44,6 +44,7 @@ import type { GATE_HINTS, GateHint } from './hints'
 import { useSeatRecord } from './use-seat-record'
 import { useSeatClockStart } from './use-seat-clock'
 import { useServerNow } from './use-server-now'
+import { gateAnswerOnHand } from './wire-view'
 
 /** Gates whose own reveal is the answer: the duels paint their board, atlas
  *  draws its chain, chronicle sets its record — the map's country card would
@@ -59,13 +60,15 @@ const OWN_REVEAL_VARIANTS = new Set<IndividualChallengeVariant>([
 export interface GateChallengeContext {
   challenge: Ref<IndividualChallenge | undefined>
   variant: Ref<IndividualChallengeVariant>
-  /** The answer's country record — undefined only before the first deal. */
+  /** The answer's country record — undefined before the first deal, and
+   *  while the wire withholds the answer (`gateAnswerOnHand`). */
   country: Ref<Country | undefined>
   /** 'correct' | 'incorrect' once answered: the server's verdict for this
    *  gate, or this seat's own preview of it until the verdict lands. */
   status: ComputedRef<'correct' | 'incorrect' | undefined>
   /** The result card is up: the verdict plus the variant's own lead (a wash
-   *  painted on the question first). The shell swaps on this, not `status`. */
+   *  painted on the question first), once the answer it shows is on hand. The
+   *  shell swaps on this, not `status`. */
   verdictShown: ComputedRef<boolean>
   isHard: Ref<boolean>
   isEasy: Ref<boolean>
@@ -181,6 +184,8 @@ export const provideGateChallenge = (): GateChallengeContext => {
   const verdictShown = computed(
     () =>
       !!status.value &&
+      !!challenge.value &&
+      gateAnswerOnHand(challenge.value) &&
       gradedAt.value !== undefined &&
       now.value >= gradedAt.value + verdictLeadMs.value
   )
@@ -215,11 +220,16 @@ export const provideGateChallenge = (): GateChallengeContext => {
   const browseReveal = computed(() => isBrowsableGateVariant(variant.value))
 
   // The server's verdict paints the map wash for everyone watching this seat,
-  // the booth included, whether or not this tab answered.
+  // the booth included, whether or not this tab answered. Its snapshot is the
+  // first to carry a withheld answer, so the gate on stage takes it up here.
   watch(
     verdict,
     landed => {
       if (!landed || !challenge.value) return
+      const head = currentMove.value?.challenge
+      if (!gateAnswerOnHand(challenge.value) && head?._type === 'individual-challenge') {
+        challenge.value = head
+      }
       previewVerdict(landed.correct ? 'correct' : 'incorrect', subject)
       if (!gameStore.map.reveal && !OWN_REVEAL_VARIANTS.has(variant.value)) {
         gameStore.map.reveal =
@@ -248,7 +258,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     // Watch mode: the gates' own reactive clocks reach here with no user
     // input — the booth never answers a gate.
     if (gameStore.watching) return
-    if (status.value) return
+    if (status.value || answeredISOCode.value) return
     const active = challenge.value
     if (!active) return
 
@@ -261,6 +271,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
       ...seatEcho(subject),
     })
 
+    if (!gateAnswerOnHand(active)) return
     const correct = isCorrectIndividualAnswer(active, isoCode)
     if (!OWN_REVEAL_VARIANTS.has(variant.value)) {
       // A shared-currency gate can be won on a country other than the dealt
@@ -271,16 +282,25 @@ export const provideGateChallenge = (): GateChallengeContext => {
   }
 
   /**
-   * The clock ran out. Nothing is sent: the deadline is the server's, and its
-   * gate cap delivers the timed-out verdict on its own. The view shows the
-   * miss at once rather than holding a frozen zero until that verdict lands.
+   * The clock ran out. The deadline is the server's, and its gate cap delivers
+   * the timed-out verdict on its own; the view shows the miss at once rather
+   * than holding a frozen zero until then. A gate whose answer is withheld has
+   * no answer to show yet, so it forfeits now and the verdict brings one.
    */
   const giveUp = () => {
-    if (gameStore.watching || status.value || !challenge.value) return
+    if (gameStore.watching || status.value || answeredISOCode.value || !challenge.value) return
     clockRanOut.value = true
     gameStore.map.highlighted.clear()
-    gameStore.map.reveal = challenge.value.country
     previewVerdict('incorrect', subject)
+    if (gateAnswerOnHand(challenge.value)) {
+      gameStore.map.reveal = challenge.value.country
+      return
+    }
+    void deliver({
+      event: 'submit-individual-challenge-answer',
+      timedOut: true,
+      ...seatEcho(subject),
+    })
   }
 
   const context: GateChallengeContext = {

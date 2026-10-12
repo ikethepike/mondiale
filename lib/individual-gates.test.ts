@@ -8,7 +8,9 @@ import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/chronicle'
 import { mentionsCountry } from '~~/lib/country'
+import { moneyHero } from '~~/lib/currency'
 import { playableCountries } from '~~/lib/game-rules'
+import { flagsIndistinguishable } from '~~/lib/palette'
 import { gameVariants } from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
 import { scriptoriumAnswers } from '~~/lib/scriptorium'
@@ -22,6 +24,7 @@ import {
   individualChallengeVariants,
 } from '~~/types/challenges/individual-challenge.type'
 import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
  * These gates assert STATISTICAL claims — that every question kind is
@@ -95,6 +98,46 @@ describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => 
   })
 })
 
+describe('flag-only option tables', { timeout: TIMEOUT }, () => {
+  const twinPairs = (options: readonly ISOCountryCode[]) =>
+    options.flatMap((a, index) =>
+      options.slice(index + 1).flatMap(b => (flagsIndistinguishable(a, b) ? [[a, b]] : []))
+    )
+
+  it('never seats two flags a player cannot tell apart', async () => {
+    let twinSubjects = 0
+    for (const variant of ['flag-pick', 'flag-twins'] as const) {
+      process.env.FORCE_INDIVIDUAL_VARIANT = variant
+      for (let attempt = 0; attempt < 300; attempt++) {
+        const dealt = await getIndividualChallenge({
+          accessorId: 'flag',
+          difficulty: 'hard',
+          regions: [],
+          includeMicroNations: true,
+        })
+        if (dealt.variant !== variant || !dealt.options) continue
+        if (['ID', 'MC', 'TD', 'RO'].includes(dealt.country)) twinSubjects++
+        expect(twinPairs(dealt.options)).toEqual([])
+      }
+    }
+    expect(twinSubjects).toBeGreaterThan(0)
+  })
+
+  it('keeps the trajectory ring free of indistinguishable flags', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'trajectory-match'
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const dealt = await getIndividualChallenge({
+        accessorId: 'flag',
+        difficulty: 'hard',
+        regions: [],
+        includeMicroNations: true,
+      })
+      if (!dealt.trajectory) continue
+      expect(twinPairs(dealt.trajectory.options)).toEqual([])
+    }
+  })
+})
+
 describe('dealLeaderPortrait (via forced variant)', { timeout: TIMEOUT }, () => {
   it('never offers two countries the pictured leader leads', async () => {
     // Shared leaders are real: Charles III reigns over 14 realms and Macron
@@ -105,6 +148,24 @@ describe('dealLeaderPortrait (via forced variant)', { timeout: TIMEOUT }, () => 
       if (dealt.variant !== 'leader-portrait' || !dealt.options || !dealt.portrait) continue
       const led = dealt.options.filter(isoCode => countryLedBy(isoCode, dealt.portrait!.name))
       expect(led).toEqual([dealt.country])
+    }
+  })
+})
+
+describe('money-match', { timeout: TIMEOUT }, () => {
+  it('stamps the hero it dealt, and one option alone spends that currency', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'money-match'
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const dealt = await getIndividualChallenge({ accessorId: 'currency', difficulty: 'hard' })
+      expect(dealt.variant).toBe('money-match')
+      const currency = COUNTRIES[dealt.country].currency
+      expect(dealt.money).toEqual(moneyHero(currency))
+      if (dealt.money && 'glyph' in dealt.money) {
+        expect(dealt.money.glyph).not.toBe(currency)
+        expect(mentionsCountry(dealt.money.glyph, dealt.country)).toBe(false)
+      }
+      const spenders = dealt.options!.filter(option => COUNTRIES[option].currency === currency)
+      expect(spenders).toEqual([dealt.country])
     }
   })
 })
@@ -137,6 +198,14 @@ describe('isCorrectIndividualAnswer', { timeout: TIMEOUT }, () => {
     expect(isCorrectIndividualAnswer({ id: 'flag', country: 'FI', variant: 'find' }, 'FI')).toBe(
       true
     )
+  })
+
+  it('accepts the indistinguishable twin of a flag shown alone', () => {
+    const gate = { id: 'flag', country: 'TD', variant: 'find' } as const
+    expect(isCorrectIndividualAnswer(gate, 'RO')).toBe(true)
+    expect(isCorrectIndividualAnswer({ ...gate, country: 'MC' }, 'ID')).toBe(true)
+    expect(isCorrectIndividualAnswer(gate, 'CO')).toBe(false)
+    expect(isCorrectIndividualAnswer({ ...gate, variant: 'flag-pick' }, 'RO')).toBe(false)
   })
 })
 

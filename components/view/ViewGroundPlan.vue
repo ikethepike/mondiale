@@ -122,13 +122,12 @@ import type { CityPlanPaths } from '~~/types/challenges/group-modes.type'
 import { countryName, getCountry } from '~~/lib/country'
 import { cityCountryByName } from '~~/lib/cities'
 import { loadCityPlan } from '~~/lib/city-plan-tiles'
-import { groundPlanLayersShown, revealedLayers } from '~~/lib/ground-plan'
+import { groundPlanLayersShown, namesGroundPlanCity, revealedLayers } from '~~/lib/ground-plan'
 import { classicPlaySeconds, GROUND_PLAN_HINT_LEAD_SECONDS } from '~~/lib/round-beats'
 import { formatNumber } from '~~/lib/number'
 import { useIsPortrait } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
-import type { ISOCountryCode } from '~~/types/geography.types'
 
 const {
   challenge,
@@ -223,16 +222,17 @@ watch(
 )
 
 /** The reveal is display-only; the server's flip ends the beat. */
-const resolve = (correct: boolean, picks: ISOCountryCode[]) => {
+const resolve = (correct: boolean, cities: string[]) => {
   if (resolved.value) return
   resolved.value = true
   wasCorrect.value = correct
   stopCountdown()
   previewVerdict(correct ? 'correct' : undefined)
-  submitOnce(picks)
+  const country = correct ? challenge.value?.country : undefined
+  submitOnce(country ? [country] : [], { cities })
 }
 
-const submitRound = (score: number, picks: ISOCountryCode[]) => resolve(score > 0, picks)
+const submitRound = (score: number, picks: string[]) => resolve(score > 0, picks)
 
 const start = () => {
   begin({ onTimeout: () => submitRound(0, spent.value) })
@@ -256,23 +256,16 @@ const { spent, onGuess } = useAttemptOptions({
   started,
   remainingFraction,
   announce,
+  namesAnswer: (city: string) => !!challenge.value && namesGroundPlanCity(challenge.value, city),
   submitRound,
 })
 
-/**
- * `spent` tracks the COUNTRY a pick resolved to, because that is what the
- * shared attempt table scores. The buttons are city names, so the spent test
- * has to go through the same resolution rather than comparing the labels.
- */
-const isSpent = (option: string): boolean => {
-  const isoCode = cityCountryByName(option)
-  return !!isoCode && spent.value.includes(isoCode)
-}
+const isSpent = (option: string): boolean => spent.value.includes(option)
 
 const onOption = (option: string) => {
   const isoCode = cityCountryByName(option)
   if (!isoCode || !challenge.value) return
-  onGuess(getCountry(isoCode))
+  onGuess(getCountry(isoCode), option)
 }
 
 const commit = () => {
@@ -280,16 +273,14 @@ const commit = () => {
   const typed = entry.value.trim()
   if (!active || !typed || !started.value || resolved.value || submitted.value) return
 
-  const isoCode = cityCountryByName(typed)
+  const named = namesGroundPlanCity(active, typed)
   // An unmatched name spends nothing — there is no city to score, and a
   // near-miss spelling is one edit from right.
-  if (!isoCode) return announce({ hint: `No city called “${typed}”` })
+  if (!named && !cityCountryByName(typed)) return announce({ hint: `No city called “${typed}”` })
 
   entry.value = ''
-  if (isoCode !== active.country) {
-    return announce({ hint: `${typed} isn't this city`, tone: 'alert' })
-  }
-  resolve(true, [active.country])
+  if (!named) return announce({ hint: `${typed} isn't this city`, tone: 'alert' })
+  resolve(true, [typed])
 }
 </script>
 <style lang="scss" scoped>

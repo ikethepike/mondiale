@@ -167,9 +167,9 @@ const barLabel = computed(() =>
 )
 
 const stakes = computed(() =>
-  challenge.value?.options
-    ? 'The bar splits a country’s foreign-born residents by where they were born. Name the largest origin — each guess you spend is worth less.'
-    : 'The bar splits a country’s foreign-born residents by where they were born. Name the largest origin before the clock runs out.'
+  challenge.value?.maximumGuesses
+    ? `The bar splits a country’s foreign-born residents by where they were born. Name the largest origin — you get ${challenge.value.maximumGuesses} guesses, and each one you spend is worth less.`
+    : 'The bar splits a country’s foreign-born residents by where they were born. Name the largest origin before the clock runs out — the sooner, the more it’s worth.'
 )
 
 /** The largest origin — what the round actually asks for. */

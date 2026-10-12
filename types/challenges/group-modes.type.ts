@@ -323,10 +323,10 @@ export interface GroundPlanCut {
  * finally the bridges snapping the two banks together. Name the city before it
  * finishes.
  *
- * Type the city, score the COUNTRY: only the ISO code travels, and the view
- * resolves a typed name through `cityCountryByName` (lib/cities.ts) before it
- * submits — the Star Chart's arrangement, though this grades as a single buzz
- * rather than a collected set.
+ * Type the city, score its country: the submission carries the named cities
+ * beside the ISO code, and both ends grade them through `namesGroundPlanCity`
+ * (lib/ground-plan.ts) — another city of the same country is a miss, and the
+ * option board prices the attempt that named the dealt city.
  *
  * `durationSeconds` is stamped from the same `groundPlanSeconds` the round's
  * beat clocks with. It looks redundant beside the derived `playSeconds` and is
@@ -593,6 +593,8 @@ export interface CompositionChallenge {
   slices: { isoCode: ISOCountryCode; share: number }[]
   /** Multiple choice outside hard mode, where players free-type instead. */
   options?: ISOCountryCode[]
+  /** Picks allowed before the round resolves. Set only with `options`. */
+  maximumGuesses?: number
   durationSeconds: number
   maximumPoints: number
 }

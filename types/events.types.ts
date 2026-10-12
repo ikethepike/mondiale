@@ -98,16 +98,25 @@ export type ClientEventData =
       parliament?: { placed: string[] }
       /** Vintage rounds: the year the player dated the map to. */
       year?: number
+      /** Ground Plan rounds: the cities the player named, in order — the
+       *  option board's attempt sequence, or the one typed answer. The country
+       *  in `ranking` cannot tell two of its cities apart, so the server
+       *  grades these against the dealt city. */
+      cities?: string[]
     })
-  | (SeatEcho & {
-      event: 'submit-individual-challenge-answer'
-      isoCode: ISOCountryCode
-      /** Step-graded gates (`isStepGraded`): each duel's pick, the chain after
-       *  the seed, the arranged order, the ruling or the band. The server
-       *  grades these (`gradeGateSteps`); `isoCode` then only names the
-       *  verdict's country. */
-      steps?: string[]
-    })
+  | (SeatEcho & { event: 'submit-individual-challenge-answer' } & (
+        | {
+            isoCode: ISOCountryCode
+            /** Step-graded gates (`isStepGraded`): each duel's pick, the chain after
+             *  the seed, the arranged order, the ruling or the band. The server
+             *  grades these (`gradeGateSteps`); `isoCode` then only names the
+             *  verdict's country. */
+            steps?: string[]
+          }
+        /** The clock ran out on screen: the seat forfeits now rather than at the
+         *  server's cap. Sent where the view holds no answer to preview a miss with. */
+        | { timedOut: true }
+      ))
   | (SeatEcho & {
       /** A seat bought a hint on the subject it echoes (a gate's outline, a
        *  round's 50/50). Recorded on the cursor, once per hint — the leap or

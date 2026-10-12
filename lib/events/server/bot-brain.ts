@@ -1504,7 +1504,6 @@ export const composeClassicSubmission = async (
     case 'stat-detective':
     case 'flashpoint':
     case 'capital-guess':
-    case 'ground-plan':
     case 'flag-palette':
     case 'composition':
     case 'tongue-buzz': {
@@ -1512,6 +1511,13 @@ export const composeClassicSubmission = async (
       const target = kind === 'tongue-buzz' ? sample(correct) : correct[0]
       if (!target) return { ranking: [] }
       const landed = { ranking: [target] }
+      if (await lands(landed)) return landed
+      const miss = wrongPick(game, correct)
+      return miss ? { ranking: [miss] } : { ranking: [] }
+    }
+    case 'ground-plan': {
+      const plan = expectChallengeType(challenge, 'ground-plan-challenge')
+      const landed = { ranking: [plan.country], cities: [plan.city] }
       if (await lands(landed)) return landed
       const miss = wrongPick(game, correct)
       return miss ? { ranking: [miss] } : { ranking: [] }

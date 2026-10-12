@@ -4,6 +4,7 @@ import { pickTraversal } from '~~/lib/traversal'
 import { PLACES } from '~~/data/places.gen'
 import type {
   GhostStateChallenge,
+  GroundPlanChallenge,
   NeighbourBlitzChallenge,
   TrendRaceChallenge,
   TwoTruthsChallenge,
@@ -16,8 +17,11 @@ import {
   BOT_CLASSIC_WINDOW,
   classicPlaySeconds,
   FIRST_TURN_GRACE_MS,
+  GROUND_PLAN_SECONDS_PER_LAYER,
+  groundPlanSeconds,
   stampClassicClock,
 } from '~~/lib/round-beats'
+import { GROUND_PLAN_LAYERS } from '~~/lib/ground-plan'
 import { gradeGroupAnswer } from './grade-group-answer'
 import { composeClassicSubmission } from './bot-brain'
 
@@ -187,6 +191,19 @@ const TREND: TrendRaceChallenge = {
   maximumPoints: 10,
 } as TrendRaceChallenge
 
+const GROUND_PLAN: GroundPlanChallenge = {
+  _type: 'ground-plan-challenge',
+  country: 'US',
+  city: 'Chicago',
+  cut: { slug: 'chicago-loop', signature: true },
+  crossings: 0,
+  layers: [...GROUND_PLAN_LAYERS],
+  secondsPerLayer: GROUND_PLAN_SECONDS_PER_LAYER,
+  secondsPerHint: 5,
+  durationSeconds: groundPlanSeconds(GROUND_PLAN_LAYERS.length),
+  maximumPoints: 10,
+}
+
 describe('bot strength realizes the difficulty dial', () => {
   // The buzz family: one target, an all-or-nothing pick, priced off the clock
   // at the moment the bot answers. The share must be spent ONCE — the odds of
@@ -194,6 +211,24 @@ describe('bot strength realizes the difficulty dial', () => {
   it.each(['easy', 'normal', 'hard'] as const)(
     'buzz rounds land near the %s share',
     async difficulty => expectOnDial(await realizedFraction(BUZZ, difficulty), difficulty)
+  )
+
+  // Graded on the CITY, so a hit that names only the country banks nothing.
+  it.each(['easy', 'normal', 'hard'] as const)(
+    'ground-plan rounds land near the %s share',
+    async difficulty => expectOnDial(await realizedFraction(GROUND_PLAN, difficulty), difficulty)
+  )
+
+  it.each(['easy', 'normal'] as const)(
+    'ground-plan option boards land near the %s share',
+    async difficulty =>
+      expectOnDial(
+        await realizedFraction(
+          { ...GROUND_PLAN, options: ['Houston', 'Chicago'], maximumGuesses: 2 },
+          difficulty
+        ),
+        difficulty
+      )
   )
 
   it.each(['easy', 'normal', 'hard'] as const)(
