@@ -168,4 +168,17 @@ describe('the table never waits with no exit', () => {
     engine.state = { ...engine.state, finished: true } as never
     expect(kinds(game, { now: now + ENGINE_STALL_MS + 1 })).toEqual([])
   })
+
+  it("clocks a Government verdict hold by its own end, not the spent beat's deadline", () => {
+    const seat = testSeat('waiting', 'round')
+    const holdUntil = now + 40_000
+    const engine = {
+      _type: 'government-challenge',
+      state: { deadline: now, turn: 1, beat: 'party', verdict: { holdUntil } },
+    }
+    const game = buildGame([seat], { groupChallenge: engine as unknown as RoundChallenge })
+    expect(kinds(game, { now: now + ENGINE_STALL_MS + 1 })).toEqual([])
+    expect(kinds(game, { now: holdUntil + ENGINE_STALL_MS })).toEqual([])
+    expect(kinds(game, { now: holdUntil + ENGINE_STALL_MS + 1 })).toEqual(['round-overdue'])
+  })
 })
