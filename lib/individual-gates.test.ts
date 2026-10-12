@@ -8,6 +8,7 @@ import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { getIndividualChallenge, isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { CHRONICLE_TUNING, chronicleSolution, isChronicleOrdered } from '~~/lib/chronicle'
 import { mentionsCountry } from '~~/lib/country'
+import { moneyHero } from '~~/lib/currency'
 import { playableCountries } from '~~/lib/game-rules'
 import { gameVariants } from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
@@ -105,6 +106,24 @@ describe('dealLeaderPortrait (via forced variant)', { timeout: TIMEOUT }, () => 
       if (dealt.variant !== 'leader-portrait' || !dealt.options || !dealt.portrait) continue
       const led = dealt.options.filter(isoCode => countryLedBy(isoCode, dealt.portrait!.name))
       expect(led).toEqual([dealt.country])
+    }
+  })
+})
+
+describe('money-match', { timeout: TIMEOUT }, () => {
+  it('stamps the hero it dealt, and one option alone spends that currency', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'money-match'
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const dealt = await getIndividualChallenge({ accessorId: 'currency', difficulty: 'hard' })
+      expect(dealt.variant).toBe('money-match')
+      const currency = COUNTRIES[dealt.country].currency
+      expect(dealt.money).toEqual(moneyHero(currency))
+      if (dealt.money && 'glyph' in dealt.money) {
+        expect(dealt.money.glyph).not.toBe(currency)
+        expect(mentionsCountry(dealt.money.glyph, dealt.country)).toBe(false)
+      }
+      const spenders = dealt.options!.filter(option => COUNTRIES[option].currency === currency)
+      expect(spenders).toEqual([dealt.country])
     }
   })
 })

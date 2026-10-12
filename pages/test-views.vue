@@ -3507,7 +3507,7 @@ const scenarios: Scenario[] = [
         variant: 'money-match',
         country: 'JP',
         options: ['JP', 'KR', 'CN', 'TH'],
-        image: '/currencies/JPY.webp',
+        money: { image: '/currencies/JPY.webp' },
       }),
   },
   {
