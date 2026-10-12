@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
@@ -13,6 +13,7 @@ import type {
   ChangeChallenge,
   DiasporaChallenge,
   EndonymChallenge,
+  FinalChallengeItem,
   MembershipChallenge,
   MinChallenge,
   SunsetBlitzChallenge,
@@ -35,7 +36,7 @@ import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.ty
 import { TREATY_FAMILIES, TREATY_META } from '~~/types/treaty.type'
 import { resolveGlyph } from '~~/lib/stat-glyphs'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
-import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { gameVariants, type Game, type GameDifficulty, type GameVariant } from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -47,8 +48,10 @@ import {
   CHANGE_TUNING,
   changeAccepted,
   changeDecade,
+  dealFinalChallenge,
   dealReplacementChallenge,
   decisiveOrigins,
+  eligibleFinalTypes,
   exportsCommodity,
   GAUNTLET_LIVES,
   hasObviousDestination,
@@ -122,6 +125,72 @@ describe('getFinalChallenges', () => {
         ]).not.toContain(challenge._type)
       }
     }
+  })
+})
+
+describe('dealFinalChallenge', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  // Boards too thin for a type that is still offered there: the draw skips
+  // them, and any type missing from this list must deal.
+  const THIN_BOARDS: Partial<Record<GameVariant, string[]>> = {
+    'north-america': ['endonym-challenge', 'diaspora-challenge'],
+    'south-america': ['born-challenge', 'endonym-challenge'],
+  }
+
+  it('deals every eligible type on every board at every difficulty', () => {
+    const error = vi.spyOn(console, 'error')
+    for (const variant of gameVariants) {
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        const game = gameFor(variant, difficulty)
+        const pool = playableCountries(game)
+        for (const type of eligibleFinalTypes(game, pool)) {
+          if (THIN_BOARDS[variant]?.includes(type)) continue
+          for (let attempt = 0; attempt < 5; attempt++) {
+            expect(dealFinalChallenge(type, game, pool)?._type, `${variant}/${difficulty}`).toBe(
+              type
+            )
+          }
+        }
+      }
+    }
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it('offers every type on a hard world board', () => {
+    const game = gameFor('world', 'hard')
+    const every = {
+      'region-challenge': true,
+      'leadership-challenge': true,
+      'language-challenge': true,
+      'min-challenge': true,
+      'max-challenge': true,
+      'membership-challenge': true,
+      'treaty-challenge': true,
+      'scales-challenge': true,
+      'sunset-blitz-challenge': true,
+      'born-challenge': true,
+      'made-challenge': true,
+      'city-nocturne-challenge': true,
+      'boundary-challenge': true,
+      'endonym-challenge': true,
+      'diaspora-challenge': true,
+      'yearbook-challenge': true,
+      'change-challenge': true,
+    } satisfies Record<FinalChallengeItem['_type'], true>
+    expect(new Set(eligibleFinalTypes(game, playableCountries(game)))).toEqual(
+      new Set(Object.keys(every))
+    )
+  })
+
+  it('returns undefined without logging when the board cannot support a type', () => {
+    const error = vi.spyOn(console, 'error')
+    const game = gameFor('world', 'hard')
+    for (const type of eligibleFinalTypes(game, [])) {
+      if (type === 'yearbook-challenge') continue
+      expect(dealFinalChallenge(type, game, []), type).toBeUndefined()
+    }
+    expect(error).not.toHaveBeenCalled()
   })
 })
 
