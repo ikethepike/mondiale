@@ -16,6 +16,7 @@ import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
 import { capitalCountryByName } from '~~/lib/capitals'
 import { normalizeAnswer } from '~~/lib/strings'
+import type { CityLight } from '~~/types/city.type'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
 let cityIndex: Map<string, ISOCountryCode> | undefined
@@ -55,3 +56,27 @@ const getCityIndex = (): ReadonlyMap<string, ISOCountryCode> => {
 /** Resolve a typed city name to the country it sits in. */
 export const cityCountryByName = (typed: string): ISOCountryCode | undefined =>
   getCityIndex().get(normalizeAnswer(typed)) ?? capitalCountryByName(typed)
+
+/**
+ * Whether `typed` is a spelling of the city known as `names` in `isoCode` —
+ * the given names, plus every spelling its gazetteer row carries. The row is
+ * joined on its canonical name before any alternate, so a smaller town that
+ * lists the city's name among its variants never claims the join.
+ */
+export const namesCity = (
+  typed: string,
+  isoCode: ISOCountryCode,
+  names: readonly string[]
+): boolean => {
+  const key = normalizeAnswer(typed)
+  if (!key) return false
+  const wanted = new Set(names.map(name => normalizeAnswer(name)))
+  if (wanted.has(key)) return true
+  const rows = CITY_LIGHTS[isoCode] ?? []
+  const spellings = (city: CityLight): string[] =>
+    [city.name, city.local, ...city.alt].filter((name): name is string => !!name)
+  const row =
+    rows.find(city => wanted.has(normalizeAnswer(city.name))) ??
+    rows.find(city => spellings(city).some(name => wanted.has(normalizeAnswer(name))))
+  return !!row && spellings(row).some(name => normalizeAnswer(name) === key)
+}

@@ -13,6 +13,7 @@ import {
   speaksTongue,
 } from '~~/lib/challenges'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
+import { namesGroundPlanCity } from '~~/lib/ground-plan'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, clampScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
@@ -181,10 +182,12 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'ground-plan': {
-      // The typed answer was a CITY, resolved to its country by the view before
-      // it left (`cityCountryByName`), so this grades as a plain buzz on the
-      // country — the same wire shape every other mode uses.
-      buzzOn(expectChallengeType(roundChallenge, 'ground-plan-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'ground-plan-challenge')
+      buzzOn(
+        challenge,
+        submission.ranking[0] === challenge.country &&
+          namesGroundPlanCity(challenge, submission.city)
+      )
       break
     }
     case 'star-chart': {

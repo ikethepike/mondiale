@@ -94,3 +94,19 @@ describe('useAttemptOptions grading', () => {
     expect(second.scores[0]).toBeGreaterThan(0)
   })
 })
+
+describe('useAttemptOptions named picks', () => {
+  it('grades a named pick by its own verdict, not its country', () => {
+    const { onGuess, scores, spent } = harness({
+      country: 'US',
+      maximumGuesses: 2,
+      maximumPoints: 100,
+    })
+    onGuess(getCountry('US'), { name: 'Chicago', correct: false })
+    expect(scores).toEqual([])
+    expect(spent.value).toEqual(['Chicago'])
+    onGuess(getCountry('US'), { name: 'New York', correct: true })
+    expect(scores).toHaveLength(1)
+    expect(scores[0]).toBeGreaterThan(0)
+  })
+})

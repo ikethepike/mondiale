@@ -20,6 +20,14 @@ interface AttemptChallenge {
   maximumPoints: number
 }
 
+/** A pick that is not itself a country — a city on Ground Plan's table. It is
+ *  graded, spent and announced by its own name, so two cities of one country
+ *  stay two different picks. */
+interface NamedPick {
+  name: string
+  correct: boolean
+}
+
 /** What a guess is graded against — the answer key, never the prompt. */
 const answerOf = (challenge: AttemptChallenge): ISOCountryCode =>
   challenge.answer ?? challenge.country
@@ -53,7 +61,7 @@ export const useAttemptOptions = ({
   submitRound: (score: number) => void
 }) => {
   /** Options already picked and wrong — greyed out, and counted against the cap. */
-  const spent = ref<ISOCountryCode[]>([])
+  const spent = ref<string[]>([])
   const attemptsUsed = computed(() => spent.value.length)
   const attemptsLeft = computed(() =>
     challenge.value?.maximumGuesses
@@ -67,16 +75,18 @@ export const useAttemptOptions = ({
       ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
       : buzzScore(active.maximumPoints, remainingFraction.value)
 
-  const onGuess = (country: Country) => {
+  const onGuess = (country: Country, named?: NamedPick) => {
     const active = challenge.value
     if (!active || submitted.value || !started.value) return
 
     // The winning guess is never broadcast — it would hand opponents the answer.
-    if (country.isoCode === answerOf(active)) return submitRound(scoreFor(active))
+    const correct = named ? named.correct : country.isoCode === answerOf(active)
+    if (correct) return submitRound(scoreFor(active))
 
+    const key = named?.name ?? country.isoCode
     if (active.maximumGuesses) {
-      if (spent.value.includes(country.isoCode)) return
-      spent.value = [...spent.value, country.isoCode]
+      if (spent.value.includes(key)) return
+      spent.value = [...spent.value, key]
       if (attemptsLeft.value <= 0) {
         announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses', tone: 'alert' })
         return submitRound(0)
@@ -88,8 +98,8 @@ export const useAttemptOptions = ({
       kind: 'wrong',
       isoCode: country.isoCode,
       hint: Number.isFinite(left)
-        ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
-        : `${countryName(country)} — not it`,
+        ? `${named?.name ?? countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
+        : `${named?.name ?? countryName(country)} — not it`,
       tone: 'alert',
     })
   }

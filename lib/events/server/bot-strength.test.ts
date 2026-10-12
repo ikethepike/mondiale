@@ -4,6 +4,7 @@ import { pickTraversal } from '~~/lib/traversal'
 import { PLACES } from '~~/data/places.gen'
 import type {
   GhostStateChallenge,
+  GroundPlanChallenge,
   NeighbourBlitzChallenge,
   TrendRaceChallenge,
   TwoTruthsChallenge,
@@ -158,12 +159,31 @@ const TREND: TrendRaceChallenge = {
   maximumPoints: 10,
 } as TrendRaceChallenge
 
+const GROUND_PLAN: GroundPlanChallenge = {
+  _type: 'ground-plan-challenge',
+  country: 'US',
+  city: 'Chicago',
+  cut: { slug: 'chicago-loop', signature: true },
+  crossings: 0,
+  layers: ['fabric'],
+  secondsPerLayer: 5,
+  secondsPerHint: 5,
+  durationSeconds: 30,
+  maximumPoints: 10,
+}
+
 describe('bot strength realizes the difficulty dial', () => {
   // The buzz family: one target, an all-or-nothing pick, a clamped claim. The
   // share must be spent ONCE (on the hit), never again on the claim.
   it.each(['easy', 'normal', 'hard'] as const)(
     'buzz rounds land near the %s share',
     async difficulty => expectOnDial(await realizedFraction(BUZZ, difficulty), difficulty)
+  )
+
+  // Graded on the CITY, so a hit that names only the country banks nothing.
+  it.each(['easy', 'normal', 'hard'] as const)(
+    'ground-plan rounds land near the %s share',
+    async difficulty => expectOnDial(await realizedFraction(GROUND_PLAN, difficulty), difficulty)
   )
 
   it.each(['easy', 'normal', 'hard'] as const)(

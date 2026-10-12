@@ -16,6 +16,7 @@ import type { GameDifficulty } from '~~/types/game.types'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { capitalStar } from '~~/lib/capitals'
+import { namesCity } from '~~/lib/cities'
 import { formatCompact } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
@@ -72,6 +73,22 @@ export const cutForDifficulty = (
   const generic = cuts.filter(cut => !cut.signature)
   const wanted = isHardMode(game) ? generic : signature
   return sample(wanted.length ? wanted : cuts)
+}
+
+/**
+ * Whether a typed answer names the dealt city itself — not merely a city in
+ * its country. Both ends grade through this: the view before it submits, the
+ * server against the name the submission carries.
+ */
+export const namesGroundPlanCity = (
+  challenge: Pick<GroundPlanChallenge, 'country' | 'city'>,
+  typed: string | undefined
+): boolean => {
+  if (!typed) return false
+  const entry = GROUND_PLAN_CITIES.find(
+    city => city.country === challenge.country && city.city === challenge.city
+  )
+  return namesCity(typed, challenge.country, [challenge.city, ...(entry?.aliases ?? [])])
 }
 
 /** Distinct water crossings in a cut — what the reveal states out loud. */
