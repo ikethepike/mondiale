@@ -25,7 +25,7 @@
  * verified here. The rhyme and meter are the parts most likely to be off.
  */
 export interface TongueSampleSeed {
-  /** The language exactly as `Country.languages` spells it. */
+  /** The language exactly as `SPEAKERS` spells it. */
   language: string
   /** BCP-47 tag for the `lang` attribute, so browsers pick the right font and
    *  screen readers the right voice. A display name there is not valid. */

@@ -1,0 +1,210 @@
+Speaker table from CLDR 48.0.0 territoryInfo, the Factbook snapshot and data/static/spoken-language-shares.ts.
+
+Named by a source but sized by none (184) — a national statute still counts; anything else needs a curated row:
+  AF Uzbek
+  AF Turkmen
+  AR Italian
+  AR English
+  AR German
+  AR French
+  AR Guarani
+  AT Hungarian
+  AT Slovenian
+  AZ Avar
+  AZ Turkish
+  AZ Tatar
+  AZ Ukrainian
+  AZ Georgian
+  AZ Hebrew
+  BH English
+  BH Urdu
+  BR German
+  BR Italian
+  BR Japanese
+  BR English
+  BR Venetian
+  BN English
+  BI Swahili
+  CA Chipewyan
+  CA Plains Cree
+  CA Slave
+  CA Dogrib
+  CA Gwichʼin
+  CA Inuktitut
+  CN Tibetan
+  CN Korean
+  CN Mongolian
+  CN Uyghur
+  CN Zhuang
+  CG Lingala
+  CD Lingala
+  CD Kongo
+  CD Swahili
+  CD Luba-Katanga
+  CD Luba-Lulua
+  CR English
+  HR Italian
+  HR Venetian
+  CY Armenian
+  DK Faroese
+  DK Greenlandic
+  DK German
+  DJ Somali
+  DJ Afar
+  ER Afar
+  ET English
+  FJ Urdu
+  FI Skolt Sami
+  GM Peul
+  GE Abkhazian
+  GE Ossetian / Ossetic
+  DE Frisian
+  DE Danish
+  DE Northern Frisian
+  GH Akan
+  GH Ga
+  GT Kʼicheʼ
+  GN Peul
+  GY Chinese
+  VA French
+  IS English
+  IS Polish
+  IS German
+  IN Khasi
+  IN Konkani
+  IN Kashmiri
+  IN Maithili
+  IN Nepali
+  IN Sanskrit
+  IN Santali
+  IN Sindhi
+  ID English
+  ID Dutch
+  IR Kurdish
+  IR Arabic
+  IQ Azerbaijani
+  IL English
+  IT German
+  IT French
+  IT Slovenian
+  IT Croatian
+  IT Venetian
+  JO English
+  KR English
+  LA French
+  LA English
+  LB French
+  LB English
+  LB Armenian
+  LS Xhosa
+  LS Zulu
+  LY Italian
+  LY English
+  MY English
+  MY Telugu
+  MY Malayalam
+  MY Thai
+  MV English
+  MR Wolof
+  MR French
+  MC English
+  MC Italian
+  MN Russian
+  ME Montenegrin
+  ME Croatian
+  NZ New Zealand Sign Language
+  NE Kanuri
+  NO Northern Sami
+  OM English
+  OM Swahili
+  OM Urdu
+  PS Hebrew
+  PS English
+  PA English
+  PA Chinese
+  PA Arabic
+  PH Cebuano
+  PH Hiligaynon
+  PH Iloko
+  PH Pangasinan
+  PH Waray
+  PL Kashubian
+  PL German
+  PL Lithuanian
+  PT Mirandese
+  RU Adyghe
+  RU Avar
+  RU Azerbaijani
+  RU Bashkir
+  RU Buriat
+  RU Ingush
+  RU Kabardian
+  RU Komi-Permyak
+  RU Karachay-Balkar
+  RU Kumyk
+  RU Komi
+  RU Lezghian
+  RU Moksha
+  RU Erzya
+  RU Yakut
+  RU Tuvinian
+  RU Udmurt
+  SN Jola-Fonyi
+  SN Peul
+  SN Serer
+  RS Croatian
+  RS Romanian
+  RS Slovak
+  RS Ukrainian
+  SI Venetian
+  SO Italian
+  SO English
+  ES Asturian
+  SS Arabic
+  SR English
+  SR Javanese
+  SE Finnish
+  SY Armenian
+  SY French
+  SY English
+  TZ Arabic
+  TT Spanish
+  TT Chinese
+  TV Samoan
+  UG Arabic
+  AE English
+  AE Hindi
+  AE Malayalam
+  AE Urdu
+  AE Pashto
+  AE Tagalog / Filipino
+  AE Persian
+  GB Welsh
+  GB Irish
+  GB Scottish Gaelic
+  US Hawaiian
+  VN English
+  VN Chinese
+
+Curated rows CLDR now sizes at least as high (0) — candidates to delete:
+
+CLDR calls official what the Factbook does not mark nationally (19) — named, never a statute:
+  BW Tswana: CLDR official, Factbook unmarked
+  CF Sango: CLDR official, Factbook unmarked
+  DZ French: CLDR official, Factbook unmarked
+  EC Quechua: CLDR official, Factbook unmarked
+  IL Arabic: CLDR official, Factbook unmarked
+  KZ Russian: CLDR official, Factbook unmarked
+  KI Gilbertese: CLDR official, Factbook unmarked
+  MG English: CLDR official, Factbook unmarked
+  MW Chichewa: CLDR official, Factbook unmarked
+  ML French: CLDR official, Factbook unmarked
+  MU French: CLDR official, Factbook unmarked
+  ME Serbian: CLDR official, Factbook unmarked
+  MA French: CLDR de_facto_official, Factbook unmarked
+  NR English: CLDR official, Factbook unmarked
+  NG Yoruba: CLDR official, Factbook unmarked
+  SN Wolof: CLDR de_facto_official, Factbook unmarked
+  TL Tetum: CLDR official, Factbook unmarked
+  TN French: CLDR official, Factbook unmarked
+  UA Russian: CLDR de_facto_official, Factbook unmarked

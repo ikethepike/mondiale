@@ -16,6 +16,7 @@ import { clamp01 } from './number'
 import { clampScore } from './scoring'
 import { connectionsOf } from './chain'
 import { getCountry, mentionsCountry } from './country'
+import { officialLanguages } from './language-rounds'
 import { distancesFrom } from './traversal'
 import { getValueByAccessorID } from './values'
 import { isCountryPlayable, playableCountries } from './game-rules'
@@ -440,9 +441,9 @@ export const clueAdmits = (clue: ManhuntClue, isoCode: ISOCountryCode): boolean 
     case 'region':
       return clue.subject === undefined || country.region === clue.subject
     case 'language':
-      // The clue says OFFICIAL, so not lib/language-rounds' speaker union —
-      // that would admit countries the printed line rules out.
-      return !!clue.subject && (country.officialLanguages ?? []).includes(clue.subject)
+      // The clue says OFFICIAL, so statutes, not speakers — speakers would
+      // admit countries the printed line rules out.
+      return !!clue.subject && officialLanguages(isoCode).includes(clue.subject)
     case 'membership':
       return (country.membership ?? []).some(member => member.id === clue.subject)
     case 'flag-colors':
@@ -524,7 +525,7 @@ const truthsAbout = (
   ]
 
   // An eponymous language (Hungarian in Hungary) is a name leak, not a clue.
-  for (const language of country.officialLanguages ?? []) {
+  for (const language of officialLanguages(despotAt)) {
     if (mentionsCountry(language, despotAt)) continue
     out.push({
       hop,

@@ -197,7 +197,7 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
   ),
   arabic: speakerSet(
     'Arabic',
-    'Spoken from Morocco to Oman — and in Chad, Comoros and Djibouti too, where it shares official status with French.'
+    'Spoken from Morocco to Oman — and in Chad and Comoros too, where it shares official status with French.'
   ),
   portuguese: speakerSet(
     'Portuguese',

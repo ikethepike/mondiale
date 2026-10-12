@@ -1,10 +1,8 @@
 /**
- * The Factbook's language prose → the official languages it names, and the
- * languages it puts a large enough share of the population behind.
- *
- * The pure half of the countries generator's language step, here rather than
- * beside it because `create-countries-file.ts` runs its whole fetch at import
- * and no test can load it.
+ * The Factbook's language prose → the official languages it names, the
+ * languages it names at all, and the first-language share it gives each — plus
+ * the CLDR code folds. The pure half of `generators/vendors/cldr/create-speakers.ts`,
+ * here so tests can load it.
  *
  * The source is one comma-separated sentence per country, and every shape it
  * takes is deliberate here rather than incidental:
@@ -17,9 +15,9 @@
  *
  * 21 of 194 countries carry no `(official)` marker at all — Japan, the UK,
  * India, Mexico among them. They are not "countries without official
- * languages"; the source simply doesn't say. Callers fall back to the spoken
- * list for those, which is why this returns an empty array rather than
- * guessing.
+ * languages"; the source simply doesn't say. The speaker generator falls back
+ * to `countries-list` for those, which is why this returns an empty array
+ * rather than guessing.
  */
 import { languages } from 'countries-list'
 
@@ -32,9 +30,10 @@ const NOT_A_LANGUAGE =
 const A_GROUP_NOT_A_LANGUAGE = /\b(languages|dialects|tongues)$/i
 
 /** Any parenthetical that calls the segment official — "(official)",
- *  "(official, least spoken)", "(Castilian; official)", "(de jure official)". */
-const OFFICIAL_MARK = /\([^)]*\bofficial\b[^)]*\)/i
-const OFFICIAL_MARK_ALL = /\([^)]*\bofficial\b[^)]*\)/gi
+ *  "(official, least spoken)", "(Castilian; official)", "(de jure official)",
+ *  and Kyrgyzstan's "(state language)". */
+const OFFICIAL_MARK = /\([^)]*\b(?:official|state language)\b[^)]*\)/i
+const OFFICIAL_MARK_ALL = /\([^)]*\b(?:official|state language)\b[^)]*\)/gi
 
 /**
  * Split on commas and semicolons at depth zero only — Equatorial Guinea's
@@ -144,6 +143,24 @@ export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
   Bokmal: 'Norwegian',
   'Bokmal Norwegian': 'Norwegian',
   'Nynorsk Norwegian': 'Norwegian',
+  'Norwegian Bokmål': 'Norwegian',
+  'Norwegian Nynorsk': 'Norwegian',
+  Māori: 'Maori',
+  'West Frisian': 'Frisian',
+  'Western Frisian': 'Frisian',
+  Tongan: 'Tonga',
+  Nauru: 'Nauruan',
+  Tuvalu: 'Tuvaluan',
+  Fula: 'Peul',
+  Rundi: 'Kirundi',
+  Nyanja: 'Chichewa',
+  'Haitian Creole': 'Haitian',
+  Tagalog: 'Tagalog / Filipino',
+  'Raeto Romance': 'Romansh',
+  // Fiji's official Hindustani; the game asks one "Hindi".
+  'Fiji Hindi': 'Hindi',
+  // countries-list's name for ISO 639-1 "ng"; Namibians call it Oshiwambo.
+  Ndonga: 'Oshiwambo',
   // Only Haiti's entry says a bare official "Creole"; Seychelles and the rest
   // name theirs. `Haitian` is the spelling already in the dataset.
   Creole: 'Haitian',
@@ -152,6 +169,16 @@ export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
 /** Names the source yields that no player could type as a language: a family
  *  ("Khoe") or a Zanzibari name for a language already listed ("Kiunguja"). */
 const NOT_TYPEABLE = new Set(['Khoe', 'Khoisan', 'Kiunguja'])
+
+/** Where one source name means a different language by country: Zimbabwe's
+ *  "Ndebele" is Northern Ndebele, while South Africa's is Southern. */
+const LANGUAGE_BY_COUNTRY: { [isoCode: string]: { [name: string]: string } } = {
+  ZW: { 'South Ndebele': 'North Ndebele' },
+}
+
+/** A game-spelled name, corrected for the country it was read in. */
+export const countryLanguage = (isoCode: string, language: string): string =>
+  LANGUAGE_BY_COUNTRY[isoCode]?.[language] ?? language
 
 /** A parsed name in the spelling the rest of the game uses. */
 export const canonicalLanguage = (name: string): string => LANGUAGE_ALIASES[name] ?? name
@@ -174,8 +201,9 @@ const typeableLanguage = (segment: string): string | undefined => {
 }
 
 /** "(official in Burgenland)", "(official regional working language)",
- *  "(official, only in municipalities where Italian nationals reside)". */
-const REGIONAL_MARK = /\bofficial\s+in\b|\bregional\b|\bonly\s+in\b/i
+ *  "(official, only in municipalities where Italian nationals reside)",
+ *  "(official, but locally used)". */
+const REGIONAL_MARK = /\bofficial\s+in\b|\bregional\b|\bonly\s+in\b|\blocally\b/i
 
 /** Each official the text names, with whether its officiality is only regional. */
 const officialEntries = (text: string | undefined): { language: string; regional: boolean }[] => {
@@ -239,13 +267,6 @@ export const regionalOfficialLanguages = (text: string | undefined): string[] =>
   ]
 }
 
-/** The share of the population a language is spoken by, in percent. */
-export const SPOKEN_SHARE_THRESHOLD = 5
-
-/** Or the head count, where a share undersells a huge country: India's 2.7%
- *  Punjabi is more speakers than Pakistan's 38.8% of a smaller one. */
-export const SPOKEN_POPULATION_FLOOR = 20_000_000
-
 /**
  * Past this the shares are a can-speak survey, not a first-language census —
  * Hungary's "English 25.3%, German 12.6%" is schooling, not a community.
@@ -269,19 +290,14 @@ const segmentShare = (segment: string): number | undefined => {
   return share === undefined ? undefined : Number.parseFloat(share.replace(/,/g, ''))
 }
 
-/** Is this share of this population enough to call the language spoken there? */
-export const isWidelySpoken = (share: number, population: number | undefined): boolean =>
-  share >= SPOKEN_SHARE_THRESHOLD || (share / 100) * (population ?? 0) >= SPOKEN_POPULATION_FLOOR
-
 /**
- * Every language a first-language tally puts past `isWidelySpoken` — Ukraine's,
- * Latvia's and Estonia's Russian, which no other source carries. Empty for a
- * can-speak survey and for the half of the corpus that states no shares at all.
+ * Each typeable ISO 639-1 language a first-language tally gives a share, with
+ * that share. Empty for a can-speak survey and for the half of the corpus that
+ * states no shares at all.
  */
-export const widelySpokenLanguages = (
-  text: string | undefined,
-  population: number | undefined
-): string[] => {
+export const firstLanguageShares = (
+  text: string | undefined
+): { language: string; share: number }[] => {
   if (!text) return []
   const segments = splitLanguageSegments(text).map(segment => ({
     segment,
@@ -290,12 +306,111 @@ export const widelySpokenLanguages = (
   const tally = segments.reduce((sum, { share }) => sum + (share ?? 0), 0)
   if (tally > FIRST_LANGUAGE_TALLY_MAX) return []
 
-  const found: string[] = []
+  const found = new Map<string, number>()
   for (const { segment, share } of segments) {
-    if (share === undefined || !isWidelySpoken(share, population)) continue
+    if (share === undefined || NOT_THE_SAME_LANGUAGE.has(segmentName(segment))) continue
+    const language = typeableLanguage(segment)
+    if (language && ISO_LANGUAGE_NAMES.has(language) && !found.has(language)) {
+      found.set(language, share)
+    }
+  }
+  return [...found].map(([language, share]) => ({ language, share }))
+}
+
+/**
+ * Every typeable ISO 639-1 language the prose names as the country's own, sized
+ * or not — Nigeria's "Hausa, Yoruba, Igbo (Ibo)". A can-speak survey names
+ * only its officials: Hungary's "English 25.3%" is schooling, not a community.
+ */
+export const namedLanguages = (text: string | undefined): string[] => {
+  if (!text) return []
+  const segments = splitLanguageSegments(text)
+  const tally = segments.reduce((sum, segment) => sum + (segmentShare(segment) ?? 0), 0)
+  const named = new Set(officialLanguages(text))
+  if (tally > FIRST_LANGUAGE_TALLY_MAX) return [...named]
+  for (const segment of segments) {
     if (NOT_THE_SAME_LANGUAGE.has(segmentName(segment))) continue
     const language = typeableLanguage(segment)
-    if (language && ISO_LANGUAGE_NAMES.has(language)) found.push(language)
+    if (language && ISO_LANGUAGE_NAMES.has(language)) named.add(language)
   }
-  return [...new Set(found)]
+  return [...named]
+}
+
+/**
+ * CLDR codes for a variety the game names by its standard language: Maghrebi
+ * and Levantine Arabic are "Arabic", Swiss German is "German", Cantonese and
+ * Min Nan are "Chinese". CLDR files them apart, so the fold takes the larger
+ * share rather than adding them — the same people answer both lines.
+ */
+export const CLDR_LANGUAGE_FOLDS: { [cldrCode: string]: string } = {
+  aeb: 'ar',
+  acm: 'ar',
+  acy: 'ar',
+  afb: 'ar',
+  ajp: 'ar',
+  apc: 'ar',
+  apd: 'ar',
+  arq: 'ar',
+  ars: 'ar',
+  ary: 'ar',
+  arz: 'ar',
+  ayl: 'ar',
+  shu: 'ar',
+  ssh: 'ar',
+  gsw: 'de',
+  yue: 'zh',
+  nan: 'zh',
+  hak: 'zh',
+  wuu: 'zh',
+  hsn: 'zh',
+  gan: 'zh',
+  // Lahnda ("Western Panjabi"); CLDR aliases pnb to it.
+  lah: 'pa',
+  pnb: 'pa',
+  hif: 'hi',
+  ckb: 'ku',
+  kmr: 'ku',
+  sdh: 'ku',
+  fil: 'tl',
+  nb: 'no',
+  nn: 'no',
+  prs: 'fa',
+  qug: 'qu',
+  // The Berber varieties the Factbook files under one "Tamazight".
+  zgh: 'tzm',
+  kab: 'tzm',
+  shi: 'tzm',
+  rif: 'tzm',
+  // Kwanyama and Ndonga are the two written Oshiwambo standards.
+  kj: 'ng',
+  // Comorian's four island varieties.
+  wni: 'zdj',
+  swb: 'zdj',
+}
+
+/** CLDR's English names, where they differ from the game's own spelling for a
+ *  language `countries-list` cannot carry (no ISO 639-1 code). */
+const CLDR_NAMES: { [cldrCode: string]: string } = {
+  crs: 'Seychellois Creole',
+  tzm: 'Tamazight',
+  zdj: 'Shikomoro',
+}
+
+/**
+ * A CLDR language code (script and region subtags allowed) → the language in
+ * the game's spelling: the `countries-list` name the rest of the dataset was
+ * spelled from, else CLDR's English display name. Undefined for a code neither
+ * can name.
+ */
+export const cldrLanguage = (
+  code: string,
+  displayNames: { [cldrCode: string]: string }
+): string | undefined => {
+  const base = code.split('_')[0]!
+  const folded = CLDR_LANGUAGE_FOLDS[base] ?? base
+  const name =
+    CLDR_NAMES[folded] ??
+    (languages as { [code: string]: { name: string } | undefined })[folded]?.name ??
+    displayNames[folded]
+  return name ? canonicalLanguage(name) : undefined
 }

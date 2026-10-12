@@ -36,16 +36,6 @@ export interface Country {
   url: string
   region: Region
   currency?: CurrencyCode
-  /** Spoken by a real share of the country: the ISO 639-1 codes `countries-list`
-   *  carries, plus every language the Factbook puts at `SPOKEN_SHARE_THRESHOLD` or more. */
-  languages: string[]
-  /** The subset the country makes OFFICIAL, from the Factbook's own markers —
-   *  what a round may claim officiality about. Falls back to the `countries-list` codes where
-   *  the source marks none, so it is never empty and never a guess. */
-  officialLanguages: string[]
-  /** The officials whose status is only regional (Croatian in Burgenland) —
-   *  never by itself a reason to say the country speaks it. */
-  regionalLanguages?: string[]
   coordinates: string
   name: {
     local: string
