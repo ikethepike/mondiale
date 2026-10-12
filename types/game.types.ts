@@ -12,6 +12,7 @@ import type {
 import type { RoundChallenge } from './challenges/traversal-challenge.type'
 import type { ISOCountryCode } from './geography.types'
 import type { Player } from './player.type'
+import type { TwoTruthsSheet } from './two-truths.types'
 
 export interface Game {
   id: string
@@ -131,6 +132,8 @@ export interface GroupChallengeAnswer {
   buzzAt?: number
   /** Vintage rounds: the year the player dated the map to. */
   year?: number
+  /** Two Truths rounds: the player's stamps, for the reveal's table tally. */
+  sheet?: TwoTruthsSheet
 }
 
 export const gameVariants = [

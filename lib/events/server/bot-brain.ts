@@ -1,5 +1,7 @@
 import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import { vintageRuns } from './vintage-grade'
+import { twoTruthsVerdicts } from './two-truths-deck'
+import { TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
 import type {
   GovernmentAnswers,
   UniqueCategoryId,
@@ -1523,11 +1525,14 @@ export const composeClassicSubmission = async (
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'two-truths': {
-      const truths = expectChallengeType(challenge, 'two-truths-challenge')
-      const landed = { ranking: [], lie: truths.lieIndex }
-      if (await lands(landed)) return landed
-      const decoys = truths.statements.map((_, index) => index)
-      return { ranking: [], lie: sample(decoys.filter(index => index !== truths.lieIndex)) }
+      // A seat stamps what it knows and leaves the rest blank: each card lands
+      // at the rate that makes the sheet's share of the pot realize the dial.
+      const verdicts = twoTruthsVerdicts(expectChallengeType(challenge, 'two-truths-challenge'))
+      const sure = Math.min(1, share / TWO_TRUTHS_TUNING.sheetShare)
+      return {
+        ranking: [],
+        sheet: verdicts.map(truth => (Math.random() < sure ? (truth ? 'true' : 'lie') : null)),
+      }
     }
     case 'hot-cold': {
       // A probe trail: the colder the seat, the longer the wander. Every stray

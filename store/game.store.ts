@@ -14,6 +14,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 import type { CountryColorGrouping, MapFeatureOverlay, MapInset } from '~~/types/map.type'
 import type { Player } from '~~/types/player.type'
 import type { SeatCursor } from '~~/types/seat.types'
+import type { TwoTruthsReceipt } from '~~/types/two-truths.types'
 import type { Socket } from 'socket.io-client'
 import type { DefaultEventsMap } from 'socket.io'
 
@@ -85,6 +86,9 @@ interface GameStoreState {
   /** Vintage round stories this socket has been sent, by game and round —
    *  from the targeted 'vintage-story' emit, never a snapshot. */
   vintageStories: Record<string, VintageOutcome>
+  /** Two Truths receipts this socket has been sent, by game and round, keyed
+   *  by card — from the targeted 'two-truths-receipts' emit, never a snapshot. */
+  twoTruthsReceipts: Record<string, Record<number, TwoTruthsReceipt>>
   /** Gauntlet stage names the server refused as too late, by subject — from
    *  the targeted 'final-light-refused' emit; the stage un-lights them. */
   refusedLights: Record<string, string[]>
@@ -280,6 +284,7 @@ export const useGameStore = defineStore('game', {
     manhunt: undefined,
     manhuntReadings: undefined,
     vintageStories: {},
+    twoTruthsReceipts: {},
     refusedLights: {},
     socket: undefined,
     rejected: false,

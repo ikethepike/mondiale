@@ -1,3 +1,4 @@
+import type { TwoTruthsCard } from '../two-truths.types'
 import type { VintageRegionId } from '../vintage.types'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
@@ -148,22 +149,14 @@ export interface StatDetectiveChallenge {
 }
 
 /**
- * Three stat claims about one country — one value secretly belongs to a
- * different country. Spot the lie in one shot.
+ * Four claims about one country, some true and some lies — how many of each is
+ * never said. Only the sentences travel: the verdicts stay in the server's
+ * deck until a seat is graded (`fetch-two-truths-receipts`).
  */
 export interface TwoTruthsChallenge {
   _type: 'two-truths-challenge'
   country: ISOCountryCode
-  statements: {
-    accessorId: GroupChallengeAccessorId
-    /** The claimed value (the lie carries the decoy country's value). */
-    amount: number
-    unit: string
-  }[]
-  /** Index into `statements` of the falsified claim. */
-  lieIndex: number
-  /** Where the lie's value really comes from — shown in the reveal. */
-  lieSource: ISOCountryCode
+  cards: TwoTruthsCard[]
   durationSeconds: number
   maximumPoints: number
 }

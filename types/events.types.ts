@@ -8,6 +8,7 @@ import type {
 } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
 import type { ISOCountryCode } from './geography.types'
+import type { TwoTruthsReceipt, TwoTruthsSheet } from './two-truths.types'
 import { SEAT_STEPS, type SeatStep } from './seat.types'
 
 /** What a live guess was, so the room can colour it. `presence` carries no
@@ -74,8 +75,9 @@ export type ClientEventData =
       event: 'submit-group-challenge-answers'
       /** The mode's ISO list: a ranking, a guess trail, or named neighbours. */
       ranking: ISOCountryCode[]
-      /** Two Truths rounds: the statement the player called the lie. */
-      lie?: number
+      /** Two Truths rounds: a stamp per card, null for a blank. The server
+       *  re-reads it through `toSheet` and grades it against its own deck. */
+      sheet?: TwoTruthsSheet
       /** Sketch rounds: the normalized drawn outline (`sketchSubmission`). The
        *  server scores it against the country itself and draws it on the reveal. */
       sketch?: [number, number][]
@@ -226,6 +228,13 @@ export type ClientEventData =
       /** Vintage: a graded seat (or a spectator) asks for a round's story.
        *  Answered with a targeted 'vintage-story' emit. */
       event: 'fetch-vintage-story'
+      round: number
+    }
+  | {
+      /** Two Truths: a graded seat (or a spectator, or a seat holding a bought
+       *  reveal) asks for a round's receipts. Answered with a targeted
+       *  'two-truths-receipts' emit. */
+      event: 'fetch-two-truths-receipts'
       round: number
     }
   | {
@@ -502,6 +511,9 @@ export type ServerEventData =
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
+  /** Two Truths: card verdicts and their receipts, emitted ONLY to a socket
+   *  allowed to see them — every card once graded, one for a bought reveal. */
+  | { event: 'two-truths-receipts'; round: number; receipts: TwoTruthsReceipt[] }
   /** A `final-light` the server did not keep (too late, or not the stage's),
    *  told to the lighting socket alone so its stage un-lights the name. */
   | { event: 'final-light-refused'; subject: string; name: string }

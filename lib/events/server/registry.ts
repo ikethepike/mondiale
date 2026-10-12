@@ -22,6 +22,7 @@ import { submitManhuntLeakHandler } from './submit-manhunt-leak.handler'
 import { submitManhuntPingHandler } from './submit-manhunt-ping.handler'
 import { submitManhuntSubpoenaHandler } from './submit-manhunt-subpoena.handler'
 import { fetchManhuntIntelHandler } from './fetch-manhunt-intel.handler'
+import { fetchTwoTruthsReceiptsHandler } from './fetch-two-truths-receipts.handler'
 import { fetchVintageStoryHandler } from './fetch-vintage-story.handler'
 import { manhuntReadyHandler } from './manhunt-ready.handler'
 import { uniqueReadyHandler } from './unique-ready.handler'
@@ -146,6 +147,10 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'fetch-vintage-story': {
     handler: fetchVintageStoryHandler,
   },
+  // Reads one round's receipts; answers the requesting socket once it may see them
+  'fetch-two-truths-receipts': {
+    handler: fetchTwoTruthsReceiptsHandler,
+  },
   'submit-timeline-placement': {
     handler: submitTimelinePlacementHandler,
   },
@@ -234,6 +239,7 @@ export const UNRECORDED_CLIENT_EVENTS: readonly ClientEvent[] = [
   'manhunt-taunt',
   'fetch-manhunt-intel',
   'fetch-vintage-story',
+  'fetch-two-truths-receipts',
 ]
 
 /**

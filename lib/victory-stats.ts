@@ -95,7 +95,7 @@ export const KIND_LABELS: {
   'hot-cold': { prose: 'hot & cold', title: 'Hot & Cold' },
   sketch: { prose: 'sketch', title: 'Sketch' },
   'stat-detective': { prose: 'stat detective', title: 'Stat Detective' },
-  'two-truths': { prose: 'two truths', title: 'Two Truths and a Lie' },
+  'two-truths': { prose: 'two truths', title: 'Two Truths' },
   'river-run': { prose: 'river run', title: 'River Run' },
   'shared-shores': { prose: 'shared shores', title: 'Shared Shores' },
   highlands: { prose: 'highlands', title: 'Highlands & Basins' },
@@ -155,7 +155,9 @@ export const visitedCountries = (game: Game): ISOCountryCode[] => {
     if ('neighbours' in challenge) {
       for (const isoCode of challenge.neighbours) visited.add(isoCode)
     }
-    if ('lieSource' in challenge) visited.add(challenge.lieSource)
+    if ('_type' in challenge && challenge._type === 'two-truths-challenge') {
+      for (const card of challenge.cards) for (const isoCode of card.countries) visited.add(isoCode)
+    }
     // Clean Sweep's board — the whole set the table raced through, claimed or
     // not. `members` is shared with the empire arm below, so this tests the
     // discriminant rather than the field.

@@ -4,38 +4,38 @@
       v-if="showInterstitial"
       tone="info"
       kind="two-truths"
-      :title="`Three claims about ${countryName(challenge.country)}`"
-      stakes="One of these values secretly belongs to another country. Spot the lie — the sooner you call it, the more it pays. One shot."
+      :title="`${challenge.cards.length} claims about ${countryName(challenge.country)}`"
+      stakes="Some are true, some are lies — how many of each is never said. Stamp what you know: right stamps pay, wrong ones cost, blanks are free."
       @done="start"
     />
 
-    <!-- The three claims are the round; "Tap the claim that doesn't belong"
-         is an instruction on them. Full size returns for the verdict. -->
-    <ChallengePrompt :attributions="claimSources" attribution-label="Sources" :compact="!revealed">
+    <ChallengePrompt :attributions="sources" attribution-label="Sources" :compact="!revealed">
       <template v-if="!revealed">
-        <h1 class="map-caption">Two truths and a lie about {{ countryName(challenge.country) }}</h1>
-        <span class="map-caption sub"> Tap the claim that doesn't belong </span>
+        <h1 class="map-caption subject-title">
+          <CountryFlag
+            class="title-flag"
+            :country="getCountry(challenge.country)"
+            mode="background"
+          />
+          {{ countryName(challenge.country) }}
+        </h1>
+        <span class="map-caption sub">True or lie? Stamp each claim — or leave it blank</span>
       </template>
-      <!-- The question title steps aside so the dossier's head is the only heading
-           once the round resolves. That drops the one mention of the SUBJECT
-           country, so the body names it: the lie belongs to `lieSource`, and
-           without naming `country` too the reveal never says what the three claims
-           were even about. -->
       <ChallengeResult
-        v-else
-        :status="foundLie ? 'correct' : 'incorrect'"
-        correct-message="Caught it"
-        :incorrect-message="timedOut ? 'Time ran out' : 'That one was true'"
+        v-else-if="graded"
+        :status="graded.net > 0 ? 'correct' : 'incorrect'"
+        :correct-message="
+          graded.perfect ? 'Perfect sheet' : `${graded.right} of ${graded.cards} right`
+        "
+        :incorrect-message="graded.stamped ? 'They fooled you' : 'Nothing stamped'"
       >
-        <template v-if="foundLie">
-          That's {{ countryName(challenge.lieSource) }}'s number, not
-          {{ countryName(challenge.country) }}'s. The truth: {{ truthDisplay }}
-        </template>
-        <template v-else>
-          The lie was {{ lieLabel }} — {{ countryName(challenge.lieSource) }}'s number, not
-          {{ countryName(challenge.country) }}'s
+        {{ graded.lies }} of the {{ graded.cards }}
+        {{ graded.lies === 1 ? 'was a lie' : 'were lies' }}.
+        <template v-if="graded.wrong">
+          {{ graded.wrong }} wrong {{ graded.wrong === 1 ? 'stamp' : 'stamps' }} cost you.
         </template>
       </ChallengeResult>
+      <span v-else class="map-caption sub">Checking the sheet…</span>
       <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
     </ChallengePrompt>
 
@@ -45,111 +45,151 @@
       :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
       @scroll.passive="syncScrollEdges"
     >
-      <!-- Before the pick: the flag. After: the lie's stat as a world strip,
-           so the reveal SHOWS where the truth and the borrowed number sit. -->
-      <Transition name="caption" mode="out-in">
-        <div v-if="!revealed" key="flag" class="flag-frame">
-          <CountryFlag
-            class="flag"
-            :country="getCountry(challenge.country)"
-            mode="background"
-            fit="contain"
-          />
-        </div>
-        <StatStripPlot
-          v-else-if="lieAccessorId"
-          key="plot"
-          class="plot-frame"
-          :accessor-id="lieAccessorId"
-          :target="challenge.country"
-          :decoy="challenge.lieSource"
-        />
-      </Transition>
-      <ul class="claim-list">
-        <li v-for="(statement, index) in challenge.statements" :key="statement.accessorId">
-          <StatCard
-            tag="button"
-            type="button"
-            class="claim-card"
-            :class="claimClass(index)"
-            :label="statementLabel(statement.accessorId)"
-            :topic="statementTopic(statement.accessorId)"
-            :accessor="statement.accessorId"
-            :disabled="revealed || index === eliminatedIndex"
-            @click="pick(index)"
-          >
-            <strong class="claim-value">
-              {{ formatAmount(statement) }}
-            </strong>
-            <ScalePlot v-if="statementScales[index]" v-bind="statementScales[index]" />
-            <Transition name="caption">
-              <span
-                v-if="revealed"
-                class="verdict-tag"
-                :class="index === challenge.lieIndex ? 'lie' : 'truth'"
-              >
-                {{
-                  index === challenge.lieIndex
-                    ? `The lie — ${countryName(challenge.lieSource)}'s number`
-                    : 'True'
-                }}
+      <ol class="claim-list" :class="{ revealed }">
+        <li
+          v-for="(card, index) in challenge.cards"
+          :key="card.id"
+          :data-card="index"
+          :style="{ '--i': index }"
+        >
+          <article class="claim-card" :class="cardClass(index)">
+            <header class="claim-head">
+              <StatTopicIcon class="family-icon" :topic="FAMILY_GLYPHS[card.family]" />
+              <span class="eyebrow">{{ FAMILY_LABELS[card.family] }}</span>
+              <span v-if="revealed && receipts?.[index]?.trap" class="trap-tag">
+                {{ receipts[index]!.truth ? 'Sounds false' : 'Sounds right' }}
               </span>
+            </header>
+            <p class="claim-text">{{ card.text }}</p>
+
+            <div v-if="!revealed" class="stamps" role="group" :aria-label="`Claim ${index + 1}`">
+              <button
+                v-for="stamp in STAMPS"
+                :key="stamp"
+                type="button"
+                class="stamp-button"
+                :class="[stamp, { pressed: sheet[index] === stamp }]"
+                :aria-pressed="sheet[index] === stamp"
+                :disabled="checkedIndex === index"
+                @click="toggleStamp(index, stamp)"
+              >
+                {{ STAMP_LABELS[stamp] }}
+              </button>
+              <span v-if="checkedIndex === index" class="checked-note">Checked</span>
+            </div>
+
+            <Transition name="caption">
+              <div v-if="revealed && receipts?.[index]" class="receipt">
+                <div class="verdict-row">
+                  <span class="verdict-ink" :class="receipts[index]!.truth ? 'true' : 'lie'">
+                    {{ receipts[index]!.truth ? 'True' : 'Lie' }}
+                  </span>
+                  <span class="your-stamp">{{ stampLine(index) }}</span>
+                </div>
+                <p class="receipt-note">{{ receipts[index]!.note }}</p>
+                <TwoTruthsEvidence
+                  :evidence="receipts[index]!.evidence"
+                  :highlight="card.countries"
+                />
+                <ul
+                  v-if="tallies[index].length"
+                  class="tally"
+                  aria-label="How the table stamped it"
+                >
+                  <li class="eyebrow tally-label">Table</li>
+                  <li
+                    v-for="mark in tallies[index]"
+                    :key="mark.id"
+                    class="tally-mark"
+                    :class="mark.stamp ?? 'blank'"
+                    :style="{ '--player-color': mark.color }"
+                    :title="`${mark.name}: ${mark.stamp ? STAMP_LABELS[mark.stamp] : 'blank'}`"
+                  >
+                    <span class="dot" />
+                    <span class="mark-stamp">{{
+                      mark.stamp ? STAMP_LABELS[mark.stamp] : '–'
+                    }}</span>
+                  </li>
+                </ul>
+              </div>
             </Transition>
-          </StatCard>
+          </article>
         </li>
-      </ul>
+      </ol>
     </section>
 
-    <!-- A round dealt without a duration has no clock to show or race. -->
-    <footer v-if="!showInterstitial && !revealed && challenge.durationSeconds" class="clock-footer">
+    <footer v-if="!showInterstitial && !revealed && !gameStore.watching" class="clock-footer">
       <div class="hint-row">
         <Transition name="caption">
-          <button
-            v-if="fiftyFiftyUnlocked"
-            class="hint-button"
-            type="button"
-            @click="buyFiftyFifty"
-          >
+          <button v-if="revealUnlocked" class="hint-button" type="button" @click="buyReveal">
             <StatTopicIcon class="hint-icon" topic="reveal" />
-            50/50 (−{{ hintBitePoints(challenge.maximumPoints) }} pts)
+            Check one card (−{{ hintBitePoints(challenge.maximumPoints) }} pts)
           </button>
         </Transition>
       </div>
-      <ChallengeTimerRadial
-        class="footer-clock"
-        :value="secondsLeft"
-        :total="challenge.durationSeconds"
-      />
+      <div class="lock-row">
+        <button class="lock-button" type="button" @click="lockSheet">
+          Lock sheet
+          <span class="lock-count">{{ stampedCount }}/{{ challenge.cards.length }}</span>
+        </button>
+        <ChallengeTimerRadial
+          class="footer-clock"
+          :value="secondsLeft"
+          :total="challenge.durationSeconds"
+        />
+      </div>
     </footer>
   </div>
 </template>
 <script lang="ts" setup>
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
-import StatCard from '~/components/challenge/StatCard.vue'
 import StatTopicIcon from '~/components/challenge/StatTopicIcon.vue'
+import TwoTruthsEvidence from '~/components/challenge/TwoTruthsEvidence.vue'
 import CountryFlag from '~/components/country/CountryFlag.vue'
 import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
-import ScalePlot from '~/components/feedback/ScalePlot.vue'
-import StatStripPlot from '~/components/feedback/StatStripPlot.vue'
-import { sample } from '~~/lib/arrays'
-import { attributionFor, dedupeAttributions } from '~~/lib/attribution'
-import {
-  accessorTopicLabel,
-  getChallengeDetails,
-  getScaleProps,
-  isTwoTruthsLie,
-} from '~~/lib/challenges'
+import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
+import { useClientEvents } from '~~/lib/events/client-side'
 import { isHardMode } from '~~/lib/game-rules'
+import { seatLabel } from '~~/lib/player'
 import { HINT_UNLOCK_FIRST_ELAPSED, hintBitePoints } from '~~/lib/scoring'
+import { CLAIM_DATASETS, isPerfectSheet, sheetNet, toSheet } from '~~/lib/two-truths'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
-import { formatAmount } from '~~/lib/number'
-import { getValueByAccessorID } from '~~/lib/values'
-import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
+import { useTwoTruthsReceipts } from '~~/lib/use-two-truths-receipts'
+import type { ClaimFamily, TwoTruthsSheet, TwoTruthsStamp } from '~~/types/two-truths.types'
+
+const STAMPS: TwoTruthsStamp[] = ['true', 'lie']
+const STAMP_LABELS: Record<TwoTruthsStamp, string> = { true: 'True', lie: 'Lie' }
+
+const FAMILY_LABELS: Record<ClaimFamily, string> = {
+  borders: 'Borders',
+  language: 'Language',
+  capital: 'Capital',
+  currency: 'Currency',
+  club: 'Alliances',
+  rank: 'Rankings',
+  versus: 'Head to head',
+  trade: 'Trade',
+  clock: 'Time zone',
+  river: 'Rivers',
+}
+
+const FAMILY_GLYPHS: Record<ClaimFamily, string> = {
+  borders: 'relations.borders',
+  language: 'department.communications',
+  capital: 'relations.embassy',
+  currency: 'department.finance',
+  club: 'relations.alliance',
+  rank: 'people',
+  versus: 'geography',
+  trade: 'relations.exports',
+  clock: 'department.science',
+  river: 'relations.maritime',
+}
 
 const {
   challenge,
@@ -158,149 +198,231 @@ const {
   announce,
   entries,
   submitOnce,
+  submitted,
   gameStore,
   secondsLeft,
   elapsedFraction,
   stopCountdown,
   buyHint,
+  boothAnswer,
+  registerCleanup,
 } = useGroupChallenge('two-truths-challenge')
+const { player: me, seatCursor } = useClientEvents()
 
-// The stage only scrolls where the claims stack (phones); on a wider board the
-// three columns fit and both flags stay false.
 const stage = ref<HTMLElement>()
 const { scrollableUp, scrollableDown, syncScrollEdges } = useScrollEdges(() => stage.value)
 
-const picked = ref<number>()
-const timedOut = ref(false)
-const revealed = computed(() => picked.value !== undefined || timedOut.value)
+const sheet = ref<TwoTruthsSheet>([])
+watch(
+  () => challenge.value?.cards.length,
+  cards => {
+    if (cards && sheet.value.length !== cards) sheet.value = toSheet(sheet.value, cards)
+  },
+  { immediate: true }
+)
+
+const roundIndex = computed(() => (gameStore.game ? gameStore.game.rounds.length - 1 : undefined))
+const round = computed(() =>
+  roundIndex.value === undefined ? undefined : gameStore.game?.rounds[roundIndex.value]
+)
+const banked = computed(() =>
+  gameStore.watching
+    ? boothAnswer.value
+    : me.value
+      ? round.value?.groupAnswers[me.value.id]
+      : undefined
+)
+
+/** The sheet on screen: what this seat stamped, or the followed racer's once banked. */
+const shownSheet = computed<TwoTruthsSheet>(() =>
+  gameStore.watching
+    ? toSheet(banked.value?.sheet, challenge.value?.cards.length ?? 0)
+    : sheet.value
+)
+const revealed = computed(() => (gameStore.watching ? !!banked.value : submitted.value))
+
+const hintBought = computed(() => (seatCursor.value?.hints ?? []).includes('reveal'))
+const receipts = useTwoTruthsReceipts(roundIndex, () =>
+  banked.value
+    ? 'all'
+    : hintBought.value && !revealed.value && !gameStore.watching
+      ? 'reveal'
+      : 'none'
+)
+
+/** The card a bought reveal checked, once its receipt is in. */
+const checkedIndex = computed(() => {
+  if (!hintBought.value || revealed.value) return undefined
+  const landed = Object.values(receipts.value ?? {})
+  return landed.length === 1 ? landed[0].index : undefined
+})
+watch(checkedIndex, index => {
+  const receipt = index === undefined ? undefined : receipts.value?.[index]
+  if (!receipt) return
+  sheet.value = sheet.value.map((stamp, at) =>
+    at === receipt.index ? (receipt.truth ? 'true' : 'lie') : stamp
+  )
+})
+
+const stampedCount = computed(() => sheet.value.filter(Boolean).length)
+
+const toggleStamp = (index: number, stamp: TwoTruthsStamp) => {
+  if (revealed.value || showInterstitial.value || index === checkedIndex.value) return
+  sheet.value = sheet.value.map((current, at) =>
+    at === index ? (current === stamp ? null : stamp) : current
+  )
+}
+
+const lockSheet = () => {
+  if (!challenge.value || revealed.value || showInterstitial.value) return
+  stopCountdown()
+  announce({ kind: 'presence' })
+  submitOnce([], { sheet: [...sheet.value] })
+}
 
 const start = () =>
   begin({
-    onTimeout: () => {
-      timedOut.value = true
-      submitOnce([])
-    },
+    onTimeout: () => submitOnce([], { sheet: [...sheet.value] }),
   })
 
-// The 50/50: buys away one true claim, leaving the lie and one truth. Unlocks
-// a third of the clock in (the buzz curve pays most early — an instant 50/50
-// would be a strictly optimal buy), and hard mode stays unassisted.
-const eliminatedIndex = ref<number>()
-const fiftyFiftyUnlocked = computed(
+const revealUnlocked = computed(
   () =>
     !isHardMode(gameStore.game) &&
-    eliminatedIndex.value === undefined &&
+    !hintBought.value &&
     elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED
 )
-
-const buyFiftyFifty = () => {
-  const active = challenge.value
-  if (!active || revealed.value || eliminatedIndex.value !== undefined) return
-  const truths = active.statements
-    .map((_, index) => index)
-    .filter(index => index !== active.lieIndex)
-  eliminatedIndex.value = sample(truths)
-  buyHint('fifty-fifty')
+const buyReveal = () => {
+  if (revealed.value || hintBought.value) return
+  buyHint('reveal')
 }
 
-/** One panel for all three claims — the cards themselves are buttons, so the
- *  provenance lives on the prompt. */
-const claimSources = computed(() =>
+const verdicts = computed(() => {
+  const cards = challenge.value?.cards.length ?? 0
+  const landed = receipts.value
+  if (!landed || Object.keys(landed).length < cards) return undefined
+  return Array.from({ length: cards }, (_, index) => landed[index].truth)
+})
+
+const graded = computed(() => {
+  const truths = verdicts.value
+  if (!truths || !revealed.value) return undefined
+  const stamps = shownSheet.value
+  const right = truths.filter((truth, index) => stamps[index] === (truth ? 'true' : 'lie')).length
+  const stamped = stamps.filter(Boolean).length
+  return {
+    cards: truths.length,
+    lies: truths.filter(truth => !truth).length,
+    right,
+    wrong: stamped - right,
+    stamped,
+    net: sheetNet(stamps, truths),
+    perfect: isPerfectSheet(stamps, truths),
+  }
+})
+
+const sources = computed(() =>
   dedupeAttributions(
-    (challenge.value?.statements ?? []).map(statement => attributionFor(statement.accessorId))
+    [
+      ...new Set((challenge.value?.cards ?? []).flatMap(card => CLAIM_DATASETS[card.family])),
+    ].flatMap(datasetAttribution)
   )
 )
 
-const statementLabel = (accessorId: GroupChallengeAccessorId) => accessorTopicLabel(accessorId)
-const statementTopic = (accessorId: GroupChallengeAccessorId) =>
-  getChallengeDetails(accessorId)?.topic
+const stampLine = (index: number) => {
+  const stamp = shownSheet.value[index]
+  const truth = receipts.value?.[index]?.truth
+  const owner = gameStore.watching ? 'They' : 'You'
+  if (!stamp) return `${owner} left it blank`
+  return stamp === (truth ? 'true' : 'lie')
+    ? `${owner} called it`
+    : `${owner} stamped ${STAMP_LABELS[stamp]}`
+}
 
-// Bounded indices get scale context on the card. The plot shows the CLAIMED
-// amount — for the lie too, since plotting the truth would give it away.
-const statementScales = computed(() =>
-  (challenge.value?.statements ?? []).map(statement =>
-    getScaleProps(statement.accessorId, statement.amount)
+/** Every banked sheet's stamp on each card — the table's verdict beside the truth. */
+const tallies = computed(() => {
+  const players = gameStore.game?.players ?? {}
+  const answers = round.value?.groupAnswers ?? {}
+  return (challenge.value?.cards ?? []).map((_, index) =>
+    Object.entries(answers).flatMap(([id, answer]) => {
+      if (!answer.sheet || !players[id]) return []
+      return [
+        {
+          id,
+          stamp: answer.sheet[index] ?? null,
+          color: players[id].color,
+          name: seatLabel(players, id, me.value?.id),
+        },
+      ]
+    })
   )
-)
-
-const lieAccessorId = computed(() => {
-  const active = challenge.value
-  return active ? active.statements[active.lieIndex].accessorId : undefined
 })
 
-const foundLie = computed(() => !!challenge.value && isTwoTruthsLie(challenge.value, picked.value))
-
-const lieLabel = computed(() => {
-  const active = challenge.value
-  if (!active) return ''
-  return statementLabel(active.statements[active.lieIndex].accessorId)
-})
-
-const truthDisplay = computed(() => {
-  const active = challenge.value
-  if (!active) return ''
-  const real = getValueByAccessorID(active.country, active.statements[active.lieIndex].accessorId)
-  return real ? formatAmount(real) : '—'
-})
-
-const claimClass = (index: number) => {
-  const active = challenge.value
-  if (!active) return undefined
-  if (!revealed.value) return index === eliminatedIndex.value ? 'is-eliminated' : undefined
-  if (index === active.lieIndex) return 'is-lie'
-  if (index === picked.value) return 'was-picked'
-  return 'is-truth'
+const cardClass = (index: number) => {
+  const stamp = shownSheet.value[index]
+  if (!revealed.value) return { stamped: !!stamp, checked: index === checkedIndex.value }
+  const receipt = receipts.value?.[index]
+  if (!receipt) return { pending: true }
+  const right = stamp === (receipt.truth ? 'true' : 'lie')
+  return {
+    'is-true': receipt.truth,
+    'is-lie': !receipt.truth,
+    'was-right': !!stamp && right,
+    'was-wrong': !!stamp && !right,
+  }
 }
 
-const pick = (index: number) => {
-  const active = challenge.value
-  if (!active || revealed.value || showInterstitial.value) return
-  if (index === eliminatedIndex.value) return
-  picked.value = index
-  // The clock must not decay through the reveal hold — the score is what the
-  // player saw at the moment of the pick.
-  stopCountdown()
-  // Only three statements, all on screen — naming the pick would name the lie.
-  announce({ kind: 'presence' })
-
-  // Submit at the pick — the reveal is pure display, and the server's flip
-  // (the kind's reveal hold in ROUND_BEATS) ends the beat.
-  submitOnce([], { lie: index })
+const onKey = (event: KeyboardEvent) => {
+  if (revealed.value || showInterstitial.value || event.metaKey || event.ctrlKey) return
+  const card = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-card]')
+  if (!card) return
+  const index = Number(card.dataset.card)
+  const key = event.key.toLowerCase()
+  if (key === 't') toggleStamp(index, 'true')
+  else if (key === 'l') toggleStamp(index, 'lie')
+  else return
+  event.preventDefault()
 }
+window.addEventListener('keydown', onKey)
+registerCleanup(() => window.removeEventListener('keydown', onKey))
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/scroll-fade' as *;
 
+.two-truths {
+  --truth-ink: hsl(170.5, 34.7%, 34%);
+  --truth-wash: hsla(170.5, 34.7%, 55.1%, 0.16);
+  --lie-ink: var(--hior-ange);
+  --lie-wash: #{flame(0.16)};
+}
+
+.subject-title {
+  gap: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+
+  .title-flag {
+    width: 3.4rem;
+    height: 2.3rem;
+    flex-shrink: 0;
+    border-radius: 0.3rem;
+    border: 0.1rem solid ink(0.25);
+  }
+}
+
 .claim-stage {
   flex: 1;
-  gap: 2.4rem;
   display: flex;
   min-height: 0;
+  overflow-y: auto;
   position: relative;
   align-items: center;
-  flex-flow: column nowrap;
-  justify-content: center;
-}
-
-.plot-frame {
   pointer-events: auto;
-  width: min(46rem, 92vw);
-}
-
-.flag-frame {
-  padding: 1rem;
-  border-radius: 1.2rem;
-  backdrop-filter: blur(0.5rem);
-  background: milk(0.85);
-  border: 0.1rem solid ink(0.2);
-
-  .flag {
-    width: 16rem;
-    height: 9rem;
-    display: block;
-  }
+  padding-block: 1.2rem;
+  flex-flow: column nowrap;
+  justify-content: safe center;
+  overscroll-behavior: contain;
 }
 
 .claim-list {
@@ -310,74 +432,245 @@ const pick = (index: number) => {
   display: grid;
   list-style: none;
   pointer-events: auto;
-  grid-template-columns: repeat(3, minmax(20rem, 26rem));
+  width: min(76rem, 94vw);
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 
-  // The grid stretches the list items; the card fills its item, so all
-  // three claims share one height regardless of how their copy wraps.
+  &.revealed {
+    align-items: stretch;
+    width: min(110rem, 94vw);
+  }
+
   li {
     display: flex;
+    opacity: 0;
+    animation: row-land 0.35s var(--ease-smooth) forwards;
+    animation-delay: calc(var(--i) * 90ms);
   }
 }
 
-// Card chrome lives in StatCard — only behaviour and verdicts here.
 .claim-card {
-  cursor: pointer;
+  gap: 1rem;
+  width: 100%;
+  display: flex;
+  position: relative;
+  padding: 1.4rem 1.6rem;
+  flex-flow: column nowrap;
+  border-radius: 1.2rem;
+  color: var(--dark-blue);
+  background: milk(0.97);
+  border: 0.15rem solid ink(0.18);
+  box-shadow: 0 0.4rem 1.6rem ink(0.08);
+  transition:
+    border-color var(--motion-quick) var(--ease-out-expressive),
+    background-color var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-quick) var(--ease-out-expressive);
+
+  &.stamped {
+    border-color: ink(0.4);
+  }
+  &.is-true {
+    border-color: var(--truth-ink);
+    background: linear-gradient(var(--truth-wash), var(--truth-wash)), milk(0.97);
+  }
+  &.is-lie {
+    border-color: var(--lie-ink);
+    background: linear-gradient(var(--lie-wash), var(--lie-wash)), milk(0.97);
+  }
+  &.pending {
+    opacity: 0.7;
+  }
+}
+
+.claim-head {
+  gap: 0.6rem;
+  display: flex;
+  align-items: center;
+
+  .family-icon {
+    opacity: 0.7;
+  }
+  .eyebrow {
+    flex: 1;
+  }
+}
+
+.trap-tag {
+  font-size: 1.1rem;
+  font-weight: bold;
+  padding: 0.2rem 0.7rem;
+  border-radius: 99rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: milk();
+  background: var(--dark-blue);
+}
+
+.claim-text {
+  margin: 0;
   font-size: 1.8rem;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.stamps {
+  gap: 0.8rem;
+  display: flex;
+  align-items: center;
+}
+
+.stamp-button {
+  flex: 1;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: bold;
+  padding: 0.7rem 1rem;
+  border-radius: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 0.2rem dashed currentColor;
   transition:
     transform var(--motion-quick) var(--ease-out-expressive),
-    border-color var(--motion-quick) var(--ease-out-expressive),
-    background-color var(--motion-base) var(--ease-out-expressive);
+    background-color var(--motion-quick) var(--ease-out-expressive),
+    color var(--motion-quick) var(--ease-out-expressive);
+
+  &.true {
+    color: var(--truth-ink);
+  }
+  &.lie {
+    color: var(--lie-ink);
+  }
 
   @media (hover: hover) {
     &:hover:not(:disabled) {
-      transform: translateY(-0.3rem);
-      border-color: var(--dark-blue);
+      transform: translateY(-0.15rem);
     }
   }
-  &:active:not(:disabled) {
-    border-color: var(--dark-blue);
+
+  &.pressed {
+    color: milk();
+    border-style: solid;
+    animation: stamp-thump 0.22s var(--ease-out-expressive);
+
+    &.true {
+      background: var(--truth-ink);
+      border-color: var(--truth-ink);
+      transform: rotate(-2deg);
+    }
+    &.lie {
+      background: var(--lie-ink);
+      border-color: var(--lie-ink);
+      transform: rotate(2deg);
+    }
   }
+
   &:disabled {
     cursor: default;
   }
+}
 
-  .claim-value {
-    font-size: 2.4rem;
+.checked-note {
+  font-size: 1.2rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.receipt {
+  flex: 1;
+  gap: 0.8rem;
+  display: flex;
+  flex-flow: column nowrap;
+
+  .tally {
+    margin-top: auto;
   }
+}
 
-  // Post-pick, every card names its role — the washes carry the mood, the
-  // tags carry the fact.
-  .verdict-tag {
-    font-size: 1.2rem;
+.verdict-row {
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.verdict-ink {
+  font-size: 1.5rem;
+  font-weight: 800;
+  padding: 0.2rem 1rem;
+  border-radius: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 0.25rem solid currentColor;
+  animation: stamp-thump 0.3s var(--ease-out-expressive) both;
+  animation-delay: calc(var(--i) * 140ms);
+
+  &.true {
+    color: var(--truth-ink);
+    transform: rotate(-3deg);
+  }
+  &.lie {
+    color: var(--lie-ink);
+    transform: rotate(3deg);
+  }
+}
+
+.your-stamp {
+  font-size: 1.3rem;
+  opacity: 0.8;
+
+  .was-wrong & {
+    color: var(--lie-ink);
     font-weight: bold;
+    opacity: 1;
+  }
+}
 
-    &.lie {
-      color: var(--hior-ange);
-    }
-    &.truth {
-      color: hsl(170.5, 34.7%, 38%);
-    }
-  }
+.receipt-note {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.4;
+}
 
-  // A bought 50/50 greys its truth out of contention until the reveal washes
-  // it like the others.
-  &.is-eliminated {
-    opacity: 0.35;
-    filter: grayscale(1);
-  }
+.tally {
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  border-top: $hairline;
+}
 
-  // Reveal: the lie glows coral, truths settle to mint
-  &.is-lie {
-    border-color: var(--hior-ange);
-    background: flame(0.18);
+.tally-label {
+  align-self: center;
+  margin-right: 0.2rem;
+}
+
+.tally-mark {
+  gap: 0.35rem;
+  display: flex;
+  font-size: 1.1rem;
+  font-weight: bold;
+  align-items: center;
+  padding: 0.15rem 0.6rem 0.15rem 0.3rem;
+  border-radius: 99rem;
+  background: ink(0.06);
+
+  .dot {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--player-color);
   }
-  &.is-truth {
-    border-color: hsla(170.5, 34.7%, 45%, 0.7);
-    background: hsla(170.5, 34.7%, 55.1%, 0.14);
+  &.true .mark-stamp {
+    color: var(--truth-ink);
   }
-  &.was-picked:not(.is-lie) {
-    outline: 0.25rem solid var(--hior-ange);
-    outline-offset: 0.2rem;
+  &.lie .mark-stamp {
+    color: var(--lie-ink);
+  }
+  &.blank {
+    opacity: 0.6;
   }
 }
 
@@ -388,58 +681,107 @@ const pick = (index: number) => {
   flex-flow: column nowrap;
 }
 
+.lock-row {
+  gap: 1.4rem;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.lock-button {
+  gap: 0.8rem;
+  display: flex;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.6rem;
+  font-weight: bold;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-radius: 99rem;
+  color: milk();
+  background: var(--dark-blue);
+  border: none;
+
+  .lock-count {
+    font-size: 1.3rem;
+    opacity: 0.75;
+  }
+}
+
+@keyframes stamp-thump {
+  0% {
+    opacity: 0;
+    scale: 1.25;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claim-list li,
+  .stamp-button.pressed,
+  .verdict-ink {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 @media screen and (max-width: $tablet) {
-  // Three 20rem columns overflow any phone: stack the claims full-width and
-  // compact them so flag + all three cards share one screen.
   .claim-stage {
-    gap: 1.2rem;
     width: 100%;
     overflow-y: auto;
-    // Centering + overflow pushes the reveal's plot above the scroll origin,
-    // where it can never be scrolled back into view — anchor to the top.
     justify-content: flex-start;
-    // .main-board kills pointer events; the scroll container must take
-    // touches itself or drags between the cards won't scroll.
     pointer-events: auto;
     overscroll-behavior: contain;
     padding-inline: 1.6rem;
-    // The flag and the claims carry on under the prompt pills instead of
-    // stopping dead short of them — with nothing behind the stage but the live
-    // map, the fade has to be alpha rather than a cream wash. The stage's own
-    // block padding rides the bleed (it lands on the same property).
-    //
-    // The TOP only: the clock footer is conditional (a round dealt without a
-    // duration has none), so the stage is often flush with the shell's bottom
-    // edge, and a bottom bleed there hangs the fade band below the shell — off
-    // screen, exactly the nested-scroller trap the ledger was in. The bottom
-    // fade sits on the real edge instead, which is where the cut was.
     @include scroll-mask;
     @include scroll-bleed(
       $top: 2.8rem,
       $pad-top: 0.4rem,
       $pad-bottom: calc(1.2rem + var(--safe-bottom))
     );
-    @include snap-rows('> .claim-list > li');
   }
 
-  .flag-frame .flag {
-    width: 12rem;
-    height: 6.75rem;
-  }
-
-  .claim-list {
+  .claim-list,
+  .claim-list.revealed {
     gap: 1rem;
     width: 100%;
-    grid-auto-rows: 1fr;
     grid-template-columns: minmax(0, 1fr);
   }
 
   .claim-card {
-    padding: 1rem 1.2rem;
+    gap: 0.8rem;
+    padding: 1.1rem 1.2rem;
+  }
 
-    .claim-value {
-      font-size: 2rem;
-    }
+  .claim-text {
+    font-size: 1.6rem;
+  }
+}
+
+@media screen and (max-height: $short) {
+  .claim-list {
+    gap: 0.8rem;
+  }
+
+  .claim-card {
+    gap: 0.5rem;
+    padding: 0.8rem 1.1rem;
+  }
+
+  .claim-head .eyebrow,
+  .claim-head .family-icon {
+    display: none;
+  }
+
+  .claim-text {
+    font-size: 1.5rem;
+  }
+
+  .stamp-button {
+    padding: 0.45rem 0.8rem;
   }
 }
 </style>

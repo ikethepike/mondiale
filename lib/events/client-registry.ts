@@ -6,6 +6,7 @@ import { seatAdvancedEvent } from '~~/lib/events/client/seat-advanced.event'
 import { indexUpdateEvent } from '~~/lib/events/client/index-update.event'
 import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.event'
 import { manhuntSonarEvent } from '~~/lib/events/client/manhunt-sonar.event'
+import { twoTruthsReceiptsEvent } from '~~/lib/events/client/two-truths-receipts.event'
 import { vintageStoryEvent } from '~~/lib/events/client/vintage-story.event'
 import { finalLightRefusedEvent } from '~~/lib/events/client/final-light-refused.event'
 import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
@@ -128,6 +129,10 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // A graded seat's own round story — targeted, no game payload
   'vintage-story': {
     handler: vintageStoryEvent,
+  },
+  // A graded seat's card verdicts — targeted, no game payload
+  'two-truths-receipts': {
+    handler: twoTruthsReceiptsEvent,
   },
   // A stage name this seat lit too late — targeted, no game payload
   'final-light-refused': {

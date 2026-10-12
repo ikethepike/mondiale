@@ -3,7 +3,9 @@ import { capitalGuessScore } from '~~/lib/challenges'
 import { groundPlanRemainingFraction } from '~~/lib/ground-plan'
 import { sketchSubmission, sketchTarget, type OutlinePoint } from '~~/lib/outline'
 import { statDetectiveRemainingFraction, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { CLAIMS } from '~~/data/claims.gen'
 import { buzzScore, hintDockedScore } from '~~/lib/scoring'
+import { TWO_TRUTHS_TUNING } from '~~/lib/two-truths'
 import type { MotherTongueChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -16,13 +18,21 @@ const MAX = 10
 const graded = (
   challenge: object,
   submission: Record<string, unknown>,
-  { at, seat }: { at: number; seat?: Pick<SeatCursor, 'deadline' | 'hints'> }
+  {
+    at,
+    seat,
+    groupAnswers = {},
+  }: {
+    at: number
+    seat?: Pick<SeatCursor, 'deadline' | 'hints'>
+    groupAnswers?: Round['groupAnswers']
+  }
 ) =>
   gradeGroupAnswer({
     game: { difficulty: 'normal', regions: [] } as unknown as Game,
     round: {
       groupChallenge: challenge,
-      groupAnswers: {},
+      groupAnswers,
       playerTurns: {},
       playStartsAt: PLAY_STARTS_AT,
     } as unknown as Round,
@@ -125,33 +135,58 @@ describe('buzz pay is priced off the server clock, never the claim', () => {
     ).toBe(buzzScore(MAX, 0.5))
   })
 
-  const truths = {
-    _type: 'two-truths-challenge',
-    country: 'FR',
-    lieIndex: 1,
-    durationSeconds: 20,
-    maximumPoints: MAX,
-  }
-
-  it('grades Two Truths on the statement picked, never the country token', async () => {
-    const at = into(0)
-    expect(await grade(truths, { ranking: [], lie: 1 }, { at })).toBe(MAX)
-    expect(await grade(truths, { ranking: [], lie: 2 }, { at })).toBe(0)
-    expect(await grade(truths, { ranking: ['FR'] }, { at })).toBe(0)
-  })
-
-  it('docks the Two Truths 50/50 from the cursor, not the submit', async () => {
-    const seat = { hints: ['fifty-fifty'] }
-    expect(await grade(truths, { ranking: [], lie: 1 }, { at: into(0), seat })).toBe(
-      hintDockedScore(MAX, MAX, 1)
-    )
-  })
-
   it("stamps the reveal's buzz race with the fraction it paid, never the wire's", async () => {
     const landed = await graded(silhouette, { ranking: ['FR'], buzzAt: 0.99 }, { at: into(10_000) })
     expect(landed.answer.buzzAt).toBe(0.5)
     const missed = await graded(silhouette, { ranking: ['DE'], buzzAt: 0.99 }, { at: into(0) })
     expect(missed.answer.buzzAt).toBeUndefined()
+  })
+})
+
+describe('Two Truths grades the sheet against its own deck', () => {
+  const dealt = [
+    ...CLAIMS.filter(claim => claim.truth).slice(0, 2),
+    ...CLAIMS.filter(claim => !claim.truth).slice(0, 2),
+  ]
+  const truths = {
+    _type: 'two-truths-challenge',
+    country: dealt[0].subject,
+    cards: dealt.map(({ id, family, text, countries }) => ({ id, family, text, countries })),
+    durationSeconds: 45,
+    maximumPoints: MAX,
+  }
+  const perfect = ['true', 'true', 'lie', 'lie']
+  const share = Math.round(MAX * TWO_TRUTHS_TUNING.sheetShare)
+  const at = into(0)
+
+  it('pays the first perfect sheet the whole pot', async () => {
+    expect(await grade(truths, { ranking: [], sheet: perfect }, { at })).toBe(MAX)
+  })
+
+  it('pays a later perfect sheet its share without the bonus', async () => {
+    const groupAnswers = { rival: { submitted: [], correct: [], sheet: perfect } } as never
+    expect(await grade(truths, { ranking: [], sheet: perfect }, { at, groupAnswers })).toBe(share)
+  })
+
+  it('nets wrong stamps against right ones and leaves blanks free', async () => {
+    const sheet = ['true', 'true', 'true', null]
+    expect(await grade(truths, { ranking: [], sheet }, { at })).toBe(Math.round(share / 4))
+    expect(
+      await grade(truths, { ranking: [], sheet: ['lie', 'lie', 'true', 'true'] }, { at })
+    ).toBe(0)
+  })
+
+  it('reads anything that is not a stamp as a blank', async () => {
+    const sheet = ['yes', 1, { lie: true }, 'LIE', 'lie']
+    expect(await grade(truths, { ranking: [], sheet }, { at })).toBe(0)
+    expect(await grade(truths, { ranking: ['FR'] }, { at })).toBe(0)
+  })
+
+  it('docks a bought reveal from the cursor, not the submit', async () => {
+    const seat = { hints: ['reveal'] }
+    expect(await grade(truths, { ranking: [], sheet: perfect }, { at, seat })).toBe(
+      hintDockedScore(MAX, MAX, 1)
+    )
   })
 })
 
