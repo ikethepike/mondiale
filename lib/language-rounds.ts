@@ -32,21 +32,25 @@ type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language
 export const isSignLanguage = (language: string): boolean => /\bsign language$/i.test(language)
 
 /**
- * Every language a country speaks — the UNION of the two language fields, and
- * the one derivation everything else here is built from.
+ * Every language a country speaks — its national officials and its spoken
+ * list, and the one derivation everything else here is built from.
  *
  * Neither field alone is the answer: officiality misses Kazakhstan's and
- * Uzbekistan's Russian and every other language the Factbook files as spoken
+ * Ukraine's Russian and every other language the Factbook files as spoken
  * rather than official (naming one used to cost a point for knowing the
- * world), and the spoken list misses Burundi's English and Slovenia's coastal
- * Italian, which never reach it.
+ * world), and the spoken list misses Burundi's English, which never reaches
+ * it. An official status confined to one province is not "speaks": Austria
+ * makes Croatian official in Burgenland, where 1.6% of the country speaks it,
+ * and "Who speaks Croatian?" must not make Austria a required answer.
  */
 export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
   const country = COUNTRIES[isoCode]
+  const regional = new Set(country?.regionalLanguages)
   return new Set(
-    [...(country?.officialLanguages ?? []), ...(country?.languages ?? [])].filter(
-      language => !isSignLanguage(language)
-    )
+    [
+      ...(country?.officialLanguages ?? []).filter(language => !regional.has(language)),
+      ...(country?.languages ?? []),
+    ].filter(language => !isSignLanguage(language))
   )
 }
 

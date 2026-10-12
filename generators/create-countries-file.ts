@@ -50,7 +50,14 @@ import {
 import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
-import { canonicalLanguage, officialLanguages } from './lib/languages'
+import {
+  SPOKEN_SHARE_THRESHOLD,
+  canonicalLanguage,
+  officialLanguages,
+  regionalOfficialLanguages,
+  widelySpokenLanguages,
+} from './lib/languages'
+import { SPOKEN_LANGUAGE_SHARES } from '~~/data/static/spoken-language-shares'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
@@ -173,6 +180,7 @@ const normalizeCountry = ({
     membership: getMembership({ briMembership, data, names, isoCode }),
     languages: getLanguages({ data, isoCode }),
     officialLanguages: getOfficialLanguages({ data, isoCode }),
+    regionalLanguages: getRegionalLanguages(data),
     currency: getCurrency({ isoCode }),
     identity: (() => {
       const colors = getNationalColors(flag.toString())
@@ -1058,7 +1066,7 @@ const getLeader = ({
   return ciaLeader.name
 }
 
-const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {
+const getListedLanguages = ({ isoCode }: { isoCode: string }): string[] => {
   if (Reflect.has(countries, isoCode)) {
     const country = countries[isoCode as keyof typeof countries]
 
@@ -1070,17 +1078,42 @@ const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }):
   return []
 }
 
+const factbookLanguageText = (data: FactbookResponse): string | undefined => {
+  const languagesNode = data['People and Society']?.Languages
+  return languagesNode?.Languages?.text ?? languagesNode?.text
+}
+
+/**
+ * Every language the country speaks: `countries-list`'s handful of ISO 639-1
+ * codes, plus each language the Factbook puts `SPOKEN_SHARE_THRESHOLD` of the
+ * population behind — read from the prose's own shares, or, where the prose
+ * names a language without one, from `SPOKEN_LANGUAGE_SHARES`. The codes
+ * alone left Ukraine, Latvia and Estonia out of "Who speaks Russian?".
+ */
+const getLanguages = ({ data, isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {
+  const sized = (SPOKEN_LANGUAGE_SHARES[isoCode] ?? [])
+    .filter(({ share }) => share >= SPOKEN_SHARE_THRESHOLD)
+    .map(({ language }) => language)
+  return [
+    ...new Set([
+      ...getListedLanguages({ isoCode }),
+      ...widelySpokenLanguages(factbookLanguageText(data)),
+      ...sized,
+    ]),
+  ]
+}
+
 /**
  * The languages a country makes OFFICIAL, from the Factbook's own markers.
  *
- * `getLanguages` above reads `countries-list`, which is ISO 639-1 codes with
+ * `getListedLanguages` above reads `countries-list`, which is ISO 639-1 codes with
  * no officiality and no room for a language without a two-letter code —
  * Romansh, Tok Pisin and Bambara simply cannot be spelled there. The Factbook
  * text we already hold says which are official, so rounds that CLAIM
  * officiality ("Who speaks French?", the manhunt's subpoena) can stop guessing.
  *
- * Falls back to the spoken list for the 21 countries whose entry carries no
- * marker at all (Japan, the UK, India…): the source not saying is not the same
+ * Falls back to the `countries-list` codes for the 21 countries whose entry
+ * carries no marker at all (Japan, the UK, India…): the source not saying is not the same
  * as a country having none, and an empty list would quietly drop them from
  * every round that reads this.
  */
@@ -1091,10 +1124,13 @@ const getOfficialLanguages = ({
   data: FactbookResponse
   isoCode: string
 }): string[] => {
-  const languagesNode = data['People and Society']?.Languages
-  const text = languagesNode?.Languages?.text ?? languagesNode?.text
-  const official = officialLanguages(text)
-  return official.length ? official : getLanguages({ data, isoCode })
+  const official = officialLanguages(factbookLanguageText(data))
+  return official.length ? official : getListedLanguages({ isoCode })
+}
+
+const getRegionalLanguages = (data: FactbookResponse): string[] | undefined => {
+  const regional = regionalOfficialLanguages(factbookLanguageText(data))
+  return regional.length ? regional : undefined
 }
 
 /**

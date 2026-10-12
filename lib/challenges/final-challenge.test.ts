@@ -1014,9 +1014,9 @@ describe('isCorrectFinalAnswer', () => {
   })
 
   it('accepts a country whose language is official but missing from the spoken list', () => {
-    // "Speaks Quechua" is dealt from Bolivia; Peru makes it official, and the
-    // spoken list alone graded Peru wrong and left it off the reveal.
-    expect(COUNTRIES.PE.languages).not.toContain('Quechua')
+    // "Speaks English" is dealt from anywhere; Burundi makes it official, and
+    // the spoken list alone graded Burundi wrong and left it off the reveal.
+    expect(COUNTRIES.BI.languages).not.toContain('English')
     for (const [language, isoCode] of [
       ['Quechua', 'PE'],
       ['Swahili', 'RW'],

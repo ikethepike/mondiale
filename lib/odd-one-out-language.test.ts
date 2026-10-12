@@ -30,8 +30,7 @@ describe('odd-one-out language lineups', () => {
     ['Swahili', 'RW'],
     ['English', 'BI'],
     ['Portuguese', 'GQ'],
-    ['Albanian', 'MK'],
-    ['Croatian', 'AT'],
+    ['Guarani', 'BO'],
   ]
 
   it.each(officialOnly)('never deals a %s speaker (%s) as the impostor', async (language, iso) => {
