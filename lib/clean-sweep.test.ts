@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FAIR_SHARE_PAY,
   SWEEP_SETS,
+  SWEEP_SLOTS_PER_SEAT,
   SWEEP_SMALLEST_BOARD,
   SWEEP_TUNING,
   sweepBoardFor,
@@ -25,6 +26,7 @@ import type { CleanSweepChallenge, SweepClaim } from '~~/types/challenges/group-
 import {
   boardRegions,
   type BoardRegion,
+  type Game,
   type GameDifficulty,
   type GameRules,
   type GameVariant,
@@ -45,6 +47,9 @@ const VARIANTS: GameVariant[] = [
 ]
 
 const SEATS = [2, 3, 4, 5, 6]
+
+const perSeatFloor = (contenders: number) =>
+  Math.max(SWEEP_SMALLEST_BOARD, SWEEP_SLOTS_PER_SEAT * contenders)
 
 const EVERY_BOARD: BoardRegion[][] = Array.from({ length: 2 ** boardRegions.length }, (_, mask) =>
   boardRegions.filter((_, index) => mask & (2 ** index))
@@ -156,18 +161,59 @@ describe('the set register', () => {
     expect(sweepBoardFor('south-america', RULES, band)).toBeDefined()
   })
 
-  it('fields a board on every selectable board, at every difficulty and table size', () => {
+  it('deals on every board and table size where a set clears the per-seat floor', () => {
     for (const regions of EVERY_BOARD) {
       for (const difficulty of DIFFICULTIES) {
         for (const contenders of SEATS) {
           const rules: GameRules = { regions, difficulty }
+          const perSeat = perSeatFloor(contenders)
+          const fieldable = viableSweepSets(rules, { minimum: perSeat, maximum: Infinity })
           expect(
-            viableSweepSets(rules, sweepSlotBand(rules, contenders)),
+            viableSweepSets(rules, sweepSlotBand(rules, contenders)).length > 0,
             `${regions.join('+') || 'world'} @${difficulty}/${contenders}`
-          ).not.toHaveLength(0)
+          ).toBe(fieldable.length > 0)
         }
       }
     }
+  })
+
+  it('never relaxes the floor below the per-seat minimum, nor above the seat-raised floor', () => {
+    for (const regions of EVERY_BOARD) {
+      for (const difficulty of DIFFICULTIES) {
+        for (const contenders of SEATS) {
+          const tuning = SWEEP_TUNING[difficulty]
+          const seated = tuning.minimumSlots + (contenders - 2) * tuning.slotsPerExtraSeat
+          const { minimum } = sweepSlotBand({ regions, difficulty }, contenders)
+          const cell = `${regions.join('+') || 'world'} @${difficulty}/${contenders}`
+          expect(minimum, cell).toBeGreaterThanOrEqual(perSeatFloor(contenders))
+          expect(minimum, cell).toBeLessThanOrEqual(Math.max(seated, perSeatFloor(contenders)))
+        }
+      }
+    }
+  })
+
+  it('leaves only the boards too small for any set without a sweep', () => {
+    const dry: string[] = []
+    for (const regions of EVERY_BOARD) {
+      for (const difficulty of DIFFICULTIES) {
+        for (const contenders of SEATS) {
+          const rules: GameRules = { regions, difficulty }
+          if (!viableSweepSets(rules, sweepSlotBand(rules, contenders)).length) {
+            dry.push(`${regions.join('+') || 'world'} @${difficulty}/${contenders}`)
+          }
+        }
+      }
+    }
+    // South America alone: Spanish is 9 of its 12 — over the pool share. North
+    // America's biggest set (Spanish, 11) falls short of six seats' 12.
+    expect(dry.sort()).toEqual(
+      [
+        ...DIFFICULTIES.flatMap(difficulty =>
+          SEATS.map(contenders => `south-america @${difficulty}/${contenders}`)
+        ),
+        ...DIFFICULTIES.map(difficulty => `north-america @${difficulty}/6`),
+      ].sort()
+    )
   })
 
   it('leaves no set in the register that no table can ever be dealt', () => {
@@ -185,22 +231,46 @@ describe('the set register', () => {
     expect([...reached].sort()).toEqual(Object.keys(SWEEP_SETS).sort())
   })
 
-  it('lowers the seat floor only as far as the board’s biggest set, and never below the smallest board', () => {
-    const southAmerica: GameRules = { regions: ['south-america'], difficulty: 'hard' }
-    const band = sweepSlotBand(southAmerica, 6)
+  it('lowers the seat floor only as far as the board’s biggest set', () => {
+    const northAmerica: GameRules = { regions: ['north-america'], difficulty: 'hard' }
+    const band = sweepSlotBand(northAmerica, 4)
     const largest = Math.max(
-      ...viableSweepSets(southAmerica, band).map(
-        setId => sweepBoardFor(setId, southAmerica, band)!.length
+      ...viableSweepSets(northAmerica, band).map(
+        setId => sweepBoardFor(setId, northAmerica, band)!.length
       )
     )
     expect(band.minimum).toBe(largest)
-    expect(band.minimum).toBeGreaterThanOrEqual(SWEEP_SMALLEST_BOARD)
     expect(band.minimum).toBeLessThan(
-      SWEEP_TUNING.hard.minimumSlots + 4 * SWEEP_TUNING.hard.slotsPerExtraSeat
+      SWEEP_TUNING.hard.minimumSlots + 2 * SWEEP_TUNING.hard.slotsPerExtraSeat
     )
     expect(sweepSlotBand({ ...RULES, difficulty: 'hard' }, 6).minimum).toBe(
       SWEEP_TUNING.hard.minimumSlots + 4 * SWEEP_TUNING.hard.slotsPerExtraSeat
     )
+  })
+
+  it('deals no language set when the table switched languages off', () => {
+    const table = { ...RULES, challengeOverrides: { language: false } }
+    const viable = viableSweepSets(table, sweepSlotBand(table, 2))
+    expect(viable.length).toBeGreaterThan(0)
+    for (const setId of viable) expect(SWEEP_SETS[setId].language, setId).toBeUndefined()
+  })
+
+  it('never re-asks a language a language round already asked this game', () => {
+    const rounds = [
+      { groupChallenge: { _type: 'mother-tongue-challenge', language: 'Spanish' } },
+      { groupChallenge: { _type: 'tongue-buzz-challenge', language: 'Arabic' } },
+    ] as unknown as Game['rounds']
+    const viable = viableSweepSets({ ...RULES, rounds }, sweepSlotBand({ ...RULES, rounds }, 2))
+    expect(viable).not.toContain('spanish')
+    expect(viable).not.toContain('arabic')
+    expect(viable).toContain('french')
+    const northAmerica = {
+      regions: ['north-america'] as BoardRegion[],
+      difficulty: 'normal' as const,
+    }
+    expect(
+      viableSweepSets({ ...northAmerica, rounds }, sweepSlotBand({ ...northAmerica, rounds }, 2))
+    ).toHaveLength(0)
   })
 
   it('gives every difficulty a clock', () => {

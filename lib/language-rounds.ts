@@ -20,7 +20,9 @@ import type {
   MotherTongueChallenge,
   TongueBuzzChallenge,
 } from '~~/types/challenges/group-modes.type'
+import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import { isChallengeOfType } from './rounds'
 import { boardLabel } from './variant'
 
 /** Either language round: both name a language and carry a board-scoped set. */
@@ -163,3 +165,14 @@ export const languageBounce = (
   if (speaksRegionally(isoCode, challenge.language)) return 'regional'
   return undefined
 }
+
+/** The languages this game's Mother Tongue and Tongue Buzz rounds have already asked about. */
+export const languagesAsked = (game: Pick<Game, 'rounds'>): Set<string> =>
+  new Set(
+    game.rounds.flatMap(({ groupChallenge }) =>
+      isChallengeOfType(groupChallenge, 'mother-tongue-challenge') ||
+      isChallengeOfType(groupChallenge, 'tongue-buzz-challenge')
+        ? [groupChallenge.language]
+        : []
+    )
+  )

@@ -421,7 +421,8 @@ const getManhuntChallenge = ({ game }: { game: gameTypes.Game }): ManhuntChallen
  * other through it. Below two players the exclusive claim is exclusive against
  * nobody, so smaller tables never see it. The set comes from the register's
  * viable entries for this table — the band's floor rises with the seats, so a
- * full table never clears a small board in seconds.
+ * full table never clears a small board in seconds. A board with no set that
+ * big for this table deals nothing, and the mix buys another kind.
  */
 const getCleanSweepChallenge = ({
   game,
