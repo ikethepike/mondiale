@@ -410,7 +410,7 @@ describe('client timers', () => {
       'lib/seat-transitions.ts': 2,
       'lib/events/client/table-notice.event.ts': 2,
       'lib/debug-rooms.ts': 2,
-      'components/view/ViewPyramidScheme.vue': 2,
+      'lib/use-drop-carry.ts': 2,
       'components/challenge/DragDial.vue': 2,
       'components/challenge/ChallengeTimerRadial.vue': 2,
       'lib/useGroupChallenge.ts': 1,

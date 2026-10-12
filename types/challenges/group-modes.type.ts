@@ -587,11 +587,13 @@ export interface NameWaterChallenge {
 export interface CompositionChallenge {
   _type: 'composition-challenge'
   country: ISOCountryCode
-  /** Origin shares of the whole foreign-born population, largest first — one
-   *  group per slice. They never sum to 1: the remainder is the long tail of
-   *  smaller origins. */
-  slices: { isoCode: ISOCountryCode; share: number }[]
-  /** The cards: every slice's origin, shuffled. */
+  /** Each group's share of the whole foreign-born population, largest first.
+   *  WHO each group is never rides the snapshot: the server derives it
+   *  (`compositionOrigins`) and grades every drop itself. */
+  shares: number[]
+  /** Everyone born abroad, not just the groups on the board. */
+  total: number
+  /** The cards: every group's origin, shuffled. */
   options: ISOCountryCode[]
   /** Wrong placements that end the seat's round. */
   strikes: number
@@ -603,8 +605,25 @@ export interface CompositionChallenge {
 
 export interface CompositionPlacement {
   isoCode: ISOCountryCode
-  /** Index into `slices` — the group the card was dropped on. */
+  /** Index into `shares` — the group the card was dropped on. */
   slot: number
+}
+
+/** Each seat's attempts, in order — the redis side key under `compositionSheetKey`. */
+export type CompositionSheet = Partial<Record<string, CompositionPlacement[]>>
+
+/** One seat's board as the server tells it to that seat alone. */
+export interface CompositionBoardView {
+  round: number
+  /** Attempts the server holds — the next drop must echo this. */
+  attempts: number
+  placed: Partial<Record<number, ISOCountryCode>>
+  misses: number
+  over: boolean
+  /** The attempt this reply answers, when it answers one. */
+  drop?: CompositionPlacement & { fits: boolean; people?: number }
+  /** Every group's origin and headcount, once the seat can no longer use it. */
+  reveal?: { isoCode: ISOCountryCode; people: number }[]
 }
 
 export interface GhostStateChallenge {

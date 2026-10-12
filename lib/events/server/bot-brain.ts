@@ -1,7 +1,6 @@
 import { VINTAGE_TUNING } from '~~/lib/vintage-tuning'
 import { vintageRuns } from './vintage-grade'
 import type {
-  CompositionChallenge,
   CompositionPlacement,
   GovernmentAnswers,
   UniqueCategoryId,
@@ -19,7 +18,7 @@ import {
   SWEEP_ACCURACY,
 } from '~~/lib/bots'
 import { empirePots } from '~~/lib/empires'
-import { replayPlacements } from '~~/lib/composition'
+import { replayPlacements, type CompositionBoard } from '~~/lib/composition'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { isStepGraded, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-steps'
 import { playableWorldCountries } from '~~/lib/game-rules'
@@ -100,6 +99,7 @@ import { atlasOpenMoves, currentAtlasChain } from './atlas-turns'
 import { borderChainOpenMoves, currentBorderChain } from './chain-turns'
 import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
+import { compositionBoardOf } from './composition-board'
 import { currentGovernment } from './government-beats'
 import { currentHeritageHunt } from './heritage-beats'
 import { currentManhunt, fetchManhuntSecret, isManhuntParticipant } from './manhunt-beats'
@@ -1447,18 +1447,18 @@ export const finalAnswerFor = async (
  * A bot's run at the crowd: each group it knows (at its share) goes down first,
  * then it guesses the rest blind until the board fills or its strikes run out.
  */
-const botPlacements = (board: CompositionChallenge, share: number): CompositionPlacement[] => {
-  const attempts: CompositionPlacement[] = board.slices
-    .map((slice, slot) => ({ isoCode: slice.isoCode, slot }))
+const botPlacements = (board: CompositionBoard, share: number): CompositionPlacement[] => {
+  const attempts: CompositionPlacement[] = board.key
+    .map((isoCode, slot) => ({ isoCode, slot }))
     .filter(() => Math.random() < share)
   const ruledOut = new Set<string>()
   for (;;) {
     const replay = replayPlacements(board, attempts)
     if (replay.over) break
     const standing = new Set(Object.values(replay.placed))
-    const open = board.slices.map((_, slot) => slot).filter(slot => !replay.placed[slot])
+    const open = board.key.map((_, slot) => slot).filter(slot => !replay.placed[slot])
     const move = sample(
-      board.options
+      board.key
         .filter(isoCode => !standing.has(isoCode))
         .flatMap(isoCode => open.map(slot => ({ isoCode, slot })))
         .filter(({ isoCode, slot }) => !ruledOut.has(`${isoCode}:${slot}`))
@@ -1545,7 +1545,9 @@ export const composeClassicSubmission = async (
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'composition': {
-      const board = expectChallengeType(challenge, 'composition-challenge')
+      const { board } = await compositionBoardOf(
+        expectChallengeType(challenge, 'composition-challenge')
+      )
       return { ranking: [], composition: { placements: botPlacements(board, share) } }
     }
     case 'ground-plan': {

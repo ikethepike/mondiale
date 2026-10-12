@@ -1350,7 +1350,8 @@ const getCompositionChallenge = async (
 ): Promise<CompositionChallenge | undefined> => {
   // Board gates and thresholds live in lib/migration.ts (data rides with it);
   // loaded lazily so the corridor matrix stays out of the eager bundle.
-  const { compositionBoards, hasClearLeader, corridorsToDestination } = await import('./migration')
+  const { compositionBoards, hasClearLeader, compositionOrigins, foreignBornTotal } =
+    await import('./migration')
   const pool = playableCountries(gameState)
   const boards = compositionBoards(pool)
   if (!boards.length) return undefined
@@ -1369,15 +1370,14 @@ const getCompositionChallenge = async (
   const country = ranked[0]
   if (!country) return undefined
 
-  const slices: CompositionChallenge['slices'] = corridorsToDestination(country)
-    .slice(0, COMPOSITION_SLOTS[gameState.difficulty])
-    .map(origin => ({ isoCode: origin.isoCode, share: origin.share }))
+  const origins = compositionOrigins(country, COMPOSITION_SLOTS[gameState.difficulty])
 
   return {
     _type: 'composition-challenge',
     country,
-    slices,
-    options: shuffleArray(slices.map(slice => slice.isoCode)),
+    shares: origins.map(origin => origin.share),
+    total: foreignBornTotal(country),
+    options: shuffleArray(origins.map(origin => origin.isoCode)),
     strikes: COMPOSITION_STRIKES[gameState.difficulty],
     showShares: gameState.difficulty !== 'hard',
     durationSeconds: COMPOSITION_SECONDS,

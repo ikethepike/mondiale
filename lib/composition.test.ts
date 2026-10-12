@@ -3,11 +3,12 @@ import { COUNTRIES } from '~~/data/countries.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import {
   COMPOSITION_HEAD_WEIGHT,
-  COMPOSITION_SECONDS,
   COMPOSITION_SLOTS,
   COMPOSITION_STRIKES,
   COMPOSITION_TIE_RATIO,
+  compositionSheetKey,
   compositionTiers,
+  type CompositionBoard,
   forcedPlacement,
   replayPlacements,
   revealedSlots,
@@ -16,6 +17,7 @@ import {
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import {
   compositionBoards,
+  compositionOrigins,
   COMPOSITION_CLEAR_MARGIN,
   COMPOSITION_MIN_MARGIN,
   COMPOSITION_MIN_SLICES,
@@ -26,6 +28,7 @@ import {
 import type {
   CompositionChallenge,
   CompositionPlacement,
+  CompositionSheet,
 } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -79,35 +82,34 @@ describe('compositionBoards', () => {
 })
 
 describe('getCompositionChallenge (via getRoundChallenge)', () => {
-  it('deals a sorted bar whose shares never exceed the whole', async () => {
+  it('deals sizes, cards and the true total — never which card is which group', async () => {
     for (const difficulty of ['easy', 'normal', 'hard'] as const) {
       const challenge = await deal(difficulty)
-      expect(challenge._type).toBe('composition-challenge')
-      expect(challenge.slices.length).toBeGreaterThanOrEqual(COMPOSITION_MIN_SLICES)
-
-      const shares = challenge.slices.map(slice => slice.share)
-      expect([...shares].sort((a, b) => b - a)).toEqual(shares)
-      // Shares are of the country's whole foreign-born population, so the
-      // listed head sums to less than 1 — the rest is the long tail. The
-      // generator rounds each share to 4 decimals independently, so a board
-      // whose origins nearly exhaust its population can land a hair over
-      // (Nepal and Rwanda both reach 1.0001); the bar clamps its tail at 0.
-      expect(shares.reduce((sum, share) => sum + share, 0)).toBeLessThanOrEqual(1.001)
-      expect(new Set(challenge.slices.map(slice => slice.isoCode)).size).toBe(
-        challenge.slices.length
+      expect(Object.keys(challenge).sort()).toEqual(
+        [
+          '_type',
+          'country',
+          'shares',
+          'total',
+          'options',
+          'strikes',
+          'showShares',
+          'durationSeconds',
+          'maximumPoints',
+        ].sort()
       )
-    }
-  })
-
-  it('deals every group as a card, with the difficulty setting groups, strikes and shares', async () => {
-    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
-      const challenge = await deal(difficulty)
-      expect([...challenge.options].sort()).toEqual(
-        [...challenge.slices.map(slice => slice.isoCode)].sort()
-      )
-      expect(challenge.slices.length).toBeLessThanOrEqual(COMPOSITION_SLOTS[difficulty])
+      const key = compositionOrigins(challenge.country, challenge.shares.length)
+      expect(challenge.shares).toEqual(key.map(origin => origin.share))
+      expect([...challenge.options].sort()).toEqual(key.map(origin => origin.isoCode).sort())
+      expect(challenge.shares.length).toBeLessThanOrEqual(COMPOSITION_SLOTS[difficulty])
       expect(challenge.strikes).toBe(COMPOSITION_STRIKES[difficulty])
       expect(challenge.showShares).toBe(difficulty !== 'hard')
+      // Shares are of the whole foreign-born population, so the listed groups
+      // sum to less than 1; the generator rounds each share on its own, so a
+      // board whose origins nearly exhaust it can land a hair over.
+      expect(challenge.shares.reduce((sum, share) => sum + share, 0)).toBeLessThanOrEqual(1.001)
+      const listed = key.reduce((sum, origin) => sum + origin.value.amount, 0)
+      expect(challenge.total).toBeGreaterThanOrEqual(listed * 0.99)
     }
   })
 
@@ -123,14 +125,9 @@ describe('getCompositionChallenge (via getRoundChallenge)', () => {
   })
 
   it('scales the board by difficulty, not just the console', async () => {
-    // The option table is always the bar's own origins, so it cannot narrow
-    // with difficulty — the board carries the scaling instead. Without this,
-    // easy and normal dealt identical rounds.
-    //
     // Asserted as pool composition, not as an ordering of medians: normal is
     // an untiered shuffle of every board, so its median sits near hard's and
-    // the two cross by chance often enough to make that flaky (~4% per run).
-    // What the tiering actually guarantees is which boards each end can draw.
+    // the two cross by chance often enough to make that flaky.
     const blowoutShare = async (difficulty: GameDifficulty) => {
       let clear = 0
       for (let round = 0; round < 40; round++) {
@@ -141,96 +138,73 @@ describe('getCompositionChallenge (via getRoundChallenge)', () => {
       }
       return clear / 40
     }
-
-    // Easy draws blowouts exclusively — the shape answers before the names do
     expect(await blowoutShare('easy')).toBe(1)
-    // …and hard exhausts the close boards before it ever reaches one
     expect(await blowoutShare('hard')).toBe(0)
   })
 
-  it('never puts the country on its own bar', async () => {
+  it('never puts the country among its own cards', async () => {
     for (let round = 0; round < 25; round++) {
       const challenge = await deal('normal')
-      expect(challenge.slices.map(slice => slice.isoCode)).not.toContain(challenge.country)
+      expect(challenge.options).not.toContain(challenge.country)
     }
   })
 })
 
 describe('composition tiers', () => {
   it('ties neighbours inside the ratio and never the gated head', () => {
-    const tiers = compositionTiers([
-      { share: 0.5221 },
-      { share: 0.0591 },
-      { share: 0.0533 },
-      { share: 0.051 },
-      { share: 0.0486 },
-      { share: 0.0293 },
-    ] as CompositionChallenge['slices'])
-    expect(tiers).toEqual([0, 1, 1, 1, 1, 2])
-    // The board gate keeps the head clear of the tie, on every dealt board
+    expect(compositionTiers([0.5221, 0.0591, 0.0533, 0.051, 0.0486, 0.0293])).toEqual([
+      0, 1, 1, 1, 1, 2,
+    ])
     expect(COMPOSITION_TIE_RATIO).toBeLessThan(COMPOSITION_MIN_MARGIN)
     for (const isoCode of compositionBoards(Object.keys(COUNTRIES) as ISOCountryCode[])) {
-      const slices = corridorsToDestination(isoCode)
-      expect(compositionTiers(slices).filter(tier => tier === 0)).toHaveLength(1)
+      const shares = corridorsToDestination(isoCode).map(origin => origin.share)
+      expect(compositionTiers(shares).filter(tier => tier === 0)).toHaveLength(1)
     }
   })
 })
 
-describe('composition grading', () => {
-  const MAX = 15
-  const board: CompositionChallenge = {
-    _type: 'composition-challenge',
-    country: 'TR',
-    slices: [
-      { isoCode: 'SY', share: 0.5221 },
-      { isoCode: 'IQ', share: 0.0591 },
-      { isoCode: 'DE', share: 0.0533 },
-      { isoCode: 'IR', share: 0.0293 },
-    ],
-    options: ['DE', 'IR', 'SY', 'IQ'],
-    strikes: 2,
-    showShares: true,
-    durationSeconds: 45,
-    maximumPoints: MAX,
-  }
-  const grade = (placements: unknown, absent = false) =>
-    gradeGroupAnswer({
-      game: {} as Game,
-      round: { groupChallenge: board, groupAnswers: {}, playerTurns: {} } as unknown as Round,
-      playerId: 'p',
-      submission: { ranking: [], composition: { placements } as never },
-      absent,
-    })
-  const perfect = board.slices.map((slice, slot) => ({ isoCode: slice.isoCode, slot }))
+const MAX = 15
+const BOARD: CompositionBoard & { maximumPoints: number } = {
+  key: ['SY', 'IQ', 'DE', 'IR'],
+  shares: [0.5221, 0.0591, 0.0533, 0.0293],
+  strikes: 2,
+  maximumPoints: MAX,
+}
+const PERFECT = BOARD.key.map((isoCode, slot) => ({ isoCode, slot }))
 
-  it('pays the head its weight and the rest an even share', async () => {
-    expect((await grade(perfect)).scoring.scored).toBe(MAX)
-    expect((await grade([{ isoCode: 'SY', slot: 0 }])).scoring.scored).toBe(
+describe('the placement rules', () => {
+  it('pays the head its weight and the rest an even share', () => {
+    expect(scoreComposition(BOARD, PERFECT)).toBe(MAX)
+    expect(scoreComposition(BOARD, [{ isoCode: 'SY', slot: 0 }])).toBe(
       Math.round(MAX * COMPOSITION_HEAD_WEIGHT)
     )
-    expect((await grade([{ isoCode: 'IR', slot: 3 }])).scoring.scored).toBe(
+    expect(scoreComposition(BOARD, [{ isoCode: 'IR', slot: 3 }])).toBe(
       Math.round((MAX * (1 - COMPOSITION_HEAD_WEIGHT)) / 3)
     )
   })
 
-  it('accepts either origin of a tie in either slot', async () => {
+  it('accepts either origin of a tie in either slot', () => {
     const swapped = [
       { isoCode: 'IQ', slot: 2 },
       { isoCode: 'DE', slot: 1 },
-    ]
-    expect((await grade(swapped)).answer.submitted.sort()).toEqual(['DE', 'IQ'])
+    ] as CompositionPlacement[]
+    expect(replayPlacements(BOARD, swapped).placed).toEqual({ 1: 'DE', 2: 'IQ' })
   })
 
-  it('ends the run on the last strike and ignores everything after it', async () => {
-    const run = [{ isoCode: 'IR', slot: 0 }, { isoCode: 'SY', slot: 3 }, ...perfect]
-    const { scoring, answer } = await grade(run)
-    expect(scoring.scored).toBe(0)
-    expect(answer.submitted).toEqual([])
-    expect(answer.correct).toEqual(['SY', 'IQ', 'DE', 'IR'])
+  it('ends the run on the last strike and ignores everything after it', () => {
+    const run = [
+      { isoCode: 'IR', slot: 0 },
+      { isoCode: 'SY', slot: 3 },
+      ...PERFECT,
+    ] as CompositionPlacement[]
+    const replay = replayPlacements(BOARD, run)
+    expect(replay.over).toBe(true)
+    expect(replay.placed).toEqual({})
+    expect(scoreComposition(BOARD, run)).toBe(0)
   })
 
-  it('never pays a slot twice or a card twice', async () => {
-    const replay = replayPlacements(board, [
+  it('never pays a slot twice or a card twice', () => {
+    const replay = replayPlacements(BOARD, [
       { isoCode: 'SY', slot: 0 },
       { isoCode: 'SY', slot: 0 },
       { isoCode: 'IQ', slot: 0 },
@@ -239,41 +213,112 @@ describe('composition grading', () => {
     expect(replay.misses).toEqual([])
   })
 
-  it('drops a malformed submission instead of throwing', async () => {
-    expect((await grade('nonsense')).scoring.scored).toBe(0)
-    expect(
-      (await grade([{ isoCode: 'SY' }, null, { isoCode: 'SY', slot: 0 }])).scoring.scored
-    ).toBe(Math.round(MAX * COMPOSITION_HEAD_WEIGHT))
-  })
-
-  it('zeroes an absent seat but still lists the crowd', async () => {
-    const { scoring, answer } = await grade([], true)
-    expect(scoring.scored).toBe(0)
-    expect(answer.correct).toEqual(['SY', 'IQ', 'DE', 'IR'])
-  })
-
   it('reveals a tied origin where the seat put it, and its partner in the gap', () => {
-    const { placed } = replayPlacements(board, [
+    const { placed } = replayPlacements(BOARD, [
       { isoCode: 'SY', slot: 0 },
       { isoCode: 'DE', slot: 1 },
     ])
-    expect(revealedSlots(board, placed)).toEqual({ 0: 'SY', 1: 'DE', 2: 'IQ', 3: 'IR' })
+    expect(revealedSlots(BOARD, placed)).toEqual({ 0: 'SY', 1: 'DE', 2: 'IQ', 3: 'IR' })
   })
 
   it('drops the last card in for free once it is the only one left', () => {
-    const replay = replayPlacements(board, perfect.slice(0, 3))
-    expect(forcedPlacement(board, replay)).toEqual({ isoCode: 'IR', slot: 3 })
-    expect(forcedPlacement(board, replayPlacements(board, perfect.slice(0, 2)))).toBeUndefined()
+    expect(forcedPlacement(BOARD, replayPlacements(BOARD, PERFECT.slice(0, 3)))).toEqual({
+      isoCode: 'IR',
+      slot: 3,
+    })
+    expect(forcedPlacement(BOARD, replayPlacements(BOARD, PERFECT.slice(0, 2)))).toBeUndefined()
+  })
+})
+
+describe('composition grading', () => {
+  const challenge: CompositionChallenge = {
+    _type: 'composition-challenge',
+    country: 'TR',
+    shares: [0.5221, 0.0591, 0.0533, 0.051, 0.0486, 0.0293],
+    total: 6_826_246,
+    options: ['DE', 'IR', 'SY', 'IQ', 'AF', 'BG'],
+    strikes: 2,
+    showShares: true,
+    durationSeconds: 45,
+    maximumPoints: MAX,
+  }
+  const round = { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as unknown as Round
+  const game = (bot = false) =>
+    ({
+      id: 'g',
+      rounds: [round],
+      players: { p: { id: 'p', ...(bot ? { bot: true } : {}) } },
+    }) as unknown as Game
+  const sheetOf = (sheet: CompositionSheet) => ({
+    get: async <T>(key: string) => (key === compositionSheetKey('g', 0) ? sheet : null) as T,
+  })
+  const grade = (options: {
+    bot?: boolean
+    sheet?: CompositionSheet
+    claimed?: CompositionPlacement[]
+    absent?: boolean
+  }) =>
+    gradeGroupAnswer({
+      game: game(options.bot),
+      round,
+      playerId: 'p',
+      submission: { ranking: [], composition: { placements: options.claimed ?? [] } },
+      ...(options.sheet ? { redis: sheetOf(options.sheet) } : {}),
+      absent: options.absent ?? false,
+    })
+  const head: CompositionPlacement[] = [{ isoCode: 'SY', slot: 0 }]
+
+  it("pays a person's drops from the server's sheet, never from the submission", async () => {
+    expect((await grade({ sheet: { p: head } })).scoring.scored).toBe(
+      Math.round(MAX * COMPOSITION_HEAD_WEIGHT)
+    )
+    expect((await grade({ sheet: {}, claimed: head })).scoring.scored).toBe(0)
+    expect((await grade({ claimed: head })).scoring.scored).toBe(0)
+  })
+
+  it('takes a bot seat at its composed placements', async () => {
+    expect((await grade({ bot: true, claimed: head })).scoring.scored).toBe(
+      Math.round(MAX * COMPOSITION_HEAD_WEIGHT)
+    )
+  })
+
+  it('zeroes an absent seat but still lists the crowd', async () => {
+    const { scoring, answer } = await grade({ sheet: { p: head }, absent: true })
+    expect(scoring.scored).toBe(0)
+    expect(answer.correct).toEqual(challenge.options)
+  })
+
+  it('lists what stood and the whole crowd, in card order — never group order', async () => {
+    const { answer } = await grade({
+      sheet: {
+        p: [
+          { isoCode: 'SY', slot: 0 },
+          { isoCode: 'IR', slot: 5 },
+        ],
+      },
+    })
+    expect(answer.submitted).toEqual(['IR', 'SY'])
+    expect(answer.correct).toEqual(challenge.options)
+  })
+
+  it('drops a malformed bot submission instead of throwing', async () => {
+    const { scoring } = await gradeGroupAnswer({
+      game: game(true),
+      round,
+      playerId: 'p',
+      submission: { ranking: [], composition: { placements: 'nonsense' as never } },
+    })
+    expect(scoring.scored).toBe(0)
   })
 })
 
 describe('blind play', () => {
   /** A player who knows nothing: random cards onto the open slots of the
    *  biggest tie — the best a zero-knowledge strategy does. */
-  const blindRun = (board: CompositionChallenge): number => {
+  const blindRun = (board: CompositionBoard & { maximumPoints: number }): number => {
     const attempts: CompositionPlacement[] = []
     const tried = new Set<string>()
-    const tiers = compositionTiers(board.slices)
+    const tiers = compositionTiers(board.shares)
     for (;;) {
       const replay = replayPlacements(board, attempts)
       if (replay.over) break
@@ -283,10 +328,10 @@ describe('blind play', () => {
         continue
       }
       const standing = new Set(Object.values(replay.placed))
-      const open = board.slices.map((_, slot) => slot).filter(slot => !replay.placed[slot])
+      const open = board.key.map((_, slot) => slot).filter(slot => !replay.placed[slot])
       const room = (slot: number) => open.filter(other => tiers[other] === tiers[slot]).length
       const widest = Math.max(...open.map(room))
-      const moves = board.options
+      const moves = board.key
         .filter(isoCode => !standing.has(isoCode))
         .flatMap(isoCode =>
           open.filter(slot => room(slot) === widest).map(slot => ({ isoCode, slot }))
@@ -309,17 +354,11 @@ describe('blind play', () => {
     let paid = 0
     let runs = 0
     for (const isoCode of boards) {
-      const slices = corridorsToDestination(isoCode)
-        .slice(0, COMPOSITION_SLOTS[difficulty])
-        .map(origin => ({ isoCode: origin.isoCode, share: origin.share }))
-      const board: CompositionChallenge = {
-        _type: 'composition-challenge',
-        country: isoCode,
-        slices,
-        options: slices.map(slice => slice.isoCode),
+      const origins = compositionOrigins(isoCode, COMPOSITION_SLOTS[difficulty])
+      const board = {
+        key: origins.map(origin => origin.isoCode),
+        shares: origins.map(origin => origin.share),
         strikes: COMPOSITION_STRIKES[difficulty],
-        showShares: true,
-        durationSeconds: COMPOSITION_SECONDS,
         maximumPoints: 100,
       }
       for (let run = 0; run < 20; run++) {

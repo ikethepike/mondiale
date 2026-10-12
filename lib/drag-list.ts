@@ -43,6 +43,10 @@ export const DROP_TARGET_OPTIONS = {
   sort: false,
 } as const
 
+/** The shared 150ms is for list REORDERING, which a drop-target mode never
+ *  does (`sort: false` on both ends) — a carried tile should be instant. */
+export const NO_CARRY_LAG = { animation: 0 } as const
+
 /** How long a finger holds still before a card comes up. Under this the
  *  gesture belongs to the scroller the list stands in. */
 export const DRAG_HOLD_MS = 220
