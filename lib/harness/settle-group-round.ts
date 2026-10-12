@@ -89,6 +89,7 @@ export const settleGroupRound = async ({
   submission,
   meId,
   onSettled,
+  redis,
 }: {
   game: Game
   round: Round
@@ -97,13 +98,15 @@ export const settleGroupRound = async ({
   meId: string
   /** Runs after the seats reach their scorecards, so the harness can re-render. */
   onSettled?: () => void
+  /** The harness's stand-in for server-held round state (Composition's sheet). */
+  redis?: Parameters<typeof gradeGroupAnswer>[0]['redis']
 }): Promise<void> => {
   // Once only: a redelivered submit must not re-score a settled round.
   if (round.groupAnswers[meId]) return
 
   const seats = Object.keys(game.players)
 
-  const mine = await gradeGroupAnswer({ game, round, playerId: meId, submission })
+  const mine = await gradeGroupAnswer({ game, round, playerId: meId, submission, redis })
   round.groupAnswers[meId] = mine.answer
   round.playerTurns[meId] = { points: mine.scoring }
 

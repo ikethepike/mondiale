@@ -8,6 +8,7 @@ import { manhuntPositionEvent } from '~~/lib/events/client/manhunt-position.even
 import { manhuntSonarEvent } from '~~/lib/events/client/manhunt-sonar.event'
 import { twoTruthsReceiptsEvent } from '~~/lib/events/client/two-truths-receipts.event'
 import { vintageStoryEvent } from '~~/lib/events/client/vintage-story.event'
+import { compositionBoardEvent } from '~~/lib/events/client/composition-board.event'
 import { finalLightRefusedEvent } from '~~/lib/events/client/final-light-refused.event'
 import { manhuntTauntEvent } from '~~/lib/events/client/manhunt-taunt.event'
 import { playerCheeringEvent } from '~~/lib/events/client/player-cheering.event'
@@ -133,6 +134,10 @@ export const CLIENT_SIDE_EVENT_HANDLERS: {
   // A graded seat's card verdicts — targeted, no game payload
   'two-truths-receipts': {
     handler: twoTruthsReceiptsEvent,
+  },
+  // This seat's own Composition board — targeted, no game payload
+  'composition-board': {
+    handler: compositionBoardEvent,
   },
   // A stage name this seat lit too late — targeted, no game payload
   'final-light-refused': {

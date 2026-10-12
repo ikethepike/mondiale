@@ -24,6 +24,8 @@ import { submitManhuntSubpoenaHandler } from './submit-manhunt-subpoena.handler'
 import { fetchManhuntIntelHandler } from './fetch-manhunt-intel.handler'
 import { fetchTwoTruthsReceiptsHandler } from './fetch-two-truths-receipts.handler'
 import { fetchVintageStoryHandler } from './fetch-vintage-story.handler'
+import { fetchCompositionBoardHandler } from './fetch-composition-board.handler'
+import { submitCompositionDropHandler } from './submit-composition-drop.handler'
 import { manhuntReadyHandler } from './manhunt-ready.handler'
 import { uniqueReadyHandler } from './unique-ready.handler'
 import { chainReadyHandler } from './chain-ready.handler'
@@ -154,6 +156,13 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'submit-timeline-placement': {
     handler: submitTimelinePlacementHandler,
   },
+  'submit-composition-drop': {
+    handler: submitCompositionDropHandler,
+  },
+  // Reads one seat's own board; answers the requesting socket only
+  'fetch-composition-board': {
+    handler: fetchCompositionBoardHandler,
+  },
   'close-tutorial': {
     handler: closeTutorialHandler,
   },
@@ -240,6 +249,7 @@ export const UNRECORDED_CLIENT_EVENTS: readonly ClientEvent[] = [
   'fetch-manhunt-intel',
   'fetch-vintage-story',
   'fetch-two-truths-receipts',
+  'fetch-composition-board',
 ]
 
 /**

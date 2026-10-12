@@ -4,6 +4,7 @@ import type { LatLng, MapBox } from '~~/lib/geo'
 import { compareStandings } from '~~/lib/player'
 import { previewOn } from '~~/lib/seat-view'
 import type {
+  CompositionBoardView,
   ManhuntPosition,
   ManhuntReading,
   VintageOutcome,
@@ -93,6 +94,9 @@ interface GameStoreState {
     string,
     { receipts: Record<number, TwoTruthsReceipt>; sheets: Record<string, TwoTruthsSheet> }
   >
+  /** This seat's Composition boards, by game and round — from the targeted
+   *  'composition-board' emit, never a snapshot. */
+  compositionBoards: Record<string, CompositionBoardView>
   /** Gauntlet stage names the server refused as too late, by subject — from
    *  the targeted 'final-light-refused' emit; the stage un-lights them. */
   refusedLights: Record<string, string[]>
@@ -289,6 +293,7 @@ export const useGameStore = defineStore('game', {
     manhuntReadings: undefined,
     vintageStories: {},
     twoTruthsReceipts: {},
+    compositionBoards: {},
     refusedLights: {},
     socket: undefined,
     rejected: false,
