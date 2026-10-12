@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { computed, ref } from 'vue'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { capitalGuessScore, getRoundChallenge } from '~~/lib/challenges'
+import { getCountry } from '~~/lib/country'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import {
   compositionBoards,
@@ -11,6 +13,7 @@ import {
   corridorMargin,
   corridorsToDestination,
 } from '~~/lib/migration'
+import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import type { CompositionChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -178,9 +181,36 @@ describe('composition grading', () => {
     })
   const options = { options: ['IT', 'RO', 'TR', 'PL'] as ISOCountryCode[], maximumGuesses: 2 }
 
-  it('pays nothing for mashing every option, whatever the claim', async () => {
-    const { scoring } = await grade(options, ['IT', 'RO', 'TR', 'PL'])
-    expect(scoring).toEqual({ scored: 0, maximum: MAX })
+  it('pays nothing for mashing every card of a dealt board, early on the clock', async () => {
+    for (const difficulty of ['easy', 'normal'] as const) {
+      const challenge = await deal(difficulty)
+      const largestOrigin = challenge.slices[0]!.isoCode
+      const submitted = ref(false)
+      const banked: { score: number; picks: ISOCountryCode[] }[] = []
+      const { onGuess } = useAttemptOptions({
+        challenge: computed(() => ({ ...challenge, answer: largestOrigin })),
+        submitted,
+        started: ref(true),
+        remainingFraction: computed(() => 0.93),
+        announce: () => {},
+        submitRound: (score, picks) => {
+          banked.push({ score, picks })
+          submitted.value = true
+        },
+      })
+      const mash = [...challenge.options!.filter(option => option !== largestOrigin), largestOrigin]
+      for (const option of mash) onGuess(getCountry(option))
+
+      expect(banked).toHaveLength(1)
+      expect(banked[0]!.score).toBe(0)
+      const { scoring } = await gradeGroupAnswer({
+        game: {} as Game,
+        round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as unknown as Round,
+        playerId: 'p',
+        submission: { ranking: banked[0]!.picks, clientScore: banked[0]!.score },
+      })
+      expect(scoring.scored).toBe(0)
+    }
   })
 
   it('prices the picks by attempt, not the claimed score', async () => {
