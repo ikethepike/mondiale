@@ -21,7 +21,8 @@ export interface FinalChallenge {
    *  absent on older persisted gauntlets (treated as 0). */
   turn?: number
   difficulty: GameDifficulty
-  /** Remaining questions; the head is the live one. Redeals may replace it. */
+  /** Remaining questions; the head is the live one. Redeals may replace it.
+   *  The wire carries the head alone, and only while the seat is on it. */
   challenges: FinalChallengeItem[]
   /** Misses the run can still absorb (burn-and-advance). */
   lives: number

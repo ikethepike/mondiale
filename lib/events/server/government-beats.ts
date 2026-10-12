@@ -266,21 +266,25 @@ const resolveBeat = async (ctx: EngineContext, game: Game, challenge: Government
       truth: truthOf(beat, deal),
       scored,
       ...(beat === 'sides' ? { sides: sortedSides(deal) } : {}),
+      holdUntil: Date.now() + BEAT_VERDICT_HOLD_MS,
     }
   }
 
   // `turn` moves on EVERY transition, including into the verdict hold — that
   // is what stales a timer this resolve raced.
   state.turn += 1
-  const turn = state.turn
 
   const server = useServerSideEvents(ctx)
   await server.updateGameState(game)
   server.emit({ event: 'government-updated', game }, ctx.eventTarget)
+  scheduleVerdictHold(ctx, challenge)
+}
 
-  // The hold is server-owned and re-armable like every other beat: it re-reads
-  // fresh state and dies on a stale turn, so arming it twice is safe.
-  scheduleEngineTask(ctx, BEAT_VERDICT_HOLD_MS, async fresh => {
+/** Re-reads fresh state and dies on a stale turn, so arming it twice is safe. */
+const scheduleVerdictHold = (ctx: EngineContext, challenge: GovernmentChallenge) => {
+  const { turn, verdict } = challenge.state
+  const holdUntil = verdict?.holdUntil ?? Date.now() + BEAT_VERDICT_HOLD_MS
+  scheduleEngineTask(ctx, Math.max(0, holdUntil - Date.now()), async fresh => {
     const current = currentGovernment(fresh)
     if (!current || current.state.finished || current.state.turn !== turn) return
     await advanceBeat(ctx, fresh, current)
@@ -469,15 +473,7 @@ export const rearmGovernment = (ctx: EngineContext, game: Game, options: RearmOp
   if (challenge.state.briefing && !options.armBriefingCaps) return
   // A verdict hold that was in flight when the machine went away: re-arm the
   // advance rather than the beat clock, or the round freezes on the verdict.
-  if (challenge.state.verdict) {
-    const turn = challenge.state.turn
-    scheduleEngineTask(ctx, BEAT_VERDICT_HOLD_MS, async fresh => {
-      const current = currentGovernment(fresh)
-      if (!current || current.state.finished || current.state.turn !== turn) return
-      await advanceBeat(ctx, fresh, current)
-    })
-    return
-  }
+  if (challenge.state.verdict) return scheduleVerdictHold(ctx, challenge)
   // A deadline that already passed while the machine was down still resolves —
   // scheduleDeadlineTask floors its delay at zero, so the ordinary arm covers
   // the overdue case too rather than needing a second path.

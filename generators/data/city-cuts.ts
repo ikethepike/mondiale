@@ -163,7 +163,6 @@ export const CITY_CUTS: CityEntry[] = [
   {
     country: 'IN',
     city: 'New Delhi',
-    aliases: ['Delhi'],
     cuts: [{ slug: 'new-delhi-lutyens', box: cutAround(28.6145, 77.211), signature: true }],
     lesson:
       'Lutyens laid imperial hexagons and vistas south of the old city in 1912 — a capital designed to be looked along rather than lived in.',
@@ -859,7 +858,6 @@ export const CITY_CUTS: CityEntry[] = [
   {
     country: 'MN',
     city: 'Ulaanbaatar',
-    aliases: ['Ulan Bator'],
     cuts: [{ slug: 'ulaanbaatar-centre', box: cutAround(47.92, 106.918), signature: true }],
     lesson:
       'Ulaanbaatar was a movable monastery town until the 1920s; the Soviet grid at its centre is ringed by ger districts that kept the older pattern.',

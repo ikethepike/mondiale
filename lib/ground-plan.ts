@@ -15,7 +15,8 @@ import type {
 import type { GameDifficulty } from '~~/types/game.types'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { capitalStar } from '~~/lib/capitals'
+import { cityLightFor, citySpellingKeys, isCapitalCity } from '~~/lib/cities'
+import { normalizeAnswer } from '~~/lib/strings'
 import { formatCompact } from '~~/lib/number'
 import { REGION_LABELS } from '~~/lib/variant'
 import { CITY_PLAN_INDEX, GROUND_PLAN_CITIES } from '~~/data/city-plans.gen'
@@ -56,6 +57,11 @@ export const GROUND_PLAN_LAYERS = [
 /** Cities with at least one usable tile. */
 export const groundPlanCities = (): GroundPlanCity[] => GROUND_PLAN_CITIES
 
+const cityNames = (entry: Pick<GroundPlanCity, 'city' | 'aliases'>): string[] => [
+  entry.city,
+  ...(entry.aliases ?? []),
+]
+
 /**
  * The cut a difficulty deals. The diagnostic shape being in frame is the whole
  * difficulty dial: Manhattan sliced at Midtown is two rivers and a grid that
@@ -72,6 +78,34 @@ export const cutForDifficulty = (
   const generic = cuts.filter(cut => !cut.signature)
   const wanted = isHardMode(game) ? generic : signature
   return sample(wanted.length ? wanted : cuts)
+}
+
+const spellingKeys = new Map<string, ReadonlySet<string>>()
+
+/** Longer than any city's name, so a longer submission is refused unread. */
+const MAX_CITY_NAME_LENGTH = 100
+
+/**
+ * Whether a typed answer names the dealt city itself — not merely a city in
+ * its country. Both ends grade through this: the view before it submits, the
+ * server against the name the submission carries, which is untrusted and so
+ * typed `unknown` here.
+ */
+export const namesGroundPlanCity = (
+  challenge: Pick<GroundPlanChallenge, 'country' | 'city'>,
+  typed: unknown
+): boolean => {
+  if (typeof typed !== 'string' || !typed || typed.length > MAX_CITY_NAME_LENGTH) return false
+  const id = `${challenge.country}:${challenge.city}`
+  let keys = spellingKeys.get(id)
+  if (!keys) {
+    const entry = GROUND_PLAN_CITIES.find(
+      city => city.country === challenge.country && city.city === challenge.city
+    )
+    keys = citySpellingKeys(challenge.country, cityNames(entry ?? challenge))
+    spellingKeys.set(id, keys)
+  }
+  return keys.has(normalizeAnswer(typed))
 }
 
 /** Distinct water crossings in a cut — what the reveal states out loud. */
@@ -108,7 +142,7 @@ export const groundPlanRemainingFraction = (
  */
 export const groundPlanImage = (entry: GroundPlanCity): string | undefined =>
   entry.image ??
-  (CAPITALS[entry.country]?.name === entry.city ? CAPITALS[entry.country]?.image : undefined)
+  (isCapitalCity(entry.country, cityNames(entry)) ? CAPITALS[entry.country]?.image : undefined)
 
 /**
  * The hint ladder for one city, easiest first.
@@ -136,7 +170,7 @@ export const groundPlanHints = (entry: GroundPlanCity): GroundPlanHint[] => {
   const region = REGION_LABELS[country.region]
   if (region) hints.push({ kind: 'region', text: `Somewhere in ${region}` })
 
-  const population = capitalStar(entry.country)?.population
+  const population = cityLightFor(entry.country, cityNames(entry))?.population
   if (population) {
     hints.push({
       kind: 'size',

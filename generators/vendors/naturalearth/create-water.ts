@@ -30,6 +30,21 @@ import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import { MAP_PROJECTION, MAP_PATHS } from '../../../data/map.gen'
 import { WATER_NAME_FIXES } from '../../../data/static/water-name-fixes'
 import { WATER_ALIASES, LAKE_DISPLAY_NAMES } from '../../../data/static/water-aliases'
+import {
+  WATER_PARTS,
+  WATER_ROSTER_EXPECTATIONS,
+  WATER_SHORE_CORRECTIONS,
+} from '../../../data/static/water-shore-corrections'
+import {
+  absorbFeature,
+  boundsOf,
+  boundsOverlap,
+  createShoreTest,
+  pointInRings,
+  rosterDrift,
+  roundTo,
+  settleWaterKeys,
+} from '../../lib/water-keys'
 import { parsePolygons } from '../../../lib/outline'
 import type { ISOCountryCode } from '../../../types/geography.types'
 
@@ -68,6 +83,14 @@ const REGION_KINDS: Record<string, 'range' | 'desert' | 'plateau'> = {
   Plateau: 'plateau',
 }
 
+const KIND_WORDS: Partial<Record<WaterKind, RegExp>> = {
+  range: /\b(range|mountains)\b/i,
+  desert: /\bdesert\b/i,
+  plateau: /\bplateau\b/i,
+}
+/** Does the name itself say what it is? "Stanovoy Range" is a range, whatever else NE files it as. */
+const namesKind = (name: string, kind: WaterKind) => KIND_WORDS[kind]?.test(name) ?? false
+
 /**
  * NE files these under `lakes`, but they're stretches of the Great Lakes system —
  * a channel, a bay and a river — not lakes anyone can name. They pass the shore
@@ -78,10 +101,18 @@ const NOT_LAKES = new Set(['North Channel', 'Whitefish Bay', 'St. Marys River'])
 
 /** Keep projected points at least this far apart (viewBox units). */
 const DECIMATE_UNITS = 0.7
-/** A shore counts as touching water within this distance (viewBox units). */
-const SHORE_EPSILON = 2.2
+/** A shore counts as touching water within this distance (viewBox units),
+ *  edge to edge. 2.2 put Finland on the Barents and San Marino on the Adriatic. */
+const SHORE_EPSILON = 0.5
 /** Rivers shorter than this on the map aren't playable. */
 const MIN_RIVER_LENGTH = 18
+/** A river stretch → the river it belongs to. Folded before clustering, so a
+ *  reach between two stretches is never dropped as a separate river. */
+const RIVER_OF_STRETCH = new Map(
+  WATER_ALIASES.flatMap(group =>
+    group.kind === 'river' ? group.merge.map(stretch => [stretch, group.canonical] as const) : []
+  )
+)
 /** Sample step along rivers for country-crossing tests. */
 const RIVER_SAMPLE_STEP = 1.2
 
@@ -119,8 +150,6 @@ const fetchLayer = async (file: string): Promise<FeatureCollection> => {
   return JSON.parse(readFileSync(cachePath, 'utf-8'))
 }
 
-const roundTo = (value: number, decimals = 2) => Number(value.toFixed(decimals))
-
 const decimate = (points: Point[], minGap = DECIMATE_UNITS): Point[] => {
   const output: Point[] = []
   for (const point of points) {
@@ -135,35 +164,6 @@ const decimate = (points: Point[], minGap = DECIMATE_UNITS): Point[] => {
     output.push([roundTo(last[0]), roundTo(last[1])])
   }
   return output
-}
-
-const unionBounds = (
-  [ax, ay, aw, ah]: [number, number, number, number],
-  [bx, by, bw, bh]: [number, number, number, number]
-): [number, number, number, number] => {
-  const minX = Math.min(ax, bx)
-  const minY = Math.min(ay, by)
-  return [
-    minX,
-    minY,
-    roundTo(Math.max(ax + aw, bx + bw) - minX),
-    roundTo(Math.max(ay + ah, by + bh) - minY),
-  ]
-}
-
-const boundsOf = (pointGroups: Point[][]): [number, number, number, number] => {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const points of pointGroups)
-    for (const [x, y] of points) {
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x)
-      maxY = Math.max(maxY, y)
-    }
-  return [roundTo(minX), roundTo(minY), roundTo(maxX - minX), roundTo(maxY - minY)]
 }
 
 const pathFromRings = (rings: Point[][]): string =>
@@ -243,50 +243,7 @@ const countryShapes: CountryShape[] = ISOCountryCodes.map(code => {
 const inBounds = ([x, y]: Point, [bx, by, bw, bh]: [number, number, number, number], pad = 0) =>
   x >= bx - pad && x <= bx + bw + pad && y >= by - pad && y <= by + bh + pad
 
-const pointInRings = (point: Point, rings: Point[][]): boolean => {
-  let inside = false
-  for (const ring of rings) {
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i]
-      const [xj, yj] = ring[j]
-      if (
-        yi > point[1] !== yj > point[1] &&
-        point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi
-      ) {
-        inside = !inside
-      }
-    }
-  }
-  return inside
-}
-
-/** Spatial hash of every country's ring vertices, for shore-proximity tests. */
-const GRID = 4
-const shoreGrid = new Map<string, { code: ISOCountryCode; point: Point }[]>()
-for (const { code, rings } of countryShapes)
-  for (const ring of rings)
-    for (const point of ring) {
-      const key = `${Math.floor(point[0] / GRID)}:${Math.floor(point[1] / GRID)}`
-      const bucket = shoreGrid.get(key) ?? []
-      bucket.push({ code, point })
-      shoreGrid.set(key, bucket)
-    }
-
-const countriesNear = (points: Point[], epsilon: number): Set<ISOCountryCode> => {
-  const found = new Set<ISOCountryCode>()
-  for (const [x, y] of points) {
-    const cellX = Math.floor(x / GRID)
-    const cellY = Math.floor(y / GRID)
-    for (let dx = -1; dx <= 1; dx++)
-      for (let dy = -1; dy <= 1; dy++) {
-        for (const { code, point } of shoreGrid.get(`${cellX + dx}:${cellY + dy}`) ?? []) {
-          if (found.has(code)) continue
-          if (Math.hypot(point[0] - x, point[1] - y) <= epsilon) found.add(code)
-        }
-      }
-  }
-  return found
-}
+const shoresOf = createShoreTest(countryShapes, SHORE_EPSILON)
 
 const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
   const ordered: ISOCountryCode[] = []
@@ -300,26 +257,6 @@ const countriesContaining = (samples: Point[]): ISOCountryCode[] => {
   return ordered
 }
 
-const boundsOverlap = (
-  [ax, ay, aw, ah]: [number, number, number, number],
-  [bx, by, bw, bh]: [number, number, number, number]
-) => ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by
-
-/** Landform rosters whose two failure directions are worth pinning — see the
- *  check in the drift defenses. Andorra and Liechtenstein are benched below
- *  hard, so the gate in waterFeaturePool drops them from the dealt key; they
- *  still have to be IN the shipped roster for a hard game to ask for them. */
-const REGION_ROSTER_EXPECTATIONS: Record<
-  string,
-  { includes: ISOCountryCode[]; excludes: ISOCountryCode[] }
-> = {
-  // Across the Strait of Gibraltar, not on the peninsula.
-  'plateau-iberian-peninsula': { includes: ['AD', 'ES', 'FR', 'PT'], excludes: ['MA'] },
-  // Wholly inside the range, so its outline never crosses them.
-  'range-pyrenees': { includes: ['AD', 'ES', 'FR'], excludes: [] },
-  'range-alps': { includes: ['AT', 'CH', 'IT', 'LI'], excludes: [] },
-}
-
 /**
  * Which countries a landform actually overlaps — the whole question for a
  * range, desert or plateau. A country either holds some of it or does not, so
@@ -328,7 +265,7 @@ const REGION_ROSTER_EXPECTATIONS: Record<
  * land-border check can undo that (Ceuta and Melilla make ES–MA a land
  * border). A shore is the opposite case and still measures distance — a sea
  * touches coastlines rather than covering them, so marine features keep
- * countriesNear.
+ * shoresOf.
  *
  * Overlap is tested both ways because either side can be the one inside:
  * the outline is walked at full decimated resolution rather than resampled
@@ -454,9 +391,8 @@ const add = (feature: WaterFeature) => {
   // NE splits the Pacific and Atlantic into hemispheric halves that share one
   // English name — merge the halves into the canonical ocean.
   if (existing && existing.kind === 'ocean' && feature.kind === 'ocean') {
-    existing.d = `${existing.d} ${feature.d}`
-    existing.bounds = unionBounds(existing.bounds, feature.bounds)
-    existing.countries = [...new Set([...existing.countries, ...feature.countries])].sort()
+    absorbFeature(existing, feature)
+    existing.countries.sort()
     return
   }
   // Some names repeat across the globe (two "North Channel"s) — keep the
@@ -490,7 +426,7 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    const shoreCountries = countriesNear(rings.flat(), SHORE_EPSILON)
+    const shoreCountries = shoresOf(rings)
     if (!shoreCountries.size) continue
 
     add({
@@ -518,7 +454,7 @@ const main = async () => {
       .filter(ring => ring.length >= 3)
     if (!rings.length) continue
 
-    const shoreCountries = countriesNear(rings.flat(), SHORE_EPSILON)
+    const shoreCountries = shoresOf(rings)
     if (!shoreCountries.size) continue
 
     add({
@@ -534,13 +470,21 @@ const main = async () => {
   // --- Rivers: merge segments by name ----------------------------------------
   const rivers = await fetchLayer(LAYERS.rivers)
   const riverSegments = new Map<string, Point[][]>()
+  const lakeCenterlines = new Set<Point[]>()
+  const foldedStretches = new Set<string>()
   for (const feature of rivers.features as Feature<LineString | MultiLineString>[]) {
     const properties = feature.properties as Record<string, unknown>
-    const name = featureName(properties)
-    if (!name || property(properties, 'featurecla').includes('Lake')) continue
-    const projected = asLines(feature.geometry).map(line => decimate(line.map(project), 0.5))
+    const stretch = featureName(properties)
+    if (!stretch) continue
+    const name = RIVER_OF_STRETCH.get(stretch) ?? stretch
+    if (name !== stretch) foldedStretches.add(stretch)
+    const projected = asLines(feature.geometry)
+      .map(line => decimate(line.map(project), 0.5))
+      .filter(line => line.length >= 2)
+    if (property(properties, 'featurecla').includes('Lake'))
+      for (const line of projected) lakeCenterlines.add(line)
     const bucket = riverSegments.get(name) ?? []
-    bucket.push(...projected.filter(line => line.length >= 2))
+    bucket.push(...projected)
     riverSegments.set(name, bucket)
   }
 
@@ -585,7 +529,12 @@ const main = async () => {
           total += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1])
       return total
     }
-    const main = clusters.reduce((a, b) => (lengthOf(a) >= lengthOf(b) ? a : b))
+    // A lake's centerline joins the reaches either side (Lake Nasser parted Egypt's Nile
+    // from Sudan's) but is never drawn or sampled: its water touches every shore.
+    const reaches = (cluster: Point[][]) => cluster.filter(line => !lakeCenterlines.has(line))
+    const main = reaches(
+      clusters.reduce((a, b) => (lengthOf(reaches(a)) >= lengthOf(reaches(b)) ? a : b))
+    )
     if (lengthOf(main) < MIN_RIVER_LENGTH) continue
 
     // Chain the cluster's segments into flow order and bridge the small NE
@@ -607,8 +556,7 @@ const main = async () => {
     })
   }
 
-  // --- Same-feature reconciliation: fold NE's per-stretch names into one -----
-  const mergedIds = new Set<string>()
+  // --- Same-feature reconciliation: each feature's matched alternates --------
   for (const group of WATER_ALIASES) {
     const canonical = features[featureId(group.kind, group.canonical)]
     if (!canonical) {
@@ -617,28 +565,19 @@ const main = async () => {
       )
       continue
     }
-    const aliases: string[] = []
-    for (const name of group.merge) {
-      const id = featureId(group.kind, name)
-      const stretch = features[id]
-      if (!stretch) {
+    const stretches = group.kind === 'river' ? group.merge : []
+    for (const name of stretches)
+      if (!foldedStretches.has(name))
         console.warn(`water-aliases: merge stretch missing from NE data: ${name}`)
-        continue
-      }
-      canonical.d = `${canonical.d} ${stretch.d}`
-      canonical.bounds = unionBounds(canonical.bounds, stretch.bounds)
-      canonical.countries = [
-        ...canonical.countries,
-        ...stretch.countries.filter(code => !canonical.countries.includes(code)),
-      ]
-      aliases.push(stretch.name)
-      mergedIds.add(id)
-    }
-    aliases.push(...group.alt)
+    const aliases = [...stretches.filter(name => foldedStretches.has(name)), ...group.alt]
     if (aliases.length) canonical.aliases = aliases
   }
 
   // --- Ranges, deserts, plateaus ---------------------------------------------
+  // NE files some landforms under two classes (Guiana Highlands as a range AND
+  // a plateau, with different hosts). The kind prefix kept both ids apart, so
+  // one name dealt two keys — the region slot is the NAME, not the id.
+  const regionByName = new Map<string, WaterFeature>()
   const regions = await fetchLayer(LAYERS.regions)
   for (const feature of regions.features as Feature<Polygon | MultiPolygon>[]) {
     const properties = feature.properties as Record<string, unknown>
@@ -655,7 +594,13 @@ const main = async () => {
     const countries = regionHosts(rings).sort()
     if (!countries.length) continue
 
-    add({
+    const rival = regionByName.get(name)
+    if (rival) {
+      const lead = countries.length - rival.countries.length
+      if (lead < 0 || (lead === 0 && !(namesKind(name, kind) && !namesKind(name, rival.kind))))
+        continue
+    }
+    regionByName.set(name, {
       id: `${kind}-${slugify(name)}`,
       name,
       kind,
@@ -664,6 +609,11 @@ const main = async () => {
       countries,
     })
   }
+  for (const feature of regionByName.values()) add(feature)
+
+  // --- Answer keys: the curated overlay, then each sea's named arms ----------
+  for (const line of settleWaterKeys(features, WATER_PARTS, WATER_SHORE_CORRECTIONS))
+    console.warn(`water-shore-corrections: ${line}`)
 
   // --- Drift defenses: an NE bump must not silently reship broken names ------
   const broken = Object.values(features).filter(feature => /[?]| {2}/.test(feature.name))
@@ -678,32 +628,11 @@ const main = async () => {
       console.warn(`water-aliases: lake display name matched nothing: ${resolved}`)
     }
   }
-  // A landform's roster fails in two silent directions, and both shipped once:
-  // a proximity term reaches across water (Morocco on the Iberian Peninsula),
-  // and an outline-only overlap test drops the countries the outline never
-  // touches (Andorra, Liechtenstein). Neither shows up as a crash or a bad
-  // name — only as a round asking for a country that isn't there, or not
-  // asking for one that is. Pin the three that caught it.
-  for (const [id, { includes, excludes }] of Object.entries(REGION_ROSTER_EXPECTATIONS)) {
-    const feature = features[id]
-    if (!feature) throw new Error(`Region roster check: ${id} no longer deals`)
-    const missing = includes.filter(code => !feature.countries.includes(code))
-    const surplus = excludes.filter(code => feature.countries.includes(code))
-    if (missing.length || surplus.length) {
-      throw new Error(
-        `Region roster drifted for ${id} (${feature.countries.join(' ')})` +
-          `${missing.length ? ` — missing ${missing.join(',')}` : ''}` +
-          `${surplus.length ? ` — should not include ${surplus.join(',')}` : ''}`
-      )
-    }
-  }
+  const drift = rosterDrift(features, WATER_ROSTER_EXPECTATIONS)
+  if (drift.length) throw new Error(`Answer keys drifted:\n  ${drift.join('\n  ')}`)
 
   // --- Emit --------------------------------------------------------------------
-  const sorted = Object.fromEntries(
-    Object.entries(features)
-      .filter(([id]) => !mergedIds.has(id))
-      .sort(([a], [b]) => a.localeCompare(b))
-  )
+  const sorted = Object.fromEntries(Object.entries(features).sort(([a], [b]) => a.localeCompare(b)))
   const output = `// Generated by generators/vendors/naturalearth/create-water.ts — do not edit by hand.
 // Source: Natural Earth 1:10m physical layers (${NE_TAG}, public domain),
 // projected with the map's fitted Robinson (see data/map.gen.ts).
