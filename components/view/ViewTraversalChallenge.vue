@@ -75,6 +75,7 @@ import {
   isRouteComplete,
   linkedGuesses,
   neighboursWithin,
+  traversalGuessesLeft,
   traversalWithin,
 } from '~~/lib/traversal'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -106,7 +107,9 @@ const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 const consoleFooter = ref<HTMLElement>()
 useFooterBerth(consoleFooter)
 
-const guessesLeft = computed(() => (challenge.value?.maximumClicks ?? 0) - guesses.value.length)
+const guessesLeft = computed(() =>
+  challenge.value ? traversalGuessesLeft(challenge.value, guesses.value) : 0
+)
 
 // Endpoints leave the suggestions but stay typeable in full — submitGuess
 // answers an exact endpoint guess with its hint rather than spending a turn.
@@ -240,7 +243,7 @@ const submitGuess = (country: Country) => {
     return submitRound()
   }
 
-  if (guesses.value.length >= active.maximumClicks) {
+  if (traversalGuessesLeft(active, guesses.value) <= 0) {
     previewVerdict('incorrect')
     announce({ hint: 'Out of guesses!', tone: 'alert' })
     // Submit at once — the server's flip (the kind's reveal hold in

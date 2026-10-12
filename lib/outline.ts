@@ -240,7 +240,7 @@ export const ringContains = (
 }
 
 /** Distance from a point to a segment, clamped to the segment's ends. */
-const segmentDistance = (
+export const segmentDistance = (
   px: number,
   py: number,
   [ax, ay]: readonly [number, number],
