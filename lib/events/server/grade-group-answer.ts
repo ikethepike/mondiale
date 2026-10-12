@@ -174,8 +174,12 @@ export const gradeGroupAnswer = async ({
      *  submission, which is every other blitz mode. */
     claimed: ISOCountryCode[] = submission.ranking
   ) => {
-    answer = { submitted: claimed, correct: challenge.countries }
-    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints, challenge.accepted)
+    const free = challenge.accepted ?? []
+    answer = {
+      submitted: claimed.filter(isoCode => !free.includes(isoCode)),
+      correct: challenge.countries,
+    }
+    scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints, free)
   }
 
   switch (kind) {

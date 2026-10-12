@@ -217,8 +217,9 @@ export const TERRAIN_ROSTER: Record<string, TerrainEntry> = {
       'JM',
       'CU',
     ],
-    // Barbados faces the Atlantic; the rest hold Caribbean territories.
-    accepted: ['BB', 'BS', 'US', 'FR', 'NL', 'GB'],
+    // Barbados faces the Atlantic; the Bahamas and Puerto Rico sit on its rim.
+    // Every free shore is real coast — the sea lanes sail them.
+    accepted: ['BB', 'BS', 'US'],
   },
   'gulf-of-mexico': { fame: 'major', required: ['US', 'MX', 'CU'] },
   'red-sea': {
@@ -341,7 +342,7 @@ export const TERRAIN_ROSTER: Record<string, TerrainEntry> = {
   'river-salween': { fame: 'minor', required: ['CN', 'MM', 'TH'] },
   'river-limpopo': { fame: 'minor', required: ['ZA', 'BW', 'ZW', 'MZ'] },
   'river-orange': { fame: 'minor', required: ['LS', 'ZA', 'NA'] },
-  'river-okavango': { fame: 'minor', required: ['AO', 'NA', 'BW'], aliases: ['Cubango'] },
+  'river-okavango': { fame: 'minor', required: ['AO', 'NA', 'BW'] },
   'river-uruguay': { fame: 'minor', required: ['BR', 'AR', 'UY'] },
   'river-dnieper': { fame: 'minor', required: ['RU', 'BY', 'UA'] },
   'river-oder': { fame: 'minor', required: ['CZ', 'PL', 'DE'] },

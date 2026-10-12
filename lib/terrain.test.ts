@@ -4,6 +4,7 @@ import { TERRAIN_ROSTER } from '~~/data/static/terrain-roster'
 import { getRoundChallenge, layOfTheLandCandidates } from '~~/lib/challenges'
 import { isCountryInPlay, isMicroNation } from '~~/lib/game-rules'
 import { blitzScore } from '~~/lib/scoring'
+import { normalizeAnswer } from '~~/lib/strings'
 import {
   TERRAIN_TUNING,
   terrainHeadline,
@@ -89,9 +90,23 @@ describe('the shipped terrain roster', () => {
     expect(TERRAIN_ROSTER['range-cordillera-occidental']).toBeUndefined()
   })
 
-  it('deals one subject under each name', () => {
-    const names = Object.keys(TERRAIN_ROSTER).map(id => WATER_FEATURES[id].name)
-    expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([])
+  it('deals one subject under each name, and no other feature answers to it', () => {
+    const named = (feature: { name: string; aliases?: string[] }) =>
+      [feature.name, ...(feature.aliases ?? [])].map(name => normalizeAnswer(name))
+    for (const id of Object.keys(TERRAIN_ROSTER)) {
+      const subject = WATER_FEATURES[id]
+      const names = new Set(named(subject))
+      const rivals = Object.values(WATER_FEATURES).filter(
+        other =>
+          other.id !== id &&
+          other.kind === subject.kind &&
+          named(other).some(name => names.has(name))
+      )
+      expect(
+        rivals.map(other => other.id),
+        id
+      ).toEqual([])
+    }
   })
 })
 
@@ -172,7 +187,7 @@ describe('layOfTheLandCandidates', () => {
         }
   })
 
-  it("doesn't repeat a subject within a game until the board runs dry", async () => {
+  it('never repeats a subject within a game — a spent board buys another kind', async () => {
     const easy = await layOfTheLandCandidates(game('easy', ['north-america']))
     const ids = easy.map(({ feature }) => feature.id)
     const after = await layOfTheLandCandidates(
@@ -180,7 +195,7 @@ describe('layOfTheLandCandidates', () => {
     )
     expect(after.map(({ feature }) => feature.id)).toEqual([ids[0]])
     const spent = await layOfTheLandCandidates(game('easy', ['north-america'], ids.map(roundOf)))
-    expect(spent).toHaveLength(ids.length)
+    expect(spent).toEqual([])
   })
 })
 

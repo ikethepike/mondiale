@@ -1,5 +1,5 @@
 import type { WaterFeature } from '~~/data/water.gen'
-import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
+import type { WaterBlitzChallenge, WaterFeatureKind } from '~~/types/challenges/group-modes.type'
 import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { isWorldBoard } from './board-regions'
@@ -31,8 +31,10 @@ export interface TerrainKey {
 
 /**
  * The key a table is dealt for a roster subject, or undefined when it cannot
- * deal here. Every true country the key leaves out — benched, off the board,
- * or arguable by the roster — lands in `accepted`, free to name.
+ * deal here. Every true country the key leaves out — a benched micro-nation,
+ * an ocean's coast off this board, or one the roster calls arguable — lands
+ * in `accepted`, free to name. Any other subject keeps its off-board countries
+ * on the key, as a neighbour key does.
  */
 export const terrainKey = (rules: GameRules, feature: KeyedFeature): TerrainKey | undefined => {
   const clipped = feature.kind === 'ocean'
@@ -56,6 +58,22 @@ export const terrainKey = (rules: GameRules, feature: KeyedFeature): TerrainKey 
   return { countries, accepted, ...(clipped ? { scope: [...rules.regions] } : {}) }
 }
 
+/** How the copy reads a subject: a river is crossed, water is shored, land is shared. */
+export type TerrainFamily = 'river' | 'shore' | 'land'
+
+export const terrainFamily = (kind: WaterFeatureKind): TerrainFamily => {
+  switch (kind) {
+    case 'river':
+      return 'river'
+    case 'ocean':
+    case 'sea':
+    case 'lake':
+      return 'shore'
+    default:
+      return 'land'
+  }
+}
+
 type Named = Pick<WaterBlitzChallenge, 'featureName' | 'bare'>
 
 /** "the Danube", "Lake Victoria" — the name as it reads mid-sentence. */
@@ -65,16 +83,14 @@ export const terrainName = ({ featureName, bare }: Named) =>
 /** The round's question, worded for what the subject is. */
 export const terrainPrompt = (challenge: Pick<WaterBlitzChallenge, 'kind' | 'scope'> & Named) => {
   const name = terrainName(challenge)
-  switch (challenge.kind) {
+  switch (terrainFamily(challenge.kind)) {
     case 'river':
       return `Which countries does ${name} flow through?`
-    case 'ocean':
-    case 'sea':
-    case 'lake':
+    case 'shore':
       return challenge.scope
         ? `Name every country in ${boardLabel(challenge.scope)} on ${name}`
         : `Name every country on ${name}`
-    default:
+    case 'land':
       return `Which countries share ${name}?`
   }
 }

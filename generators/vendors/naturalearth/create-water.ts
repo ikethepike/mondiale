@@ -480,7 +480,8 @@ const main = async () => {
     const resolved = lakeName(properties)
     const scalerank = Number(property(properties, 'scalerank') || 99)
     if (!resolved || NOT_LAKES.has(resolved)) continue
-    if (scalerank > 3 && !onRoster(featureId('lake', resolved))) continue
+    if (scalerank > 3 && !onRoster(featureId('lake', LAKE_DISPLAY_NAMES[resolved] ?? resolved)))
+      continue
     const name = displayLakeName(resolved)
 
     const rings = asPolygonGroups(feature.geometry)

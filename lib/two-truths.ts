@@ -133,7 +133,8 @@ export const isSpicySheet = (sheet: readonly Claim[]): boolean => {
   if (!truths.length || !lies.length) return false
   if (Math.max(...truths) > tuning.maxTruthPlausibility) return false
   if (Math.min(...lies) < tuning.minLiePlausibility) return false
-  return Math.abs(mean(truths) - mean(lies)) <= tuning.toneGap
+  // Float sums depend on card order; a shuffled sheet must not flip the verdict.
+  return Math.abs(mean(truths) - mean(lies)) <= tuning.toneGap + 1e-9
 }
 
 /**

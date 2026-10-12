@@ -92,6 +92,19 @@ describe('the deck', () => {
     for (const claim of CLAIMS) expect(claim.text, claim.id).toMatch(/^[A-Z].*\.$/)
   })
 
+  it('judges a sheet the same in any order', () => {
+    const claim = (id: string, truth: boolean, plausibility: number, family: string) =>
+      ({ id, topic: id, truth, plausibility, family }) as unknown as (typeof CLAIMS)[number]
+    const sheet = [
+      claim('a', false, 0.4, 'language'),
+      claim('b', false, 0.7, 'trade'),
+      claim('c', false, 0.55, 'language'),
+      claim('d', true, 0.35, 'capital'),
+    ]
+    expect(isSpicySheet([...sheet].reverse())).toBe(isSpicySheet(sheet))
+    expect(isSpicySheet([sheet[1]!, sheet[0]!, sheet[2]!, sheet[3]!])).toBe(isSpicySheet(sheet))
+  })
+
   it('assembles sheets that keep every spice rule and the lie count asked', () => {
     const bySubject = Map.groupBy(CLAIMS, claim => claim.subject)
     let seed = 7

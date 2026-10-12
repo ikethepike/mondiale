@@ -46,8 +46,6 @@ export const ROUND_WEIGHTS = {
   sketch: 0.07,
   'stat-detective': 0.06,
   'two-truths': 0.07,
-  // Was three kinds on one view at 0.19 combined — over a third of the
-  // collect-a-set share on its own.
   'lay-of-the-land': 0.1,
   'name-that-water': 0.04,
   'mother-tongue': 0.063,

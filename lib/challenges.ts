@@ -904,8 +904,8 @@ export const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeature
 
 /**
  * Lay of the Land deals only the terrain roster: hand-written keys, fame
- * stamped by the generator. Each subject at most once a game, unless the
- * table has seen the whole board's worth.
+ * stamped by the generator. Each subject at most once a game — a spent board
+ * buys another kind rather than a rerun.
  */
 export const layOfTheLandCandidates = async (game: gameTypes.Game) => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
@@ -914,13 +914,12 @@ export const layOfTheLandCandidates = async (game: gameTypes.Game) => {
       isChallengeOfType(groupChallenge, 'water-blitz-challenge') ? [groupChallenge.featureId] : []
     )
   )
-  const dealable = Object.values(WATER_FEATURES).flatMap(feature => {
-    if (!feature.fame || !isFameDealable(feature.fame, game.difficulty)) return []
+  return Object.values(WATER_FEATURES).flatMap(feature => {
+    if (!feature.fame || dealt.has(feature.id) || !isFameDealable(feature.fame, game.difficulty))
+      return []
     const key = terrainKey(game, feature)
     return key ? [{ feature, key }] : []
   })
-  const fresh = dealable.filter(({ feature }) => !dealt.has(feature.id))
-  return fresh.length ? fresh : dealable
 }
 
 const getLayOfTheLandChallenge = async (

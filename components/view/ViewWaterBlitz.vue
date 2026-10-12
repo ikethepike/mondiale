@@ -52,8 +52,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName, getCountry } from '~~/lib/country'
-import { terrainPrompt } from '~~/lib/terrain'
-import type { WaterFeatureKind } from '~~/types/challenges/group-modes.type'
+import { terrainFamily, terrainPrompt, type TerrainFamily } from '~~/lib/terrain'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -81,18 +80,17 @@ const {
   previewVerdict,
 } = useGroupChallenge('water-blitz-challenge', { solo: false })
 
-const PLACEHOLDERS: Partial<Record<WaterFeatureKind, string>> = {
+const PLACEHOLDERS: Record<TerrainFamily, string> = {
   river: 'Type a country along the river…',
-  ocean: 'Type a country on this shore…',
-  sea: 'Type a country on this shore…',
-  lake: 'Type a country on this shore…',
+  shore: 'Type a country on this shore…',
+  land: 'Type a country it touches…',
 }
 
 const copy = computed(() => {
   const active = challenge.value
   return {
     title: active ? terrainPrompt(active) : '',
-    placeholder: (active && PLACEHOLDERS[active.kind]) ?? 'Type a country it touches…',
+    placeholder: PLACEHOLDERS[terrainFamily(active?.kind ?? 'river')],
   }
 })
 
@@ -133,7 +131,7 @@ const {
   {
     answers: () => challenge.value?.countries ?? [],
     wrongHint: country => `${countryName(country)} isn't one of them`,
-    // Benched, off the board or arguable: true of the world, so it costs nothing.
+    // Benched, an ocean's other coast, or arguable: true of the world, so it costs nothing.
     reject: country =>
       challenge.value?.accepted?.includes(country.isoCode)
         ? `${countryName(country)} counts too — but it's not on this key, so it's free`

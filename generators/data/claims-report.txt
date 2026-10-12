@@ -96,6 +96,6 @@ Lies that ring true (most tempting 40):
   0.90 [minor] Hungary shares a land border with Bulgaria.
 
 Sheets dealable per difficulty:
-  easy    49 subjects
-  normal  96 subjects
-  hard    110 subjects
+  easy    48 subjects
+  normal  93 subjects
+  hard    109 subjects

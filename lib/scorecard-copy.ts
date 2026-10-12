@@ -7,6 +7,7 @@ import type { WaterFacts } from '~~/data/water-facts.gen'
 import type { TongueFacts } from '~~/data/tongue-facts.gen'
 import { formatCompact, formatKm, formatNumber } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
+import { terrainFamily, type TerrainFamily } from '~~/lib/terrain'
 import { boardLabel } from '~~/lib/variant'
 
 /**
@@ -137,6 +138,12 @@ export interface ScorecardLabels {
  *  these are names the player gave that weren't in the set. */
 const STRAY_LABEL = 'Wrong Names'
 
+const TERRAIN_LEDGER: Record<TerrainFamily, string> = {
+  river: 'Every Country It Crosses',
+  shore: 'All the Shores',
+  land: 'Everywhere It Reaches',
+}
+
 /** What to call each of the scorecard's two answer rows. */
 export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels => {
   const pair = ((): Omit<ScorecardLabels, 'stray'> => {
@@ -171,19 +178,11 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
       case 'flag-palette':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'lay-of-the-land': {
-        const kind =
+        const family =
           context.challenge && isChallengeOfType(context.challenge, 'water-blitz-challenge')
-            ? context.challenge.kind
-            : undefined
-        return {
-          submitted: 'Your Answers',
-          correct:
-            kind === 'river'
-              ? 'Every Country It Crosses'
-              : kind === 'ocean' || kind === 'sea' || kind === 'lake'
-                ? 'All the Shores'
-                : 'Everywhere It Reaches',
-        }
+            ? terrainFamily(context.challenge.kind)
+            : 'land'
+        return { submitted: 'Your Answers', correct: TERRAIN_LEDGER[family] }
       }
       case 'name-that-water':
         return { submitted: 'Your Answer', correct: 'Its Shores' }

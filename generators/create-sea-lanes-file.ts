@@ -18,7 +18,7 @@ import type { ISOCountryCode } from '../types/geography.types'
 const neighbours = new Map<ISOCountryCode, Set<ISOCountryCode>>()
 for (const feature of Object.values(WATER_FEATURES)) {
   if (feature.kind !== 'sea') continue
-  // An arguable shore is still a sea lane: a roster's free tier is real coast.
+  // A roster's free tier is real coast too (Barbados, Djibouti on the Red Sea).
   const shores = [...feature.countries, ...(feature.accepted ?? [])]
   for (const shore of shores) {
     const set = neighbours.get(shore) ?? new Set<ISOCountryCode>()
