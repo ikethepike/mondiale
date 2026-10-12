@@ -6,10 +6,13 @@ import { clamp01 } from './number'
 import { countriesSpending } from './currency'
 import { isMemberOf } from './odd-one-out'
 import { playableCountries } from './game-rules'
+import { languagesAsked, speaksLanguage } from './language-rounds'
 import { REGION_LABELS } from './variant'
 import type { DataSetId } from './attribution'
+import { isGroupEnabled, type ChallengeSettings } from '~~/types/challenges/challenge-groups.type'
 import type { CleanSweepChallenge, SweepSetFamily } from '~~/types/challenges/group-modes.type'
-import type { GameDifficulty, GameRules } from '~~/types/game.types'
+import type { CurrencyCode } from '~~/types/currency.type'
+import type { Game, GameDifficulty, GameRules } from '~~/types/game.types'
 import type { ISOCountryCode, Region } from '~~/types/geography.types'
 import type { TreatyId } from '~~/types/treaty.type'
 
@@ -38,6 +41,8 @@ export interface SweepSetSpec {
   dataset: DataSetId
   /** Reserved for hard games unless the group is force-enabled. */
   hardOnly?: boolean
+  /** The language a speaker set asks about — off when the table switched languages off or already played it. */
+  language?: string
   /** The set at this table, unordered. Windowing (for sets past the band) is
    *  the register's own job, so a prompt can never promise more than it deals. */
   members: (rules: GameRules) => ISOCountryCode[]
@@ -59,11 +64,21 @@ const treatyParties =
   }
 
 const currencyZone =
-  (code: Parameters<typeof countriesSpending>[0]) =>
+  (...codes: CurrencyCode[]) =>
   (rules: GameRules): ISOCountryCode[] => {
-    const spenders = new Set(countriesSpending(code))
+    const spenders = new Set(codes.flatMap(code => countriesSpending(code)))
     return playableCountries(rules).filter(isoCode => spenders.has(isoCode))
   }
+
+const speakerSet = (language: string, qualifier: string): SweepSetSpec => ({
+  family: 'language',
+  prompt: `Name every country that speaks ${language}`,
+  label: `${language} speakers`,
+  qualifier,
+  dataset: 'countries',
+  language,
+  members: rules => playableCountries(rules).filter(isoCode => speaksLanguage(isoCode, language)),
+})
 
 const regionRoster =
   (region: Region) =>
@@ -109,16 +124,6 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
     dataset: 'countries',
     members: clubRoster('opec'),
   },
-  csto: {
-    family: 'club',
-    prompt: 'Name every member of the CSTO',
-    label: 'the CSTO',
-    qualifier:
-      'A Russia-led mutual-defence pact of post-Soviet states, built on the 1992 Collective Security Treaty.',
-    dataset: 'countries',
-    hardOnly: true,
-    members: clubRoster('csto'),
-  },
   eurozone: {
     family: 'currency',
     prompt: 'Name every country that spends the euro',
@@ -127,6 +132,16 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
       'Not the same list as the EU: several members kept their own currency, and a few non-members use the euro anyway.',
     dataset: 'currencies',
     members: currencyZone('EUR'),
+  },
+  'cfa-franc': {
+    family: 'currency',
+    prompt: 'Name every country that spends a CFA franc',
+    label: 'the CFA franc',
+    qualifier:
+      'Two currencies sharing one name — the West and Central African CFA francs, both pegged to the euro. Guinea-Bissau and Equatorial Guinea use them without ever having been French.',
+    dataset: 'countries',
+    hardOnly: true,
+    members: currencyZone('XOF', 'XAF'),
   },
   schengen: {
     family: 'treaty',
@@ -172,12 +187,33 @@ export const SWEEP_SETS: { [setId: string]: SweepSetSpec } = {
     dataset: 'marriage-rights',
     members: marriageAdopters,
   },
+  spanish: speakerSet(
+    'Spanish',
+    'Spain, most of Latin America, and Equatorial Guinea — the one African state that speaks it. Brazil, the region’s giant, speaks Portuguese.'
+  ),
+  french: speakerSet(
+    'French',
+    'Spoken well beyond France — in the countries that made it official, and in many more where it is the language of schools, courts or commerce.'
+  ),
+  arabic: speakerSet(
+    'Arabic',
+    'Spoken from Morocco to Oman — and in Chad, Comoros and Djibouti too, where it shares official status with French.'
+  ),
+  portuguese: speakerSet(
+    'Portuguese',
+    'Brazil alone holds most of the world’s Portuguese speakers, and migration has carried the language to countries Portugal never ruled.'
+  ),
+  russian: speakerSet(
+    'Russian',
+    'The Soviet Union’s common tongue outlived it: Russian is still spoken across most of the states that left it.'
+  ),
 }
 
 /**
  * The board's size band and clock. The floor rises with the table so six
- * players never clear a nine-slot board in fifteen seconds; the ceiling keeps
- * the roster readable on a phone.
+ * players never clear a nine-slot board in fifteen seconds; on a board with no
+ * set that big it relaxes, but never below `SWEEP_SLOTS_PER_SEAT` a contender.
+ * The ceiling keeps the roster readable on a phone.
  */
 export const SWEEP_TUNING: {
   [difficulty in GameDifficulty]: {
@@ -193,6 +229,8 @@ export const SWEEP_TUNING: {
   hard: { minimumSlots: 10, maximumSlots: 30, slotsPerExtraSeat: 3, durationSeconds: 70 },
 }
 
+export const SWEEP_SLOTS_PER_SEAT = 2
+
 /**
  * Slots left when the round enters its last call — the communal final gasp,
  * DERIVED from the snapshot rather than announced over the wire. A beat every
@@ -205,18 +243,7 @@ export const SWEEP_LAST_CALL = 3
  *  determined typist can't grow the snapshot for the room. */
 export const SWEEP_STRAY_CAP = 24
 
-/** The band this table plays in — the tuning's floor, raised by the seats. */
-export const sweepSlotBand = (
-  difficulty: GameDifficulty,
-  contenders: number
-): { minimum: number; maximum: number } => {
-  const tuning = SWEEP_TUNING[difficulty]
-  const minimum = Math.min(
-    tuning.maximumSlots,
-    tuning.minimumSlots + Math.max(0, contenders - 2) * tuning.slotsPerExtraSeat
-  )
-  return { minimum, maximum: tuning.maximumSlots }
-}
+export const SWEEP_SMALLEST_BOARD = 8
 
 /**
  * A region set on its own continental board would BE the board — every
@@ -224,6 +251,56 @@ export const sweepSlotBand = (
  * swallows this share of the pool is not a question.
  */
 const MAXIMUM_POOL_SHARE = 0.7
+
+/** The table a set is dealt to: its board and difficulty, its group toggles, and the rounds it has played. */
+export type SweepTable = GameRules &
+  Pick<ChallengeSettings, 'challengeOverrides'> &
+  Partial<Pick<Game, 'rounds'>>
+
+const dealableSweepSets = (table: SweepTable): string[] => {
+  const asked = languagesAsked({ rounds: table.rounds ?? [] })
+  return Object.keys(SWEEP_SETS).filter(setId => {
+    const { hardOnly, language } = SWEEP_SETS[setId]
+    if (hardOnly && table.difficulty !== 'hard') return false
+    return !language || (isGroupEnabled(table, 'language') && !asked.has(language))
+  })
+}
+
+const sweepRoster = (setId: string, rules: GameRules): ISOCountryCode[] | undefined => {
+  const spec = SWEEP_SETS[setId]
+  if (!spec) return undefined
+  const members = spec.members(rules)
+  return members.length > playableCountries(rules).length * MAXIMUM_POOL_SHARE ? undefined : members
+}
+
+/**
+ * The band this table plays in — the tuning's floor, raised by the seats. On a
+ * board whose biggest dealable set falls short of that, the floor drops to that
+ * set, but never below `SWEEP_SLOTS_PER_SEAT` a contender or
+ * `SWEEP_SMALLEST_BOARD`; a board with nothing that big deals no sweep at all.
+ */
+export const sweepSlotBand = (
+  table: SweepTable,
+  contenders: number
+): { minimum: number; maximum: number } => {
+  const tuning = SWEEP_TUNING[table.difficulty]
+  const seated = Math.min(
+    tuning.maximumSlots,
+    tuning.minimumSlots + Math.max(0, contenders - 2) * tuning.slotsPerExtraSeat
+  )
+  const largest = Math.max(
+    0,
+    ...dealableSweepSets(table).map(setId => sweepRoster(setId, table)?.length ?? 0)
+  )
+  return {
+    minimum: Math.max(
+      SWEEP_SMALLEST_BOARD,
+      SWEEP_SLOTS_PER_SEAT * contenders,
+      Math.min(seated, largest)
+    ),
+    maximum: tuning.maximumSlots,
+  }
+}
 
 /**
  * The set as this table would play it: resolved, windowed to the band's
@@ -236,11 +313,8 @@ export const sweepBoardFor = (
   rules: GameRules,
   band: { minimum: number; maximum: number }
 ): ISOCountryCode[] | undefined => {
-  const spec = SWEEP_SETS[setId]
-  if (!spec) return undefined
-  const members = spec.members(rules)
-  if (members.length < band.minimum) return undefined
-  if (members.length > playableCountries(rules).length * MAXIMUM_POOL_SHARE) return undefined
+  const members = sweepRoster(setId, rules)
+  if (!members || members.length < band.minimum) return undefined
   return members.slice(0, band.maximum)
 }
 
@@ -267,14 +341,10 @@ export const sweepOffBoardFor = (
 
 /** Every set that can field a board at this table, in register order. */
 export const viableSweepSets = (
-  rules: GameRules,
+  table: SweepTable,
   band: { minimum: number; maximum: number }
 ): string[] =>
-  Object.keys(SWEEP_SETS).filter(
-    setId =>
-      (!SWEEP_SETS[setId].hardOnly || rules.difficulty === 'hard') &&
-      sweepBoardFor(setId, rules, band) !== undefined
-  )
+  dealableSweepSets(table).filter(setId => sweepBoardFor(setId, table, band) !== undefined)
 
 // --- Reading the board ------------------------------------------------------
 
