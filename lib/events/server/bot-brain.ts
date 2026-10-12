@@ -57,15 +57,16 @@ import { sweepUnclaimed } from '~~/lib/clean-sweep'
 import { governmentKey, type GovernmentAnswer } from '~~/lib/government'
 import {
   bordersBetween,
+  canServeSubpoena,
   claimantOf,
-  clueAdmits,
   hasActed,
   huntCandidates,
+  isPreSonarRound,
   isSheltered,
+  leakWidths,
   legalManhuntMoves,
   MANHUNT_SUBPOENA_TOPICS,
   randomManhuntMove,
-  stepManhuntCandidates,
 } from '~~/lib/manhunt'
 import {
   activeTimelinePlayerId,
@@ -545,7 +546,7 @@ const planGroupChallenge = ({
   const manhunt = currentManhunt(game)
   if (manhunt) {
     const { state } = manhunt
-    if (state.finished) return
+    if (state.finished || isPreSonarRound(manhunt)) return
     if (!isManhuntParticipant(manhunt, seat.id)) return
     if (state.briefing) {
       if (state.ready.includes(seat.id)) return
@@ -563,8 +564,9 @@ const planGroupChallenge = ({
     }
     if (hasActed(state, seat.id)) return
     // A bot reads the painted cut, never the leak itself: it acts only after
-    // the analysis lands, so a human who knows the answer beats it.
-    const sinceAnalysis = Math.max(0, state.analysisAt - Date.now())
+    // the analysis lands, so a human who knows the answer beats it. Hard
+    // paints nothing, and its analysis stamp sits at the deadline.
+    const sinceAnalysis = manhunt.showCandidates ? Math.max(0, state.analysisAt - Date.now()) : 0
     if (
       due(
         `manhunt-act:${roundIndex}:${state.turn}:${seat.id}`,
@@ -1136,10 +1138,7 @@ const dispatchManhuntPlan = (ctx: EngineContext, playerId: string, turn: number)
 
     const plan = secret.plan?.turn === turn ? secret.plan : undefined
     if (plan) {
-      const stepped = stepManhuntCandidates(known, plan.kind, fresh)
-      const widths = plan.options.map(
-        clue => stepped.filter(isoCode => clueAdmits(clue, isoCode)).length
-      )
+      const widths = leakWidths(known, plan.kind, plan.options, fresh)
       const index = widths.indexOf(Math.max(...widths))
       await botAct(ctx, { event: 'submit-manhunt-leak', index: Math.max(0, index), turn })
       return
@@ -1194,8 +1193,7 @@ const dispatchManhuntAct = (ctx: EngineContext, playerId: string, turn: number) 
       )
     }
 
-    const subpoenas = state.subpoenasLeft[playerId] ?? 0
-    if (subpoenas > 0 && !state.subpoena && state.hop < challenge.turnCount - 1) {
+    if (canServeSubpoena(challenge, playerId)) {
       if (Math.random() < 0.3) {
         const topic = sample(MANHUNT_SUBPOENA_TOPICS)!.id
         await botAct(ctx, { event: 'submit-manhunt-subpoena', topic, turn })

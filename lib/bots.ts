@@ -67,7 +67,7 @@ const SHARE_HISTORY_ROUNDS = 5
 export const HOT_COLD_MAX_WANDER = 3
 
 /** The Despot: a bot detective pings until its own possible set is this
- *  small, then pounces — the threshold that kept a simulated hunt a contest. */
+ *  small, then pounces (also the policy manhunt.test.ts pins balance with). */
 export const MANHUNT_POUNCE_AT = 10
 
 /** Clean Sweep's claim accuracy, floor to ceiling across the share — wide

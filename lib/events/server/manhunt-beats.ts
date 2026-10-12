@@ -1,10 +1,12 @@
 import { drawLabel, recordedDraw } from './draws'
 import type { Redis } from '@upstash/redis'
 import {
+  canServeSubpoena,
   claimantOf,
   hasActed,
   huntCandidates,
   initialManhuntCandidates,
+  isPreSonarRound,
   isSheltered,
   manhuntBeatSettled,
   manhuntKey,
@@ -96,7 +98,12 @@ export const manhuntPositionPayload = (
   looted: secret.looted,
   plan:
     secret.plan?.turn === turn
-      ? { isoCode: secret.plan.isoCode, options: secret.plan.options, leak: secret.plan.leak }
+      ? {
+          isoCode: secret.plan.isoCode,
+          kind: secret.plan.kind,
+          options: secret.plan.options,
+          leak: secret.plan.leak,
+        }
       : undefined,
 })
 
@@ -199,6 +206,7 @@ export const applyManhuntReady = async (
   playerId: string
 ) => {
   const { state } = challenge
+  if (isPreSonarRound(challenge)) return finishManhunt(ctx, game, challenge)
   if (!state.briefing || state.ready.includes(playerId)) return
   state.ready.push(playerId)
   if (briefingParticipants(challenge).every(id => state.ready.includes(id))) {
@@ -220,6 +228,7 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
     scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
       const current = currentManhunt(game)
       if (!current || current.state.finished || !current.state.briefing) return
+      if (isPreSonarRound(current)) return finishManhunt(ctx, game, current)
       await beginPursuit(ctx, game, current)
     })
     return
@@ -228,12 +237,13 @@ export const scheduleManhuntTimeout = (ctx: ChainContext, challenge: ManhuntChal
   scheduleDeadlineTask(ctx, deadline, async game => {
     const current = currentManhunt(game)
     if (!current || current.state.finished || current.state.turn !== turn) return
+    if (isPreSonarRound(current)) return finishManhunt(ctx, game, current)
     await resolveBeat(ctx, game, current)
   })
 }
 
 const isLive = (challenge: ManhuntChallenge): boolean =>
-  !challenge.state.briefing && !challenge.state.finished
+  !challenge.state.briefing && !challenge.state.finished && !isPreSonarRound(challenge)
 
 /** The despot's leak options for a destination, bound by any served
  *  subpoena, priced off the PUBLIC replay — what the whole hunt knows. The
@@ -355,11 +365,7 @@ export const applyManhuntSubpoena = async (
   topicId: ManhuntSubpoenaTopicId
 ) => {
   const { state } = challenge
-  if (!isLive(challenge) || state.subpoena) return
-  // A subpoena needs a leak left to bind — none follows the last beat.
-  const lastLeakLocked = state.hop === challenge.turnCount - 1 && state.despotReady
-  if (state.hop >= challenge.turnCount || lastLeakLocked) return
-  if ((state.subpoenasLeft[playerId] ?? 0) < 1) return
+  if (!isLive(challenge) || !canServeSubpoena(challenge, playerId)) return
   state.subpoenasLeft[playerId] -= 1
   state.subpoena = { by: playerId, topic: topicId }
 
@@ -441,9 +447,11 @@ const resolveBeat = async (ctx: ChainContext, game: Game, challenge: ManhuntChal
   state.despotReady = false
   stampBeat(challenge)
 
-  await broadcast(ctx, game)
+  // Private intel first: a map repainted from the new beat must already hold
+  // the reading it just earned, or it flickers wide and narrows again.
   await pushManhuntPosition(ctx, challenge.despotId, secret, state.turn)
   await pushManhuntSonar(ctx, challenge, secret)
+  await broadcast(ctx, game)
   scheduleManhuntTimeout(ctx, challenge)
 }
 

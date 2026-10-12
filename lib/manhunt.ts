@@ -79,6 +79,16 @@ const seaMovesOf = (isoCode: ISOCountryCode, rules: GameRules): ISOCountryCode[]
 const rulesKey = (rules: GameRules) =>
   `${[...rules.regions].sort().join(',')}|${rules.difficulty}|${rules.includeMicroNations ?? ''}`
 
+/** Per-origin graph caches, dropped wholesale past this many entries — a
+ *  long-lived server meets many board combinations. */
+const GRAPH_CACHE_LIMIT = 4000
+
+const remember = <T>(cache: Map<string, T>, key: string, value: T): T => {
+  if (cache.size >= GRAPH_CACHE_LIMIT) cache.clear()
+  cache.set(key, value)
+  return value
+}
+
 const distanceCache = new Map<string, Map<ISOCountryCode, number>>()
 
 /** Borders between two countries over land and straits, on this board —
@@ -90,11 +100,13 @@ export const bordersBetween = (
   rules: GameRules
 ): number | undefined => {
   const key = `${rulesKey(rules)}|${from}`
-  let distances = distanceCache.get(key)
-  if (!distances) {
-    distances = distancesFrom(from, isoCode => groundMovesOf(isoCode, rules))
-    distanceCache.set(key, distances)
-  }
+  const distances =
+    distanceCache.get(key) ??
+    remember(
+      distanceCache,
+      key,
+      distancesFrom(from, isoCode => groundMovesOf(isoCode, rules))
+    )
   return distances.get(to)
 }
 
@@ -107,9 +119,8 @@ export const manhuntHopShape = (
 
 // --- Movement ---------------------------------------------------------------
 
-/** How far the despot may run over land in one beat. One border a beat can't
- *  outrun the sonar — measured, the hunt caught a one-border despot nearly
- *  every time. */
+/** How far the despot may run over land in one beat — the sonar's range is
+ *  balanced against it (the capture-rate pins in manhunt.test.ts). */
 export const MANHUNT_STRIDE = 2
 
 const strideCache = new Map<string, ISOCountryCode[]>()
@@ -133,9 +144,7 @@ const strideOf = (isoCode: ISOCountryCode, rules: GameRules): ISOCountryCode[] =
     }
     frontier = next
   }
-  const result = [...reach]
-  strideCache.set(key, result)
-  return result
+  return remember(strideCache, key, [...reach])
 }
 
 export interface ManhuntMoves {
@@ -343,6 +352,28 @@ export const isSheltered = (
   looted: ISOCountryCode[]
 ): boolean => vaults.includes(isoCode) && !looted.includes(isoCode)
 
+const leakCut = (state: ManhuntState, hop: number, set: ISOCountryCode[]): ISOCountryCode[] => {
+  const leaks = state.clues.filter(clue => clue.hop === hop)
+  return set.filter(isoCode => leaks.every(clue => clueAdmits(clue, isoCode)))
+}
+
+/** The live beat's leak applied to a replay that stopped short of it — the
+ *  map once the analysts land, without replaying the whole history again. */
+export const withLiveLeak = (state: ManhuntState, set: ISOCountryCode[]): ISOCountryCode[] =>
+  leakCut(state, state.hop, set)
+
+/** How many of `set` each leak would leave once the despot moves `kind` —
+ *  what the despot weighs, and what the bot despot maximises. */
+export const leakWidths = (
+  set: ISOCountryCode[],
+  kind: ManhuntMoveKind,
+  options: ManhuntClue[],
+  rules: GameRules
+): number[] => {
+  const stepped = stepManhuntCandidates(set, kind, rules)
+  return options.map(clue => stepped.filter(isoCode => clueAdmits(clue, isoCode)).length)
+}
+
 /**
  * THE candidate engine: where the despot can be at the live beat, replayed
  * from the public record (leaks, stakeout misses, announced moves) plus any
@@ -360,11 +391,7 @@ export const huntCandidates = (
   const { state, vaults } = challenge
   let set = initialManhuntCandidates(rules, vaults)
   for (let hop = 1; hop <= state.hop; hop++) {
-    if (hop < state.hop || latestLeak) {
-      for (const clue of state.clues) {
-        if (clue.hop === hop) set = set.filter(isoCode => clueAdmits(clue, isoCode))
-      }
-    }
+    if (hop < state.hop || latestLeak) set = leakCut(state, hop, set)
     if (hop === state.hop) break
     const dragnet = state.dragnets.find(entry => entry.hop === hop)
     set = pruneManhuntCandidates(set, Object.values(dragnet?.claims ?? {}), vaults)
@@ -413,6 +440,8 @@ export const clueAdmits = (clue: ManhuntClue, isoCode: ISOCountryCode): boolean 
     case 'region':
       return clue.subject === undefined || country.region === clue.subject
     case 'language':
+      // The clue says OFFICIAL, so not lib/language-rounds' speaker union —
+      // that would admit countries the printed line rules out.
       return !!clue.subject && (country.officialLanguages ?? []).includes(clue.subject)
     case 'membership':
       return (country.membership ?? []).some(member => member.id === clue.subject)
@@ -577,10 +606,13 @@ export const manhuntClaimsPerBeat = (detectives: number, poolSize: number): numb
 export const manhuntFloor = (claimsPerBeat: number, difficulty: GameDifficulty): number =>
   claimsPerBeat * MANHUNT_TUNING[difficulty].floorPerClaim
 
+const isSoundCut = (pick: ManhuntCluePick, setSize: number, floor: number): boolean =>
+  pick.matches.length < setSize && pick.matches.length >= Math.min(floor, setSize)
+
 const rankLeaks = (pool: ManhuntCluePick[], setSize: number, floor: number): ManhuntCluePick[] => {
   const target = Math.max(floor, setSize * CLUE_TARGET_FRACTION)
   const informative = pool.filter(pick => pick.matches.length < setSize)
-  const sound = informative.filter(pick => pick.matches.length >= Math.min(floor, setSize))
+  const sound = informative.filter(pick => isSoundCut(pick, setSize, floor))
   if (sound.length) {
     return shuffleArray(sound).sort(
       (a, b) => Math.abs(a.matches.length - target) - Math.abs(b.matches.length - target)
@@ -629,9 +661,12 @@ export const manhuntLeakOptions = (
   const topic = MANHUNT_SUBPOENA_TOPICS.find(entry => entry.id === topicId)
   const picks = topic
     ? (() => {
-        const scoped = pool.filter(pick => inTopic(topic, pick.clue))
-        const ranked = rankLeaks(scoped.length ? scoped : pool, candidates.length, floor)
-        return ranked.slice(0, 1)
+        // A topic holding only sharper truths falls back to the engine's own
+        // sound cut — a subpoena buys a topic, never a giveaway.
+        const scoped = pool.filter(
+          pick => inTopic(topic, pick.clue) && isSoundCut(pick, candidates.length, floor)
+        )
+        return rankLeaks(scoped.length ? scoped : pool, candidates.length, floor).slice(0, 1)
       })()
     : pickPair(rankLeaks(pool, candidates.length, floor))
   for (const pick of picks) if (!pick.matches.includes(despotAt)) pick.matches.push(despotAt)
@@ -709,6 +744,17 @@ export type ManhuntSubpoenaTopicId = (typeof MANHUNT_SUBPOENA_TOPICS)[number]['i
 export const isManhuntSubpoenaTopic = (value: unknown): value is ManhuntSubpoenaTopicId =>
   MANHUNT_SUBPOENA_TOPICS.some(topic => topic.id === value)
 
+/** Whether a detective may serve a subpoena now: a token in hand, none
+ *  already pending, and a leak still left to bind — none follows the last
+ *  beat, nor the second-to-last once its leak is locked. */
+export const canServeSubpoena = (challenge: ManhuntChallenge, playerId: string): boolean => {
+  const { state, turnCount } = challenge
+  if (state.briefing || state.finished || state.subpoena) return false
+  if (!state.detectives.includes(playerId) || (state.subpoenasLeft[playerId] ?? 0) < 1) return false
+  if (state.hop >= turnCount) return false
+  return !(state.hop === turnCount - 1 && state.despotReady)
+}
+
 export const subpoenaTopic = (topicId: string | undefined) =>
   MANHUNT_SUBPOENA_TOPICS.find(topic => topic.id === topicId)
 
@@ -745,6 +791,12 @@ export const manhuntBeatSettled = (challenge: ManhuntChallenge): boolean => {
   const despotDone = state.despotReady || state.hop >= challenge.turnCount
   return despotDone && state.detectives.every(playerId => hasActed(state, playerId))
 }
+
+/** A round saved before pings and vaults existed (live across a deploy):
+ *  nothing here can play it, so the engine winds it down unscored. */
+export const isPreSonarRound = (challenge: ManhuntChallenge): boolean =>
+  !Array.isArray((challenge as Partial<ManhuntChallenge>).vaults) ||
+  !(challenge.state as Partial<ManhuntState>).pings
 
 /** Every detective does ONE thing a beat: a ping or a stakeout. */
 export const hasActed = (state: ManhuntState, playerId: string): boolean =>

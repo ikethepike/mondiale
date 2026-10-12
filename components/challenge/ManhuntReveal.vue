@@ -28,14 +28,14 @@
     </p>
     <p v-if="sharpest" class="sharpest">
       Sharpest ping: <strong>{{ nameOf(sharpest.playerId) }}</strong
-      >, {{ formatReading(sharpest.distance) }} out on beat {{ sharpest.hop }}
+      >, {{ sharpestLine }}
     </p>
     <details v-if="clues.length" class="intel-recap" :open="!isPhone && !isShort">
       <summary class="recap-lead">
         The leaks that {{ capturerName ? 'closed the net' : 'never closed it' }}
       </summary>
       <ul class="clues">
-        <li v-for="clue in clues" :key="clue.text" class="clue-row">
+        <li v-for="clue in clues" :key="`${clue.hop}-${clue.text}`" class="clue-row">
           <span class="hop-badge">{{ clue.hop }}</span>
           <span>{{ clue.text }}</span>
           <span v-if="clue.askedBy" class="clue-tag">⚖ {{ nameOf(clue.askedBy) }}</span>
@@ -153,6 +153,15 @@ const sharpest = computed(() => {
     )
   )
   return all.sort((a, b) => a.distance - b.distance)[0]
+})
+const sharpestLine = computed(() => {
+  const best = sharpest.value
+  if (!best) return ''
+  const where =
+    best.distance === 0
+      ? 'right on the hideout'
+      : `${formatReading(best.distance)} from the hideout`
+  return `${where} on beat ${best.hop}`
 })
 
 const capturedHop = computed(() =>

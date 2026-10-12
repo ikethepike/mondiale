@@ -1083,7 +1083,7 @@ export interface ManhuntPosition {
   trail: ISOCountryCode[]
   turn: number
   looted: ISOCountryCode[]
-  plan?: { isoCode: ISOCountryCode; options: ManhuntClue[]; leak?: number }
+  plan?: { isoCode: ISOCountryCode; kind: ManhuntMoveKind; options: ManhuntClue[]; leak?: number }
 }
 
 /** Unique or Bust's category board — each id names a register in lib/unique-or-bust. */

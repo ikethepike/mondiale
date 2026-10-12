@@ -10,6 +10,7 @@ import type { BoardRegion } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { connectionsOf } from './chain'
 import {
+  canServeSubpoena,
   clueAdmits,
   despotShare,
   initialManhuntCandidates,
@@ -25,6 +26,7 @@ import {
   MANHUNT_THRESHOLD_ACCESSORS,
   MANHUNT_STRIDE,
   huntCandidates,
+  leakWidths,
   pickManhuntSeed,
   readingAdmits,
   SONAR_CAP,
@@ -36,6 +38,7 @@ import {
   scoreManhunt,
   seaNeighboursOf,
   stepManhuntCandidates,
+  withLiveLeak,
 } from './manhunt'
 import { sample, shuffleArray } from './arrays'
 import { MANHUNT_POUNCE_AT } from './bots'
@@ -297,6 +300,18 @@ describe('leaks', () => {
     }
   })
 
+  it('never lets a subpoena single out the hideout, even in a thin topic', () => {
+    const floor = manhuntFloor(3, 'normal')
+    for (const despotAt of ['HU', 'EE', 'LT', 'IS', 'MN'] as ISOCountryCode[]) {
+      for (const topic of MANHUNT_SUBPOENA_TOPICS) {
+        const [pick] = manhuntLeakOptions(game, despotAt, pool, 1, [], 3, topic.id)
+        expect(pick!.matches.length, `${despotAt}/${topic.id}`).toBeGreaterThanOrEqual(
+          Math.min(floor, pool.length)
+        )
+      }
+    }
+  })
+
   it('never deals a language clue that names the despot country', () => {
     const endgame: ISOCountryCode[] = ['HU', 'SK', 'AT', 'RO', 'HR', 'SI']
     const used: ManhuntClue[] = []
@@ -325,6 +340,43 @@ describe('leaks', () => {
         amount >= pick.clue.threshold! === pick.clue.above
       )
     }
+  })
+})
+
+describe('the live leak and its widths', () => {
+  it('applies the live leak to a replay that stopped short of it', () => {
+    const live = challenge({
+      hop: 1,
+      clues: [{ hop: 1, kind: 'region', subject: 'africa', text: 'Africa' }],
+    })
+    const before = huntCandidates(live, RULES, [], { latestLeak: false })
+    expect(withLiveLeak(live.state, before)).toEqual(huntCandidates(live, RULES))
+  })
+
+  it('counts what each leak leaves after the move', () => {
+    const clue: ManhuntClue = { hop: 2, kind: 'region', subject: 'europe', text: 'Europe' }
+    const [width] = leakWidths(['DE'], 'ground', [clue], RULES)
+    const stepped = stepManhuntCandidates(['DE'], 'ground', RULES)
+    expect(width).toBe(stepped.filter(isoCode => getCountry(isoCode).region === 'europe').length)
+  })
+})
+
+describe('subpoena eligibility', () => {
+  it('needs a token, no pending subpoena, and a leak left to bind', () => {
+    expect(canServeSubpoena(challenge({ subpoenasLeft: { a: 1 } }), 'a')).toBe(true)
+    expect(canServeSubpoena(challenge({ subpoenasLeft: { a: 0 } }), 'a')).toBe(false)
+    expect(canServeSubpoena(challenge({ subpoenasLeft: { a: 1 } }), 'despot')).toBe(false)
+    expect(
+      canServeSubpoena(
+        challenge({ subpoenasLeft: { a: 1 }, subpoena: { by: 'b', topic: 'land' } }),
+        'a'
+      )
+    ).toBe(false)
+    expect(canServeSubpoena(challenge({ subpoenasLeft: { a: 1 }, hop: 7 }), 'a')).toBe(false)
+    expect(canServeSubpoena(challenge({ subpoenasLeft: { a: 1 }, hop: 6 }), 'a')).toBe(true)
+    expect(
+      canServeSubpoena(challenge({ subpoenasLeft: { a: 1 }, hop: 6, despotReady: true }), 'a')
+    ).toBe(false)
   })
 })
 

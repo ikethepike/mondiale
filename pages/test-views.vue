@@ -3059,6 +3059,19 @@ const scenarios: Scenario[] = [
     },
   },
   {
+    id: 'manhunt-last-beat',
+    label: 'The Despot (detective, the last beat — stake-outs only matter now)',
+    build: () => {
+      gameStore.manhuntReadings = {
+        turn: 7,
+        readings: [{ hop: 6, isoCode: 'FR', distance: 1 }],
+      }
+      return mockGame('round', [
+        groupRound(manhuntChallenge(RIVAL, [ME, THIRD], { turn: 7, hop: 7 })),
+      ])
+    },
+  },
+  {
     id: 'manhunt-analysis',
     label: 'The Despot (detective, before the analysts land, subpoena served)',
     build: () =>
@@ -3137,6 +3150,7 @@ const scenarios: Scenario[] = [
         looted: [],
         plan: {
           isoCode: 'CH',
+          kind: 'ground',
           options: [
             {
               hop: 4,

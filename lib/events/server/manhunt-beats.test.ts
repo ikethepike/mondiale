@@ -1,18 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  clueAdmits,
   huntCandidates,
   initialManhuntCandidates,
   legalManhuntMoves,
   manhuntKey,
   MANHUNT_TUNING,
+  manhuntFloor,
   sonarDistance,
+  stepManhuntCandidates,
   type ManhuntSecret,
 } from '~~/lib/manhunt'
 import { latestChallengeOfType } from '~~/lib/rounds'
 import type { ManhuntChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
-import { startManhunt } from './manhunt-beats'
+import { armBotPump, forgetBotStateForTests } from './bot-brain'
+import { rearmManhunt, startManhunt } from './manhunt-beats'
 import { dropArmedTimersForTests } from './seat-cursor'
 import { testSeat } from './test-seat'
 import { createTestTable, type TestTable, uniqueGameId } from './test-table'
@@ -22,8 +26,8 @@ const DETECTIVES = ['a', 'b', 'c']
 const VAULTS: ISOCountryCode[] = ['CH', 'SG', 'PA']
 const RULES = { regions: [], difficulty: 'normal' as const }
 
-const buildGame = (): Game => {
-  const tuning = MANHUNT_TUNING.normal
+const buildGame = (difficulty: 'normal' | 'hard' = 'normal'): Game => {
+  const tuning = MANHUNT_TUNING[difficulty]
   const challenge: ManhuntChallenge = {
     _type: 'manhunt-challenge',
     turnCount: tuning.turnCount,
@@ -33,7 +37,7 @@ const buildGame = (): Game => {
     despotId: DESPOT,
     favours: tuning.favours,
     subpoenas: 1,
-    showCandidates: true,
+    showCandidates: difficulty !== 'hard',
     analysisDelay: tuning.analysisDelay,
     vaults: VAULTS,
     state: {
@@ -60,7 +64,7 @@ const buildGame = (): Game => {
     started: true,
     length: 'short',
     regions: [],
-    difficulty: 'normal',
+    difficulty,
     tiles: [],
     players: Object.fromEntries([DESPOT, ...DETECTIVES].map(id => [id, testSeat(id, 'round')])),
     rounds: [{ groupChallenge: challenge, groupAnswers: {}, playerTurns: {} }],
@@ -79,9 +83,11 @@ const despotAt = async (table: TestTable) => {
 }
 
 /** A seeded table with the briefing dismissed and the first beat running. */
-const openChase = async () => {
-  const game = buildGame()
-  const table = await createTestTable(game)
+const openChase = async (
+  game = buildGame(),
+  options: Parameters<typeof createTestTable>[1] = {}
+) => {
+  const table = await createTestTable(game, options)
   const fresh = await table.read()
   await startManhunt(table.ctx(DESPOT), fresh, latestChallengeOfType(fresh, 'manhunt-challenge')!)
   await table.redis.set(fresh.id, fresh)
@@ -117,7 +123,9 @@ describe('the Despot beat engine', () => {
     table?.dispose()
     table = undefined
     dropArmedTimersForTests()
+    forgetBotStateForTests()
     vi.useRealTimers()
+    vi.unstubAllEnvs()
   })
 
   it('seeds the trail off the snapshot and deals a true opening leak', async () => {
@@ -270,5 +278,69 @@ describe('the Despot beat engine', () => {
     expect(after.state.hop).toBe(2)
     expect(after.state.clues).toHaveLength(2)
     expect(await despotAt(table)).not.toBe(before)
+  })
+
+  it('bot detectives act within the beat on hard, where no map is painted', async () => {
+    vi.stubEnv('FLY_MACHINE_ID', '')
+    const game = buildGame('hard')
+    for (const id of DETECTIVES) game.players[id]!.bot = true
+    table = await openChase(game, { connected: [DESPOT] })
+    armBotPump(table.ctx(DESPOT), await table.read())
+    const { state, beatSeconds } = await manhuntOf(table)
+    await vi.advanceTimersByTimeAsync((beatSeconds * 1000) / 2)
+    const live = await manhuntOf(table)
+    expect(live.state.turn).toBe(state.turn)
+    for (const id of DETECTIVES) {
+      expect(live.state.claims[id] ?? live.state.pings[id], id).toBeDefined()
+    }
+  })
+
+  it('never lets a subpoena serve a giveaway below the floor', async () => {
+    table = await openChase()
+    const { state } = await manhuntOf(table)
+    await table.send('b', { event: 'submit-manhunt-subpoena', topic: 'culture', turn: state.turn })
+    await planGround(table)
+    const plan = (await secretOf(table)).plan!
+    const challenge = await manhuntOf(table)
+    const stepped = stepManhuntCandidates(huntCandidates(challenge, RULES), plan.kind, RULES)
+    const [leak] = plan.options
+    const left = stepped.filter(isoCode => clueAdmits(leak!, isoCode)).length
+    expect(left).toBeGreaterThanOrEqual(Math.min(manhuntFloor(3, 'normal'), stepped.length))
+  })
+
+  it('sends a detective their reading before the new beat reaches the room', async () => {
+    table = await openChase(buildGame(), { connected: DETECTIVES })
+    const { state } = await manhuntOf(table)
+    await table.send('a', { event: 'submit-manhunt-ping', isoCode: 'FR', turn: state.turn })
+    await table.send('b', { event: 'submit-manhunt-ping', isoCode: 'DE', turn: state.turn })
+    await table.send('c', { event: 'submit-manhunt-ping', isoCode: 'PL', turn: state.turn })
+    await planGround(table)
+    await table.send(DESPOT, { event: 'submit-manhunt-leak', index: 0, turn: state.turn })
+    const order = table.emits.map(emit => emit.event)
+    const sonar = order.indexOf('manhunt-sonar')
+    const nextBeat = order.lastIndexOf('manhunt-updated')
+    expect(sonar).toBeGreaterThan(-1)
+    expect(sonar).toBeLessThan(nextBeat)
+  })
+
+  it('winds a round saved before the sonar down cleanly after a deploy', async () => {
+    const game = buildGame()
+    const challenge = latestChallengeOfType(game, 'manhunt-challenge')!
+    const legacy = challenge as unknown as Record<string, unknown>
+    delete legacy.vaults
+    delete legacy.claimsPerBeat
+    const state = challenge.state as unknown as Record<string, unknown>
+    Object.assign(state, { briefing: false, beat: 'hunt', committed: [], deadline: Date.now() - 1 })
+    delete state.pings
+    delete state.claims
+    table = await createTestTable(game)
+
+    rearmManhunt(table.ctx(DESPOT), await table.read())
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect((await manhuntOf(table)).state.finished).toBe(true)
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(Object.keys((await table.read()).rounds[0]!.groupAnswers).sort()).toEqual(
+      [DESPOT, ...DETECTIVES].sort()
+    )
   })
 })
