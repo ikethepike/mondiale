@@ -19,6 +19,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import { worldBankMapping } from '~~/data/worldbank.gen'
 import { TREATY_META } from '~~/types/treaty.type'
 import { isBoilerplateCredit } from '~~/generators/lib/licence'
+import { officialLanguages, spokenLanguages } from '~~/lib/language-rounds'
 
 // 194 countries today; the UN would notice before we dip under 190.
 const COUNTRY_FLOOR = 190
@@ -78,25 +79,13 @@ describe('countries.gen', () => {
   })
 
   it('every country speaks something, officially', () => {
-    // Both lists feed rounds that grade against them, and an empty one is a
-    // country that silently drops out of Mother Tongue and the manhunt's
-    // language subpoena rather than failing loudly.
+    // Both feed rounds that grade against them, and an empty one is a country
+    // that silently drops out of Mother Tongue and the manhunt's language
+    // subpoena rather than failing loudly.
     for (const country of countries) {
-      expect(country.languages.length, country.isoCode).toBeGreaterThan(0)
-      expect(country.officialLanguages.length, country.isoCode).toBeGreaterThan(0)
+      expect(spokenLanguages(country.isoCode).size, country.isoCode).toBeGreaterThan(0)
+      expect(officialLanguages(country.isoCode).length, country.isoCode).toBeGreaterThan(0)
     }
-  })
-
-  it('parses officials from the Factbook for most of the roster', () => {
-    // 21 countries carry no "(official)" marker and fall back to the spoken
-    // list. If a parser regression pushed that fallback wide, the official
-    // field would quietly become a copy of `languages` — and the rounds that
-    // CLAIM officiality would be guessing again.
-    // 55 of 194 differ today (a different set, a different order, or both).
-    const differs = countries.filter(
-      country => country.officialLanguages.join('|') !== country.languages.join('|')
-    )
-    expect(differs.length).toBeGreaterThan(40)
   })
 })
 

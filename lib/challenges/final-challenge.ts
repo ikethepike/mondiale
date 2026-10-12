@@ -11,7 +11,12 @@ import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { quizLeader } from '~~/lib/leaders'
-import { acceptsSpeaker, speaksLanguage, spokenLanguages } from '~~/lib/language-rounds'
+import {
+  acceptsSpeaker,
+  boardSpeakers,
+  isHeadlineLanguage,
+  speaksLanguage,
+} from '~~/lib/language-rounds'
 import { MAP_PATHS, type MapCode } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
 import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
@@ -222,7 +227,14 @@ const getRegionChallenge = (pool: ISOCountryCode[]): RegionChallenge | undefined
 }
 
 const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge | undefined => {
-  const language = sample(pool.flatMap(isoCode => [...spokenLanguages(isoCode)]))
+  // One entry per speaker on the board, so a language comes up as often as
+  // the board speaks it.
+  const speakers = boardSpeakers(pool)
+  const language = sample(
+    [...speakers].flatMap(([language, countries]) =>
+      isHeadlineLanguage(language, languageSpeakers(language)) ? countries.map(() => language) : []
+    )
+  )
   if (!language) return undefined
 
   return {

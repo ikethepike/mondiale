@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { LANGUAGE_LOCALES } from './data/language-locales'
 import { writeAudioClip } from './vendors/wikidata/commons'
 
 /**
@@ -43,85 +44,6 @@ export interface TongueEntry {
 }
 
 export type TongueMapping = { [language: string]: TongueEntry }
-
-/**
- * Mondiale's language names (as `Country.languages` spells them) to Common
- * Voice locales. Only languages that BOTH appear on a country and exist in the
- * corpus can deal, so this map is the join between the two.
- */
-export const LANGUAGE_LOCALES: { [language: string]: string } = {
-  Afrikaans: 'af',
-  Albanian: 'sq',
-  Amharic: 'am',
-  Arabic: 'ar',
-  Armenian: 'hy-AM',
-  Azerbaijani: 'az',
-  Basque: 'eu',
-  Belarusian: 'be',
-  Bengali: 'bn',
-  Bulgarian: 'bg',
-  Catalan: 'ca',
-  Chinese: 'zh-CN',
-  Croatian: 'hr',
-  Czech: 'cs',
-  Danish: 'da',
-  Dutch: 'nl',
-  English: 'en',
-  Estonian: 'et',
-  Finnish: 'fi',
-  French: 'fr',
-  Georgian: 'ka',
-  German: 'de',
-  Greek: 'el',
-  Hausa: 'ha',
-  Hebrew: 'he',
-  Hindi: 'hi',
-  Hungarian: 'hu',
-  Icelandic: 'is',
-  Igbo: 'ig',
-  Indonesian: 'id',
-  Irish: 'ga-IE',
-  Italian: 'it',
-  Japanese: 'ja',
-  Kazakh: 'kk',
-  Korean: 'ko',
-  Kyrgyz: 'ky',
-  Latvian: 'lv',
-  Lithuanian: 'lt',
-  Macedonian: 'mk',
-  Malay: 'ms',
-  Maltese: 'mt',
-  Marathi: 'mr',
-  Mongolian: 'mn',
-  Nepali: 'ne-NP',
-  Norwegian: 'nn-NO',
-  Persian: 'fa',
-  Polish: 'pl',
-  Portuguese: 'pt',
-  Punjabi: 'pa-IN',
-  Romanian: 'ro',
-  Russian: 'ru',
-  Rwandi: 'rw',
-  Serbian: 'sr',
-  Slovak: 'sk',
-  Slovenian: 'sl',
-  Somali: 'so',
-  Spanish: 'es',
-  Swahili: 'sw',
-  Swedish: 'sv-SE',
-  Tamil: 'ta',
-  Telugu: 'te',
-  Thai: 'th',
-  Tigrinya: 'ti',
-  Turkish: 'tr',
-  Ukrainian: 'uk',
-  Urdu: 'ur',
-  Uzbek: 'uz',
-  Vietnamese: 'vi',
-  Welsh: 'cy',
-  Yoruba: 'yo',
-  Zulu: 'zu',
-}
 
 const force = process.argv.includes('--force')
 

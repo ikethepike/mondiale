@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
-import { COUNTRIES } from '~~/data/countries.gen'
+import { officialLanguages } from '~~/lib/language-rounds'
 import {
   SCRIPTORIUM_POOL,
   SCRIPTORIUM_RUNGS,
@@ -31,19 +31,17 @@ describe('SCRIPTORIUM_POOL', () => {
     }
   })
 
-  it('never stages a page whose language no country writes officially — except where the Factbook does not say so', () => {
-    // The pool's admission rule is "somebody makes it official", and the data
-    // backs it everywhere but Kyrgyz: the Factbook parse leaves Kyrgyzstan's
-    // officials as Russian alone, with Kyrgyz on the spoken list. Pinned as a
-    // known exception rather than asserted away — a SECOND entry drifting into
-    // minority-status-only is a pool bug worth failing on.
+  it('never stages a page whose language no country writes officially', () => {
+    // The pool's admission rule is "somebody makes it official" — a language
+    // drifting into minority-status-only is a pool bug worth failing on.
+    // Kyrgyz used to be the exception, until the parse learned "(state language)".
     const withoutOfficial = SCRIPTORIUM_POOL.filter(
       entry =>
         !scriptoriumAnswers(entry.language).some(isoCode =>
-          (COUNTRIES[isoCode]?.officialLanguages ?? []).includes(entry.language)
+          officialLanguages(isoCode).includes(entry.language)
         )
     ).map(entry => entry.language)
-    expect(withoutOfficial).toEqual(['Kyrgyz'])
+    expect(withoutOfficial).toEqual([])
   })
 
   it('resolves a written sample with real lines for every entry', () => {

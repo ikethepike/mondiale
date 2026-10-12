@@ -7,8 +7,10 @@ import {
   isSignLanguage,
   MOTHER_TONGUE_SPEAKERS,
   languageBounce,
+  isHeadlineLanguage,
   languageBounceLine,
   motherTongueDeck,
+  officialLanguages,
   speakerRow,
   speaksLanguage,
   spokenLanguages,
@@ -293,6 +295,24 @@ describe('spoken languages', () => {
   it('never names the language in a Tongue Buzz bounce', () => {
     const line = languageBounceLine(challengeOf('English', ['GB', 'IE']), 'BI', 'it')
     expect(line).toBe('Burundi makes it official, but under 1% speak it — not counted')
+  })
+
+  it('reads officiality from the statutes alone, in source order', () => {
+    expect(officialLanguages('BI')).toEqual(['Kirundi', 'French', 'English'])
+    // "(state language)" is Kyrgyzstan's word for it.
+    expect(officialLanguages('KG')).toEqual(['Kyrgyz', 'Russian'])
+    // A regional statute is not a national one.
+    expect(officialLanguages('AT')).not.toContain('Croatian')
+    expect(officialLanguages('PT')).toEqual(['Portuguese'])
+  })
+
+  it('names a language on its own only when a player could have met it', () => {
+    const headline = (language: string) =>
+      isHeadlineLanguage(language, [...(boardSpeakers(ISOCountryCodes).get(language) ?? [])])
+    expect(headline('Greek')).toBe(true)
+    expect(headline('Japanese')).toBe(true)
+    expect(headline('Oromo')).toBe(false)
+    expect(headline('Fiji Hindi')).toBe(false)
   })
 
   it('never counts a sign language as spoken', () => {

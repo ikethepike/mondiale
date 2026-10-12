@@ -9,6 +9,7 @@ import { jsonParseLiteral } from '../../lib/emit'
 import {
   canonicalLanguage,
   cldrLanguage,
+  countryLanguage,
   firstLanguageShares,
   namedLanguages,
   officialLanguages,
@@ -104,15 +105,16 @@ const main = async () => {
 
   for (const isoCode of ISOCountryCodes) {
     const text = factbookLanguageText(FACTBOOK[isoCode])
-    const marked = officialLanguages(text)
-    const regional = new Set(regionalOfficialLanguages(text))
+    const local = (language: string) => countryLanguage(isoCode, language)
+    const marked = officialLanguages(text).map(local)
+    const regional = new Set(regionalOfficialLanguages(text).map(local))
     // The source not marking an official is not a country without one: fall
-    // back to `countries-list`, as `Country.officialLanguages` does.
+    // back to `countries-list`.
     const national = (marked.length ? marked : listedLanguages(isoCode)).filter(
       language => !regional.has(language)
     )
     const factbookShares = new Map(
-      firstLanguageShares(text).map(({ language, share }) => [language, share])
+      firstLanguageShares(text).map(({ language, share }) => [local(language), share])
     )
     const cldr = cldrRows(territoryInfo.supplemental.territoryInfo[isoCode], displayNames)
     const curated = new Map(
@@ -122,7 +124,7 @@ const main = async () => {
     const named = new Set([
       ...national,
       ...regional,
-      ...namedLanguages(text),
+      ...namedLanguages(text).map(local),
       ...listedLanguages(isoCode),
       ...curated.keys(),
       ...[...cldr].filter(([, { status }]) => status).map(([language]) => language),

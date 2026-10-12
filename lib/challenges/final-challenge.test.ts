@@ -9,7 +9,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
-import { speakerRow, speaksLanguage } from '~~/lib/language-rounds'
+import { isHeadlineLanguage, speakerRow, speaksLanguage } from '~~/lib/language-rounds'
 import { politicalLeader } from '~~/lib/leaders'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
@@ -1126,6 +1126,18 @@ describe('isCorrectFinalAnswer', () => {
         submittedAnswer: { _type: 'language-challenge', isoCode: nonSpeaker },
       })
     ).toBe(false)
+  })
+
+  it('only ever asks a language a player could have met', () => {
+    const game = gameFor('world', 'hard')
+    for (let draw = 0; draw < 200; draw++) {
+      const item = dealFinalChallenge('language-challenge', game, playableCountries(game))
+      if (item?._type !== 'language-challenge') throw new Error('no language question dealt')
+      expect(
+        isHeadlineLanguage(item.language, languageSpeakers(item.language)),
+        item.language
+      ).toBe(true)
+    }
   })
 
   it('accepts a statute the country barely speaks without listing it among the speakers', () => {

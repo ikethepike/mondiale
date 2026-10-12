@@ -19,7 +19,7 @@ import { REGION_LABELS } from './variant'
  * curated anthem lyric wall) — one home, shared with the Tongues round.
  */
 export interface ScriptoriumEntry {
-  /** Language name as it appears in `Country.languages` AND as a
+  /** Language name as it appears in `SPEAKERS` AND as a
    *  `TONGUES`/seed key, so the sample lookup and the answer set share it. */
   language: string
   /**
@@ -35,9 +35,8 @@ export interface ScriptoriumEntry {
 /**
  * Languages whose writing alone narrows the world: a resolvable written
  * sample, a script that is not the Latin alphabet, and at least one country
- * that speaks the language — officially, bar Kyrgyz, whose officiality the
- * Factbook parse doesn't record (pinned in lib/scriptorium.test.ts, which also
- * prunes: every entry must resolve a sample and a non-empty answer set).
+ * that makes the language official (pinned in lib/scriptorium.test.ts, which
+ * also prunes: every entry must resolve a sample and a non-empty answer set).
  */
 export const SCRIPTORIUM_POOL: ScriptoriumEntry[] = [
   { language: 'Arabic', script: 'Arabic script', code: 'ar' },

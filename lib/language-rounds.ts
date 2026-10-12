@@ -93,6 +93,29 @@ export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
 export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean =>
   spokenLanguages(isoCode).has(language)
 
+/** The languages a country makes official nationwide, in the order its source
+ *  lists them (Burundi leads with Kirundi). What a clue claiming officiality reads. */
+export const officialLanguages = (isoCode: ISOCountryCode): string[] =>
+  Object.entries(SPEAKERS[isoCode] ?? {})
+    .filter(([language, row]) => !isSignLanguage(language) && row.official === 'national')
+    .map(([language]) => language)
+
+/** Over half a country speaks it: the share past which a language is that
+ *  country's language, not merely one of them. */
+export const MAJORITY_SHARE = 50
+
+/**
+ * A language a question may name on its own: spoken in two or more countries,
+ * or by most of one. Fiji Hindi, Sindhi and Oromo are real, but "Name a
+ * country that speaks Oromo" tests nothing a player could have learned.
+ */
+export const isHeadlineLanguage = (
+  language: string,
+  speakers: readonly ISOCountryCode[]
+): boolean =>
+  speakers.length >= 2 ||
+  speakers.some(isoCode => (speakerRow(isoCode, language)?.share ?? 0) > MAJORITY_SHARE)
+
 /**
  * The board's languages, each with the countries standing on it that speak
  * them — the ONE index both dealers deal from. A round's answer set, the copy
