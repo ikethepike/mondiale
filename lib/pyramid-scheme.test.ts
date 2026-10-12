@@ -202,6 +202,27 @@ describe('pyramid scheme grading', () => {
     expect((await grade(['NE', 'QA', 'JP'])).scoring.scored).toBe(0)
     expect((await grade([])).scoring.scored).toBe(0)
   })
+  it('grades a round dealt before the redesign as zero, never a free hit', async () => {
+    const legacy = {
+      groupChallenge: {
+        _type: 'pyramid-scheme-challenge',
+        countries: ['DE', 'NE', 'QA', 'JP'],
+        distinctnessFloor: 22,
+        durationSeconds: 55,
+        maximumPoints: 20,
+      },
+      groupAnswers: {},
+      playerTurns: {},
+    } as unknown as Round
+    const { scoring } = await gradeGroupAnswer({
+      game: {} as Game,
+      round: legacy,
+      playerId: 'p',
+      submission: { ranking: [] } as never,
+    })
+    expect(scoring).toEqual({ scored: 0, maximum: 20 })
+  })
+
   it('zeroes an absent seat but still reports the truth', async () => {
     const { scoring, answer } = await grade([], true)
     expect(scoring.scored).toBe(0)

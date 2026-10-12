@@ -73,6 +73,7 @@ export const scheduleClassicSettle = (ctx: EngineContext, game: Game) => {
           round: freshRound,
           playerId: seat.id,
           submission: ABSENT_SUBMISSION,
+          seat: seat.cursor,
           absent: true,
           redis: ctx.redis,
         })

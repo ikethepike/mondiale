@@ -4,6 +4,7 @@ import {
   roundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
 import type { Game } from '~~/types/game.types'
+import { attemptBoardOf } from './attempt-boards'
 
 /**
  * How much of a guess the room may see.
@@ -138,18 +139,9 @@ export const guessPolicyFor = (
     return 'none'
   }
 
-  // Outside hard mode the option variants offer a small flag table, so naming
-  // a wrong pick eliminates a share of the field. Hard mode free-types the
-  // whole world. Scoped to exactly these kinds: other challenges carry an
-  // `options` field too (government's party list, trend-race's cards), and a
-  // bare truthiness check silently overrode their BASE_POLICY rows.
-  if (
-    (kind === 'capital-guess' || kind === 'flashpoint' || kind === 'ground-plan') &&
-    'options' in challenge &&
-    challenge.options
-  ) {
-    return 'presence'
-  }
+  // An option board's small table means naming a wrong pick eliminates a share
+  // of the field; its free-typed twin keeps the kind's own row.
+  if (attemptBoardOf(challenge)) return 'presence'
 
   return BASE_POLICY[kind]
 }

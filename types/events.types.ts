@@ -133,9 +133,9 @@ export type ClientEventData =
       hint: string
     })
   | (SeatEcho & {
-      /** An option-board round's pick spent on a wrong answer. Recorded on the
-       *  cursor, once per option — the attempt price counts that record, so a
-       *  reload cannot restore the guesses. */
+      /** An option-board round's pick, sent before the view judges it. Recorded
+       *  on the cursor, once per option — the attempt price counts that record,
+       *  so a reload cannot restore the guesses. */
       event: 'spend-pick'
       pick: string
     })

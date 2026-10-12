@@ -196,6 +196,7 @@ import { scorecardRevealsFor, type ScorecardRevealContext } from '~/components/v
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { tongueBuzzTally } from '~~/lib/language-rounds'
 import { playerDisplayName } from '~~/lib/player'
+import { attemptBoardOf } from '~~/lib/attempt-boards'
 import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
@@ -289,22 +290,6 @@ const submittedIsoCodes = computed(
 
 const correctIsoCodes = computed(
   () => traversalReveal.value?.shortest ?? selectedScorecard.value?.answers?.correct ?? []
-)
-
-const capitalGuessChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'capital-guess-challenge')
-    ? roundChallenge.value
-    : undefined
-)
-
-const flashpointChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'flashpoint-challenge') ? roundChallenge.value : undefined
-)
-
-const pyramidChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'pyramid-scheme-challenge')
-    ? roundChallenge.value
-    : undefined
 )
 
 const cleanSweepChallenge = computed(() =>
@@ -522,10 +507,7 @@ const explainer = computed(() =>
     bridged: !!traversalReveal.value?.route,
     hasTies: rankingTies.value,
     hardMode: isHardMode(gameStore.game),
-    maximumGuesses:
-      capitalGuessChallenge.value?.maximumGuesses ??
-      flashpointChallenge.value?.maximumGuesses ??
-      pyramidChallenge.value?.maximumGuesses,
+    maximumGuesses: attemptBoardOf(roundChallenge.value)?.maximumGuesses,
   })
 )
 

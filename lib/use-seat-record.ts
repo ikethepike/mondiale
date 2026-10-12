@@ -12,11 +12,19 @@ export const useSeatRecord = () => {
   const { gameStore, update, seatEcho } = useClientEvents()
   const redeliver = createRedeliver('seat record')
   onScopeDispose(() => redeliver.dispose())
-  const sent = new Set<string>()
+  const sent = new Map<string, Promise<boolean>>()
+  /** Resolves true once the server holds the record; a repeat shares the first. */
   const once = (subject: string, key: string, send: () => Promise<boolean>) => {
-    if (gameStore.watching || !subject || sent.has(`${subject}|${key}`)) return
-    sent.add(`${subject}|${key}`)
-    void redeliver.deliver(send)
+    if (gameStore.watching || !subject) return Promise.resolve(false)
+    const id = `${subject}|${key}`
+    const held = sent.get(id)
+    if (held) return held
+    const pending = redeliver.deliver(send).then(delivered => {
+      if (!delivered) sent.delete(id)
+      return delivered
+    })
+    sent.set(id, pending)
+    return pending
   }
   return {
     buyHint: (subject: string, hint: string) =>

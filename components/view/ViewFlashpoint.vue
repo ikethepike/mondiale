@@ -94,7 +94,7 @@
                 class="option card-option"
                 :class="{ 'is-spent': spent.includes(option) }"
                 type="button"
-                :disabled="submitted || !started || spent.includes(option)"
+                :disabled="submitted || !started || !!pending || spent.includes(option)"
                 @click="onGuess(getCountry(option))"
               >
                 <CountryTileFlag class="option-flag" :country="getCountry(option)" />
@@ -309,7 +309,7 @@ const submitRound = (score: number, picks: ISOCountryCode[]) => {
 
 // The winning guess is never broadcast — outside hard mode the small option
 // table makes even a wrong name too strong a clue (policy drops to presence).
-const { spent, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess } = useAttemptOptions({
   challenge,
   submitted,
   started,

@@ -1,5 +1,6 @@
-import { computed, shallowRef, type ComputedRef, type Ref } from 'vue'
-import { attemptPicksScore, attemptSequence } from '~~/lib/challenges'
+import { computed, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
+import { attemptSequence } from '~~/lib/attempt-boards'
+import { attemptPicksScore } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import type { HintTone } from '~~/types/events.types'
@@ -48,17 +49,27 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
    * the ISO code against `country`.
    */
   namesAnswer?: (pick: Pick) => boolean
-  /** The picks the server already holds as spent (`spentPicks`) — what a
-   *  reload restores — and the recorder each new wrong pick goes through. */
+  /** The picks the server already holds for this round (`spentPicks`) and
+   *  the recorder every pick goes through BEFORE it is judged — right and
+   *  wrong alike, so a pick held offline says nothing a reload could use. */
   recorded?: ComputedRef<readonly string[]>
-  record?: (pick: Pick) => void
+  record?: (pick: Pick) => Promise<boolean>
   /** Bank the round; 0 means failed out. `picks` is the attempt sequence the
    *  server prices option variants from. */
   submitRound: (score: number, picks: Pick[]) => void
 }) => {
+  const isAnswer = (active: AttemptChallenge) =>
+    namesAnswer ?? ((pick: Pick) => pick === active.country)
+
   const picked = shallowRef<Pick[]>([])
+  const sequence = computed(() => attemptSequence(recorded?.value, picked.value))
   /** Options already picked and wrong — greyed out, and counted against the cap. */
-  const spent = computed(() => attemptSequence(recorded?.value, picked.value))
+  const spent = computed(() => {
+    const active = challenge.value
+    return active ? sequence.value.filter(pick => !isAnswer(active)(pick)) : sequence.value
+  })
+  /** A pick on its way to the server's record, with no verdict shown yet. */
+  const pending = shallowRef<Pick>()
   const attemptsUsed = computed(() => spent.value.length)
   const attemptsLeft = computed(() =>
     challenge.value?.maximumGuesses
@@ -66,20 +77,13 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
       : Number.POSITIVE_INFINITY
   )
 
-  const isAnswer = (active: AttemptChallenge) =>
-    namesAnswer ?? ((pick: Pick) => pick === active.country)
-
   /** Option variants pay by attempt; hard mode free-types against the clock. */
   const scoreFor = (active: AttemptChallenge, picks: Pick[]) =>
     active.maximumGuesses
       ? attemptPicksScore(picks, isAnswer(active), active.maximumGuesses, active.maximumPoints)
       : buzzScore(active.maximumPoints, remainingFraction.value)
 
-  const onGuess = (country: Country, name?: Pick) => {
-    const active = challenge.value
-    if (!active || submitted.value || !started.value) return
-    const pick = name ?? (country.isoCode as Pick)
-
+  const judge = (active: AttemptChallenge, country: Country, pick: Pick, name?: Pick) => {
     // The winning guess is never broadcast — it would hand opponents the answer.
     if (isAnswer(active)(pick)) {
       const picks = [...spent.value, pick]
@@ -87,9 +91,7 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
     }
 
     if (active.maximumGuesses) {
-      if (spent.value.includes(pick)) return
-      picked.value = [...picked.value, pick]
-      record?.(pick)
+      if (!picked.value.includes(pick)) picked.value = [...picked.value, pick]
       if (attemptsLeft.value <= 0) {
         announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses', tone: 'alert' })
         return submitRound(0, spent.value)
@@ -107,5 +109,36 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
     })
   }
 
-  return { spent, attemptsUsed, attemptsLeft, onGuess }
+  const onGuess = (country: Country, name?: Pick) => {
+    const active = challenge.value
+    if (!active || submitted.value || !started.value || pending.value) return
+    const pick = name ?? (country.isoCode as Pick)
+    if (active.maximumGuesses && spent.value.includes(pick)) return
+    if (!record || !active.maximumGuesses) return judge(active, country, pick, name)
+
+    pending.value = pick
+    void record(pick).then(landed => {
+      pending.value = undefined
+      if (landed && !submitted.value && challenge.value === active) {
+        judge(active, country, pick, name)
+      }
+    })
+  }
+
+  // A reload between a recorded answer and its submit: the server already
+  // holds the pick, so the round finishes on it rather than greying it out.
+  watch(
+    [sequence, started, submitted],
+    () => {
+      const active = challenge.value
+      if (!active?.maximumGuesses || !started.value || submitted.value) return
+      const hit = sequence.value.findIndex(isAnswer(active))
+      if (hit < 0) return
+      const picks = sequence.value.slice(0, hit + 1)
+      submitRound(scoreFor(active, picks), picks)
+    },
+    { immediate: true }
+  )
+
+  return { spent, pending, attemptsUsed, attemptsLeft, onGuess }
 }

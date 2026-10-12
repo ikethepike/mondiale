@@ -76,7 +76,7 @@
             class="option card-option"
             :class="{ 'is-spent': isSpent(option) }"
             type="button"
-            :disabled="submitted || !started || isSpent(option)"
+            :disabled="submitted || !started || !!pending || isSpent(option)"
             @click="onOption(option)"
           >
             <span>{{ option }}</span>
@@ -244,7 +244,7 @@ const start = () => {
 // Options pay by attempt through the shared table; the typed variant pays by
 // LADDER instead, so it must not route through the same helper — its clock
 // branch would price the answer on seconds, which is not this round's tension.
-const { spent, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess } = useAttemptOptions({
   challenge: computed(() =>
     challenge.value
       ? {

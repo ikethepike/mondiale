@@ -103,7 +103,9 @@
           class="option card-option"
           :class="{ 'is-spent': spent.includes(option) }"
           type="button"
-          :disabled="gameStore.watching || submitted || !started || spent.includes(option)"
+          :disabled="
+            gameStore.watching || submitted || !started || !!pending || spent.includes(option)
+          "
           @click="onGuess(getCountry(option))"
         >
           <CountryTileFlag class="option-flag" :country="getCountry(option)" />
@@ -256,7 +258,7 @@ const start = () => begin({ onTimeout: () => submitRound(0, spent.value) })
 
 // The winning pick is never broadcast, and the four options make even a wrong
 // name too strong a clue — the policy drops it to presence.
-const { spent, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess } = useAttemptOptions({
   challenge,
   submitted,
   started,

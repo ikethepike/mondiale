@@ -1,6 +1,6 @@
+import { attemptSequence } from '~~/lib/attempt-boards'
 import {
   attemptPicksScore,
-  attemptSequence,
   getCorrectRanking,
   ghostStateAnswers,
   isFlagPaletteMatch,
@@ -204,7 +204,15 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'pyramid-scheme': {
-      attemptsOn(expectChallengeType(roundChallenge, 'pyramid-scheme-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'pyramid-scheme-challenge')
+      // A round dealt before the redesign carries `countries[]` and no subject:
+      // the buzz fallback would grade `undefined === undefined` as a hit.
+      if (!challenge.country) {
+        answer = { submitted: [], correct: [] }
+        scoring = { scored: 0, maximum: challenge.maximumPoints }
+        break
+      }
+      attemptsOn(challenge)
       break
     }
     case 'silhouette': {

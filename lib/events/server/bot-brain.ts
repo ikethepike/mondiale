@@ -1575,6 +1575,7 @@ export const composeClassicSubmission = async (
       // A miss spends both guesses on decoys: a second-try hit would pay on
       // top of the roll and overshoot the dial.
       const deal = expectChallengeType(challenge, 'pyramid-scheme-challenge')
+      if (!deal.options) return { ranking: [] }
       const landed = { ranking: [deal.country] }
       if (await lands(landed)) return landed
       const decoys = deal.options.filter(option => option !== deal.country)

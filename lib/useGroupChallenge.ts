@@ -360,11 +360,15 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     startSeatClock: () => startSeatClockOn(subject),
     /** Record a bought hint with the server — what the round's pay is docked by. */
     buyHint: (hint: RoundHint<keyof typeof ROUND_HINTS>) => buyHintOn(subject, hint),
-    /** Record an option-board pick spent on this round — what its attempt price counts. */
+    /** Record an option-board pick on this round — what its attempt price counts. */
     spendPick: (pick: string) => spendPickOn(subject, pick),
-    /** The picks the server already holds as spent on this round. */
+    /** The picks the server already holds for this round — the seat's own:
+     *  in the booth they would show a followed seat's result before
+     *  hide-spoilers allows, and drive a watcher's view into its submit path. */
     spentPicks: computed(() =>
-      seatCursor.value?.subject === subject ? (seatCursor.value.spent ?? []) : []
+      !gameStore.watching && seatCursor.value?.subject === subject
+        ? (seatCursor.value.spent ?? [])
+        : []
     ),
     boothAnswer,
     outcomeShown,

@@ -1,14 +1,14 @@
-import { attemptBoardOf } from '~~/lib/challenges'
+import { attemptBoardOf } from '~~/lib/attempt-boards'
 import { latestRound } from '~~/lib/rounds'
 import { defineGameHandler } from '../server-side'
 import { advanceSeat } from './seat-cursor'
 import { commitSeat } from './seat-exits'
 
 /**
- * An option-board pick spent on the seat's live round. Recorded once per
- * option, up to the board's cap, on the cursor itself — the grade prices the
- * attempt off that record, so a reload cannot hand the guesses back. It never
- * says whether the pick was right: a correct one is banked by the submit.
+ * An option-board pick on the seat's live round, recorded before the view
+ * judges it — right and wrong alike, once per option, up to the board's cap,
+ * on the cursor itself. The grade prices the attempt off that record, so a
+ * reload cannot hand the guesses back. It never says whether the pick was right.
  */
 export const spendPickHandler = defineGameHandler(
   'spend-pick',

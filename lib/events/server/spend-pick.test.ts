@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { capitalGuessScore } from '~~/lib/challenges'
-import type { PyramidSchemeChallenge } from '~~/types/challenges/group-modes.type'
+import { GROUND_PLAN_LAYERS } from '~~/lib/ground-plan'
+import { GROUND_PLAN_SECONDS_PER_LAYER, groundPlanSeconds } from '~~/lib/round-beats'
+import type {
+  GroundPlanChallenge,
+  PyramidSchemeChallenge,
+} from '~~/types/challenges/group-modes.type'
 import type { ClientEventData } from '~~/types/events.types'
 import type { Game } from '~~/types/game.types'
 import type { Player } from '~~/types/player.type'
+import { ABSENT_SUBMISSION, gradeGroupAnswer } from './grade-group-answer'
 import { dropArmedTimersForTests, rearmSeats } from './seat-cursor'
 import { createTestTable, uniqueGameId, type TestTable } from './test-table'
 import { testCursor, testSeat } from './test-seat'
@@ -15,6 +21,21 @@ const PYRAMID: PyramidSchemeChallenge = {
   band: 'easy',
   maximumGuesses: 2,
   durationSeconds: 40,
+  maximumPoints: 20,
+}
+
+const GROUND_PLAN: GroundPlanChallenge = {
+  _type: 'ground-plan-challenge',
+  country: 'US',
+  city: 'Chicago',
+  cut: { slug: 'chicago-loop', signature: true },
+  crossings: 0,
+  layers: [...GROUND_PLAN_LAYERS],
+  secondsPerLayer: GROUND_PLAN_SECONDS_PER_LAYER,
+  secondsPerHint: 5,
+  durationSeconds: groundPlanSeconds(GROUND_PLAN_LAYERS.length),
+  options: ['Houston', 'Chicago', 'Denver', 'Seattle'],
+  maximumGuesses: 2,
   maximumPoints: 20,
 }
 
@@ -84,5 +105,53 @@ describe('spent option picks live on the seat', () => {
     const round = (await table.read()).rounds[0]!
     expect(round.playerTurns.a?.points.scored).toBe(capitalGuessScore(2, 2, 20))
     expect(round.groupAnswers.a?.submitted).toEqual(['NE', 'JP'])
+  })
+
+  it('prices a recorded answer as the attempt it was', async () => {
+    const table = await open(buildGame([onRound(), testSeat('b', 'round')], PYRAMID))
+    await send(table, { event: 'spend-pick', pick: 'JP' })
+    await send(table, { event: 'submit-group-challenge-answers', ranking: ['JP'] })
+    const round = (await table.read()).rounds[0]!
+    expect(round.playerTurns.a?.points.scored).toBe(20)
+    expect(round.groupAnswers.a?.submitted).toEqual(['JP'])
+  })
+
+  it('keeps the record through the verdict, and ignores a pick that lands after it', async () => {
+    const table = await open(buildGame([onRound(), testSeat('b', 'round')], PYRAMID))
+    await send(table, { event: 'spend-pick', pick: 'NE' })
+    await send(table, { event: 'submit-group-challenge-answers', ranking: ['NE', 'JP'] })
+    const verdict = await seatA(table)
+    expect(verdict.cursor.step).toBe('round-verdict')
+    expect(verdict.cursor.spent).toEqual(['NE'])
+    await send(table, { event: 'spend-pick', pick: 'QA' })
+    expect((await seatA(table)).cursor.spent).toEqual(['NE'])
+  })
+
+  it('records city names on a ground plan board and prices them', async () => {
+    const table = await open(buildGame([onRound(), testSeat('b', 'round')], GROUND_PLAN))
+    await send(table, { event: 'spend-pick', pick: 'Houston' })
+    await send(table, { event: 'spend-pick', pick: 'Paris' })
+    expect((await seatA(table)).cursor.spent).toEqual(['Houston'])
+    await send(table, {
+      event: 'submit-group-challenge-answers',
+      ranking: ['US'],
+      cities: ['Chicago'],
+    })
+    const round = (await table.read()).rounds[0]!
+    expect(round.playerTurns.a?.points.scored).toBe(capitalGuessScore(2, 2, 20))
+  })
+
+  it("keeps an absent seat's spent picks on the scorecard at zero pay", async () => {
+    const game = buildGame([onRound()], PYRAMID)
+    const { scoring, answer } = await gradeGroupAnswer({
+      game,
+      round: game.rounds[0]!,
+      playerId: 'a',
+      submission: ABSENT_SUBMISSION,
+      seat: { ...game.players.a!.cursor, spent: ['NE'] },
+      absent: true,
+    })
+    expect(scoring.scored).toBe(0)
+    expect(answer.submitted).toEqual(['NE'])
   })
 })

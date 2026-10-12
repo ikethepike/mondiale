@@ -20,7 +20,9 @@ describe('guessPolicyFor', () => {
     // A small flag table makes a named wrong pick eliminate a share of the
     // field; hard mode free-types the whole world and a wrong name is noise.
     for (const _type of ['capital-guess-challenge', 'flashpoint-challenge']) {
-      expect(guessPolicyFor(liveGame, challenge({ _type, options: ['FR', 'DE'] }))).toBe('presence')
+      expect(
+        guessPolicyFor(liveGame, challenge({ _type, options: ['FR', 'DE'], maximumGuesses: 2 }))
+      ).toBe('presence')
       expect(guessPolicyFor(liveGame, challenge({ _type }))).toBe('label')
     }
   })
