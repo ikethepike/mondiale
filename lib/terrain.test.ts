@@ -12,6 +12,7 @@ import {
   terrainHeadline,
   terrainKey,
   terrainPrompt,
+  terrainFamily,
   terrainSeconds,
 } from '~~/lib/terrain'
 import { countryOnBoard } from '~~/lib/variant'
@@ -57,6 +58,13 @@ describe('the shipped terrain roster', () => {
     }
     const famed = Object.values(WATER_FEATURES).filter(feature => feature.fame)
     expect(famed.map(feature => feature.id).sort()).toEqual(Object.keys(TERRAIN_ROSTER).sort())
+  })
+
+  it('ships an outline for everything a round draws, and only that', () => {
+    for (const feature of Object.values(WATER_FEATURES)) {
+      const drawn = !!feature.fame || terrainFamily(feature.kind) === 'shore'
+      expect(!!feature.d, feature.id).toBe(drawn)
+    }
   })
 
   it('never lists a country as both required and free', () => {

@@ -106,7 +106,7 @@ onMounted(async () => {
   // Geometry lives in its own lazy chunk — only the feature id travelled
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const feature = WATER_FEATURES[active.featureId]
-  if (!feature || isDisposed()) return
+  if (!feature?.d || isDisposed()) return
   gameStore.map.feature = {
     d: feature.d,
     kind: feature.kind === 'river' ? 'line' : 'area',

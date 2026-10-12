@@ -11,7 +11,7 @@ export interface ShoreLand {
   rings: OutlinePoint[][]
 }
 
-export type WaterKey = Pick<WaterFeature, 'id' | 'd' | 'bounds' | 'countries'>
+export type WaterKey = Pick<WaterFeature, 'id' | 'bounds' | 'countries'> & { d: string }
 
 export const roundTo = (value: number, decimals = 2) => Number(value.toFixed(decimals))
 

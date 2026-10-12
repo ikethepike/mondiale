@@ -140,7 +140,7 @@ watch(
     const { WATER_FEATURES } = await import('~~/data/water.gen')
     if (isDisposed()) return
     const feature = WATER_FEATURES[active.featureId]
-    if (feature) {
+    if (feature?.d) {
       gameStore.map.feature = { d: feature.d, kind: 'area', bounds: feature.bounds }
     }
     // Suggestions offer every ocean, sea and lake — the full haystack is the game
