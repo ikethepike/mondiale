@@ -10,6 +10,7 @@ import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
+import type { RecognitionTerritory } from '~~/data/recognition.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { currencyNamesASpender } from '~~/lib/currency'
 import {
@@ -1833,14 +1834,39 @@ const boxDistance = (
   b: readonly [number, number, number, number]
 ) => Math.hypot(a[0] + a[2] / 2 - (b[0] + b[2] / 2), a[1] + a[3] / 2 - (b[1] + b[3] / 2))
 
-/** Beyond this projected distance a guess is worth nothing. Tuned so a
- *  neighbouring country still scores well and another continent scores zero. */
-const GHOST_STATE_FALLOFF = 260
+/** Beyond this projected distance a guess is worth nothing: a neighbour pays
+ *  about half, the next region over pays nothing. */
+const GHOST_STATE_FALLOFF = 80
+
+/** Full marks: the claimant, or the ghost's own shape where the roster names it (Taiwan). */
+export const ghostStateAnswers = (
+  challenge: GhostStateChallenge,
+  territory: RecognitionTerritory | undefined
+): ISOCountryCode[] => {
+  const own = territory?.mapCode
+  return isValidISOCode(own) && own !== challenge.parent
+    ? [challenge.parent, own]
+    : [challenge.parent]
+}
 
 /**
- * Full marks for naming the claimant state; a graded fraction for landing
- * near it; nothing for the far side of the world. Server-authoritative — the
- * client's only input is which country it tapped.
+ * What a map tap answers, or undefined for a tap that answers nothing. A ghost
+ * the map draws apart but the roster cannot name (Western Sahara's EH) folds
+ * into its claimant, as Abkhazia does by being drawn inside Georgia.
+ */
+export const ghostStateTap = (
+  challenge: GhostStateChallenge,
+  territory: RecognitionTerritory | undefined,
+  mapCode: string
+): ISOCountryCode | undefined => {
+  if (isValidISOCode(mapCode)) return mapCode
+  return territory?.mapCode === mapCode ? challenge.parent : undefined
+}
+
+/**
+ * Full marks for the place itself or its claimant; a graded fraction for
+ * landing near the place; nothing for the far side of the world.
+ * Server-authoritative — the client's only input is which country it tapped.
  */
 export const scoreGhostState = async ({
   challenge,
@@ -1852,19 +1878,21 @@ export const scoreGhostState = async ({
   const maximum = challenge.maximumPoints
   const tapped = submittedGuesses[0]
   if (!tapped) return { scored: 0, maximum }
-  if (tapped === challenge.parent) return { scored: maximum, maximum }
 
   // Dynamic, like the water dealer: the map geometry must not ride into client
   // bundles through this module.
-  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
+  const [{ RECOGNITION_TERRITORIES }, { MAP_BOUNDS, MAP_REGIONS }] = await Promise.all([
+    import('~~/data/recognition.gen'),
+    import('~~/data/map.gen'),
+  ])
+  const territory = RECOGNITION_TERRITORIES[challenge.territoryId]
+  if (ghostStateAnswers(challenge, territory).includes(tapped)) return { scored: maximum, maximum }
+
   const tappedBounds = MAP_BOUNDS[tapped]
-  const parentBounds = MAP_BOUNDS[challenge.parent]
-  if (!tappedBounds || !parentBounds) return { scored: 0, maximum }
+  if (!territory || !tappedBounds) return { scored: 0, maximum }
 
   const tappedCentre = mainlandBox(MAP_REGIONS[tapped], tappedBounds)
-  const parentCentre = mainlandBox(MAP_REGIONS[challenge.parent], parentBounds)
-
-  const fraction = 1 - boxDistance(tappedCentre, parentCentre) / GHOST_STATE_FALLOFF
+  const fraction = 1 - boxDistance(tappedCentre, territory.bounds) / GHOST_STATE_FALLOFF
   // `scored` feeds board movement 1:1 — never emit NaN or a negative.
   const scored = Number.isFinite(fraction) ? Math.max(0, Math.round(maximum * fraction)) : 0
   return { scored: clampScore(scored, maximum), maximum }

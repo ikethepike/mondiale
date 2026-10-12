@@ -5,6 +5,8 @@ import {
   getCorrectRanking,
   rankingBreakdown,
   scoreChallengeSubmission,
+  ghostStateAnswers,
+  ghostStateTap,
   scoreGhostState,
   scoreHotCold,
   scoreTraversalSubmission,
@@ -25,10 +27,12 @@ import {
   scorePinDistance,
 } from './scoring'
 import { getValueByAccessorID } from './values'
+import { gradeGroupAnswer } from './events/server/grade-group-answer'
+import { RECOGNITION_TERRITORIES } from '~~/data/recognition.gen'
 import type { GhostStateChallenge, HotColdChallenge } from '~~/types/challenges/group-modes.type'
 import type { TraversalChallenge } from '~~/types/challenges/traversal-challenge.type'
-import type { GameRules } from '~~/types/game.types'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import type { Game, GameRules, Round } from '~~/types/game.types'
+import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
 // Characterization tests: these pin the point outcomes the game produces TODAY,
 // before scoreTraversalSubmission/scoreHotCold delegate to attemptDecayScore.
@@ -629,46 +633,103 @@ describe('answerBreakdown', () => {
   })
 })
 
-// scoreGhostState grades a wrong tap by projected distance from the claimant.
-// It measures each country's mainland (largest ring), NOT its whole bounding
-// box: the US box spans the Pacific to reach Guam, which used to score Canada
-// at zero and Russia at 62%.
-describe('scoreGhostState proximity', () => {
-  const ghostState = (parent: ISOCountryCode): GhostStateChallenge => ({
+// A miss is measured from the territory's own outline, never the claimant's
+// mainland: that put Taiwan itself at 38 and Mongolia at 75. The tapped country
+// is measured by its mainland ring — the US box spans the Pacific to reach Guam.
+describe('scoreGhostState', () => {
+  const ghostState = (territoryId: string): GhostStateChallenge => ({
     _type: 'ghost-state-challenge',
-    territoryId: 'test',
-    parent,
+    territoryId,
+    parent: RECOGNITION_TERRITORIES[territoryId]!.parent!,
     durationSeconds: 25,
     maximumPoints: 100,
   })
 
-  const percentFor = async (tapped: ISOCountryCode, parent: ISOCountryCode) =>
-    (await scoreGhostState({ challenge: ghostState(parent), submittedGuesses: [tapped] })).scored
+  const percentFor = async (territoryId: string, tapped: ISOCountryCode) =>
+    (await scoreGhostState({ challenge: ghostState(territoryId), submittedGuesses: [tapped] }))
+      .scored
 
-  it('pays full marks for naming the claimant', async () => {
-    expect(await percentFor('TR', 'TR')).toBe(100)
+  it('pays full marks for the place itself or its claimant', async () => {
+    expect(await percentFor('taiwan', 'TW')).toBe(100)
+    expect(await percentFor('taiwan', 'CN')).toBe(100)
+    expect(await percentFor('w-sahara', 'MA')).toBe(100)
+    expect(await percentFor('abkhazia', 'GE')).toBe(100)
+    expect(await percentFor('n-cyprus', 'CY')).toBe(100)
   })
 
-  it('credits a land neighbour across a long border', async () => {
-    expect(await percentFor('US', 'CA')).toBe(52)
-    expect(await percentFor('MX', 'US')).toBe(60)
+  it('measures a miss from the place, not from the claimant', async () => {
+    expect(await percentFor('taiwan', 'PH')).toBe(31)
+    expect(await percentFor('taiwan', 'MN')).toBe(0)
+    expect(await percentFor('taiwan', 'JP')).toBe(0)
   })
 
-  it('pays nothing across the antimeridian', async () => {
-    expect(await percentFor('RU', 'US')).toBe(0)
+  it('pays a neighbour partial credit and the next region nothing', async () => {
+    expect(await percentFor('w-sahara', 'MR')).toBe(71)
+    expect(await percentFor('w-sahara', 'DZ')).toBe(0)
+    expect(await percentFor('abkhazia', 'AM')).toBe(62)
+    expect(await percentFor('abkhazia', 'TR')).toBe(57)
+    expect(await percentFor('n-cyprus', 'TR')).toBe(70)
+    expect(await percentFor('somaliland', 'ET')).toBe(63)
+    expect(await percentFor('transnistria', 'RO')).toBe(74)
+    expect(await percentFor('transnistria', 'DE')).toBe(0)
   })
 
-  it('credits a close neighbour whose islands skew its bounding box', async () => {
-    expect(await percentFor('ES', 'PT')).toBe(90)
-    expect(await percentFor('CL', 'AR')).toBe(91)
+  it('pays nothing for an unknown territory unless the claimant is named', async () => {
+    const unknown = { ...ghostState('taiwan'), territoryId: 'nowhere' }
+    expect((await scoreGhostState({ challenge: unknown, submittedGuesses: ['TW'] })).scored).toBe(0)
+    expect((await scoreGhostState({ challenge: unknown, submittedGuesses: ['CN'] })).scored).toBe(
+      100
+    )
+  })
+})
+
+describe('ghost-state taps', () => {
+  const challengeFor = (territoryId: string): GhostStateChallenge => ({
+    _type: 'ghost-state-challenge',
+    territoryId,
+    parent: RECOGNITION_TERRITORIES[territoryId]!.parent!,
+    durationSeconds: 25,
+    maximumPoints: 100,
+  })
+  const tap = (territoryId: string, mapCode: string) =>
+    ghostStateTap(challengeFor(territoryId), RECOGNITION_TERRITORIES[territoryId], mapCode)
+  const answers = (territoryId: string) =>
+    ghostStateAnswers(challengeFor(territoryId), RECOGNITION_TERRITORIES[territoryId])
+
+  it('stamps the two ghosts the map draws as shapes of their own', () => {
+    const own = Object.values(RECOGNITION_TERRITORIES)
+      .filter(territory => territory.mapCode)
+      .map(territory => [territory.id, territory.mapCode])
+    expect(own).toEqual([
+      ['taiwan', 'TW'],
+      ['w-sahara', 'EH'],
+    ])
   })
 
-  it('credits an island neighbour with no land border', async () => {
-    expect(await percentFor('CY', 'TR')).toBe(90)
+  it("accepts Western Sahara's own shape as a tap on Western Sahara", () => {
+    expect(isValidISOCode('EH')).toBe(false)
+    expect(tap('w-sahara', 'EH')).toBe('MA')
+    expect(tap('taiwan', 'EH')).toBeUndefined()
+    expect(tap('taiwan', 'TW')).toBe('TW')
+    expect(tap('abkhazia', 'GE')).toBe('GE')
   })
 
-  it('pays nothing for the far side of the world', async () => {
-    expect(await percentFor('NL', 'PE')).toBe(0)
+  it('lists every full-marks tap as the answer', () => {
+    expect(answers('taiwan')).toEqual(['CN', 'TW'])
+    expect(answers('w-sahara')).toEqual(['MA'])
+    expect(answers('abkhazia')).toEqual(['GE'])
+  })
+
+  it('grades the place itself as correct on the scorecard', async () => {
+    const challenge = challengeFor('taiwan')
+    const { scoring, answer } = await gradeGroupAnswer({
+      game: {} as Game,
+      round: { groupChallenge: challenge, groupAnswers: {}, playerTurns: {} } as unknown as Round,
+      playerId: 'p',
+      submission: { ranking: ['TW'] },
+    })
+    expect(scoring.scored).toBe(100)
+    expect(answer.correct).toEqual(['CN', 'TW'])
   })
 })
 

@@ -30,7 +30,8 @@ import { geoRobinson } from 'd3-geo-projection'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import { COUNTRIES } from '../../../data/countries.gen'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
-import { MAP_PROJECTION } from '../../../data/map.gen'
+import { MAP_BOUNDS, MAP_PROJECTION, type MapCode } from '../../../data/map.gen'
+import { boxOverlap } from '../../../lib/geo'
 import { RECOGNITION_CORRECTIONS } from '../../../data/static/recognition-corrections'
 import {
   CAST_B_ARMISTICE_EXCLUSIONS,
@@ -58,6 +59,18 @@ const DECIMATE_UNITS = 0.35
  */
 const MICRO_FOOTPRINT = 1.5
 
+/**
+ * The map draws a few of these as shapes of their own (Taiwan 0.92, Western
+ * Sahara 1.0). A territory drawn inside its claimant shares far less of the
+ * claimant's box — N. Cyprus, the closest, shares 0.5 of Cyprus's.
+ */
+const OWN_SHAPE_OVERLAP = 0.8
+
+export const ownMapShape = (bounds: [number, number, number, number]): MapCode | undefined =>
+  (Object.keys(MAP_BOUNDS) as MapCode[]).find(
+    code => boxOverlap(MAP_BOUNDS[code], bounds) >= OWN_SHAPE_OVERLAP
+  )
+
 type Point = [number, number]
 
 export type RecognitionAssignment = ISOCountryCode | 'SELF' | 'NONE'
@@ -79,6 +92,8 @@ export interface RecognitionTerritory {
    * Rockall spans ~300m. The View renders a marker here, not the outline.
    */
   micro?: { x: number; y: number }
+  /** Set when the map draws it as a shape of its own (Taiwan, Western Sahara). */
+  mapCode?: MapCode
   /** Verbatim NE status line: "Self admin.; Claimed by Georgia". Reveal copy. */
   status: string
   /** Ghost States: the state that claims it — the answer to "where is this?". */
@@ -583,6 +598,7 @@ const main = async () => {
 
     seen.add(name)
     const bounds = boundsOf(rings)
+    const mapCode = ownMapShape(bounds)
     territories[id] = {
       id,
       name,
@@ -594,6 +610,7 @@ const main = async () => {
             micro: { x: roundTo(bounds[0] + bounds[2] / 2), y: roundTo(bounds[1] + bounds[3] / 2) },
           }
         : {}),
+      ...(mapCode ? { mapCode } : {}),
       status: note,
       ...(parent ? { parent } : {}),
       // Answer set for No Man's Land: whoever holds it, plus whoever wants it.
@@ -678,6 +695,13 @@ const main = async () => {
     'Taiwan: NE records almost no explicit recognition'
   )
 
+  assert(byId('taiwan').mapCode === 'TW', 'Taiwan: the map draws it as TW')
+  assert(byId('w-sahara').mapCode === 'EH', 'W. Sahara: the map draws it as EH')
+  assert(
+    ghostStates.filter(t => t.mapCode).length === 2,
+    'only Taiwan and W. Sahara have shapes of their own'
+  )
+
   // The US alone refuses to call N. Cyprus "unrecognized".
   assert(byId('n-cyprus').povs.US?.fclass === 'breakaway', 'N. Cyprus: the US alone hedges')
 
@@ -704,6 +728,7 @@ const main = async () => {
 // Source: Natural Earth 1:10m admin_0_disputed_areas (${NE_TAG}, public domain),
 // projected with the map's fitted Robinson (see data/map.gen.ts).
 // POV matrix corrected by data/static/recognition-corrections.ts.
+import type { MapCode } from '~~/data/map.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 export type RecognitionAssignment = ISOCountryCode | 'SELF' | 'NONE'
@@ -720,6 +745,8 @@ export interface RecognitionTerritory {
   bounds: [number, number, number, number]
   /** Set when too small to draw (Rockall spans ~300m): render a marker here. */
   micro?: { x: number; y: number }
+  /** Set when the map draws it as a shape of its own (Taiwan, Western Sahara). */
+  mapCode?: MapCode
   /** Verbatim NE status line: "Self admin.; Claimed by Georgia". */
   status: string
   /** Ghost States: the state that claims it. */
@@ -787,4 +814,4 @@ export const RECOGNITION_FLAGS: Record<string, string> = ${JSON.stringify(flags)
   )
 }
 
-await main()
+if (import.meta.main) await main()

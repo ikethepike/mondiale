@@ -1,6 +1,7 @@
 import {
   clampClientScore,
   getCorrectRanking,
+  ghostStateAnswers,
   isCorrectWaterGuess,
   isFlagPaletteMatch,
   scoreChallengeSubmission,
@@ -239,7 +240,9 @@ export const gradeGroupAnswer = async ({
     }
     case 'ghost-state': {
       const challenge = expectChallengeType(roundChallenge, 'ghost-state-challenge')
-      answer = { submitted: submission.ranking, correct: [challenge.parent] }
+      const { RECOGNITION_TERRITORIES } = await import('~~/data/recognition.gen')
+      const territory = RECOGNITION_TERRITORIES[challenge.territoryId]
+      answer = { submitted: submission.ranking, correct: ghostStateAnswers(challenge, territory) }
       scoring = await scoreGhostState({ challenge, submittedGuesses: submission.ranking })
       break
     }

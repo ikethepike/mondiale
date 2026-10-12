@@ -104,6 +104,15 @@ export const pointInBox = (
 export const boxesIntersect = ([ax, ay, aw, ah]: MapBox, [bx, by, bw, bh]: MapBox): boolean =>
   ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 
+/** Intersection over union of two map-space boxes: 1 for the same box, 0 apart. */
+export const boxOverlap = (a: MapBox, b: MapBox): number => {
+  const width = Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0])
+  const height = Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1])
+  if (width <= 0 || height <= 0) return 0
+  const shared = width * height
+  return shared / (a[2] * a[3] + b[2] * b[3] - shared)
+}
+
 /** Does any of a country's rings (MAP_REGIONS' per-ring boxes) reach `box`?
  *  Per ring, never the whole-country bbox: RU/US/FJ/NZ span the map. */
 export const regionsIntersect = (rings: MapBox[] | undefined, box: MapBox): boolean =>
