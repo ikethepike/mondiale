@@ -116,6 +116,20 @@ describe('canonical spelling', () => {
     expect(canonicalLanguage('French')).toBe('French')
   })
 
+  it('spells a language one way across both sources', () => {
+    // countries-list calls Somali "Somalia", and the Factbook spells Ethiopia's
+    // Tigrinya "Tigrigna"; either split hid a speaker from the language rounds.
+    expect(canonicalLanguage('Somalia')).toBe('Somali')
+    expect(canonicalLanguage('Somali')).toBe('Somali')
+    expect(canonicalLanguage('Tigrigna')).toBe('Tigrinya')
+    expect(officialFor('ET')).toEqual(expect.arrayContaining(['Somali', 'Tigrinya']))
+    for (const country of Object.values(COUNTRIES)) {
+      for (const name of [...country.languages, ...country.officialLanguages]) {
+        expect(canonicalLanguage(name), `${country.isoCode}/${name}`).toBe(name)
+      }
+    }
+  })
+
   it('never emits a name carrying source punctuation', () => {
     for (const isoCode of Object.keys(COUNTRIES) as ISOCountryCode[]) {
       for (const name of officialFor(isoCode)) {

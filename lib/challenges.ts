@@ -134,7 +134,7 @@ import {
 } from './game-rules'
 import { pickChainSeed } from './chain'
 import { flagSwatches } from './audio-palette'
-import { boardSpeakers } from './language-rounds'
+import { boardSpeakers, speaksLanguage } from './language-rounds'
 import { seededTongueSample } from './tongue-samples'
 import {
   initialManhuntCandidates,
@@ -2682,19 +2682,15 @@ const dealOddOneOut = (
         }
       }
       case 'language': {
-        const byLanguage = new Map<string, ISOCountryCode[]>()
-        for (const isoCode of countryPool) {
-          for (const language of COUNTRIES[isoCode].languages ?? []) {
-            byLanguage.set(language, [...(byLanguage.get(language) ?? []), isoCode])
-          }
-        }
-        const candidates = shuffleArray([...byLanguage.entries()].filter(([, c]) => c.length >= 3))
+        const candidates = shuffleArray(
+          [...boardSpeakers(countryPool)].filter(([, c]) => c.length >= 3)
+        )
         const entry = candidates[0]
         if (!entry) return undefined
         const [language, speakers] = entry
         const same = sampleMany(speakers, 3)
         const odd = shuffleArray([...countryPool]).find(
-          isoCode => !(COUNTRIES[isoCode].languages ?? []).includes(language)
+          isoCode => !speaksLanguage(isoCode, language)
         )
         if (!odd) return undefined
         return {

@@ -11,6 +11,7 @@ import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { titlecaseLeader } from '~~/lib/leaders'
+import { speaksLanguage, spokenLanguages } from '~~/lib/language-rounds'
 import { MAP_PATHS } from '~~/data/map.gen'
 import { pickSunsetWindow } from '~~/lib/sunset-window'
 import { SUNSET_TUNING, sunsetQuota, sunsetSeconds } from '~~/lib/sunset-pace'
@@ -214,8 +215,7 @@ const getRegionChallenge = (pool: ISOCountryCode[]): RegionChallenge => {
 }
 
 const getLanguageChallenge = (pool: ISOCountryCode[]): LanguageChallenge => {
-  const languages = pool.flatMap(isoCode => COUNTRIES[isoCode].languages)
-  const language = sample(languages)
+  const language = sample(pool.flatMap(isoCode => [...spokenLanguages(isoCode)]))
   if (!language) throw new ReferenceError(`No language found in language challenge`)
 
   return {
@@ -1194,15 +1194,11 @@ export const bornAfter = (isoCode: ISOCountryCode, year: number): boolean => {
   return !!independence && independence.amount > year
 }
 
-/** Does the country speak this language? */
-export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boolean =>
-  COUNTRIES[isoCode].languages.includes(language)
-
 /** Rows the language scorecard shows before it starts counting the tail. */
 export const LANGUAGE_REVEAL_ROWS = 8
 
 /**
- * Every country that lists the language, most populous first — the verdict's
+ * Every country that speaks the language, most populous first — the verdict's
  * accept set and the reveal's roster read the same order.
  */
 export const languageSpeakers = (language: string): ISOCountryCode[] =>

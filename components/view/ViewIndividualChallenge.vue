@@ -90,6 +90,7 @@ import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import { governingParty, logoPoliticsPrompt, partiesOf, partySpectrum } from '~~/lib/parties'
 import { politicalLeader } from '~~/lib/leaders'
+import { spokenLanguages } from '~~/lib/language-rounds'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { BERTH_GAP_PX, claimMapBerth } from '~~/lib/map-berth'
@@ -463,7 +464,7 @@ const gateLesson = computed(() => {
         case 'region':
           return `${countryName(answer)} is in ${REGION_LABELS[answer.region]} — the other three are in ${shared.value}.`
         case 'language': {
-          const spoken = listJoin(answer.languages?.slice(0, 3) ?? [])
+          const spoken = listJoin([...spokenLanguages(answer.isoCode)].slice(0, 3))
           return spoken
             ? `${countryName(answer)} speaks ${spoken} — the other three share ${shared.value}.`
             : `${countryName(answer)} doesn't speak ${shared.value}.`

@@ -125,7 +125,9 @@ export const LANGUAGE_ALIASES: { [factbookName: string]: string } = {
   Ndebele: 'South Ndebele',
   Xhosa: 'Xhosa',
   Zulu: 'Zulu',
-  Somali: 'Somalia',
+  Tigrigna: 'Tigrinya',
+  // countries-list's own name for ISO 639-1 "so": the country, not the language.
+  Somalia: 'Somali',
   Bokmal: 'Norwegian',
   'Bokmal Norwegian': 'Norwegian',
   'Nynorsk Norwegian': 'Norwegian',

@@ -7,6 +7,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
+import { speaksLanguage } from '~~/lib/language-rounds'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
@@ -63,7 +64,6 @@ import {
   madeTopExporters,
   languageSpeakers,
   MINMAX_REVEAL_ROWS,
-  speaksLanguage,
   YEARBOOK_TUNING,
   yearbookLeaksYear,
   yearbookYear,
@@ -994,7 +994,7 @@ describe('isCorrectFinalAnswer', () => {
 
   it('accepts any speaker on language questions', () => {
     const challenge = { _type: 'language-challenge', language: 'French' } as const
-    const speakers = pool.filter(isoCode => COUNTRIES[isoCode].languages.includes('French'))
+    const speakers = pool.filter(isoCode => speaksLanguage(isoCode, 'French'))
     expect(speakers.length).toBeGreaterThan(1)
     for (const isoCode of speakers.slice(0, 5)) {
       expect(
@@ -1004,13 +1004,35 @@ describe('isCorrectFinalAnswer', () => {
         })
       ).toBe(true)
     }
-    const nonSpeaker = pool.find(isoCode => !COUNTRIES[isoCode].languages.includes('French'))!
+    const nonSpeaker = pool.find(isoCode => !speaksLanguage(isoCode, 'French'))!
     expect(
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'language-challenge', isoCode: nonSpeaker },
       })
     ).toBe(false)
+  })
+
+  it('accepts a country whose language is official but missing from the spoken list', () => {
+    // "Speaks Quechua" is dealt from Bolivia; Peru makes it official, and the
+    // spoken list alone graded Peru wrong and left it off the reveal.
+    expect(COUNTRIES.PE.languages).not.toContain('Quechua')
+    for (const [language, isoCode] of [
+      ['Quechua', 'PE'],
+      ['Swahili', 'RW'],
+      ['English', 'BI'],
+      ['Somali', 'ET'],
+    ] as const) {
+      const challenge = { _type: 'language-challenge', language } as const
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'language-challenge', isoCode },
+        }),
+        `${language}/${isoCode}`
+      ).toBe(true)
+      expect(languageSpeakers(language), `${language}/${isoCode}`).toContain(isoCode)
+    }
   })
 
   it('grades endonym picks positionally against the dealt beats', () => {
