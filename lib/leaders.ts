@@ -15,20 +15,6 @@ export interface LeaderProfile extends MediaCredit {
   sinceYear?: number
 }
 
-/** Regnal numerals stay uppercase (Leo XIV, Frederik X). */
-const ROMAN_NUMERAL = /^[IVXLCDM]+$/
-
-/**
- * The factbook prints surnames in shouting caps ("Karin KELLER-SUTTER").
- * Soften only the all-caps words to title case — per hyphen/apostrophe
- * segment — leaving mixed-case words, particles, and regnal numerals alone.
- */
-export const titlecaseLeader = (name: string): string =>
-  name.replace(/[A-ZÀ-ÞŒ]{2,}(?:['’-][A-ZÀ-ÞŒ]+)*/g, word => {
-    if (ROMAN_NUMERAL.test(word)) return word
-    return word.toLowerCase().replace(/(?:^|['’-])\p{L}/gu, letter => letter.toUpperCase())
-  })
-
 const LEADER_TITLE_NOISE = new Set([
   'the',
   'king',
@@ -46,14 +32,22 @@ const LEADER_TITLE_NOISE = new Set([
   'leader',
 ])
 
-/** Name tokens robust to titles, diacritics and punctuation. */
-const leaderNameTokens = (name: string) =>
-  name
+/** Name tokens robust to titles, diacritics and punctuation. A particle is
+ *  also read fused to its neighbour, so "el-Sisi" meets the factbook's "ELSISI". */
+const leaderNameTokens = (name: string) => {
+  const words = name
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .split(/[^a-z]+/)
-    .filter(token => token.length >= 3 && !LEADER_TITLE_NOISE.has(token))
+    .filter(word => word && !LEADER_TITLE_NOISE.has(word))
+  const fused = words
+    .slice(1)
+    .map((word, index) => [words[index]!, word])
+    .filter(([left, right]) => Math.min(left.length, right.length) < 3)
+    .map(([left, right]) => left + right)
+  return [...words, ...fused].filter(token => token.length >= 3)
+}
 
 /**
  * Same person? Tokens match fuzzily (Christodoulidis≈Christodoulides,
@@ -94,21 +88,13 @@ export const leaderNamesOverlap = (a?: string, b?: string): boolean => {
  * `executivePower` names an OFFICE that may be empty: Sierra Leone's executive
  * is its president and polity records no head of government at all, so a rule
  * that only read the field would return nothing. Where the office it names has
- * no eligible holder, the older chain still decides.
- *
- * `requireImage` narrows the pick to roles with a portrait (the quiz needs a
- * face); reveals leave it off and fall back to the name.
+ * no holder, the older chain still decides.
  */
-export const politicalLeader = (
-  isoCode: ISOCountryCode,
-  options: { requireImage?: boolean } = {}
-): LeaderProfile | undefined => {
+export const politicalLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
   const entry = LEADERS[isoCode]
   if (!entry) return undefined
-  const eligible = (role?: LeaderProfile) =>
-    role && (!options.requireImage || role.image) ? role : undefined
-  const state = eligible(entry.headOfState)
-  const government = eligible(entry.headOfGovernment)
+  const state = entry.headOfState
+  const government = entry.headOfGovernment
   if (!state && !government) return undefined
 
   // polity decided this from the country's own constitutional description, so
@@ -172,6 +158,23 @@ export const phrasedLeader = (isoCode: ISOCountryCode): LeaderProfile | undefine
   const profile = politicalLeader(isoCode)
   const phrased = COUNTRIES[isoCode]?.government?.leader
   return profile && leaderNamesOverlap(profile.name, phrased) ? profile : undefined
+}
+
+/** A profile naming a body (Haiti's Transitional Presidential Council) or a
+ *  pair (San Marino's Captains Regent) rather than one person. */
+const COLLECTIVE_NAME = /\b(?:council|committee|junta|presidency|directorate)\b|\s(?:and|&)\s/i
+
+/**
+ * The leader every leader quiz deals, names, pictures and hints. It is
+ * `politicalLeader`'s own profile, so the reveal headlines whoever the question
+ * asked about, but only when that profile is one person: a collective executive
+ * ("Which country is led by the Swiss Federal Council?") asks about nobody and
+ * usually names its own country, so the country sits the quiz out.
+ */
+export const quizLeader = (isoCode: ISOCountryCode): LeaderProfile | undefined => {
+  if (LEADERS[isoCode]?.executivePower === 'collective') return undefined
+  const leader = politicalLeader(isoCode)
+  return leader && !COLLECTIVE_NAME.test(leader.name) ? leader : undefined
 }
 
 /** Wikidata's stand-in for a partyless politician; never a real answer. */

@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { CAPITALS } from '~~/data/capitals.gen'
 import { CITY_LIGHTS } from '~~/data/cities.gen'
 import { capitalCityLight } from '~~/lib/capitals'
+import { cityLightFor, isCapitalCity } from '~~/lib/cities'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
 import {
   groundPlanCities,
+  groundPlanHints,
+  groundPlanImage,
   groundPlanRemainingFraction,
   namesGroundPlanCity,
 } from '~~/lib/ground-plan'
+import { formatCompact } from '~~/lib/number'
 import { buzzScore } from '~~/lib/scoring'
 import { normalizeAnswer } from '~~/lib/strings'
 import type { GroundPlanChallenge } from '~~/types/challenges/group-modes.type'
@@ -98,6 +102,63 @@ describe('namesGroundPlanCity', () => {
   it('answers to its own name for every roster city', () => {
     for (const entry of groundPlanCities()) {
       expect(namesGroundPlanCity(plan(entry.city), entry.city), entry.city).toBe(true)
+    }
+  })
+})
+
+const entryFor = (city: string) => groundPlanCities().find(entry => entry.city === city)!
+
+const sizeHint = (city: string) =>
+  groundPlanHints(entryFor(city)).find(hint => hint.kind === 'size')?.text
+
+describe('groundPlanHints size rung', () => {
+  it('states the city’s own population, not its capital’s', () => {
+    expect(sizeHint('Istanbul')).toBe('About 15.7M people live in the city itself')
+    expect(sizeHint('Sydney')).toBe('About 5.6M people live in the city itself')
+    expect(sizeHint('Chicago')).toBe(
+      `About ${formatCompact(2_664_452)} people live in the city itself`
+    )
+    expect(sizeHint('Saint Petersburg')).not.toBe(sizeHint('Moscow'))
+  })
+
+  it('skips the rung where the city has no gazetteer row', () => {
+    expect(cityLightFor('IT', ['Venice', 'Venezia'])).toBeUndefined()
+    expect(sizeHint('Venice')).toBeUndefined()
+    expect(sizeHint('Washington')).toBeUndefined()
+  })
+
+  it('reads every roster city’s own row or is absent', () => {
+    for (const entry of groundPlanCities()) {
+      const names = [entry.city, ...(entry.aliases ?? [])]
+      const row = cityLightFor(entry.country, names)
+      const hint = groundPlanHints(entry).find(candidate => candidate.kind === 'size')
+      if (!row) {
+        expect(hint, entry.city).toBeUndefined()
+        continue
+      }
+      if (isCapitalCity(entry.country, names)) {
+        expect(row, entry.city).toBe(capitalCityLight(entry.country))
+      } else {
+        expect(row, entry.city).not.toBe(capitalCityLight(entry.country))
+        const own = new Set(names.map(name => normalizeAnswer(name)))
+        expect(own.has(normalizeAnswer(row.name)), entry.city).toBe(true)
+      }
+      expect(hint?.text, entry.city).toBe(
+        `About ${formatCompact(row.population)} people live in the city itself`
+      )
+    }
+  })
+})
+
+describe('groundPlanImage', () => {
+  it('lands a capital on its capital photo whatever the roster calls it', () => {
+    expect(entryFor('Washington').city).not.toBe(CAPITALS.US?.name)
+    expect(groundPlanImage(entryFor('Washington'))).toBe(CAPITALS.US?.image)
+  })
+
+  it('never lands a non-capital on its capital’s photo', () => {
+    for (const city of ['New York', 'Sydney', 'La Paz', 'Colombo']) {
+      expect(groundPlanImage(entryFor(city)), city).toBeUndefined()
     }
   })
 })
