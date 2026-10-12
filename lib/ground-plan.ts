@@ -80,17 +80,17 @@ export const cutForDifficulty = (
   return sample(wanted.length ? wanted : cuts)
 }
 
+const spellingKeys = new Map<string, ReadonlySet<string>>()
+
+/** Longer than any city's name, so a longer submission is refused unread. */
+const MAX_CITY_NAME_LENGTH = 100
+
 /**
  * Whether a typed answer names the dealt city itself — not merely a city in
  * its country. Both ends grade through this: the view before it submits, the
  * server against the name the submission carries, which is untrusted and so
  * typed `unknown` here.
  */
-const spellingKeys = new Map<string, ReadonlySet<string>>()
-
-/** Longer than any city's name, so a longer submission is refused unread. */
-const MAX_CITY_NAME_LENGTH = 100
-
 export const namesGroundPlanCity = (
   challenge: Pick<GroundPlanChallenge, 'country' | 'city'>,
   typed: unknown
