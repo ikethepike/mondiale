@@ -15,7 +15,7 @@ import {
   speaksTongue,
 } from '~~/lib/challenges'
 import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
-import { parsePlacements, replayPlacements, scoreComposition } from '~~/lib/composition'
+import { compositionPay, parsePlacements, replayPlacements } from '~~/lib/composition'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import {
   groundPlanLayersShown,
@@ -351,16 +351,15 @@ export const gradeGroupAnswer = async ({
       // The server replays the seat's placements itself: a card counts only
       // where `replayPlacements` stands it, inside the strike limit.
       const challenge = expectChallengeType(roundChallenge, 'composition-challenge')
-      const placements = parsePlacements(submission.composition?.placements)
-      const { placed } = replayPlacements(challenge, placements)
+      const replay = replayPlacements(
+        challenge,
+        parsePlacements(submission.composition?.placements)
+      )
       answer = {
-        submitted: challenge.slices.flatMap((_, slot) => placed[slot] ?? []),
+        submitted: challenge.slices.flatMap((_, slot) => replay.placed[slot] ?? []),
         correct: challenge.slices.map(slice => slice.isoCode),
       }
-      scoring = {
-        scored: scoreComposition(challenge, placements),
-        maximum: challenge.maximumPoints,
-      }
+      scoring = { scored: compositionPay(challenge, replay), maximum: challenge.maximumPoints }
       break
     }
     case 'ghost-state': {

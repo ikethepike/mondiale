@@ -1451,16 +1451,21 @@ const botPlacements = (board: CompositionChallenge, share: number): CompositionP
   const attempts: CompositionPlacement[] = board.slices
     .map((slice, slot) => ({ isoCode: slice.isoCode, slot }))
     .filter(() => Math.random() < share)
-  for (let guard = 0; guard < board.slices.length * board.slices.length; guard++) {
+  const ruledOut = new Set<string>()
+  for (;;) {
     const replay = replayPlacements(board, attempts)
     if (replay.over) break
     const standing = new Set(Object.values(replay.placed))
-    const card = sample(board.options.filter(isoCode => !standing.has(isoCode)))
-    const slot = sample(
-      board.slices.map((_, index) => index).filter(index => !replay.placed[index])
+    const open = board.slices.map((_, slot) => slot).filter(slot => !replay.placed[slot])
+    const move = sample(
+      board.options
+        .filter(isoCode => !standing.has(isoCode))
+        .flatMap(isoCode => open.map(slot => ({ isoCode, slot })))
+        .filter(({ isoCode, slot }) => !ruledOut.has(`${isoCode}:${slot}`))
     )
-    if (card === undefined || slot === undefined) break
-    attempts.push({ isoCode: card, slot })
+    if (!move) break
+    ruledOut.add(`${move.isoCode}:${move.slot}`)
+    attempts.push(move)
   }
   return attempts
 }

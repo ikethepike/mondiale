@@ -10,6 +10,7 @@ import {
   compositionTiers,
   forcedPlacement,
   replayPlacements,
+  revealedSlots,
   scoreComposition,
 } from '~~/lib/composition'
 import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
@@ -249,6 +250,14 @@ describe('composition grading', () => {
     const { scoring, answer } = await grade([], true)
     expect(scoring.scored).toBe(0)
     expect(answer.correct).toEqual(['SY', 'IQ', 'DE', 'IR'])
+  })
+
+  it('reveals a tied origin where the seat put it, and its partner in the gap', () => {
+    const { placed } = replayPlacements(board, [
+      { isoCode: 'SY', slot: 0 },
+      { isoCode: 'DE', slot: 1 },
+    ])
+    expect(revealedSlots(board, placed)).toEqual({ 0: 'SY', 1: 'DE', 2: 'IQ', 3: 'IR' })
   })
 
   it('drops the last card in for free once it is the only one left', () => {

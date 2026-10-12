@@ -135,9 +135,15 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import SourceInfo from '~/components/feedback/SourceInfo.vue'
 import { datasetAttribution } from '~~/lib/attribution'
-import { compositionTiers, forcedPlacement, replayPlacements } from '~~/lib/composition'
+import {
+  compositionTiers,
+  forcedPlacement,
+  replayPlacements,
+  revealedSlots,
+} from '~~/lib/composition'
 import { countryName, getCountry } from '~~/lib/country'
 import { corridorsToDestination } from '~~/lib/migration'
+import { MOTION } from '~~/lib/motion'
 import { formatCompact } from '~~/lib/number'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
@@ -230,12 +236,9 @@ const placedOn = computed<Partial<Record<number, ISOCountryCode>>>(() => {
 const standing = computed(() => new Set(Object.values(placedOn.value)))
 
 const revealed = computed(() => submitted.value || !!boothAnswer.value)
-/** Every group names itself at the reveal; before it, only the ones placed. */
 const shownOn = computed<Partial<Record<number, ISOCountryCode>>>(() =>
-  revealed.value
-    ? Object.fromEntries(
-        (challenge.value?.slices ?? []).map((slice, slot) => [slot, slice.isoCode])
-      )
+  revealed.value && challenge.value
+    ? revealedSlots(challenge.value, placedOn.value)
     : placedOn.value
 )
 
@@ -272,18 +275,17 @@ const place = (isoCode: ISOCountryCode, slot: number) => {
 
   const after = replay.value!
   if (after.placed[slot] === isoCode) {
+    const forced = forcedPlacement(active, after)
+    if (forced) attempts.value = [...attempts.value, forced]
     const people = corridors.value.find(origin => origin.isoCode === isoCode)?.value.amount
-    const seated = Object.keys(after.placed).length
     announce({
       hint: people ? `${formatCompact(people)} people born in ${countryName(isoCode)}` : undefined,
       kind: 'presence',
-      placed: { seated, total: active.slices.length },
+      placed: { seated: Object.keys(replay.value!.placed).length, total: active.slices.length },
     })
-    const forced = forcedPlacement(active, after)
-    if (forced) attempts.value = [...attempts.value, forced]
   } else {
     refusal.value = { isoCode, slot }
-    clearRefusal(() => (refusal.value = undefined), 600)
+    clearRefusal(() => (refusal.value = undefined), MOTION.base * 1000)
     const left = active.strikes - after.misses.length
     announce({
       hint: left
@@ -382,8 +384,6 @@ registerCleanup(() => {
   window.removeEventListener('pointercancel', endDrag)
 })
 
-// The map is the arrivals board: each origin flies in as it lands, and the
-// reveal flies in the rest.
 watchEffect(() => {
   const active = challenge.value
   if (!active) return
@@ -456,8 +456,6 @@ footer {
   }
 }
 
-// Diameters are relative to the head group; the unit is whatever lets the row
-// fit the panel, capped so a lone blowout doesn't fill the screen.
 .crowd {
   --gap: 0.9rem;
   --unit: min(9.5rem, 32cqi);
@@ -507,6 +505,10 @@ footer {
   &:disabled {
     cursor: default;
   }
+
+  &.refused {
+    animation: refuse var(--motion-base) var(--ease-out-expressive);
+  }
 }
 
 .blob {
@@ -528,10 +530,6 @@ footer {
   .ready:hover & {
     box-shadow: 0 0 0 0.2rem ink(0.35);
   }
-
-  .refused & {
-    animation: refuse 0.45s var(--ease-out-expressive);
-  }
 }
 
 .dots {
@@ -545,7 +543,7 @@ footer {
     height: 100%;
     aspect-ratio: auto;
     clip-path: circle(0% at 50% 50%);
-    animation: flag-fill 0.7s var(--ease-out-expressive) forwards;
+    animation: flag-fill var(--motion-slow) var(--ease-out-expressive) forwards;
   }
 
   .missed &.flag {
@@ -621,7 +619,7 @@ footer {
   }
 
   &.refused {
-    animation: refuse 0.45s var(--ease-out-expressive);
+    animation: refuse var(--motion-base) var(--ease-out-expressive);
     border-color: var(--hior-ange);
   }
 }

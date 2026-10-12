@@ -15,12 +15,8 @@ import type { ISOCountryCode } from '~~/types/geography.types'
  * about a strike, a fit or the pay.
  */
 
-/**
- * Neighbouring groups closer than this are one tier: either origin fits either
- * slot. 78 of the 102 dealt boards hold such a pair somewhere below the head
- * (Türkiye's Iraq, Germany, Bulgaria and Afghanistan all sit within 5.9–4.9%),
- * and ordering them strictly would grade a coin flip as knowledge.
- */
+/** Neighbouring groups closer than this are one tier: either origin fits either
+ *  slot, because ordering a near-tie would grade a coin flip as knowledge. */
 export const COMPOSITION_TIE_RATIO = 1.15
 
 /** The largest group's slice of the pot — it is still the question the board is
@@ -34,9 +30,8 @@ export const COMPOSITION_SLOTS: { [difficulty in GameDifficulty]: number } = {
   hard: 6,
 }
 
-/** Wrong placements that end a seat's round. Blind play pays about a third of
- *  the pot on easy, a fifth on normal and a seventh on hard — pinned in
- *  composition.test.ts. */
+/** Wrong placements that end a seat's round. What blind play earns under them
+ *  is pinned in composition.test.ts. */
 export const COMPOSITION_STRIKES: { [difficulty in GameDifficulty]: number } = {
   easy: 3,
   normal: 3,
@@ -71,18 +66,6 @@ export const compositionTiers = (slices: CompositionBoard['slices']): number[] =
   })
 }
 
-/** Whether `isoCode` belongs on `slot` — its own group, or one tied with it. */
-export const placementFits = (
-  board: CompositionBoard,
-  isoCode: ISOCountryCode,
-  slot: number
-): boolean => {
-  const truth = board.slices.findIndex(slice => slice.isoCode === isoCode)
-  if (truth < 0 || slot < 0 || slot >= board.slices.length) return false
-  const tiers = compositionTiers(board.slices)
-  return tiers[truth] === tiers[slot]
-}
-
 export interface PlacementReplay {
   /** Slot → the origin standing on it. */
   placed: Partial<Record<number, ISOCountryCode>>
@@ -101,16 +84,25 @@ export const replayPlacements = (
   board: CompositionBoard,
   attempts: readonly CompositionPlacement[]
 ): PlacementReplay => {
+  const tiers = compositionTiers(board.slices)
+  const tierOf = new Map(board.slices.map((slice, slot) => [slice.isoCode, tiers[slot]]))
   const placed: PlacementReplay['placed'] = {}
+  const standing = new Set<ISOCountryCode>()
   const misses: CompositionPlacement[] = []
-  const full = () => Object.keys(placed).length >= board.slices.length
   for (const attempt of attempts) {
-    if (misses.length >= board.strikes || full()) break
-    if (placed[attempt.slot] || Object.values(placed).includes(attempt.isoCode)) continue
-    if (placementFits(board, attempt.isoCode, attempt.slot)) placed[attempt.slot] = attempt.isoCode
-    else misses.push(attempt)
+    if (misses.length >= board.strikes || standing.size >= board.slices.length) break
+    if (placed[attempt.slot] || standing.has(attempt.isoCode)) continue
+    const truth = tierOf.get(attempt.isoCode)
+    if (truth !== undefined && truth === tiers[attempt.slot]) {
+      placed[attempt.slot] = attempt.isoCode
+      standing.add(attempt.isoCode)
+    } else misses.push(attempt)
   }
-  return { placed, misses, over: misses.length >= board.strikes || full() }
+  return {
+    placed,
+    misses,
+    over: misses.length >= board.strikes || standing.size >= board.slices.length,
+  }
 }
 
 /**
@@ -139,14 +131,43 @@ export const slotPoints = (board: CompositionBoard, slot: number, maximumPoints:
   return maximumPoints * fraction
 }
 
-export const scoreComposition = (
+/** What a replayed board pays. */
+export const compositionPay = (
   board: CompositionBoard & { maximumPoints: number },
-  attempts: readonly CompositionPlacement[]
+  replay: PlacementReplay
 ): number => {
-  const { placed } = replayPlacements(board, attempts)
-  const earned = Object.keys(placed).reduce(
+  const earned = Object.keys(replay.placed).reduce(
     (sum, slot) => sum + slotPoints(board, Number(slot), board.maximumPoints),
     0
   )
   return clampScore(Math.round(earned), board.maximumPoints)
+}
+
+export const scoreComposition = (
+  board: CompositionBoard & { maximumPoints: number },
+  attempts: readonly CompositionPlacement[]
+): number => compositionPay(board, replayPlacements(board, attempts))
+
+/**
+ * Who stands on each group at the reveal: what the seat placed, and in every
+ * group it left empty, an origin of that group's tier it never placed — so a
+ * tied origin dropped on its neighbour's slot is never also shown as missed.
+ */
+export const revealedSlots = (
+  board: CompositionBoard,
+  placed: PlacementReplay['placed']
+): Record<number, ISOCountryCode> => {
+  const tiers = compositionTiers(board.slices)
+  const standing = new Set(Object.values(placed))
+  const unplaced = board.slices
+    .map((slice, slot) => ({ isoCode: slice.isoCode, tier: tiers[slot] }))
+    .filter(origin => !standing.has(origin.isoCode))
+  return Object.fromEntries(
+    board.slices.map((_, slot) => {
+      const own = placed[slot]
+      if (own) return [slot, own]
+      const index = unplaced.findIndex(origin => origin.tier === tiers[slot])
+      return [slot, unplaced.splice(index, 1)[0]!.isoCode]
+    })
+  )
 }
