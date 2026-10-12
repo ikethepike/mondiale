@@ -224,6 +224,11 @@ export const pyramidDecoyFits = (
   return band.readoutFrom === undefined || pyramidReadoutGap(subject, candidate) >= band.readoutFrom
 }
 
+/** How many guesses a deal allows. A hard table that had to borrow an easier
+ *  band keeps hard's bite another way: one guess, all or nothing. */
+export const pyramidAttempts = (difficulty: GameDifficulty, band: GameDifficulty): number =>
+  difficulty === 'hard' && band !== 'hard' ? 1 : PYRAMID_TUNING[difficulty].attempts
+
 /** A band that leaves a board fewer subjects than this (or than half the
  *  board, on a small one) borrows a neighbour on `BAND_LADDER`. */
 export const PYRAMID_MIN_SUBJECTS = 12

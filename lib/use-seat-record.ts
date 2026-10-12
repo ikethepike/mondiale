@@ -3,7 +3,8 @@ import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 
 /**
  * Records a fact on this seat's cursor for one subject — a hint bought
- * (`buy-hint`), a gauntlet stage's name taken (`final-light`) — once per
+ * (`buy-hint`), an option spent (`spend-pick`), a gauntlet stage's name taken
+ * (`final-light`) — once per
  * value, kept alive past `update`'s ack batch by the one redeliver home. The
  * server's record is what the grade reads; the view only shows it.
  */
@@ -21,6 +22,10 @@ export const useSeatRecord = () => {
     buyHint: (subject: string, hint: string) =>
       once(subject, `hint|${hint}`, () =>
         update({ event: 'buy-hint', hint, ...seatEcho(subject) })
+      ),
+    spendPick: (subject: string, pick: string) =>
+      once(subject, `pick|${pick}`, () =>
+        update({ event: 'spend-pick', pick, ...seatEcho(subject) })
       ),
     lightFinal: (subject: string, name: string) =>
       once(subject, `light|${name}`, () =>

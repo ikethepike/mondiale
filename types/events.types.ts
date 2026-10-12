@@ -133,6 +133,13 @@ export type ClientEventData =
       hint: string
     })
   | (SeatEcho & {
+      /** An option-board round's pick spent on a wrong answer. Recorded on the
+       *  cursor, once per option — the attempt price counts that record, so a
+       *  reload cannot restore the guesses. */
+      event: 'spend-pick'
+      pick: string
+    })
+  | (SeatEcho & {
       /** A timed gauntlet stage took a name (Sunset Blitz's country, City
        *  Nocturne's city). The server keeps it only if it landed in time —
        *  the stage's verdict counts that record, never the submitted set. */
@@ -423,6 +430,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-group-challenge-answers',
   'submit-individual-challenge-answer',
   'buy-hint',
+  'spend-pick',
   'submit-final-challenge-answer',
   'final-light',
   'submit-chain-move',

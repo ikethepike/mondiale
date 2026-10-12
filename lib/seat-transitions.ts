@@ -90,7 +90,7 @@ export const SEAT_TRANSITIONS: readonly SeatTransitionRule[] = [
   rule('lobby', 'tutorial', 'table:start-game'),
   rule('tutorial', 'round', 'event:close-tutorial', 'timer:tutorial-cap'),
   rule('tutorial', 'scores', 'table:settle'),
-  rule('round', 'round', 'event:round-play', 'event:buy-hint'),
+  rule('round', 'round', 'event:round-play', 'event:buy-hint', 'event:spend-pick'),
   rule('round', 'round-verdict', 'event:submit-group-challenge-answers'),
   rule('round', 'scores', 'event:submit-group-challenge-answers', 'table:settle'),
   rule('round-verdict', 'scores', 'timer:verdict-hold', 'table:settle', 'event:round-reveal-done'),
@@ -225,6 +225,7 @@ export interface NextCursor {
   verdict?: SeatVerdict
   hints?: string[]
   lit?: string[]
+  spent?: string[]
   walk?: number
   leg?: number
 }
@@ -248,6 +249,7 @@ export const applySeatMove = (
   const kept = next.subject === previous.subject ? previous : undefined
   const hints = next.hints ?? kept?.hints
   const lit = next.lit ?? kept?.lit
+  const spent = next.spent ?? kept?.spent
   seat.cursor = {
     seq: previous.seq + 1,
     step: next.step,
@@ -261,6 +263,7 @@ export const applySeatMove = (
     ...(next.verdict ? { verdict: next.verdict } : {}),
     ...(hints?.length ? { hints } : {}),
     ...(lit?.length ? { lit } : {}),
+    ...(spent?.length ? { spent } : {}),
   }
   return seat.cursor
 }

@@ -1,5 +1,5 @@
 import { computed, shallowRef, type ComputedRef, type Ref } from 'vue'
-import { attemptPicksScore } from '~~/lib/challenges'
+import { attemptPicksScore, attemptSequence } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import type { HintTone } from '~~/types/events.types'
@@ -28,6 +28,8 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
   announce,
   namesAnswer,
   submitRound,
+  recorded,
+  record,
 }: {
   challenge: ComputedRef<AttemptChallenge | undefined>
   submitted: Ref<boolean>
@@ -46,12 +48,17 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
    * the ISO code against `country`.
    */
   namesAnswer?: (pick: Pick) => boolean
+  /** The picks the server already holds as spent (`spentPicks`) — what a
+   *  reload restores — and the recorder each new wrong pick goes through. */
+  recorded?: ComputedRef<readonly string[]>
+  record?: (pick: Pick) => void
   /** Bank the round; 0 means failed out. `picks` is the attempt sequence the
    *  server prices option variants from. */
   submitRound: (score: number, picks: Pick[]) => void
 }) => {
+  const picked = shallowRef<Pick[]>([])
   /** Options already picked and wrong — greyed out, and counted against the cap. */
-  const spent = shallowRef<Pick[]>([])
+  const spent = computed(() => attemptSequence(recorded?.value, picked.value))
   const attemptsUsed = computed(() => spent.value.length)
   const attemptsLeft = computed(() =>
     challenge.value?.maximumGuesses
@@ -81,7 +88,8 @@ export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
 
     if (active.maximumGuesses) {
       if (spent.value.includes(pick)) return
-      spent.value = [...spent.value, pick]
+      picked.value = [...picked.value, pick]
+      record?.(pick)
       if (attemptsLeft.value <= 0) {
         announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses', tone: 'alert' })
         return submitRound(0, spent.value)

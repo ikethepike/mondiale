@@ -67,6 +67,14 @@ describe('pyramid scheme dealer', () => {
     }
   })
 
+  it('gives a hard table that borrowed an easier band one guess', async () => {
+    const borrowed = await deal('hard', 'europe')
+    expect(borrowed.band).not.toBe('hard')
+    expect(borrowed.maximumGuesses).toBe(1)
+    expect((await deal('hard')).maximumGuesses).toBe(PYRAMID_TUNING.hard.attempts)
+    expect((await deal('normal', 'europe')).maximumGuesses).toBe(PYRAMID_TUNING.normal.attempts)
+  })
+
   it('deals the world board its own band at every difficulty', async () => {
     for (const difficulty of DIFFICULTIES) expect((await deal(difficulty)).band).toBe(difficulty)
   })

@@ -175,7 +175,6 @@ const {
   subject,
   showInterstitial,
   started,
-  submitted,
   secondsLeft,
   begin,
   hint,
@@ -186,6 +185,7 @@ const {
   seatEcho,
   createViewTimer,
   boothAnswer,
+  outcomeShown,
   gameStore,
 } = useGroupChallenge('composition-challenge')
 
@@ -219,7 +219,7 @@ const tiers = computed(() => {
   return byTier
 })
 
-const revealed = computed(() => submitted.value || !!boothAnswer.value)
+const revealed = outcomeShown
 const revealKey = computed(() => board.value?.reveal?.map(origin => origin.isoCode))
 
 /** What stands on each group: this seat's board as the server holds it, or —

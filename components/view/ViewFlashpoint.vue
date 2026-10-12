@@ -159,6 +159,8 @@ const {
   gameStore,
   isDisposed,
   previewVerdict,
+  spentPicks,
+  spendPick,
 } = useGroupChallenge('flashpoint-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -314,6 +316,8 @@ const { spent, onGuess } = useAttemptOptions({
   remainingFraction,
   announce,
   submitRound,
+  recorded: spentPicks,
+  record: spendPick,
 })
 </script>
 <style lang="scss" scoped>

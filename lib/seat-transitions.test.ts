@@ -133,6 +133,19 @@ describe('applySeatMove', () => {
     expect(seat.cursor).toBe(next)
   })
 
+  it("keeps a round's spent picks across its own moves, and drops them with it", () => {
+    const round = { cursor: cursorOn('round', { subject: 'round:3', deadline: 50 }) }
+    applySeatMove(
+      round,
+      { step: 'round', subject: 'round:3', deadline: 50, spent: ['NE'] },
+      'event:spend-pick'
+    )
+    applySeatMove(round, { step: 'round', subject: 'round:3', deadline: 40 }, 'event:round-play')
+    expect(round.cursor).toMatchObject({ spent: ['NE'], deadline: 40 })
+    applySeatMove(round, { step: 'scores', subject: 'scores:3', deadline: 90 }, 'table:settle')
+    expect(round.cursor.spent).toBeUndefined()
+  })
+
   it("keeps a subject's hints and lights across its own moves, and drops them with it", () => {
     const gate = { cursor: cursorOn('gate', { subject: 'gate:w2:t5', deadline: 50 }) }
     applySeatMove(

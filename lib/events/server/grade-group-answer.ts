@@ -1,5 +1,6 @@
 import {
   attemptPicksScore,
+  attemptSequence,
   getCorrectRanking,
   ghostStateAnswers,
   isFlagPaletteMatch,
@@ -95,7 +96,7 @@ export const gradeGroupAnswer = async ({
   playerId: string
   submission: GroupSubmission
   /** The answering seat's cursor: its own play window and its bought hints. */
-  seat?: Pick<SeatCursor, 'deadline' | 'hints'>
+  seat?: Pick<SeatCursor, 'deadline' | 'hints' | 'spent'>
   /** When the answer reached the server. */
   at?: number
   absent?: boolean
@@ -154,10 +155,11 @@ export const gradeGroupAnswer = async ({
     fraction?: number
   ) => {
     if (!challenge.maximumGuesses) return buzzOn(challenge, undefined, fraction)
-    answer = { submitted: submission.ranking, correct: [challenge.country] }
+    const picks = attemptSequence(seat?.spent, submission.ranking)
+    answer = { submitted: picks, correct: [challenge.country] }
     scoring = {
       scored: attemptPicksScore(
-        submission.ranking,
+        picks,
         challenge.country,
         challenge.maximumGuesses,
         challenge.maximumPoints
@@ -305,7 +307,7 @@ export const gradeGroupAnswer = async ({
       // on the named cities rather than the country the ranking carries.
       if (challenge.maximumGuesses) {
         const scored = attemptPicksScore(
-          cities,
+          attemptSequence(seat?.spent, cities),
           namesCity,
           challenge.maximumGuesses,
           challenge.maximumPoints

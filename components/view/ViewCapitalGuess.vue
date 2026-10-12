@@ -103,6 +103,8 @@ const {
   submitOnce,
   gameStore,
   previewVerdict,
+  spentPicks,
+  spendPick,
 } = useGroupChallenge('capital-guess-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -140,6 +142,8 @@ const { spent, onGuess } = useAttemptOptions({
   remainingFraction,
   announce,
   submitRound,
+  recorded: spentPicks,
+  record: spendPick,
 })
 </script>
 <style lang="scss" scoped>

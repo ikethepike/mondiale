@@ -46,6 +46,7 @@
             :frame="frame"
             :scars="revealed ? scars : []"
             :ghost="revealed ? wrongPick : undefined"
+            :peak="peak"
             :anonymous="!revealed"
             annotated
           />
@@ -134,6 +135,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import {
   medianAge,
   pyramidFrameAt,
+  pyramidPeakShare,
   pyramidScars,
   pyramidYearAt,
   shareOver65,
@@ -165,8 +167,11 @@ const {
   gameStore,
   currentRound,
   boothAnswer,
+  outcomeShown,
   subject,
   seatEcho,
+  spentPicks,
+  spendPick,
 } = useGroupChallenge('pyramid-scheme-challenge')
 const { seatCursor } = useClientEvents()
 
@@ -183,7 +188,11 @@ const tight = computed(() => isPhone.value || isShort.value)
 const stakes = computed(() => {
   const active = challenge.value
   if (!active) return ''
-  const base = `One country's age structure across sixty years. Pick its owner from ${active.options.length} — ${active.maximumGuesses} guesses, the second worth less.`
+  const guesses =
+    active.maximumGuesses === 1
+      ? 'one guess, so make it count'
+      : `${active.maximumGuesses} guesses, the second worth less`
+  const base = `One country's age structure across sixty years. Pick its owner from ${active.options.length} — ${guesses}.`
   return active.band === 'hard'
     ? `${base} Today the options look alike, but they aged decades apart: drag the timeline back.`
     : base
@@ -205,6 +214,9 @@ const readout = computed(() => {
     old: Math.round(shareOver65(at)),
   }
 })
+const peak = computed(() =>
+  challenge.value ? pyramidPeakShare(challenge.value.options) : undefined
+)
 const scars = computed(() => (challenge.value ? pyramidScars(challenge.value.country) : []))
 
 // --- answering ---------------------------------------------------------------
@@ -219,7 +231,7 @@ const banked = computed<ISOCountryCode[]>(() =>
     ? (boothAnswer.value?.submitted ?? [])
     : (picks.value ?? currentRound.value?.round.groupAnswers[gameStore.seatId]?.submitted ?? [])
 )
-const revealed = computed(() => (gameStore.watching ? !!boothAnswer.value : submitted.value))
+const revealed = outcomeShown
 const solved = computed(() => !!challenge.value && banked.value.includes(challenge.value.country))
 const wrongPick = computed(() =>
   banked.value.filter(isoCode => isoCode !== challenge.value?.country).at(-1)
@@ -251,6 +263,8 @@ const { spent, onGuess } = useAttemptOptions({
   remainingFraction,
   announce,
   submitRound,
+  recorded: spentPicks,
+  record: spendPick,
 })
 
 // --- the browsable reveal ----------------------------------------------------

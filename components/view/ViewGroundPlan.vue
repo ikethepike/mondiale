@@ -145,6 +145,8 @@ const {
   stopCountdown,
   gameStore,
   previewVerdict,
+  spentPicks,
+  spendPick,
 } = useGroupChallenge('ground-plan-challenge')
 
 // A cut is wider than it is tall, so a portrait screen cannot fill without
@@ -258,6 +260,8 @@ const { spent, onGuess } = useAttemptOptions({
   announce,
   namesAnswer: (city: string) => !!challenge.value && namesGroundPlanCity(challenge.value, city),
   submitRound,
+  recorded: spentPicks,
+  record: spendPick,
 })
 
 const isSpent = (option: string): boolean => spent.value.includes(option)

@@ -708,6 +708,7 @@ const installStubSocket = () => {
     if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
     if (event === 'fetch-two-truths-receipts') simulateTwoTruthsReceipts(eventData ?? {})
     if (event === 'buy-hint') simulateBuyHint(eventData ?? {})
+    if (event === 'spend-pick') simulateSpendPick(eventData ?? {})
     if (event === 'submit-composition-drop' || event === 'fetch-composition-board') {
       void simulateComposition(event, eventData ?? {})
     }
@@ -1007,6 +1008,13 @@ const simulateBuyHint = ({ hint }: Record<string, unknown>) => {
   const cursor = gameStore.game?.players[ME]?.cursor
   if (!cursor || typeof hint !== 'string' || cursor.hints?.includes(hint)) return
   cursor.hints = [...(cursor.hints ?? []), hint]
+}
+
+/** The stub's half of spend-pick: the server records the option on the seat's cursor. */
+const simulateSpendPick = ({ pick }: Record<string, unknown>) => {
+  const cursor = gameStore.game?.players[ME]?.cursor
+  if (!cursor || typeof pick !== 'string' || cursor.spent?.includes(pick)) return
+  cursor.spent = [...(cursor.spent ?? []), pick]
 }
 
 /** The stub's half of fetch-two-truths-receipts: the harness holds the deck,

@@ -1335,6 +1335,33 @@ export const capitalGuessScore = (
     )
   )
 
+/** The option boards priced by attempt: their options, and how many picks a
+ *  seat may spend on them. Undefined for any other round, or a free-typed one. */
+export const attemptBoardOf = (
+  challenge: RoundChallenge | undefined
+): { options: readonly string[]; maximumGuesses: number } | undefined => {
+  const board =
+    isChallengeOfType(challenge, 'capital-guess-challenge') ||
+    isChallengeOfType(challenge, 'flashpoint-challenge') ||
+    isChallengeOfType(challenge, 'ground-plan-challenge') ||
+    isChallengeOfType(challenge, 'pyramid-scheme-challenge')
+      ? challenge
+      : undefined
+  return board?.options && board.maximumGuesses
+    ? { options: board.options, maximumGuesses: board.maximumGuesses }
+    : undefined
+}
+
+/** The pick sequence an option board is priced on: the picks the seat's
+ *  record already spent, then the submitted ones it does not already hold. */
+export const attemptSequence = <Pick extends string>(
+  spent: readonly string[] | undefined,
+  picks: readonly Pick[]
+): Pick[] => {
+  const recorded = (spent ?? []) as Pick[]
+  return [...recorded, ...picks.filter(pick => !recorded.includes(pick))]
+}
+
 /** What an option round's pick sequence pays: `capitalGuessScore` for the
  *  attempt the answer landed on, 0 when it never landed inside the cap.
  *  `answer` is the winning pick, or a matcher where several spellings win
@@ -1900,7 +1927,7 @@ const getPyramidSchemeChallenge = async (
 ): Promise<PyramidSchemeChallenge | undefined> => {
   // ~583KB of cohort frames — lazily loaded so it stays out of the eager bundle
   // (issue #110), the same way trend-race defers its series table.
-  const { PYRAMID_TUNING, drawPyramidDeal } = await import('./pyramids')
+  const { PYRAMID_TUNING, drawPyramidDeal, pyramidAttempts } = await import('./pyramids')
   const tuning = PYRAMID_TUNING[game.difficulty]
   const deal = drawPyramidDeal(playableCountries(game), game.difficulty)
   if (!deal) return undefined
@@ -1910,7 +1937,7 @@ const getPyramidSchemeChallenge = async (
     country: deal.country,
     options: shuffleArray([deal.country, ...deal.decoys]),
     band: deal.band,
-    maximumGuesses: tuning.attempts,
+    maximumGuesses: pyramidAttempts(game.difficulty, deal.band),
     durationSeconds: tuning.durationSeconds,
     maximumPoints: maximumRoundPoints(game),
   }

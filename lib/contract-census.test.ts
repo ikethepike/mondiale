@@ -98,6 +98,7 @@ describe('single writer', () => {
     verdict: true,
     hints: true,
     lit: true,
+    spent: true,
     cause: true,
     walk: true,
     leg: true,
@@ -454,6 +455,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer',
     'gate-reveal-done',
     'buy-hint',
+    'spend-pick',
     'final-light',
   ] as const satisfies readonly ClientEventData['event'][]
   const echoes: { [E in (typeof SEAT_EVENTS)[number]]: Echoes<E> } = {
@@ -466,6 +468,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer': true,
     'gate-reveal-done': true,
     'buy-hint': true,
+    'spend-pick': true,
     'final-light': true,
   }
 
@@ -485,6 +488,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer': true,
     'gate-reveal-done': true,
     'buy-hint': true,
+    'spend-pick': true,
     'final-light': true,
   }
 

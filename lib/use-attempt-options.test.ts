@@ -163,3 +163,46 @@ describe('useAttemptOptions named picks', () => {
     expect((await grade([7, 'Chicago'])).scoring.scored).toBe(capitalGuessScore(2, 2, 20))
   })
 })
+
+describe('useAttemptOptions on a reloaded seat', () => {
+  const reloaded = (recordedPicks: string[]) => {
+    const submitted = ref(false)
+    const scores: number[] = []
+    const recorded: string[] = []
+    const machine = useAttemptOptions({
+      challenge: computed(() => ({
+        country: 'JP' as ISOCountryCode,
+        maximumGuesses: 2,
+        maximumPoints: 100,
+      })),
+      submitted,
+      started: ref(true),
+      remainingFraction: computed(() => 1),
+      announce: () => {},
+      recorded: computed(() => recordedPicks),
+      record: pick => recorded.push(pick),
+      submitRound: score => {
+        scores.push(score)
+        submitted.value = true
+      },
+    })
+    return { ...machine, scores, recorded }
+  }
+
+  it("restores the server's spent picks instead of handing the guesses back", () => {
+    const { spent, attemptsLeft, onGuess, scores } = reloaded(['NE'])
+    expect(spent.value).toEqual(['NE'])
+    expect(attemptsLeft.value).toBe(1)
+    onGuess(getCountry('JP'))
+    expect(scores).toEqual([capitalGuessScore(2, 2, 100)])
+  })
+
+  it('records each wrong pick, never the answer', () => {
+    const { onGuess, recorded } = reloaded([])
+    onGuess(getCountry('QA'))
+    onGuess(getCountry('QA'))
+    expect(recorded).toEqual(['QA'])
+    onGuess(getCountry('JP'))
+    expect(recorded).toEqual(['QA'])
+  })
+})

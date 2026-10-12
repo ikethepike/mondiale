@@ -48,7 +48,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const { gameStore, update, currentRound, clearBoard, seatCursor, seatEcho, previewVerdict } =
     useClientEvents()
   const startSeatClockOn = useSeatClockStart()
-  const { buyHint: buyHintOn } = useSeatRecord()
+  const { buyHint: buyHintOn, spendPick: spendPickOn } = useSeatRecord()
   const { now } = useServerNow()
   // Captured once: the view is keyed on the round's subject, so this is the
   // question every send from this mount answers.
@@ -307,6 +307,11 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     return roundSettled(Object.values(gameStore.game?.players ?? {})) ? answer : undefined
   })
 
+  /** Whether this viewer may see the round's outcome: its own banked answer,
+   *  or in the booth the followed seat's — never the seat's cursor there,
+   *  which reaches the verdict before hide-spoilers lets the booth see it. */
+  const outcomeShown = computed(() => (gameStore.watching ? !!boothAnswer.value : submitted.value))
+
   /** Register a view-specific teardown (extra timers, listeners). */
   const registerCleanup = (fn: () => void) => cleanups.push(fn)
 
@@ -355,7 +360,14 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     startSeatClock: () => startSeatClockOn(subject),
     /** Record a bought hint with the server — what the round's pay is docked by. */
     buyHint: (hint: RoundHint<keyof typeof ROUND_HINTS>) => buyHintOn(subject, hint),
+    /** Record an option-board pick spent on this round — what its attempt price counts. */
+    spendPick: (pick: string) => spendPickOn(subject, pick),
+    /** The picks the server already holds as spent on this round. */
+    spentPicks: computed(() =>
+      seatCursor.value?.subject === subject ? (seatCursor.value.spent ?? []) : []
+    ),
     boothAnswer,
+    outcomeShown,
     clearBoard,
   }
 }
