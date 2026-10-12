@@ -956,7 +956,6 @@ const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[])
 /** More touching countries = a longer clock. */
 const waterBlitzDuration = (countries: number) => Math.min(75, 20 + countries * 6)
 
-/** The features a water-blitz round may deal at this table: its difficulty's slice of the board. */
 export const waterBlitzCandidates = async (game: gameTypes.Game, tiers: WaterTiers) => {
   const { kinds, poolFraction } = tiers[game.difficulty]
   const pool = (await waterFeaturePool(game, kinds)).filter(
