@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { computed, ref } from 'vue'
-import { attemptPicksScore } from '~~/lib/challenges'
+import { attemptPicksScore, capitalGuessScore } from '~~/lib/challenges'
 import { getCountry } from '~~/lib/country'
+import { gradeGroupAnswer } from '~~/lib/events/server/grade-group-answer'
+import { namesGroundPlanCity } from '~~/lib/ground-plan'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
+import type { GroundPlanChallenge } from '~~/types/challenges/group-modes.type'
+import type { Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -109,5 +113,77 @@ describe('useAttemptOptions grading', () => {
     lost.onGuess(getCountry('RO'))
     expect(lost.picks).toEqual([['TR', 'RO']])
     expect(lost.scores).toEqual([0])
+  })
+})
+
+describe('useAttemptOptions named picks', () => {
+  const CHICAGO: GroundPlanChallenge = {
+    _type: 'ground-plan-challenge',
+    country: 'US',
+    city: 'Chicago',
+    cut: { slug: 'chicago-loop', signature: true },
+    crossings: 0,
+    layers: ['fabric'],
+    secondsPerLayer: 5,
+    secondsPerHint: 5,
+    options: ['Houston', 'Chicago', 'Toronto', 'Lima'],
+    maximumGuesses: 2,
+    durationSeconds: 30,
+    maximumPoints: 20,
+  }
+
+  const play = (taps: string[]) => {
+    const submitted = ref(false)
+    const banked: { score: number; picks: string[] }[] = []
+    const { onGuess, spent } = useAttemptOptions({
+      challenge: computed(() => CHICAGO),
+      submitted,
+      started: ref(true),
+      remainingFraction: computed(() => 1),
+      announce: () => {},
+      namesAnswer: (city: string) => namesGroundPlanCity(CHICAGO, city),
+      submitRound: (score, picks) => {
+        banked.push({ score, picks })
+        submitted.value = true
+      },
+    })
+    for (const city of taps) onGuess(getCountry(city === 'Toronto' ? 'CA' : 'US'), city)
+    return { banked, spent }
+  }
+
+  const grade = (picks: unknown) =>
+    gradeGroupAnswer({
+      game: { difficulty: 'normal' } as Game,
+      round: { groupChallenge: CHICAGO, groupAnswers: {}, playerTurns: {} } as never,
+      playerId: 'p',
+      submission: { ranking: ['US'], clientScore: 20, cities: picks as string[] },
+    })
+
+  it('spends a wrong city of the right country as a miss', () => {
+    const { banked, spent } = play(['Houston'])
+    expect(banked).toEqual([])
+    expect(spent.value).toEqual(['Houston'])
+  })
+
+  it('prices the attempt that named the dealt city, on both ends of the wire', async () => {
+    for (const [taps, attempt] of [
+      [['Chicago'], 1],
+      [['Houston', 'Chicago'], 2],
+    ] as const) {
+      const { banked } = play([...taps])
+      expect(banked).toEqual([{ score: capitalGuessScore(attempt, 2, 20), picks: taps }])
+      expect((await grade(banked[0]!.picks)).scoring.scored).toBe(banked[0]!.score)
+    }
+  })
+
+  it('pays nothing once the cap is spent on the wrong cities', async () => {
+    const { banked } = play(['Houston', 'Toronto', 'Chicago'])
+    expect(banked).toEqual([{ score: 0, picks: ['Houston', 'Toronto'] }])
+    expect((await grade(['Houston', 'Toronto', 'Chicago'])).scoring.scored).toBe(0)
+  })
+
+  it('zeroes a malformed pick list instead of throwing', async () => {
+    expect((await grade('Chicago')).scoring.scored).toBe(0)
+    expect((await grade([7, 'Chicago'])).scoring.scored).toBe(capitalGuessScore(2, 2, 20))
   })
 })

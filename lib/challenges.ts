@@ -1407,14 +1407,17 @@ export const capitalGuessScore = (
   )
 
 /** What an option round's pick sequence pays: `capitalGuessScore` for the
- *  attempt the answer landed on, 0 when it never landed inside the cap. */
-export const attemptPicksScore = (
-  picks: readonly ISOCountryCode[],
-  answer: ISOCountryCode,
+ *  attempt the answer landed on, 0 when it never landed inside the cap.
+ *  `answer` is the winning pick, or a matcher where several spellings win
+ *  (Ground Plan's cities). */
+export const attemptPicksScore = <Pick extends string>(
+  picks: readonly Pick[],
+  answer: Pick | ((pick: Pick) => boolean),
   attempts: number,
   maximumPoints: number
 ): number => {
-  const attempt = picks.indexOf(answer) + 1
+  const hits = typeof answer === 'function' ? answer : (pick: Pick) => pick === answer
+  const attempt = picks.findIndex(hits) + 1
   return attempt > 0 && attempt <= attempts
     ? capitalGuessScore(attempt, attempts, maximumPoints)
     : 0

@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { computed, shallowRef, type ComputedRef, type Ref } from 'vue'
 import { attemptPicksScore } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
@@ -31,12 +31,13 @@ const answerOf = (challenge: AttemptChallenge): ISOCountryCode =>
  * or, free-typed on hard, by the clock. One home so the cap arithmetic,
  * the wrong-pick hints and the never-broadcast-the-answer rule can't drift.
  */
-export const useAttemptOptions = ({
+export const useAttemptOptions = <Pick extends string = ISOCountryCode>({
   challenge,
   submitted,
   started,
   remainingFraction,
   announce,
+  namesAnswer,
   submitRound,
 }: {
   challenge: ComputedRef<AttemptChallenge | undefined>
@@ -49,12 +50,19 @@ export const useAttemptOptions = ({
     hint: string
     tone?: HintTone
   }) => void
+  /**
+   * Named boards only (Ground Plan's cities): every pick is passed to
+   * `onGuess` by name and graded, spent and priced by this, so two cities of
+   * one country stay two picks. Country boards leave it unset and grade on
+   * the ISO code against `answer ?? country`.
+   */
+  namesAnswer?: (pick: Pick) => boolean
   /** Bank the round; 0 means failed out. `picks` is the attempt sequence the
    *  server prices option variants from. */
-  submitRound: (score: number, picks: ISOCountryCode[]) => void
+  submitRound: (score: number, picks: Pick[]) => void
 }) => {
   /** Options already picked and wrong — greyed out, and counted against the cap. */
-  const spent = ref<ISOCountryCode[]>([])
+  const spent = shallowRef<Pick[]>([])
   const attemptsUsed = computed(() => spent.value.length)
   const attemptsLeft = computed(() =>
     challenge.value?.maximumGuesses
@@ -62,25 +70,29 @@ export const useAttemptOptions = ({
       : Number.POSITIVE_INFINITY
   )
 
+  const isAnswer = (active: AttemptChallenge) =>
+    namesAnswer ?? ((pick: Pick) => pick === answerOf(active))
+
   /** Option variants pay by attempt; hard mode free-types against the clock. */
-  const scoreFor = (active: AttemptChallenge, picks: ISOCountryCode[]) =>
+  const scoreFor = (active: AttemptChallenge, picks: Pick[]) =>
     active.maximumGuesses
-      ? attemptPicksScore(picks, answerOf(active), active.maximumGuesses, active.maximumPoints)
+      ? attemptPicksScore(picks, isAnswer(active), active.maximumGuesses, active.maximumPoints)
       : buzzScore(active.maximumPoints, remainingFraction.value)
 
-  const onGuess = (country: Country) => {
+  const onGuess = (country: Country, name?: Pick) => {
     const active = challenge.value
     if (!active || submitted.value || !started.value) return
+    const pick = name ?? (country.isoCode as Pick)
 
     // The winning guess is never broadcast — it would hand opponents the answer.
-    if (country.isoCode === answerOf(active)) {
-      const picks = [...spent.value, country.isoCode]
+    if (isAnswer(active)(pick)) {
+      const picks = [...spent.value, pick]
       return submitRound(scoreFor(active, picks), picks)
     }
 
     if (active.maximumGuesses) {
-      if (spent.value.includes(country.isoCode)) return
-      spent.value = [...spent.value, country.isoCode]
+      if (spent.value.includes(pick)) return
+      spent.value = [...spent.value, pick]
       if (attemptsLeft.value <= 0) {
         announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses', tone: 'alert' })
         return submitRound(0, spent.value)
@@ -92,8 +104,8 @@ export const useAttemptOptions = ({
       kind: 'wrong',
       isoCode: country.isoCode,
       hint: Number.isFinite(left)
-        ? `${countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
-        : `${countryName(country)} — not it`,
+        ? `${name ?? countryName(country)} — ${left} ${left === 1 ? 'guess' : 'guesses'} left`
+        : `${name ?? countryName(country)} — not it`,
       tone: 'alert',
     })
   }
