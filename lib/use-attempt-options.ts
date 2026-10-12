@@ -1,5 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import { capitalGuessScore } from '~~/lib/challenges'
+import { attemptPicksScore } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import type { HintTone } from '~~/types/events.types'
@@ -49,8 +49,9 @@ export const useAttemptOptions = ({
     hint: string
     tone?: HintTone
   }) => void
-  /** Bank the round; 0 means failed out. */
-  submitRound: (score: number) => void
+  /** Bank the round; 0 means failed out. `picks` is the attempt sequence the
+   *  server prices option variants from. */
+  submitRound: (score: number, picks: ISOCountryCode[]) => void
 }) => {
   /** Options already picked and wrong — greyed out, and counted against the cap. */
   const spent = ref<ISOCountryCode[]>([])
@@ -62,9 +63,9 @@ export const useAttemptOptions = ({
   )
 
   /** Option variants pay by attempt; hard mode free-types against the clock. */
-  const scoreFor = (active: AttemptChallenge) =>
+  const scoreFor = (active: AttemptChallenge, picks: ISOCountryCode[]) =>
     active.maximumGuesses
-      ? capitalGuessScore(attemptsUsed.value + 1, active.maximumGuesses, active.maximumPoints)
+      ? attemptPicksScore(picks, answerOf(active), active.maximumGuesses, active.maximumPoints)
       : buzzScore(active.maximumPoints, remainingFraction.value)
 
   const onGuess = (country: Country) => {
@@ -72,14 +73,17 @@ export const useAttemptOptions = ({
     if (!active || submitted.value || !started.value) return
 
     // The winning guess is never broadcast — it would hand opponents the answer.
-    if (country.isoCode === answerOf(active)) return submitRound(scoreFor(active))
+    if (country.isoCode === answerOf(active)) {
+      const picks = [...spent.value, country.isoCode]
+      return submitRound(scoreFor(active, picks), picks)
+    }
 
     if (active.maximumGuesses) {
       if (spent.value.includes(country.isoCode)) return
       spent.value = [...spent.value, country.isoCode]
       if (attemptsLeft.value <= 0) {
         announce({ kind: 'wrong', isoCode: country.isoCode, hint: 'Out of guesses', tone: 'alert' })
-        return submitRound(0)
+        return submitRound(0, spent.value)
       }
     }
 

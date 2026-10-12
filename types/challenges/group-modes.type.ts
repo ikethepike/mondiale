@@ -593,6 +593,8 @@ export interface CompositionChallenge {
   slices: { isoCode: ISOCountryCode; share: number }[]
   /** Multiple choice outside hard mode, where players free-type instead. */
   options?: ISOCountryCode[]
+  /** Picks allowed before the round resolves. Set only with `options`. */
+  maximumGuesses?: number
   durationSeconds: number
   maximumPoints: number
 }
