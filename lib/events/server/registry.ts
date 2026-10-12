@@ -7,6 +7,7 @@ import { closeTutorialHandler } from './close-tutorial.handler'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { roundPlayHandler } from './round-play.handler'
 import { buyHintHandler } from './buy-hint.handler'
+import { finalLightHandler } from './final-light.handler'
 import { roundRevealDoneHandler } from './round-reveal-done.handler'
 import { joinEventHandler } from './join.event'
 import { setColorHandler } from './set-color.handler'
@@ -75,6 +76,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'buy-hint': {
     handler: buyHintHandler,
+  },
+  'final-light': {
+    handler: finalLightHandler,
   },
   'submit-chain-move': {
     handler: submitChainMoveHandler,

@@ -9,11 +9,10 @@ import { isEventDealable } from './timeline'
 
 /**
  * Chronicle's pure logic: which countries have enough history on file, which
- * events a gate deals, and whether an ordering is right. The gate view grades
- * through `isChronicleOrdered` and the reveal reads the same module, so the
- * question and the verdict cannot drift (the client-trust posture —
- * higher-lower's precedent; `EVENTS` is already in the client bundle for the
- * Timeline round, so the payload carries only slugs).
+ * events a gate deals, and whether an ordering is right. The gate view, the
+ * server's step grade and the reveal all read `isChronicleOrdered`, so the
+ * question and the verdict cannot drift (`EVENTS` is already in the client
+ * bundle for the Timeline round, so the payload carries only slugs).
  */
 export const CHRONICLE_TUNING: {
   [difficulty in GameDifficulty]: {

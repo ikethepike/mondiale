@@ -41,7 +41,7 @@ import { isEasyMode, isHardMode } from './game-rules'
 import { seatVerdictOn } from './seat-view'
 import { secondsOnDeadline } from './use-deadline-clock'
 import type { GATE_HINTS, GateHint } from './hints'
-import { useBuyHint } from './use-buy-hint'
+import { useSeatRecord } from './use-seat-record'
 import { useSeatClockStart } from './use-seat-clock'
 import { useServerNow } from './use-server-now'
 
@@ -203,7 +203,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
       now.value < gateInterstitialEndsAt(challenge.value, mountedOn)
   )
   const startSeatClock = useSeatClockStart()
-  const buyHintOn = useBuyHint()
+  const { buyHint: buyHintOn } = useSeatRecord()
   watch(showInterstitial, shown => {
     if (!shown && gateClockFor(variant.value)) startSeatClock(subject)
   })

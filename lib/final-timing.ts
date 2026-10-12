@@ -2,8 +2,9 @@ import {
   FINAL_QUESTION_CAP_MS,
   INTERSTITIAL_TOTAL_MS,
   SERVER_CONTROLLED_CAPS,
+  TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
-import { sunsetSeconds } from '~~/lib/sunset-pace'
+import { sunsetDarkCount, sunsetSchedule, sunsetSeconds } from '~~/lib/sunset-pace'
 import type { FinalChallenge, FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { GameDifficulty } from '~~/types/game.types'
 import type { SeatCursor } from '~~/types/seat.types'
@@ -25,6 +26,38 @@ export const finalQuestionSeconds = (
       return sunsetSeconds(item.countries.length, difficulty)
     default:
       return undefined
+  }
+}
+
+/**
+ * Whether a name a timed stage took reached the server in time, at server time
+ * `at` less the wire's `TIMEOUT_SLACK_MS`: Sunset Blitz's country until the
+ * night takes it (`sunsetDarkCount` off the stage's own start, the schedule
+ * the view darkens by), City Nocturne's city until the stage clock runs out.
+ */
+export const finalLightInTime = (
+  item: FinalChallengeItem,
+  difficulty: GameDifficulty,
+  deadline: number | undefined,
+  name: string,
+  at: number
+): boolean => {
+  const seconds = finalQuestionSeconds(item, difficulty)
+  if (deadline === undefined || seconds === undefined) return false
+  const moment = at - TIMEOUT_SLACK_MS
+  switch (item._type) {
+    case 'sunset-blitz-challenge': {
+      const turn = item.countries.findIndex(isoCode => isoCode === name)
+      const elapsed = (moment - (deadline - seconds * 1000)) / 1000
+      return (
+        turn >= 0 &&
+        turn >= sunsetDarkCount(sunsetSchedule(item.countries.length, difficulty), elapsed)
+      )
+    }
+    case 'city-nocturne-challenge':
+      return moment <= deadline
+    default:
+      return false
   }
 }
 

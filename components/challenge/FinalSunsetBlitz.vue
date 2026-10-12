@@ -59,6 +59,7 @@ import { labelAnchorFor } from '~~/lib/label-anchor'
 import { sweepBounds } from '~~/lib/sunset-veil'
 import { sunsetDuskCoordinate, sunsetSweep } from '~~/lib/sunset-window'
 import { sunsetDarkCount, sunsetOutcome, sunsetQuota, sunsetSchedule } from '~~/lib/sunset-pace'
+import { useFinalLight } from '~~/lib/use-seat-record'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import { currentViewBox, useMapViewBox } from '~~/lib/use-map-viewbox'
@@ -70,8 +71,6 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
  * world falls to dusk; then night takes the window east→west, one country per
  * turn of the schedule, and a correctly typed country "holds the light". The
  * run ends the moment it is decided — quota lit, or out of reach.
- *
- * Client-trust grading, like the higher-lower gates.
  */
 const props = defineProps<{ challenge: SunsetBlitzChallenge; paused: boolean }>()
 
@@ -80,6 +79,7 @@ const emit = defineEmits<{
 }>()
 
 const { gameStore, game } = useClientEvents()
+const light = useFinalLight()
 
 const field = computed(() => props.challenge.countries)
 const fieldSet = computed(() => new Set(field.value))
@@ -254,6 +254,7 @@ const onGuess = (country: Country) => {
     return flash(`${countryName(country)} is already gone.`)
   }
   named.value.add(isoCode)
+  light(isoCode)
   // A micro-nation's outline is sub-pixel at window framing, so the map's own
   // halo disc is the only "this one is lit" it can show
   if (isoCode in MICRO_COUNTRIES) gameStore.map.highlighted.add(isoCode)

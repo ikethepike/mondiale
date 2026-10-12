@@ -62,15 +62,13 @@ export type FinalChallengeAnswer =
   | { _type: 'language-challenge'; isoCode: ISOCountryCode }
   | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
   | { _type: 'treaty-challenge'; isoCode: ISOCountryCode }
-  /** Client-trust (like higher-lower): the countries named in time, and the
-   *  field they were named from — the dealt window plus whatever else the
-   *  player's screen showed. The window is the floor, so the field can only
-   *  ever be wider than what was dealt. */
+  /** The countries named. The server grades its own `final-light` record
+   *  (`recordedFinalAnswer`), never this set. */
   | { _type: 'sunset-blitz-challenge'; namedCountries: ISOCountryCode[] }
   | { _type: 'scales-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'born-challenge'; isoCodes: ISOCountryCode[] }
   | { _type: 'made-challenge'; isoCode: ISOCountryCode }
-  /** Client-trust: canonical CITY_LIGHTS names lit in time. */
+  /** Canonical CITY_LIGHTS names lit; graded, like sunset, off the record. */
   | { _type: 'city-nocturne-challenge'; namedCities: string[] }
   /** The drawn line, in map-space coordinates. */
   | { _type: 'boundary-challenge'; drawn: [number, number][] }
@@ -175,9 +173,9 @@ export interface LanguageChallenge {
 /**
  * The finale: the world is already dark but for the framed window, and night
  * takes its countries one turn at a time; name enough before the dark does.
- * Client-trust graded like higher-lower gates — the client runs the sweep and
- * submits the named set once. Dealt, framed, paced and graded through
- * `lib/sunset-window.ts`.
+ * Each name travels as it lands (`final-light`) and the server keeps it only
+ * before the night takes it; the verdict counts that record. Dealt, framed
+ * and paced through `lib/sunset-window.ts`.
  */
 export interface SunsetBlitzChallenge {
   _type: 'sunset-blitz-challenge'
@@ -209,7 +207,8 @@ export interface MadeChallenge {
 /**
  * Night map, one ghost outline: type the target's biggest cities and each
  * lights up in place. Only ISO code + count travel the wire — both sides read
- * the city list from CITY_LIGHTS. Client-trust graded, like sunset.
+ * the city list from CITY_LIGHTS. Graded, like sunset, on the `final-light`
+ * record of names that landed inside the stage clock.
  */
 export interface CityNocturneChallenge {
   _type: 'city-nocturne-challenge'

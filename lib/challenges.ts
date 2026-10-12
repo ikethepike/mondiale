@@ -3486,8 +3486,8 @@ const dealScriptorium = (
 
 /**
  * Chronicle: one country's events, dragged into order. The pool selector, the
- * spaced-hand picker and the order check live in lib/chronicle — the view
- * grades through the same module (higher-lower's client-trust posture).
+ * spaced-hand picker and the order check live in lib/chronicle — the view and
+ * the server's step grade read the same module.
  */
 const dealChronicle = (
   rules: gameTypes.GameRules

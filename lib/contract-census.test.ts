@@ -97,6 +97,7 @@ describe('single writer', () => {
     deadline: true,
     verdict: true,
     hints: true,
+    lit: true,
     cause: true,
     walk: true,
     leg: true,
@@ -452,6 +453,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer',
     'gate-reveal-done',
     'buy-hint',
+    'final-light',
   ] as const satisfies readonly ClientEventData['event'][]
   const echoes: { [E in (typeof SEAT_EVENTS)[number]]: Echoes<E> } = {
     'close-tutorial': true,
@@ -463,6 +465,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer': true,
     'gate-reveal-done': true,
     'buy-hint': true,
+    'final-light': true,
   }
 
   type LegacyEcho<E extends ClientEventData['event']> = Extract<
@@ -481,6 +484,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer': true,
     'gate-reveal-done': true,
     'buy-hint': true,
+    'final-light': true,
   }
 
   it('no seat event carries a gateTile, turn or roundIndex echo', () => {

@@ -36,15 +36,14 @@ export const submitFinalChallengeAnswerHandler = defineGameHandler(
     }
 
     // Deferred module: only loads once a game reaches the gauntlet (#110).
-    const { isCorrectFinalAnswer } = await import('~~/lib/challenges/final-challenge')
-    const correct = isCorrectFinalAnswer({
-      challenge: question,
-      submittedAnswer: eventData.submittedAnswer,
-    })
+    const { isCorrectFinalAnswer, recordedFinalAnswer } =
+      await import('~~/lib/challenges/final-challenge')
+    const submittedAnswer = recordedFinalAnswer(question, cursor.lit) ?? eventData.submittedAnswer
+    const correct = isCorrectFinalAnswer({ challenge: question, submittedAnswer })
     await finalVerdict(
       game,
       player,
-      { correct, timedOut: false, submittedAnswer: eventData.submittedAnswer },
+      { correct, timedOut: false, submittedAnswer },
       'event:submit-final-challenge-answer'
     )
     await commitSeat(server, game, player)

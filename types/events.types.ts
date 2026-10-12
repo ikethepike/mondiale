@@ -117,6 +117,13 @@ export type ClientEventData =
       event: 'buy-hint'
       hint: string
     })
+  | (SeatEcho & {
+      /** A timed gauntlet stage took a name (Sunset Blitz's country, City
+       *  Nocturne's city). The server keeps it only if it landed in time —
+       *  the stage's verdict counts that record, never the submitted set. */
+      event: 'final-light'
+      name: string
+    })
   | {
       /** Turn-chain rounds (Border Chain, Atlas): the active player extends
        *  the chain. `turn` echoes the
@@ -383,6 +390,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-individual-challenge-answer',
   'buy-hint',
   'submit-final-challenge-answer',
+  'final-light',
   'submit-chain-move',
   'submit-heritage-pin',
   'submit-timeline-placement',

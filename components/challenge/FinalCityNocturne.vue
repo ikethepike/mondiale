@@ -46,6 +46,7 @@ import { useClientEvents } from '~~/lib/events/client-side'
 import { useFinalStageClock } from '~~/lib/use-final-stage-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useNocturne } from '~~/lib/use-nocturne'
+import { useFinalLight } from '~~/lib/use-seat-record'
 import { useIsCoarsePointer } from '~~/lib/use-viewport'
 
 import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.type'
@@ -58,13 +59,15 @@ import type { CityNocturneChallenge } from '~~/types/challenges/final-challenge.
  * country path's fill and stroke, so it pans and zooms with zero lag. Only the
  * city dots track the camera (NightLights), and they fade out during
  * gestures. No suggestions — the suggestion list would BE the answer sheet.
- * Client-trust graded like sunset; only the canonical lit names travel.
+ * Each lit name travels as it lands (`final-light`); the server counts that
+ * record, so only the canonical names it kept in time are graded.
  */
 const props = defineProps<{ challenge: CityNocturneChallenge; paused: boolean }>()
 
 const emit = defineEmits<{ finished: [namedCities: string[]] }>()
 
 const { gameStore } = useClientEvents()
+const light = useFinalLight()
 
 const field = ref<HTMLInputElement>()
 const entry = ref('')
@@ -142,6 +145,7 @@ const onEntry = () => {
   if (!hit) return
 
   named.value.add(hit.name)
+  light(hit.name)
   entry.value = ''
   if (named.value.size === cities.length) finish()
 }

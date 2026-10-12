@@ -7,7 +7,7 @@ import { clamp01 } from '~~/lib/number'
 import { seatClockEndsAt, seatClockSeconds } from '~~/lib/round-beats'
 import { roundSettled } from '~~/lib/spectate'
 import type { ROUND_HINTS, RoundHint } from '~~/lib/hints'
-import { useBuyHint } from '~~/lib/use-buy-hint'
+import { useSeatRecord } from '~~/lib/use-seat-record'
 import { useSeatClockStart } from '~~/lib/use-seat-clock'
 import { provideSpentInterstitial } from '~~/lib/use-spent-interstitial'
 import { secondsOnDeadline } from '~~/lib/use-deadline-clock'
@@ -48,7 +48,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const { gameStore, update, currentRound, clearBoard, seatCursor, seatEcho, previewVerdict } =
     useClientEvents()
   const startSeatClockOn = useSeatClockStart()
-  const buyHintOn = useBuyHint()
+  const { buyHint: buyHintOn } = useSeatRecord()
   const { now } = useServerNow()
   // Captured once: the view is keyed on the round's subject, so this is the
   // question every send from this mount answers.

@@ -104,7 +104,7 @@ export const SEAT_TRANSITIONS: readonly SeatTransitionRule[] = [
   rule('gate', 'gate-verdict', 'event:submit-individual-challenge-answer', 'timer:gate-cap'),
   rule('gate-verdict', 'walk', 'timer:verdict-hold', 'event:gate-reveal-done'),
   rule('gate-verdict', 'settled', 'timer:verdict-hold', 'event:gate-reveal-done'),
-  rule('final', 'final', 'event:round-play'),
+  rule('final', 'final', 'event:round-play', 'event:final-light'),
   rule('final', 'final-verdict', 'event:submit-final-challenge-answer', 'timer:final-cap'),
   rule('final-verdict', 'final', 'timer:verdict-hold'),
   rule('final-verdict', 'settled', 'timer:verdict-hold'),
@@ -224,6 +224,7 @@ export interface NextCursor {
   deadline?: number
   verdict?: SeatVerdict
   hints?: string[]
+  lit?: string[]
   walk?: number
   leg?: number
 }
@@ -244,7 +245,9 @@ export const applySeatMove = (
     ? stepRequirementGap(next, SERVER_CONTROLLED_CAPS)
     : `no rule ${previous.step} → ${next.step} for ${cause}`
   if (gap) throw new IllegalTransition(gap)
-  const hints = next.hints ?? (next.subject === previous.subject ? previous.hints : undefined)
+  const kept = next.subject === previous.subject ? previous : undefined
+  const hints = next.hints ?? kept?.hints
+  const lit = next.lit ?? kept?.lit
   seat.cursor = {
     seq: previous.seq + 1,
     step: next.step,
@@ -257,6 +260,7 @@ export const applySeatMove = (
     ...(next.deadline !== undefined ? { deadline: next.deadline } : {}),
     ...(next.verdict ? { verdict: next.verdict } : {}),
     ...(hints?.length ? { hints } : {}),
+    ...(lit?.length ? { lit } : {}),
   }
   return seat.cursor
 }

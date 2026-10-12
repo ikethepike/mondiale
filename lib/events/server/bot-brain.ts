@@ -1263,9 +1263,14 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
     const question = item.challenges[0]
     if (!question) return
     const share = jitteredShare(botShare(fresh, playerId))
-    const submittedAnswer = await finalAnswerFor(question, share, fresh)
+    const submittedAnswer = await finalAnswerFor(question, share, fresh, seat.cursor.deadline)
     if (!submittedAnswer) return
     try {
+      // A timed stage is graded on the names the server took in time, so the
+      // bot lights each one as a player would before it submits.
+      for (const name of litNames(submittedAnswer)) {
+        await botAct(ctx, { event: 'final-light', name, subject: seat.cursor.subject, seq })
+      }
       await botAct(ctx, {
         event: 'submit-final-challenge-answer',
         submittedAnswer,
@@ -1276,6 +1281,17 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
       console.warn(`Bot final answer rejected for ${playerId}`, error)
     }
   })
+}
+
+const litNames = (answer: FinalChallengeAnswer): string[] => {
+  switch (answer._type) {
+    case 'sunset-blitz-challenge':
+      return answer.namedCountries
+    case 'city-nocturne-challenge':
+      return answer.namedCities
+    default:
+      return []
+  }
 }
 
 /**
@@ -1289,13 +1305,16 @@ const dispatchFinalAnswer = (ctx: EngineContext, seq: number) => {
 export const finalAnswerFor = async (
   question: FinalChallengeItem,
   share: number,
-  game: Game
+  game: Game,
+  /** The stage's deadline: a timed stage only takes names still in time. */
+  deadline?: number
 ): Promise<FinalChallengeAnswer | undefined> => {
   // Deferred like the submit handler's own import (its comment is the rule):
   // the gauntlet library statically pulls the fat data chunks, and a static
   // edge from the socket middleware graph ballooned the server build past
   // the CI heap ceiling (the pawn-replay job's OOM).
   const {
+    acceptsFinalLight,
     boundaryScene,
     bornAfter,
     changeAccepted,
@@ -1344,9 +1363,15 @@ export const finalAnswerFor = async (
       return pick ? { _type: question._type, isoCode: pick } : undefined
     }
     case 'sunset-blitz-challenge': {
+      const standing =
+        deadline === undefined
+          ? question.countries
+          : question.countries.filter(isoCode =>
+              acceptsFinalLight(question, game.difficulty, deadline, isoCode, Date.now())
+            )
       return {
         _type: question._type,
-        namedCountries: quotaPicks(question.countries, sunsetQuota(question), wantCorrect),
+        namedCountries: quotaPicks(standing, sunsetQuota(question), wantCorrect),
       }
     }
     case 'city-nocturne-challenge': {

@@ -14,10 +14,10 @@ import type { ISOCountryCode } from '../geography.types'
  * - 'find' (default / legacy data): locate `country` on the map
  * - 'flag-pick': `country`'s flag among lookalike decoys in `options`
  * - 'odd-one-out': `country` is the impostor among `oddOneOut.countries`
- * - 'higher-lower': three stat duels; the client submits `country` only when
- *   every duel was answered correctly (same client-trust model as the map)
+ * - 'higher-lower': three stat duels, won only when every duel was answered
+ *   correctly — the picks travel as steps (`gradeGateSteps`)
  * - 'trend-duel': which of two countries' stat is rising/falling — a streak of
- *   pairs with one guaranteed riser + one faller (higher-lower's trust model)
+ *   pairs with one guaranteed riser + one faller, graded like higher-lower
  * - 'trajectory-match': a mystery sparkline — whose chart is this? Timed like
  *   border-detective, one buyable strike-out hint
  * - 'leader-pick': whose leader is named — `options` are the candidate
@@ -64,10 +64,9 @@ export interface IndividualChallenge {
    * - `spectrum` — where does it sit left-to-right? `bands` are the choices
    *   and `band` the truth.
    *
-   * The last two grade client-side and submit `challenge.country` on a win or
-   * `wrongTokenFor` on a miss, the same client-trust route `higher-lower` and
-   * `chronicle` take — the wire carries only an ISO code, and neither of these
-   * questions answers with one.
+   * The last two answer with no country, so their choice travels as a step and
+   * the server grades it (`gradeGateSteps`), the route `higher-lower` and
+   * `chronicle` take.
    */
   partyLogo?: {
     /** Path under /public. */
