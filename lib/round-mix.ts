@@ -133,7 +133,6 @@ export const MECHANIC_BY_KIND = {
   // Type a name against live suggestions.
   traversal: 'typed',
   'capital-guess': 'typed',
-  composition: 'typed',
   'name-that-water': 'typed',
   'unique-or-bust': 'typed',
   // Name or tap every member of a set before the clock runs out.
@@ -181,6 +180,8 @@ export const MECHANIC_BY_KIND = {
   // The same verb on a different target — a flag onto the pyramid it belongs
   // to — so it decays against government rather than reading as a new one.
   'pyramid-scheme': 'match',
+  // An origin onto the group of the crowd it belongs to.
+  composition: 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>
 
 /**

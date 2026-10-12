@@ -165,9 +165,15 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { placedTotalFor } from '~~/lib/live-guess-policy'
-import { DRAG_HOLD_OPTIONS, DRAG_SOURCE_OPTIONS, DROP_TARGET_OPTIONS } from '~~/lib/drag-list'
+import {
+  DRAG_HOLD_OPTIONS,
+  DRAG_SOURCE_OPTIONS,
+  DROP_TARGET_OPTIONS,
+  NO_CARRY_LAG,
+} from '~~/lib/drag-list'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { PYRAMID_YEARS, pyramidPeakShare, pyramidScar, pyramidYearAt } from '~~/lib/pyramids'
+import { useDropCarry, type DropCarryEvent } from '~~/lib/use-drop-carry'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
@@ -302,32 +308,16 @@ const applyPlacement = (iso: ISOCountryCode, slot: number | undefined) => {
   })
 }
 
-/**
- * A fallback drag ends in a real click on whatever it was dropped on:
- * SortableJS only swallows that click when the drag never reached a target,
- * which is the opposite of the case that needs swallowing here — untouched,
- * the drop's own click would pick the country straight back up again.
- *
- * A tap that never became a drag is safe: `start`/`end` fire only once a drag
- * has actually begun, and the hold in DRAG_HOLD_OPTIONS lets a finger rest on
- * a tile and release without ever starting one.
- */
-const DRAG_CLICK_GRACE_MS = 400
-
-/**
- * When the drag lifecycle last spoke: its start, the drop that ends it, or its
- * end. A stamp rather than an in-flight flag, because a drop RE-KEYS the list
- * it came from — the `end` that would have cleared a flag is emitted by a
- * component Vue has already thrown away, and the flag would latch on forever,
- * taking every tap for the rest of the round with it.
- */
-let dragAt = 0
-const stampDrag = () => (dragAt = performance.now())
+// A tap that never became a drag is safe: `start`/`end` fire only once a drag
+// has actually begun, and the hold in DRAG_HOLD_OPTIONS lets a finger rest on
+// a tile and release without ever starting one.
+const carry = useDropCarry()
+const { stampDrag, revision, undoDomMove } = carry
 const onDragStart = () => {
   stampDrag()
   held.value = undefined
 }
-const tapAllowed = () => !locked.value && performance.now() - dragAt > DRAG_CLICK_GRACE_MS
+const tapAllowed = () => !locked.value && carry.tapAllowed()
 
 const onTrayTap = (iso: ISOCountryCode) => {
   if (!tapAllowed()) return
@@ -369,29 +359,7 @@ const isoFromEvent = (event: {
   return unplaced.value[index]
 }
 
-/**
- * Sortable MOVES the dragged node into the receiving list, but every list here
- * is rendered from `assignment`. Left alone the two disagree: Sortable's node
- * survives beside the one Vue renders, and a country appears two, three, four
- * times over (drag Qatar around the board and it multiplies).
- *
- * So Sortable is only ever an input device. Put the node back where it came
- * from, then let the state change re-render both lists — the DOM Sortable
- * produced is always thrown away.
- */
-const undoDomMove = (event: DragMoveEvent) => {
-  const { item, from, oldIndex } = event
-  if (!item || !from) return
-  const sibling = from.children[oldIndex ?? from.children.length] ?? null
-  from.insertBefore(item, sibling)
-}
-
-/** Bumped on every accepted drop so both Sortables re-key and rebuild. */
-const revision = ref(0)
-
-type DragMoveEvent = { item?: HTMLElement; from?: HTMLElement; oldIndex?: number }
-
-const place = (event: DragMoveEvent, slot: number | undefined) => {
+const place = (event: DropCarryEvent, slot: number | undefined) => {
   stampDrag()
   const iso = isoFromEvent(event)
   undoDomMove(event)
@@ -399,12 +367,8 @@ const place = (event: DragMoveEvent, slot: number | undefined) => {
   applyPlacement(iso, slot)
 }
 
-const onDrop = (event: DragMoveEvent, slot: number) => place(event, slot)
-const onReturn = (event: DragMoveEvent) => place(event, undefined)
-
-/** The shared 150ms is for list REORDERING, which this mode never does
- *  (`sort: false` on both ends) — a carried tile should be instant. */
-const NO_CARRY_LAG = { animation: 0 } as const
+const onDrop = (event: DropCarryEvent, slot: number) => place(event, slot)
+const onReturn = (event: DropCarryEvent) => place(event, undefined)
 
 // The hold is what lets the board keep BOTH: under it the gesture is a tap or
 // a pan of the scrolling board, past it the tile comes up in hand.

@@ -12,7 +12,7 @@ import { commitSeat, enterScores } from './seat-exits'
  */
 export const submitGroupChallengeAnswersHandler = defineGameHandler(
   'submit-group-challenge-answers',
-  async ({ game, player, server, eventData, eventTarget, receivedAt }) => {
+  async ({ game, player, server, eventData, eventTarget, receivedAt, redis }) => {
     const { playerId } = eventTarget
     const { cursor } = player
     if (eventData.subject !== cursor.subject) {
@@ -30,6 +30,7 @@ export const submitGroupChallengeAnswersHandler = defineGameHandler(
       submission: eventData,
       seat: cursor,
       at: receivedAt,
+      redis,
     })
     currentRound.groupAnswers[playerId] = answer
     currentRound.playerTurns[playerId] = { points: scoring }
