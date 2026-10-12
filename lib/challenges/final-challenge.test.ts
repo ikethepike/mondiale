@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
+import { MAP_PATHS } from '~~/data/map.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { EVENTS } from '~~/data/events.gen'
 import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
@@ -45,6 +47,7 @@ import {
   boundaryScene,
   boundaryStory,
   CHANGE_TUNING,
+  COLOR_CODED_REGIONS,
   changeAccepted,
   changeDecade,
   dealReplacementChallenge,
@@ -63,6 +66,7 @@ import {
   madeTopExporters,
   languageSpeakers,
   MINMAX_REVEAL_ROWS,
+  regionOfMapCode,
   speaksLanguage,
   YEARBOOK_TUNING,
   yearbookLeaksYear,
@@ -121,6 +125,44 @@ describe('getFinalChallenges', () => {
           'sunset-blitz-challenge',
         ]).not.toContain(challenge._type)
       }
+    }
+  })
+})
+
+describe('region challenge', () => {
+  it('colours every country with the region the grader checks', () => {
+    for (const isoCode of ISOCountryCodes) {
+      const tinted = Object.entries(COLOR_CODED_REGIONS)
+        .filter(([, grouping]) => grouping.countries.includes(isoCode))
+        .map(([region]) => region)
+      expect(tinted, isoCode).toEqual([COUNTRIES[isoCode].region])
+    }
+  })
+
+  it('grades a tap on the dealt country as correct', () => {
+    for (const country of ISOCountryCodes) {
+      const region = regionOfMapCode(country)!
+      expect(
+        isCorrectFinalAnswer({
+          challenge: { _type: 'region-challenge', country },
+          submittedAnswer: { _type: 'region-challenge', region },
+        }),
+        country
+      ).toBe(true)
+    }
+  })
+
+  it('places Ukraine in Europe', () => {
+    expect(regionOfMapCode('UA')).toBe('europe')
+  })
+
+  it('gives every drawn shape exactly one region', () => {
+    for (const code of Object.keys(MAP_PATHS)) {
+      const tinted = Object.values(COLOR_CODED_REGIONS).filter(grouping =>
+        grouping.countries.includes(code)
+      )
+      expect(tinted, code).toHaveLength(1)
+      expect(regionOfMapCode(code), code).toBeDefined()
     }
   })
 })

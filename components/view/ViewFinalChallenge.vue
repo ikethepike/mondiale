@@ -229,11 +229,11 @@ import {
   bornAfter,
   boundaryStory,
   changeAccepted,
-  COLOR_CODED_REGIONS,
   madeAcceptedCountries,
   GAUNTLET_LIVES,
   getFinalChallengeDetails,
   isCorrectFinalAnswer,
+  regionOfMapCode,
   speaksLanguage,
   weighScalesPicks,
   yearbookYear,
@@ -255,7 +255,7 @@ import type {
   FinalChallengeAnswer,
 } from '~~/types/challenges/final-challenge.type'
 import { isMapClickEvent } from '~~/types/events.types'
-import { type ISOCountryCode, isValidISOCode, type Region } from '~~/types/geography.types'
+import { type ISOCountryCode, isValidISOCode } from '~~/types/geography.types'
 
 const {
   currentFinalChallenge,
@@ -879,12 +879,7 @@ const onMapClick = (event: Event) => {
   switch (currentFinalChallenge.value._type) {
     case 'region-challenge':
       {
-        let selectedRegion: Region | undefined = undefined
-        for (const [region, data] of Object.entries(COLOR_CODED_REGIONS)) {
-          if (!data.countries.includes(isoCode)) continue
-          selectedRegion = region as Region
-        }
-
+        const selectedRegion = regionOfMapCode(isoCode)
         if (!selectedRegion) {
           throw new ReferenceError(`Unable to identify region: ${isoCode}`)
         }
