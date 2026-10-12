@@ -110,10 +110,13 @@ export type ClientEventData =
   | (SeatEcho & {
       event: 'submit-individual-challenge-answer'
       isoCode: ISOCountryCode
-      /** Timed gates: how many hints were bought (outline, ISO code) — each
-       *  bites `GATE_HINT_BITE_STEPS` off the leap, floored at zero. The clock
-       *  share is the server's own, read off the gate's deadline. */
-      hintsUsed?: number
+    })
+  | (SeatEcho & {
+      /** A seat bought a hint on the subject it echoes (a gate's outline, a
+       *  round's 50/50). Recorded on the cursor, once per hint — the leap or
+       *  the round's pay is docked by that record, never by the submit. */
+      event: 'buy-hint'
+      hint: string
     })
   | {
       /** Turn-chain rounds (Border Chain, Atlas): the active player extends
@@ -379,6 +382,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'round-reveal-done',
   'submit-group-challenge-answers',
   'submit-individual-challenge-answer',
+  'buy-hint',
   'submit-final-challenge-answer',
   'submit-chain-move',
   'submit-heritage-pin',

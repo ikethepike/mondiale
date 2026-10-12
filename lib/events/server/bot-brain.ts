@@ -931,7 +931,6 @@ const dispatchGateAnswer = (ctx: EngineContext, seq: number) => {
       await botAct(ctx, {
         event: 'submit-individual-challenge-answer',
         isoCode,
-        hintsUsed: 0,
         subject: seat.cursor.subject,
         seq,
       })

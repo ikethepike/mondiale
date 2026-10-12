@@ -6,6 +6,7 @@ import { recordSeatEvent } from './seat-journal'
 import { closeTutorialHandler } from './close-tutorial.handler'
 import { enterMovementPhaseHandler } from './enter-movement-phase.handler'
 import { roundPlayHandler } from './round-play.handler'
+import { buyHintHandler } from './buy-hint.handler'
 import { roundRevealDoneHandler } from './round-reveal-done.handler'
 import { joinEventHandler } from './join.event'
 import { setColorHandler } from './set-color.handler'
@@ -71,6 +72,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-group-challenge-answers': {
     handler: submitGroupChallengeAnswersHandler,
+  },
+  'buy-hint': {
+    handler: buyHintHandler,
   },
   'submit-chain-move': {
     handler: submitChainMoveHandler,

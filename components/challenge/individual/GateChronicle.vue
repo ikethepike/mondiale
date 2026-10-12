@@ -89,7 +89,7 @@ import type { IndividualChallenge } from '~~/types/challenges/individual-challen
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, submitAnswer, chronicleOrder } = useGateChallenge()
+const { status, submitAnswer, recordHint, chronicleOrder } = useGateChallenge()
 
 const dealt = computed(() => props.challenge.chronicle?.events ?? [])
 const order = ref<string[]>([...dealt.value])
@@ -113,10 +113,10 @@ const updateOrder = (event: Event) => {
 }
 
 const anchorSlug = ref<string>()
-const hintsUsed = computed(() => (anchorSlug.value ? 1 : 0))
 const buyAnchor = () => {
   if (anchorSlug.value || status.value) return
   anchorSlug.value = chronicleSolution(dealt.value)[0]
+  recordHint('anchor')
 }
 
 const { secondsLeft, stop, elapsedFraction } = useGateClock({
@@ -139,9 +139,7 @@ const resolve = () => {
   stop()
   chronicleOrder.value = [...order.value]
   const correct = isChronicleOrdered(order.value)
-  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge), {
-    hintsUsed: hintsUsed.value,
-  })
+  submitAnswer(correct ? props.challenge.country : wrongTokenFor(props.challenge))
 }
 const submitOrder = () => resolve()
 </script>

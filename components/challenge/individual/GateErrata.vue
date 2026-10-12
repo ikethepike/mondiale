@@ -43,7 +43,7 @@ import type { ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, showInterstitial, submitAnswer, giveUp } = useGateChallenge()
+const { status, showInterstitial, submitAnswer, recordHint, giveUp } = useGateChallenge()
 
 const showDoubleTapHint = ref(false)
 /** Innocents the bought hint has struck off — dimmed and no longer tappable. */
@@ -58,7 +58,6 @@ const { secondsLeft, elapsedFraction, stop } = useGateClock({
   },
 })
 const hintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
-const hintsUsed = () => (cleared.value.size ? 1 : 0)
 
 /**
  * The stage IS the labels: frame the cluster and write the (partly wrong)
@@ -101,7 +100,7 @@ const restoreStage = () => {
  *  the server's own cap delivers that verdict. */
 const resolve = (isoCode: ISOCountryCode) => {
   restoreStage()
-  submitAnswer(isoCode, { hintsUsed: hintsUsed() })
+  submitAnswer(isoCode)
 }
 
 /** Strike out half the innocents. Never a culprit — the hint narrows the
@@ -115,6 +114,7 @@ const clearHalf = () => {
   const struck = new Set(innocents.slice(0, Math.ceil(innocents.length / 2)))
   cleared.value = struck
   gameStore.map.dimmed = [...struck]
+  recordHint('cull')
 }
 
 // Tap to select, tap again to confirm — the find gate's contract. A single tap

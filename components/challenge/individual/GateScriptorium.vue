@@ -97,7 +97,7 @@ import type { Country } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, isEasy, submitAnswer, giveUp } = useGateChallenge()
+const { status, isEasy, submitAnswer, recordHint, giveUp } = useGateChallenge()
 
 const footerReady = ref(false)
 
@@ -192,22 +192,19 @@ const shownHints = computed(() =>
 )
 const offeredLabel = computed(() => (ladder.value.offered ? RUNG_LABELS[ladder.value.offered] : ''))
 
-const hintsUsed = computed(() => bought.size)
-
 onMounted(() => {
   footerReady.value = true
 })
 const buyHint = (rung: ScriptoriumRung) => {
   if (status.value || bought.has(rung)) return
   bought.add(rung)
+  recordHint(rung)
 }
 
 const onGuess = (country: Country) => {
   if (status.value) return
   stop()
-  submitAnswer(country.isoCode, {
-    hintsUsed: hintsUsed.value,
-  })
+  submitAnswer(country.isoCode)
   // Fills = knowledge: light every accepted speaker for the reveal frame,
   // the same set the verdict just graded against (submitAnswer cleared the
   // board first, so this paint is the reveal's alone).

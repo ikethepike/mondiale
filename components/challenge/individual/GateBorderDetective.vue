@@ -85,7 +85,7 @@ import type { Country, ISOCountryCode } from '~~/types/geography.types'
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
 const { gameStore } = useClientEvents()
-const { status, isHard, submitAnswer, giveUp } = useGateChallenge()
+const { status, isHard, submitAnswer, recordHint, giveUp } = useGateChallenge()
 
 /** The bought outline hint, drawn in the ring's centre. Every hint bites steps. */
 const outlineHint = ref<Awaited<ReturnType<typeof mainlandOutline>>>()
@@ -104,8 +104,6 @@ const { secondsLeft, elapsedFraction, stop } = useGateClock({
 })
 const outlineHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_FIRST_ELAPSED)
 const isoHintUnlocked = computed(() => elapsedFraction.value >= HINT_UNLOCK_SECOND_ELAPSED)
-const hintsUsed = computed(() => (outlineHint.value ? 1 : 0) + (isoHint.value ? 1 : 0))
-
 // The world map is a giveaway for a neighbour mystery — blank it while the
 // question stands. The shell's clearBoard restores it for the next gate.
 onMounted(() => {
@@ -120,7 +118,10 @@ const showOutlineHint = async () => {
     // The outline loads the HD geometry chunk — only count (and charge) the
     // hint once a frame actually lands, and never after the gate resolved.
     const frame = await mainlandOutline(props.challenge.country)
-    if (frame && !status.value) outlineHint.value = frame
+    if (frame && !status.value) {
+      outlineHint.value = frame
+      recordHint('outline')
+    }
   } finally {
     outlineHintLoading = false
   }
@@ -129,6 +130,7 @@ const showOutlineHint = async () => {
 const showIsoHint = () => {
   if (isoHint.value || status.value) return
   isoHint.value = props.challenge.country
+  recordHint('iso')
 }
 
 const onGuess = (country: Country) => {
@@ -136,9 +138,7 @@ const onGuess = (country: Country) => {
   stop()
   // Bring the world back so the result zoom has a map to land on.
   gameStore.map.solo = false
-  submitAnswer(country.isoCode, {
-    hintsUsed: hintsUsed.value,
-  })
+  submitAnswer(country.isoCode)
 }
 </script>
 <style lang="scss" scoped>

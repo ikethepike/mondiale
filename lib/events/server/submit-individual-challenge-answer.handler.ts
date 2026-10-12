@@ -1,5 +1,6 @@
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
 import { gateRemainingFraction, gateVerdictLeadMs } from '~~/lib/gate-timing'
+import { gateHintsOnSale, hintsBought } from '~~/lib/hints'
 import { gateResultHoldMsFor, isBrowsableGateVariant } from '~~/lib/round-beats'
 import { gateLeapSteps, gatePot } from '~~/lib/scoring'
 import { defineGameHandler } from '../server-side'
@@ -26,12 +27,12 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
 
     const { challenge } = gate
     const correct = isCorrectIndividualAnswer(challenge, eventData.isoCode)
-    // The clock is the server's own stamp, so the leap is priced here — the
-    // view shows the same fraction off the same deadline.
+    // The clock and the hints bought are both the server's own record, so the
+    // leap is priced here — the view shows the same fraction off the same deadline.
     const steps = correct
       ? gateLeapSteps(
           gateRemainingFraction(challenge, cursor.deadline, Date.now()),
-          eventData.hintsUsed,
+          hintsBought(cursor, gateHintsOnSale(challenge.variant)),
           gatePot(challenge.variant)
         )
       : 0

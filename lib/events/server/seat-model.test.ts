@@ -209,7 +209,7 @@ const actFor = async (game: Game, seat: Player): Promise<ClientEventData> => {
     case 'gate': {
       if (head?._type !== 'individual-challenge') break
       const isoCode = sample([head.country, ...(head.options ?? [])]) ?? head.country
-      return { event: 'submit-individual-challenge-answer', isoCode, hintsUsed: 0, ...echo }
+      return { event: 'submit-individual-challenge-answer', isoCode, ...echo }
     }
     case 'gate-verdict':
       return { event: 'gate-reveal-done', ...echo }
