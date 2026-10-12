@@ -5,9 +5,10 @@ import {
   NAME_WATER_TIERS,
   nameWaterCandidates,
   prominenceCandidates,
+  waterFeaturePool,
 } from '~~/lib/challenges'
 import { isCountryInPlay, playableWorldCountries } from '~~/lib/game-rules'
-import type { NameWaterChallenge, WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
+import type { WaterBlitzChallenge } from '~~/types/challenges/group-modes.type'
 import { gameDifficulties, type Game, type GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -59,29 +60,30 @@ describe('prominenceCandidates', () => {
   })
 })
 
-describe('getNameWaterChallenge (via getRoundChallenge)', () => {
-  afterEach(() => {
-    delete process.env.FORCE_ROUND_TYPE
+// The world easy slice is the famous water; the tier fraction is sized so the
+// slice holds its count when the atlas loses fake shores.
+describe('the world Name That Water pools', () => {
+  const pool = async (difficulty: Game['difficulty']) =>
+    nameWaterCandidates(
+      await waterFeaturePool(
+        { regions: [], difficulty } as unknown as Game,
+        NAME_WATER_TIERS[difficulty].kinds
+      ),
+      difficulty
+    ).map(feature => feature.id)
+
+  it('keeps easy at its size, the Gulf of Mexico and the Persian Gulf in it', async () => {
+    const easy = await pool('easy')
+    expect(easy).toEqual(expect.arrayContaining(['gulf-of-mexico', 'persian-gulf']))
+    expect(Math.abs(easy.length - 24)).toBeLessThanOrEqual(2)
   })
 
-  // Naming a body of water needs no second shore: Hudson Bay, Baikal and
-  // Ladoga each touch one country and are still the question.
-  it('deals water that touches a single country', async () => {
-    process.env.FORCE_ROUND_TYPE = 'name-that-water'
-    const rules = {
-      regions: [],
-      difficulty: 'hard',
-      rounds: [{}],
-      players: { a: { phase: 'group-challenge' } },
-    } as unknown as Game
-    const shoreCounts = new Set<number>()
-    for (let deal = 0; deal < 40; deal++) {
-      const dealt = (await getRoundChallenge({ game: rules })) as NameWaterChallenge
-      expect(dealt._type).toBe('name-water-challenge')
-      expect(dealt.countries.length, dealt.featureId).toBeGreaterThanOrEqual(1)
-      shoreCounts.add(Math.min(dealt.countries.length, 2))
-    }
-    expect(shoreCounts.has(1)).toBe(true)
+  it('keeps normal at its size, the great shared lakes in it', async () => {
+    const normal = await pool('normal')
+    expect(normal).toEqual(
+      expect.arrayContaining(['lake-erie', 'lake-malawi', 'strait-of-magellan', 'salish-sea'])
+    )
+    expect(Math.abs(normal.length - 74)).toBeLessThanOrEqual(2)
   })
 })
 
@@ -282,11 +284,13 @@ describe('nameWaterCandidates', () => {
   })
 
   it('slices the most prominent fraction for easy and normal', () => {
+    const slice = (difficulty: Game['difficulty']) =>
+      Math.ceil(pool.length * NAME_WATER_TIERS[difficulty].poolFraction)
     const easy = nameWaterCandidates(pool, 'easy')
-    expect(easy).toHaveLength(10)
+    expect(easy).toHaveLength(slice('easy'))
     // Prominence-sorted: the famous giants, not the first-listed.
-    expect(easy.map(candidate => candidate.id)).toEqual([...Array(10).keys()])
-    expect(nameWaterCandidates(pool, 'normal')).toHaveLength(24)
+    expect(easy.map(candidate => candidate.id)).toEqual([...Array(slice('easy')).keys()])
+    expect(nameWaterCandidates(pool, 'normal')).toHaveLength(slice('normal'))
   })
 
   it('ranks by footprint × shore count, not footprint alone', () => {

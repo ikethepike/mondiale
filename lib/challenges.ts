@@ -932,18 +932,17 @@ const getTraversalChallenge = ({
  * dataset (~½ MB gzipped) must not ride along into client bundles through
  * this module's other exports. Clients that need geometry lazy-load it too.
  */
-const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
+export const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[]) => {
   const { WATER_FEATURES } = await import('~~/data/water.gen')
   const pool = new Set(playableCountries(game))
 
   return Object.values(WATER_FEATURES)
     .filter(feature => {
       if (!kinds.includes(feature.kind)) return false
-      // The feature must belong to the board being played and not sit mostly
-      // off-map. One shore is enough: naming Hudson Bay needs no second
-      // country, and the blitz dealers' own floor already asks for three.
+      // The feature must belong to the board being played: at least two
+      // playable countries on the variant, and not mostly off-map
       const onBoard = feature.countries.filter(isoCode => pool.has(isoCode))
-      return onBoard.length >= 1 && onBoard.length >= feature.countries.length / 3
+      return onBoard.length >= 2 && onBoard.length >= feature.countries.length / 3
     })
     .map(feature => ({
       ...feature,
@@ -951,7 +950,6 @@ const waterFeaturePool = async (game: gameTypes.Game, kinds: WaterFeatureKind[])
       // micro-nations (Monaco on the Mediterranean) can't be required.
       countries: feature.countries.filter(isoCode => isCountryInPlay(game, isoCode)),
     }))
-    .filter(feature => feature.countries.length)
 }
 
 /** More touching countries = a longer clock. */
@@ -999,8 +997,8 @@ export const NAME_WATER_TIERS: {
     poolFraction: number
   }
 } = {
-  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.25 },
-  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.6 },
+  easy: { kinds: ['ocean', 'sea'], poolFraction: 0.27 },
+  normal: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 0.66 },
   hard: { kinds: ['ocean', 'sea', 'lake'], poolFraction: 1 },
 }
 
