@@ -238,7 +238,7 @@ export const rosterDrift = (
 
 type Stampable = Pick<
   WaterFeature,
-  'id' | 'name' | 'aliases' | 'countries' | 'fame' | 'accepted' | 'bare'
+  'id' | 'name' | 'aliases' | 'countries' | 'fame' | 'accepted' | 'overseas' | 'bare'
 >
 
 /** What a subject's geometry and its hand-written key disagree on, for the report. */
@@ -272,7 +272,8 @@ export const stampTerrainRoster = (
       faults.push(`${id}: no such feature`)
       continue
     }
-    const accepted = entry.accepted ?? []
+    const overseas = entry.overseas ?? []
+    const accepted = [...(entry.accepted ?? []), ...overseas]
     const listed = [...entry.required, ...accepted]
     const unknown = listed.filter(code => !known.has(code))
     const twice = listed.filter((code, index) => listed.indexOf(code) !== index)
@@ -293,7 +294,8 @@ export const stampTerrainRoster = (
     if (aliases.length) feature.aliases = aliases
     feature.countries = [...entry.required]
     feature.fame = entry.fame
-    if (accepted.length) feature.accepted = [...accepted]
+    if (accepted.length) feature.accepted = accepted
+    if (overseas.length) feature.overseas = [...overseas]
     if (entry.bare) feature.bare = true
   }
 

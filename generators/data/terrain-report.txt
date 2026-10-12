@@ -7,7 +7,7 @@
 pacific-ocean  unseen TW,PH,AU,PW,CN,KP,KR,VN,MY,BN,TL,TH,KH,SG
 atlantic-ocean  unseen NO,FR,GH,TG,BJ,NG,CM,GQ,BB,BE,NL,DE,DK,SE,MX,AG,DM,KN,LC,GD,TT,JM,BZ,GT,HN,NI,CR,PA,CO
 indian-ocean  unseen KM,YE,OM,IR,PK,IN,MV,BD,MM,TH,MY,TL,DJ,ER,SD,EG,SA,JO,IL,AE,QA,BH,KW,IQ,SG  unlisted NZ
-caribbean-sea  unseen BS,US
+caribbean-sea  unseen BS,US,FR,NL,GB
 north-sea  unseen SE
 south-china-sea  unseen SG,TH,KH
 arabian-sea  unseen MV

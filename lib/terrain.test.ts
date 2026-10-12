@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { SEA_NEIGHBOURS } from '~~/data/sea-lanes.gen'
 import { WATER_FEATURES } from '~~/data/water.gen'
 import { TERRAIN_ROSTER } from '~~/data/static/terrain-roster'
 import { getRoundChallenge, layOfTheLandCandidates } from '~~/lib/challenges'
 import { isCountryInPlay, isMicroNation } from '~~/lib/game-rules'
 import { blitzScore } from '~~/lib/scoring'
 import { normalizeAnswer } from '~~/lib/strings'
+import { riverNameKey } from '~~/lib/unique-or-bust'
 import {
   TERRAIN_TUNING,
   terrainHeadline,
@@ -47,16 +49,20 @@ describe('the shipped terrain roster', () => {
       expect(feature, id).toBeDefined()
       expect(feature.fame, id).toBe(entry.fame)
       expect(feature.countries, id).toEqual(entry.required)
-      expect(feature.accepted ?? [], id).toEqual(entry.accepted ?? [])
+      expect(feature.accepted ?? [], id).toEqual([
+        ...(entry.accepted ?? []),
+        ...(entry.overseas ?? []),
+      ])
+      expect(feature.overseas ?? [], id).toEqual(entry.overseas ?? [])
     }
     const famed = Object.values(WATER_FEATURES).filter(feature => feature.fame)
     expect(famed.map(feature => feature.id).sort()).toEqual(Object.keys(TERRAIN_ROSTER).sort())
   })
 
   it('never lists a country as both required and free', () => {
-    for (const [id, { required, accepted = [] }] of Object.entries(TERRAIN_ROSTER))
+    for (const [id, { required, accepted = [], overseas = [] }] of Object.entries(TERRAIN_ROSTER))
       expect(
-        required.filter(isoCode => accepted.includes(isoCode)),
+        required.filter(isoCode => accepted.includes(isoCode) || overseas.includes(isoCode)),
         id
       ).toEqual([])
   })
@@ -88,6 +94,27 @@ describe('the shipped terrain roster', () => {
   it('leaves the ambiguous names off: Colombia owns the famous Cordillera Oriental', () => {
     expect(TERRAIN_ROSTER['range-cordillera-oriental']).toBeUndefined()
     expect(TERRAIN_ROSTER['range-cordillera-occidental']).toBeUndefined()
+  })
+
+  it('deals one subject under each display name, whatever its kind', () => {
+    const names = Object.keys(TERRAIN_ROSTER).map(id => WATER_FEATURES[id].name)
+    expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([])
+  })
+
+  it('files no two rivers under one typed name, so Unique-or-Bust grades one river once', () => {
+    const owners = new Map<string, string[]>()
+    for (const river of Object.values(WATER_FEATURES).filter(feature => feature.kind === 'river'))
+      for (const key of new Set([river.name, ...(river.aliases ?? [])].map(riverNameKey)))
+        owners.set(key, [...(owners.get(key) ?? []), river.id])
+    expect([...owners.values()].filter(ids => ids.length > 1)).toEqual([])
+  })
+
+  it('frees an overseas power without ever sailing it a sea lane', () => {
+    expect(WATER_FEATURES['caribbean-sea'].accepted).toEqual(
+      expect.arrayContaining(['FR', 'NL', 'GB', 'US'])
+    )
+    expect(SEA_NEIGHBOURS.AG ?? []).not.toContain('FR')
+    expect(SEA_NEIGHBOURS.BB ?? []).toContain('JM')
   })
 
   it('deals one subject under each name, and no other feature answers to it', () => {

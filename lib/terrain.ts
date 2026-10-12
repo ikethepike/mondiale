@@ -69,7 +69,10 @@ export const terrainFamily = (kind: WaterFeatureKind): TerrainFamily => {
     case 'sea':
     case 'lake':
       return 'shore'
-    default:
+    case 'range':
+    case 'desert':
+    case 'plateau':
+    case 'region':
       return 'land'
   }
 }

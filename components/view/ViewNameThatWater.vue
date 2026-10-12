@@ -85,6 +85,7 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import { countryName } from '~~/lib/country'
 import { isCorrectWaterGuess } from '~~/lib/challenges'
 import { normalizeAnswer } from '~~/lib/strings'
+import { terrainFamily } from '~~/lib/terrain'
 import {
   HINT_UNLOCK_FIRST_ELAPSED,
   HINT_UNLOCK_SECOND_ELAPSED,
@@ -144,10 +145,7 @@ watch(
     }
     // Suggestions offer every ocean, sea and lake — the full haystack is the game
     options.value = Object.values(WATER_FEATURES)
-      .filter(
-        candidate =>
-          candidate.kind === 'ocean' || candidate.kind === 'sea' || candidate.kind === 'lake'
-      )
+      .filter(candidate => terrainFamily(candidate.kind) === 'shore')
       .map(candidate => ({ id: candidate.id, name: candidate.name, aliases: candidate.aliases }))
   },
   { immediate: true }

@@ -159,6 +159,8 @@ export interface WaterFeature {
   countries: ISOCountryCode[]
   /** Roster subjects only: true of the world but never required. */
   accepted?: ISOCountryCode[]
+  /** The part of `accepted` held only through an overseas territory. */
+  overseas?: ISOCountryCode[]
   /** Roster subjects only — and only they deal in Lay of the Land. */
   fame?: Fame
   /** Reads without "the". */
@@ -480,9 +482,8 @@ const main = async () => {
     const resolved = lakeName(properties)
     const scalerank = Number(property(properties, 'scalerank') || 99)
     if (!resolved || NOT_LAKES.has(resolved)) continue
-    if (scalerank > 3 && !onRoster(featureId('lake', LAKE_DISPLAY_NAMES[resolved] ?? resolved)))
-      continue
     const name = displayLakeName(resolved)
+    if (scalerank > 3 && !onRoster(featureId('lake', name))) continue
 
     const rings = asPolygonGroups(feature.geometry)
       .flat()
@@ -605,7 +606,9 @@ const main = async () => {
     for (const name of stretches)
       if (!foldedStretches.has(name))
         console.warn(`water-aliases: merge stretch missing from NE data: ${name}`)
-    const aliases = [...stretches.filter(name => foldedStretches.has(name)), ...group.alt]
+    const aliases = [
+      ...new Set([...stretches.filter(name => foldedStretches.has(name)), ...group.alt]),
+    ]
     if (aliases.length) canonical.aliases = aliases
   }
 
@@ -730,6 +733,8 @@ export interface WaterFeature {
   countries: ISOCountryCode[]
   /** Roster subjects only: true of the world but never required — naming one is free. */
   accepted?: ISOCountryCode[]
+  /** The part of \`accepted\` held only through an overseas territory — never a sea lane. */
+  overseas?: ISOCountryCode[]
   /** Roster subjects only, and only they deal in Lay of the Land. */
   fame?: Fame
   /** Reads without "the" (Lake Victoria, Central America). */

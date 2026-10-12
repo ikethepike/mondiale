@@ -114,8 +114,12 @@ export const scoreSheet = ({
   return clampScore(earned + (firstPerfect ? maximumPoints - share : 0), maximumPoints)
 }
 
+// Summed in sorted order: a float sum depends on order, and a shuffled sheet
+// must not flip isSpicySheet's verdict.
 const mean = (values: number[]) =>
-  values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0
+  values.length
+    ? [...values].sort((a, b) => a - b).reduce((sum, value) => sum + value, 0) / values.length
+    : 0
 
 /** Every rule a dealt sheet must meet — the dealer's and the deck test's one check. */
 export const isSpicySheet = (sheet: readonly Claim[]): boolean => {
@@ -133,8 +137,7 @@ export const isSpicySheet = (sheet: readonly Claim[]): boolean => {
   if (!truths.length || !lies.length) return false
   if (Math.max(...truths) > tuning.maxTruthPlausibility) return false
   if (Math.min(...lies) < tuning.minLiePlausibility) return false
-  // Float sums depend on card order; a shuffled sheet must not flip the verdict.
-  return Math.abs(mean(truths) - mean(lies)) <= tuning.toneGap + 1e-9
+  return Math.abs(mean(truths) - mean(lies)) <= tuning.toneGap
 }
 
 /**

@@ -35,7 +35,14 @@ import {
 } from '~~/lib/round-beats'
 import { languageBounce } from '~~/lib/language-rounds'
 import { expectChallengeType } from '~~/lib/rounds'
-import { blitzScore, buzzScore, clampScore, hintDockedScore, pairFraction } from '~~/lib/scoring'
+import {
+  blitzCounted,
+  blitzScore,
+  buzzScore,
+  clampScore,
+  hintDockedScore,
+  pairFraction,
+} from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp } from '~~/lib/number'
@@ -175,10 +182,7 @@ export const gradeGroupAnswer = async ({
     claimed: ISOCountryCode[] = submission.ranking
   ) => {
     const free = challenge.accepted ?? []
-    answer = {
-      submitted: claimed.filter(isoCode => !free.includes(isoCode)),
-      correct: challenge.countries,
-    }
+    answer = { submitted: blitzCounted(claimed, free), correct: challenge.countries }
     scoring = blitzScore(challenge.countries, claimed, challenge.maximumPoints, free)
   }
 

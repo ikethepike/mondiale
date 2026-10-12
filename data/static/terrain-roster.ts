@@ -20,6 +20,9 @@ export interface TerrainEntry {
   /** True of the world but arguable — a basin, a boundary shore, a marginal
    *  sea's coast. Naming one is free; it is never required. */
   accepted?: ISOCountryCode[]
+  /** Free too, but only through an overseas territory (Martinique is France):
+   *  never a sea lane. */
+  overseas?: ISOCountryCode[]
   /** The headline when NE's name is not the one players know; NE's becomes an alias. */
   name?: string
   aliases?: string[]
@@ -217,9 +220,8 @@ export const TERRAIN_ROSTER: Record<string, TerrainEntry> = {
       'JM',
       'CU',
     ],
-    // Barbados faces the Atlantic; the Bahamas and Puerto Rico sit on its rim.
-    // Every free shore is real coast — the sea lanes sail them.
-    accepted: ['BB', 'BS', 'US'],
+    accepted: ['BB', 'BS'],
+    overseas: ['US', 'FR', 'NL', 'GB'],
   },
   'gulf-of-mexico': { fame: 'major', required: ['US', 'MX', 'CU'] },
   'red-sea': {
@@ -549,7 +551,7 @@ export const TERRAIN_ROSTER: Record<string, TerrainEntry> = {
   'region-greater-antilles': {
     fame: 'minor',
     required: ['CU', 'JM', 'HT', 'DO'],
-    accepted: ['US'],
+    overseas: ['US'],
   },
   'region-yucatan-peninsula': {
     fame: 'minor',
@@ -580,7 +582,8 @@ export const TERRAIN_ROSTER: Record<string, TerrainEntry> = {
   'region-lesser-antilles': {
     fame: 'minor',
     required: ['KN', 'AG', 'DM', 'LC', 'BB', 'GD', 'TT'],
-    accepted: ['VE', 'FR', 'NL', 'GB'],
+    accepted: ['VE'],
+    overseas: ['FR', 'NL', 'GB'],
   },
   'region-malay-peninsula': { fame: 'obscure', required: ['MM', 'TH', 'MY'], accepted: ['SG'] },
   'region-fergana-valley': { fame: 'obscure', required: ['UZ', 'KG', 'TJ'] },

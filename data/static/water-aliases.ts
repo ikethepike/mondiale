@@ -22,7 +22,7 @@ export const WATER_ALIASES: WaterAliasGroup[] = [
   { kind: 'river', canonical: 'Brahmaputra', merge: ['Dihang'], alt: [] },
   { kind: 'river', canonical: 'Irrawaddy', merge: ['Irrawaddy Delta'], alt: ['Ayeyarwady'] },
   { kind: 'river', canonical: 'Salween', merge: ['Nu'], alt: ['Thanlwin'] },
-  { kind: 'river', canonical: 'Okavango', merge: ['Cubango'], alt: [] },
+  { kind: 'river', canonical: 'Okavango', merge: ['Cubango'], alt: ['Cubango', 'Kavango'] },
   {
     kind: 'river',
     canonical: 'Nile',

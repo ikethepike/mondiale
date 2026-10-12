@@ -18,8 +18,9 @@ import type { ISOCountryCode } from '../types/geography.types'
 const neighbours = new Map<ISOCountryCode, Set<ISOCountryCode>>()
 for (const feature of Object.values(WATER_FEATURES)) {
   if (feature.kind !== 'sea') continue
-  // A roster's free tier is real coast too (Barbados, Djibouti on the Red Sea).
-  const shores = [...feature.countries, ...(feature.accepted ?? [])]
+  const shores = [...feature.countries, ...(feature.accepted ?? [])].filter(
+    isoCode => !feature.overseas?.includes(isoCode)
+  )
   for (const shore of shores) {
     const set = neighbours.get(shore) ?? new Set<ISOCountryCode>()
     for (const other of shores) if (other !== shore) set.add(other)

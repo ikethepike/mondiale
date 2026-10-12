@@ -97,5 +97,5 @@ Lies that ring true (most tempting 40):
 
 Sheets dealable per difficulty:
   easy    48 subjects
-  normal  93 subjects
-  hard    109 subjects
+  normal  96 subjects
+  hard    110 subjects
