@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { SPEAKERS } from '~~/data/speakers.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
-import { getRoundChallenge } from '~~/lib/challenges'
+import { getRoundChallenge, speaksTongue } from '~~/lib/challenges'
+import { scriptoriumAccepts, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   boardSpeakers,
   isSignLanguage,
@@ -231,9 +232,9 @@ describe('the dealt round', () => {
     // Most Swedes speak English; no source names it as Sweden's own.
     expect(speakerRow('SE', 'English')?.named).toBeUndefined()
     expect(speaksLanguage('SE', 'English')).toBe(false)
-    expect(languageBounce(challengeOf('English', ['GB', 'IE']), 'SE')).toBe('second-language')
+    expect(languageBounce(challengeOf('English', ['GB', 'IE']), 'SE')).toBe('unlisted')
     expect(languageBounceLine(challengeOf('English', ['GB', 'IE']), 'SE')).toBe(
-      'Sweden speaks English mostly as a second language — not counted'
+      'Sweden has English speakers, but no source lists it as a language of its own — not counted'
     )
   })
 
@@ -345,11 +346,29 @@ describe('spoken languages', () => {
     const english = {
       ...challengeOf('English', ['GB', 'IE']),
       _type: 'tongue-buzz-challenge' as const,
+      clips: [],
     }
-    // A statute still bounces; a second language or a minority is a real miss.
-    expect(languageBounce(english, 'BI')).toBe('statute')
-    expect(languageBounce(english, 'SE')).toBeUndefined()
-    expect(languageBounce(english, 'NL')).toBeUndefined()
+    // Only an off-board speaker bounces. A statute or a named minority is paid,
+    // a bare usage figure is a miss — neither line can be read for free.
+    for (const isoCode of ['BI', 'SE', 'NL'] as const) {
+      expect(languageBounce(english, isoCode), isoCode).toBeUndefined()
+    }
+    expect(speaksTongue(english, 'BI')).toBe(true)
+    expect(speaksTongue(english, 'SE')).toBe(false)
+    const european = {
+      ...english,
+      countries: ['GB', 'IE', 'MT'] as ISOCountryCode[],
+      scope: ['europe' as const],
+    }
+    expect(languageBounce(european, 'US')).toBe('off-board')
+    expect(speaksTongue(european, 'BI')).toBe(false)
+  })
+
+  it('grades a Scriptorium page as the final grades its language', () => {
+    // Singapore makes Tamil official at a 2.5% share: accepted, not listed.
+    expect(scriptoriumAnswers('Tamil')).not.toContain('SG')
+    expect(scriptoriumAccepts('Tamil', 'SG')).toBe(true)
+    expect(scriptoriumAccepts('Tamil', 'FR')).toBe(false)
   })
 
   it('keeps the curated rows that name a language no other source sizes', () => {

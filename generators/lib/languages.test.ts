@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { FACTBOOK } from '~~/data/factbook.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
-import { speaksLanguage, spokenLanguages } from '~~/lib/language-rounds'
+import {
+  officialLanguages as statutes,
+  speaksLanguage,
+  spokenLanguages,
+} from '~~/lib/language-rounds'
 import { SPOKEN_LANGUAGE_SHARES } from '~~/data/static/spoken-language-shares'
 import { SPEAKERS } from '~~/data/speakers.gen'
 import {
@@ -175,6 +179,21 @@ describe('the corpus as a whole', () => {
     expect(officialFor('PG')).toContain('Tok Pisin')
     expect(officialFor('ML')).toContain('Bambara')
     expect(officialFor('ET')).toContain('Oromo')
+  })
+})
+
+describe('the speaker table reads its statutes from the Factbook', () => {
+  it('takes the parsed marks, not the countries-list fallback, for most countries', () => {
+    // If the official marks stopped matching, every statute would quietly
+    // become the fallback and the clues that claim officiality would guess.
+    const fromMarks = (Object.keys(COUNTRIES) as ISOCountryCode[]).filter(isoCode => {
+      const regional = new Set(regionalFor(isoCode))
+      const marked = officialFor(isoCode)
+        .filter(language => !regional.has(language))
+        .map(language => countryLanguage(isoCode, language))
+      return marked.length > 0 && marked.join('|') === statutes(isoCode).join('|')
+    })
+    expect(fromMarks.length).toBeGreaterThan(150)
   })
 })
 

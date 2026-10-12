@@ -6,6 +6,7 @@ import { ISOCountryCodes } from '../../../data/iso-codes.gen'
 import type { FactbookResponse } from '../../../types/response.type'
 import type { SpeakerRow, SpeakerTable } from '../../../types/speakers.types'
 import { jsonParseLiteral } from '../../lib/emit'
+import { SOURCES } from '../../../lib/attribution'
 import {
   canonicalLanguage,
   cldrLanguage,
@@ -19,8 +20,8 @@ import {
 const OUTPUT_FILE = 'data/speakers.gen.ts'
 const REPORT_FILE = 'generators/data/speakers-report.txt'
 
-/** Pinned so a regen is reproducible; bump with `SOURCES['unicode-cldr'].edition`. */
-const CLDR_VERSION = '48.0.0'
+const CLDR_VERSION = SOURCES['unicode-cldr'].edition
+if (!CLDR_VERSION) throw new Error("SOURCES['unicode-cldr'] needs an edition to pin the fetch to")
 const CLDR_BASE = `https://raw.githubusercontent.com/unicode-org/cldr-json/${CLDR_VERSION}/cldr-json`
 
 /**
@@ -70,6 +71,14 @@ const listedLanguages = (isoCode: string): string[] => {
 }
 
 /** CLDR's usage share and statute per language, varieties folded to the larger figure. */
+/** Strongest first: a folded variety's weaker status must not hide the base's. */
+const STATUS_RANK: NonNullable<CldrLanguagePopulation['_officialStatus']>[] = [
+  'official',
+  'de_facto_official',
+  'official_regional',
+  'official_minority',
+]
+
 const cldrRows = (
   territory: CldrTerritoryInfo['supplemental']['territoryInfo'][string] | undefined,
   displayNames: { [code: string]: string }
@@ -83,10 +92,10 @@ const cldrRows = (
     if (!language) continue
     const share = Number.parseFloat(population._populationPercent ?? '0')
     const previous = rows.get(language)
-    rows.set(language, {
-      share: Math.max(share, previous?.share ?? 0),
-      status: previous?.status ?? population._officialStatus,
-    })
+    const status = [previous?.status, population._officialStatus]
+      .filter(candidate => candidate !== undefined)
+      .sort((a, b) => STATUS_RANK.indexOf(a) - STATUS_RANK.indexOf(b))[0]
+    rows.set(language, { share: Math.max(share, previous?.share ?? 0), status })
   }
   return rows
 }

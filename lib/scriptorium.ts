@@ -1,7 +1,7 @@
 import { COUNTRIES } from '~~/data/countries.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { isValidISOCode } from '~~/types/geography.types'
-import { speaksLanguage } from './language-rounds'
+import { acceptsSpeaker, speaksLanguage } from './language-rounds'
 import {
   HINT_UNLOCK_FIRST_ELAPSED,
   HINT_UNLOCK_LAST_ELAPSED,
@@ -96,6 +96,11 @@ export const scriptoriumAnswers = (language: string): ISOCountryCode[] =>
   Object.keys(COUNTRIES)
     .filter(isValidISOCode)
     .filter(isoCode => speaksLanguage(isoCode, language))
+
+/** The verdict: every speaker, plus a statute below the bar — accepted, never
+ *  required, as the final's language question takes it. */
+export const scriptoriumAccepts = (language: string, isoCode: ISOCountryCode): boolean =>
+  acceptsSpeaker(isoCode, language)
 
 /**
  * The hint ladder, strongest rung LAST — the order is the descent, and the

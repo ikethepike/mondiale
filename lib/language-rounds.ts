@@ -68,7 +68,7 @@ const qualifies = (isoCode: ISOCountryCode, row: SpeakerRow): boolean => {
   )
 }
 
-const spokenCache = new Map<ISOCountryCode, Set<string>>()
+const spokenCache = new Map<ISOCountryCode, ReadonlySet<string>>()
 
 /**
  * Every language a country speaks, national statutes first and then by share —
@@ -78,7 +78,7 @@ const spokenCache = new Map<ISOCountryCode, Set<string>>()
  * Switzerland's Italian count while Burundi's English (official, 0.05% speak
  * it), Austria's Burgenland Croatian and Sweden's second-language English do not.
  */
-export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
+export const spokenLanguages = (isoCode: ISOCountryCode): ReadonlySet<string> => {
   const cached = spokenCache.get(isoCode)
   if (cached) return cached
   const rank = (row: SpeakerRow) => (row.official === 'national' ? 1000 : 0) + (row.share ?? 0)
@@ -99,10 +99,17 @@ export const speaksLanguage = (isoCode: ISOCountryCode, language: string): boole
 
 /** The languages a country makes official nationwide, in the order its source
  *  lists them (Burundi leads with Kirundi). What a clue claiming officiality reads. */
-export const officialLanguages = (isoCode: ISOCountryCode): string[] =>
-  Object.entries(SPEAKERS[isoCode] ?? {})
+const officialCache = new Map<ISOCountryCode, readonly string[]>()
+
+export const officialLanguages = (isoCode: ISOCountryCode): readonly string[] => {
+  const cached = officialCache.get(isoCode)
+  if (cached) return cached
+  const official = Object.entries(SPEAKERS[isoCode] ?? {})
     .filter(([language, row]) => !isSignLanguage(language) && row.official === 'national')
     .map(([language]) => language)
+  officialCache.set(isoCode, official)
+  return official
+}
 
 /** Over half a country speaks it: the share past which a language is that
  *  country's language, not merely one of them. */
@@ -210,7 +217,8 @@ export const tongueBuzzTally = (challenge: Pick<LanguageRound, 'scope' | 'countr
 }
 
 /**
- * Does this country speak the language but stand off the board?
+ * Does this country speak the language but stand off the board — or benched
+ * from it, as a micro-nation on a world board?
  *
  * Such a guess is RIGHT about the world and wrong only about the round, so it
  * is vetoed rather than scored: a veto costs nothing and never reaches the
@@ -222,8 +230,7 @@ export const speaksButOffBoard = (
   challenge: LanguageRound | undefined,
   isoCode: ISOCountryCode
 ): boolean => {
-  if (!challenge?.scope) return false
-  if (challenge.countries.includes(isoCode)) return false
+  if (!challenge || challenge.countries.includes(isoCode)) return false
   // The same predicate the board was dealt with, so the veto is exactly "this
   // speaker is standing somewhere else" — never a second opinion on who speaks.
   return speaksLanguage(isoCode, challenge.language)
@@ -243,9 +250,10 @@ export const acceptsSpeaker = (isoCode: ISOCountryCode, language: string): boole
  *   - `off-board`: a speaker standing somewhere this board doesn't reach
  *   - `statute`: official, nationally or in one region, but spoken below the bar
  *   - `minority`: the country's own sources name it, but too few speak it
- *   - `second-language`: widely used, as Sweden's English, but no one's own
+ *   - `unlisted`: a usage figure, as Sweden's English, that no source of the
+ *     country's own names
  */
-export type LanguageBounce = 'off-board' | 'statute' | 'minority' | 'second-language'
+export type LanguageBounce = 'off-board' | 'statute' | 'minority' | 'unlisted'
 
 /**
  * Why a guess outside the answer set bounces free instead of costing a point.
@@ -257,15 +265,15 @@ export const languageBounce = (
   isoCode: ISOCountryCode
 ): LanguageBounce | undefined => {
   if (!challenge || challenge.countries.includes(isoCode)) return undefined
-  // Off the board, or benched from it (a micro-nation on a world board).
-  if (speaksLanguage(isoCode, challenge.language)) return 'off-board'
+  if (speaksButOffBoard(challenge, isoCode)) return 'off-board'
+  // Tongue Buzz keeps its language secret: a free line naming a statute or a
+  // minority would let a player probe it without spending a lockout, so there
+  // `speaksTongue` pays those guesses instead of bouncing them.
+  if (challenge._type === 'tongue-buzz-challenge') return undefined
   const row = speakerRow(isoCode, challenge.language)
   if (!row) return undefined
   if (row.official) return 'statute'
-  // Tongue Buzz keeps its language secret, and a free "second language" or
-  // "minority" bounce would let a player probe it without spending a lockout.
-  if (challenge._type === 'tongue-buzz-challenge') return undefined
-  return row.named ? 'minority' : 'second-language'
+  return row.named ? 'minority' : 'unlisted'
 }
 
 const fewSpeakIt = (share: number | undefined): string => {
@@ -299,8 +307,8 @@ export const languageBounceLine = (
         : `${name} makes ${spoken} official, but ${few} — not counted`
     case 'minority':
       return `${name} has ${spoken} speakers, but ${few} — not counted`
-    case 'second-language':
-      return `${name} speaks ${spoken} mostly as a second language — not counted`
+    case 'unlisted':
+      return `${name} has ${spoken} speakers, but no source lists it as a language of its own — not counted`
   }
 }
 

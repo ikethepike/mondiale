@@ -139,15 +139,16 @@ describe('buzz pay is priced off the server clock, never the claim', () => {
     const english = {
       _type: 'tongue-buzz-challenge',
       language: 'English',
-      countries: ['GB', 'IE'],
+      countries: ['GB', 'IE', 'MT'],
+      scope: ['europe'],
       durationSeconds: 20,
       maximumPoints: MAX,
     }
     const seat = { deadline: PLAY_STARTS_AT + 20_000 }
     const at = into(10_000)
-    // Burundi makes English official; it bounces, so the buzz behind it lands.
-    expect(await grade(english, { ranking: ['BI', 'IE'] }, { at, seat })).toBe(buzzScore(MAX, 0.5))
-    const bounced = await graded(english, { ranking: ['BI'] }, { at, seat })
+    // The US speaks English off this board; it bounces, so the buzz behind it lands.
+    expect(await grade(english, { ranking: ['US', 'IE'] }, { at, seat })).toBe(buzzScore(MAX, 0.5))
+    const bounced = await graded(english, { ranking: ['US'] }, { at, seat })
     expect(bounced.scoring.scored).toBe(0)
     expect(bounced.answer.submitted).toEqual([])
   })

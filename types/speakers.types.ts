@@ -21,8 +21,8 @@ export interface SpeakerRow {
   official?: 'national' | 'regional'
   /**
    * The country's own sources name it as one of its languages. Without this the
-   * row is a usage figure alone — Sweden's English — which is accepted as an
-   * answer but never required.
+   * row is a usage figure alone — Sweden's English — which bounces free in a
+   * typed set but is never required, and never accepted as a single answer.
    */
   named?: true
 }

@@ -23,7 +23,7 @@ import {
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { flagsIndistinguishable, hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
 import { dealableHeritage, dealableLandmarks } from '~~/lib/places'
-import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
+import { SCRIPTORIUM_POOL, scriptoriumAccepts, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
   HEAVY_ACCESSORS,
@@ -213,7 +213,7 @@ import {
 import type { TrendReading } from './trends'
 import { getValueByAccessorID } from './values'
 import { isWorldBoard } from './board-regions'
-import { boardLabel, REGION_LABELS } from './variant'
+import { boardLabel, countryOnBoard, REGION_LABELS } from './variant'
 
 export const MAXIMUM_SCORE_PER_COUNTRY = 3
 
@@ -753,7 +753,8 @@ const getTongueBuzzChallenge = ({
  * two membership tests would drift the moment the answer set grows a qualifier.
  */
 export const speaksTongue = (challenge: TongueBuzzChallenge, guess: ISOCountryCode): boolean =>
-  challenge.countries.includes(guess)
+  challenge.countries.includes(guess) ||
+  (countryOnBoard(guess, challenge.scope ?? []) && acceptsSpeaker(guess, challenge.language))
 
 /**
  * Micro-island states are near-invisible click targets at world zoom, and a
@@ -2607,7 +2608,7 @@ export const isCorrectIndividualAnswer = (
   // payload — both sides of the wire resolve the same lib/scriptorium set.
   if (variant === 'scriptorium') {
     const language = challenge.scriptorium?.language
-    return !!language && scriptoriumAnswers(language).includes(isoCode)
+    return !!language && scriptoriumAccepts(language, isoCode)
   }
   if (variant === 'find' && challenge.id === 'flag')
     return flagsIndistinguishable(challenge.country, isoCode)
