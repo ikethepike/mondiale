@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computed, ref } from 'vue'
+import { attemptPicksScore } from '~~/lib/challenges'
 import { getCountry } from '~~/lib/country'
 import { useAttemptOptions } from '~~/lib/use-attempt-options'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -18,6 +19,7 @@ const harness = (challengeValue: {
 }) => {
   const submitted = ref(false)
   const scores: number[] = []
+  const picks: ISOCountryCode[][] = []
   const wrong: ISOCountryCode[] = []
   const { spent, onGuess } = useAttemptOptions({
     challenge: computed(() => challengeValue),
@@ -25,12 +27,13 @@ const harness = (challengeValue: {
     started: ref(true),
     remainingFraction: computed(() => 1),
     announce: entry => wrong.push(entry.isoCode),
-    submitRound: score => {
+    submitRound: (score, attempt) => {
       scores.push(score)
+      picks.push(attempt)
       submitted.value = true
     },
   })
-  return { spent, onGuess, scores, wrong }
+  return { spent, onGuess, scores, picks, wrong }
 }
 
 describe('useAttemptOptions grading', () => {
@@ -92,5 +95,19 @@ describe('useAttemptOptions grading', () => {
 
     expect(second.scores[0]).toBeLessThan(first.scores[0])
     expect(second.scores[0]).toBeGreaterThan(0)
+  })
+
+  it('banks the attempt sequence the server prices, at the score it prices', () => {
+    const won = harness({ country: 'DE', answer: 'PL', maximumGuesses: 2, maximumPoints: 15 })
+    won.onGuess(getCountry('TR'))
+    won.onGuess(getCountry('PL'))
+    expect(won.picks).toEqual([['TR', 'PL']])
+    expect(won.scores).toEqual([attemptPicksScore(['TR', 'PL'], 'PL', 2, 15)])
+
+    const lost = harness({ country: 'DE', answer: 'PL', maximumGuesses: 2, maximumPoints: 15 })
+    lost.onGuess(getCountry('TR'))
+    lost.onGuess(getCountry('RO'))
+    expect(lost.picks).toEqual([['TR', 'RO']])
+    expect(lost.scores).toEqual([0])
   })
 })

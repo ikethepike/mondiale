@@ -22,7 +22,7 @@
       </template>
       <template v-else>
         <h1 class="map-caption">It was {{ countryName(challenge.country) }}</h1>
-        <span class="map-caption sub">{{ anthem?.title ?? 'The anthem' }}</span>
+        <span class="map-caption sub">{{ resolvedSub }}</span>
       </template>
     </ChallengePrompt>
 
@@ -93,6 +93,7 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import { ANTHEMS } from '~~/data/anthems.gen'
+import { anthemTuneMatches, sharedTuneLine } from '~~/lib/anthems'
 import { datasetAttribution, dedupeAttributions, mediaCreditLine } from '~~/lib/attribution'
 import { countryName } from '~~/lib/country'
 import { useAnthemLyrics } from '~~/lib/use-anthem-lyrics'
@@ -120,7 +121,7 @@ const {
   begin,
   guess,
 } = useBuzzRound('anthem-buzz-challenge', {
-  isCorrect: (active, isoCode) => active.country === isoCode,
+  isCorrect: (active, isoCode) => anthemTuneMatches(active.country, isoCode),
   maximumPoints: active => active.maximumPoints,
   lockoutHint: name => `Not ${name} — locked out for ${LOCKOUT_SECONDS} seconds`,
   onLockoutEnd: () => guessInput.value?.focus(),
@@ -150,6 +151,12 @@ const scene = ref<InstanceType<typeof AudioScene>>()
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const anthem = computed(() => (challenge.value ? ANTHEMS[challenge.value.country] : undefined))
+
+const resolvedSub = computed(() =>
+  [anthem.value?.title ?? 'The anthem', challenge.value && sharedTuneLine(challenge.value.country)]
+    .filter(Boolean)
+    .join(' · ')
+)
 
 /** The recording and, once the wall is up, the lyric text behind it. */
 const promptSources = computed(() =>

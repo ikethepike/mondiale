@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { getMicroNations } from './game-rules'
 import {
+  countedGuesses,
   isRouteComplete,
   linkedGuesses,
   neighboursWithin,
@@ -10,6 +11,7 @@ import {
   routeThrough,
   shortestRoute,
   TRAVERSAL_DIFFICULTY,
+  traversalGuessesLeft,
   traversalWithin,
 } from './traversal'
 import type { GameDifficulty, GameRules } from '~~/types/game.types'
@@ -143,6 +145,21 @@ describe('routeThrough / isRouteComplete', () => {
   it('agrees with the route it drew', () => {
     expect(isRouteComplete('FR', 'PL', ['DE'])).toBe(true)
     expect(isRouteComplete('FR', 'PL', ['ES'])).toBe(false)
+  })
+})
+
+describe('traversalGuessesLeft', () => {
+  const challenge = { start: 'FR', target: 'PL', maximumClicks: 3 } as const
+
+  it('spends one click per distinct non-endpoint guess', () => {
+    expect(traversalGuessesLeft(challenge, [])).toBe(3)
+    expect(traversalGuessesLeft(challenge, ['DE', 'BE'])).toBe(1)
+    expect(traversalGuessesLeft(challenge, ['DE', 'FR', 'PL', 'DE'])).toBe(2)
+    expect(countedGuesses(challenge, ['DE', 'FR', 'PL', 'DE'])).toBe(1)
+  })
+
+  it('goes negative once the list overspends', () => {
+    expect(traversalGuessesLeft(challenge, ['DE', 'BE', 'NL', 'CZ'])).toBe(-1)
   })
 })
 

@@ -88,7 +88,13 @@ import {
 } from '~~/lib/attribution'
 import { getChallengeDetails } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
-import { governingParty, logoPoliticsPrompt, partiesOf, partySpectrum } from '~~/lib/parties'
+import {
+  governingParty,
+  logoPoliticsPrompt,
+  partiesOf,
+  partySpectrum,
+  RULERS_PROMPT,
+} from '~~/lib/parties'
 import { politicalLeader } from '~~/lib/leaders'
 import { countriesSpending, currencyName } from '~~/lib/currency'
 import { useClientEvents } from '~~/lib/events/client-side'
@@ -297,6 +303,8 @@ const interstitialTitle = computed(() => {
       return `Put ${countryName(active.country)}'s history in order`
     case 'far-flung':
       return 'A far-flung piece of a country — whose is it?'
+    case 'rulers':
+      return RULERS_PROMPT
     default:
       return processReplacements(details.value?.phrasing || '', active.country)
   }
