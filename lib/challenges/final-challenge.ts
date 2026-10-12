@@ -1563,7 +1563,6 @@ const REGION_COLORS: { [region in Region]: string } = {
   'south-america': 'hsla(12, 62%, 60%, 0.62)',
 }
 
-/** Shapes the map draws that are not countries, so `COUNTRIES` has no region for them. */
 const TERRITORY_REGIONS: { [code in Exclude<MapCode, ISOCountryCode>]: Region } = {
   AI: 'north-america',
   AW: 'north-america',
@@ -1592,7 +1591,6 @@ const TERRITORY_REGIONS: { [code in Exclude<MapCode, ISOCountryCode>]: Region } 
   YT: 'africa',
 }
 
-/** The region a tap on the map stands for — a country's own `region`, the one the region final grades. */
 export const regionOfMapCode = (code: string): Region | undefined =>
   isValidISOCode(code)
     ? COUNTRIES[code]?.region
