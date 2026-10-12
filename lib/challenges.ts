@@ -21,7 +21,7 @@ import {
 } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
-import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
+import { dealableHeritage, dealableLandmarks } from '~~/lib/places'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
@@ -2602,11 +2602,12 @@ const dealCapitalMatch = (
 
 /**
  * Landmark-quiz (photo): "Which country is this landmark in?" — an iconic
- * landmark photo with four flag options. Picks a random curated landmark;
- * decoys prefer the same region. The slug is carried for the reveal: the
+ * landmark photo with four flag options. Picks a random curated landmark the
+ * difficulty deals; decoys prefer the same region. The slug is carried for the reveal: the
  * dossier (name, description) and the answer marker on the result map.
  */
 const dealLandmarkQuiz = (
+  difficulty: gameTypes.GameDifficulty,
   pool: ISOCountryCode[],
   world: ISOCountryCode[]
 ):
@@ -2620,7 +2621,7 @@ const dealLandmarkQuiz = (
   // Only landmarks whose country is in play — a benched micro-nation
   // (St Peter's → the Vatican) can't be the answer to anything.
   const inPlay = new Set(world)
-  const entries = curatedPlaces().filter(([, entry]) => inPlay.has(entry.country))
+  const entries = dealableLandmarks(difficulty).filter(([, entry]) => inPlay.has(entry.country))
   if (!entries.length) return undefined
 
   // Prefer a landmark whose country is on the board; else any (widen to world).
@@ -3650,7 +3651,7 @@ export const getIndividualChallenge = async ({
         break
       }
       case 'landmark-quiz': {
-        const dealt = dealLandmarkQuiz(pool, world)
+        const dealt = dealLandmarkQuiz(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
         break
       }
@@ -3735,7 +3736,7 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'far-flung', ...dealt }
       }
       if (roll < 0.68) {
-        const dealt = dealLandmarkQuiz(pool, world)
+        const dealt = dealLandmarkQuiz(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
       if (roll < 0.78) {
@@ -3834,7 +3835,7 @@ export const getIndividualChallenge = async ({
     case 'landmarks': {
       // The landmark gate: photo quizzes, with the capital skyline sibling.
       if (roll < 0.55) {
-        const dealt = dealLandmarkQuiz(pool, world)
+        const dealt = dealLandmarkQuiz(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
       if (roll < 0.82) {

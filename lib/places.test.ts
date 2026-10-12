@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PLACES } from '~~/data/places.gen'
-import { getRoundChallenge, PIN_LANDMARK_TIERS } from '~~/lib/challenges'
+import { getIndividualChallenge, getRoundChallenge, PIN_LANDMARK_TIERS } from '~~/lib/challenges'
 import { haversineKm } from '~~/lib/geo'
 import {
   curatedPlaces,
@@ -11,10 +11,10 @@ import {
   famousPlaces,
   heritagePlaces,
 } from '~~/lib/places'
-import type { Fame } from '~~/types/fame.types'
+import { isFameDealable, type Fame } from '~~/types/fame.types'
 import type { PinLandmarkChallenge } from '~~/types/challenges/group-modes.type'
 import type { CuratedPlace, HeritagePlace } from '~~/types/places.types'
-import type { Game } from '~~/types/game.types'
+import { boardRegions, gameDifficulties, type Game } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const entry = (slug: string, fame: Fame): [string, { fame: Fame }] => [slug, { fame }]
@@ -126,6 +126,35 @@ describe('getPinLandmarkChallenge (via getRoundChallenge)', () => {
       const dealt = (await getRoundChallenge({ game: game('easy') })) as PinLandmarkChallenge
       expect(icons.has(dealt.slug)).toBe(true)
       expect(PLACES[dealt.slug]?.curated, dealt.slug).toBeDefined()
+    }
+  })
+})
+
+describe('dealLandmarkQuiz (via getIndividualChallenge)', () => {
+  afterEach(() => {
+    delete process.env.FORCE_INDIVIDUAL_VARIANT
+  })
+
+  it('deals only the tiers the difficulty allows, on every board', async () => {
+    process.env.FORCE_INDIVIDUAL_VARIANT = 'landmark-quiz'
+    const boards = [[], ...boardRegions.map(region => [region])]
+    for (const difficulty of gameDifficulties) {
+      const dealtTiers = new Set<Fame>()
+      for (const regions of boards) {
+        for (let deal = 0; deal < 20; deal++) {
+          const dealt = await getIndividualChallenge({
+            accessorId: 'landmarks',
+            difficulty,
+            regions,
+          })
+          const label = `${difficulty} ${regions.join(',') || 'world'}`
+          expect(dealt.variant, label).toBe('landmark-quiz')
+          const fame = PLACES[dealt.landmarkSlug!]!.curated!.fame
+          expect(isFameDealable(fame, difficulty), `${label}: ${dealt.landmarkSlug}`).toBe(true)
+          dealtTiers.add(fame)
+        }
+      }
+      if (difficulty === 'hard') expect(dealtTiers.has('obscure')).toBe(true)
     }
   })
 })
