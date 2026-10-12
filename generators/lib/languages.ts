@@ -87,7 +87,7 @@ const segmentName = (segment: string): string =>
     .trim()
 
 /**
- * Factbook spellings → the spelling the rest of the game already uses.
+ * Source spellings (Factbook and countries-list) → the spelling the rest of the game already uses.
  *
  * This maps TOWARDS the existing names even where the Factbook's are better
  * ("Rwandi" is really Kinyarwanda, "Cambodian" is Khmer): four tables key off
@@ -96,7 +96,7 @@ const segmentName = (segment: string): string =>
  * clips and answer sets. Correcting the spellings themselves means moving all
  * four together, which is its own job.
  */
-export const LANGUAGE_ALIASES: { [factbookName: string]: string } = {
+export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
   Bangla: 'Bengali',
   'Bahasa Indonesia': 'Indonesian',
   'Bahasa Malaysia': 'Malay',
@@ -122,10 +122,15 @@ export const LANGUAGE_ALIASES: { [factbookName: string]: string } = {
   Venda: 'Venda',
   Tsonga: 'Tsonga',
   Swati: 'Swati',
+  siSwati: 'Swati',
   Ndebele: 'South Ndebele',
   Xhosa: 'Xhosa',
   Zulu: 'Zulu',
-  Somali: 'Somalia',
+  Tigrigna: 'Tigrinya',
+  iTaukei: 'Fijian',
+  Aranese: 'Occitan',
+  // countries-list's own name for ISO 639-1 "so": the country, not the language.
+  Somalia: 'Somali',
   Bokmal: 'Norwegian',
   'Bokmal Norwegian': 'Norwegian',
   'Nynorsk Norwegian': 'Norwegian',

@@ -40,6 +40,7 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { LANGUAGE_REVEAL_ROWS, languageSpeakers } from '~~/lib/challenges/final-challenge'
 import { countryName } from '~~/lib/country'
+import { spokenLanguages } from '~~/lib/language-rounds'
 import { formatCompact } from '~~/lib/number'
 import type { LanguageChallenge } from '~~/types/challenges/final-challenge.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -98,7 +99,7 @@ const tailLine = computed(() => {
 const pickedLine = computed(() => {
   if (!props.picked || speakers.value.includes(props.picked)) return undefined
   const country = COUNTRIES[props.picked]
-  const spoken = country.languages.slice(0, 3)
+  const spoken = [...spokenLanguages(props.picked)].slice(0, 3)
   return spoken.length
     ? `Your pick, ${countryName(country)}, speaks ${spoken.join(', ')}.`
     : undefined

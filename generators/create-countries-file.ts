@@ -50,7 +50,7 @@ import {
 import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
-import { officialLanguages } from './lib/languages'
+import { canonicalLanguage, officialLanguages } from './lib/languages'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
@@ -1063,7 +1063,7 @@ const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }):
     const country = countries[isoCode as keyof typeof countries]
 
     return country.languages.map(languageCode => {
-      return Reflect.get(languages, languageCode).name
+      return canonicalLanguage(Reflect.get(languages, languageCode).name)
     })
   }
 
