@@ -366,6 +366,35 @@ describe('the wire carries the question a seat is on, and its answer only with t
     for (const seat of [asked, judged]) expect(seat!.moves[1]!.challenge).toEqual(SEALED)
   })
 
+  it('a clock run out on screen forfeits at once, and the verdict brings the answer', async () => {
+    const [{ move }] = WITHHELD_GATES
+    const { table } = await open(
+      buildGame(
+        [
+          testSeat('a', 'gate', {
+            moves: [move],
+            cursor: testCursor('gate', { deadline: Date.now() + INDIVIDUAL_GATE_CAP_MS }),
+          }),
+          testSeat('b', 'round'),
+        ],
+        TWO_TRUTHS
+      )
+    )
+    await table.send('a', {
+      event: 'submit-individual-challenge-answer',
+      timedOut: true,
+      ...(await echo(table, 'a')),
+    })
+    const [forfeited] = table.emits.map(({ payload }) => (hasGame(payload) ? payload.game : null!))
+    expect(forfeited!.players.a!.cursor.verdict).toMatchObject({
+      kind: 'gate',
+      correct: false,
+      timedOut: true,
+      steps: 0,
+    })
+    expect(forfeited!.players.a!.moves[0]!.challenge).toEqual(move.challenge)
+  })
+
   it.each(WITHHELD_FINALS)('$name gauntlet question', async ({ item, keys }) => {
     const { table } = await open(
       buildGame(

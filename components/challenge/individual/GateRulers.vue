@@ -1,6 +1,6 @@
 <template>
   <template v-if="challenge.rulers">
-    <h1 class="map-caption">One of these is not its country's ruling party</h1>
+    <h1 class="map-caption">{{ RULERS_PROMPT }}</h1>
     <span class="map-caption sub">Tap the party that isn't in government</span>
     <ChallengeTimerRadial
       class="gate-clock rulers-clock"
@@ -15,6 +15,7 @@
 <script lang="ts" setup>
 import ChallengeTimerRadial from '~/components/challenge/ChallengeTimerRadial.vue'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { RULERS_PROMPT } from '~~/lib/parties'
 import { useGateChallenge, useGateClock } from '~~/lib/use-gate-challenge'
 import { RULERS_SECONDS } from '~~/lib/gate-timing'
 import { isMapClickEvent } from '~~/types/events.types'
@@ -107,8 +108,7 @@ const restoreStage = () => {
   return undefined
 }
 
-// The true government is withheld until the verdict, which may land after
-// this view has begun to leave.
+// The true government lands with the verdict, in the flush that swaps this view out.
 watch(
   () => onStage.value?.rulers?.trueLogo,
   trueLogo => trueLogo && restoreStage(),

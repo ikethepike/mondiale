@@ -280,16 +280,25 @@ export const provideGateChallenge = (): GateChallengeContext => {
   }
 
   /**
-   * The clock ran out. Nothing is sent: the deadline is the server's, and its
-   * gate cap delivers the timed-out verdict on its own. The view shows the
-   * miss at once rather than holding a frozen zero until that verdict lands.
+   * The clock ran out. The deadline is the server's, and its gate cap delivers
+   * the timed-out verdict on its own; the view shows the miss at once rather
+   * than holding a frozen zero until then. A gate whose answer is withheld has
+   * no answer to show yet, so it forfeits now and the verdict brings one.
    */
   const giveUp = () => {
-    if (gameStore.watching || status.value || !challenge.value) return
+    if (gameStore.watching || status.value || answeredISOCode.value || !challenge.value) return
     clockRanOut.value = true
     gameStore.map.highlighted.clear()
-    gameStore.map.reveal = challenge.value.country
     previewVerdict('incorrect', subject)
+    if (gateAnswerOnHand(challenge.value)) {
+      gameStore.map.reveal = challenge.value.country
+      return
+    }
+    void deliver({
+      event: 'submit-individual-challenge-answer',
+      timedOut: true,
+      ...seatEcho(subject),
+    })
   }
 
   const context: GateChallengeContext = {

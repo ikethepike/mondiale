@@ -296,14 +296,8 @@ const gauntlet = computed(() =>
 
 const knockedOut = computed(() => !!verdict.value?.knockedOut)
 
-/**
- * A single-answer question's answer, lit and framed rather than revealed: its
- * card already carries it (MinMaxReveal ranks it, LeaderReveal shows who runs
- * it, OddOneOutReveal names the holdout), so the dossier would only repeat it
- * from on top of the card. Focus is re-aimed, never cleared: an active focus
- * suppresses moveToCountry's fly-in, and clearing it would queue a rest-view
- * tween that stomps the reveal camera.
- */
+/** Lit and framed, never `map.reveal`: the card already carries the answer. Focus is
+ *  re-aimed, never cleared — clearing queues a rest-view tween that stomps the reveal camera. */
 const markAnswer = (landed: NonNullable<typeof verdict.value>) => {
   const challenge = currentFinalChallenge.value
   const picked =

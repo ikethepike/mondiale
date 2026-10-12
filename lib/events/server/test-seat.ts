@@ -148,19 +148,6 @@ export const WITHHELD_GATES = [
     }),
   },
   {
-    name: 'landmark-quiz',
-    keys: ['country', 'landmarkSlug'],
-    answer: 'FR',
-    move: testGate({
-      id: 'landmarks',
-      variant: 'landmark-quiz',
-      country: 'FR',
-      image: '/landmarks/eiffel-tower.webp',
-      options: ['BE', 'FR', 'CH', 'LU'],
-      landmarkSlug: 'eiffel-tower',
-    }),
-  },
-  {
     name: 'rulers',
     keys: ['country'],
     answer: 'DK',
@@ -196,10 +183,10 @@ const MIN_QUESTION: FinalChallengeItem = {
 
 /** `WITHHELD_GATES` for the gauntlet's questions. */
 export const WITHHELD_FINALS = [
-  { name: 'min', keys: ['country'], item: MIN_QUESTION },
+  { name: 'min', keys: ['country', 'hints'], item: MIN_QUESTION },
   {
     name: 'max',
-    keys: ['country'],
+    keys: ['country', 'hints'],
     item: { ...MIN_QUESTION, _type: 'max-challenge', country: 'CN' },
   },
   {

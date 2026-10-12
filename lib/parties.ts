@@ -507,6 +507,9 @@ export const logoPoliticsPrompt = (
   return 'Whose party is this?'
 }
 
+/** The rulers gate's question, shared by its opening card and its stage. */
+export const RULERS_PROMPT = "One of these is not its country's ruling party"
+
 /**
  * Where a party sits on the left–right axis, as a number to SORT by — finer
  * than `Spectrum`, which exists to be quizzed and is deliberately coarse
