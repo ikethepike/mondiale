@@ -186,6 +186,18 @@ describe('bot strength realizes the difficulty dial', () => {
     async difficulty => expectOnDial(await realizedFraction(GROUND_PLAN, difficulty), difficulty)
   )
 
+  it.each(['easy', 'normal'] as const)(
+    'ground-plan option boards land near the %s share',
+    async difficulty =>
+      expectOnDial(
+        await realizedFraction(
+          { ...GROUND_PLAN, options: ['Houston', 'Chicago'], maximumGuesses: 2 },
+          difficulty
+        ),
+        difficulty
+      )
+  )
+
   it.each(['easy', 'normal', 'hard'] as const)(
     'collect-a-set rounds land near the %s share',
     async difficulty => expectOnDial(await realizedFraction(BLITZ, difficulty), difficulty)

@@ -1,7 +1,15 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { COUNTRIES } from '../data/countries.gen'
 import { ISOCountryCodes } from '../data/iso-codes.gen'
-import { ATTRIBUTION_FREE, corroborates, isPlayable } from './anthem-corroboration'
+import { ATTRIBUTION_FREE, corroborates, isInstrumental, isPlayable } from './anthem-corroboration'
+import {
+  chooseAnthems,
+  curateAnthem,
+  curatedTitle,
+  isUncuratedRawLabel,
+  pickAnthemFile,
+  type AnthemRow,
+} from './lib/anthem-selection'
 import type { ISOCountryCode } from '../types/geography.types'
 import { captureImageCredit, fetchJson, saveCommonsAudio, wait } from './vendors/wikidata/commons'
 import type { MediaCredit } from '../lib/attribution'
@@ -9,13 +17,16 @@ import type { MediaCredit } from '../lib/attribution'
 /**
  * Pulls each country's national anthem recording from Wikimedia Commons, for
  * the Opening Ceremony buzz round. Countries are found by ISO 3166-1 alpha-2
- * (P297) through one SPARQL query that also carries the anthem's title, its
- * adoption year (P571) and composer (P86) for the round's reveal dossier.
+ * (P297) through one SPARQL query that also carries the anthem's title, the
+ * year it was written (P571 inception) and its composer (P86) for the round's
+ * reveal dossier.
  *
  * Anthem audio hangs off the ANTHEM item (P51), not the country, and a country
  * can hold several anthem statements — historical ones are dropped by their
  * P582 end-time qualifier, so "God Save the King" doesn't deal for a republic
- * that left the Commonwealth.
+ * that left the Commonwealth. Of the current ones ONE anthem is chosen
+ * (`chooseAnthems`) and every field comes from it; curated titles in
+ * generators/data/anthem-titles.ts win over Wikidata's labels.
  *
  * INSTRUMENTALS ARE PREFERRED. A sung anthem leaks the country's language and
  * turns a listening round into a trivial one, so a file whose title says
@@ -40,8 +51,8 @@ export interface AnthemEntry extends MediaCredit {
   webm: string
   /** Public path of the AAC/M4A clip, for Safari. */
   m4a: string
-  /** Year the anthem was adopted, when Wikidata records one. */
-  adoptedYear?: number
+  /** Year the anthem was written: Wikidata's inception (P571), never its adoption. */
+  writtenYear?: number
   composer?: string
   /** False when only a sung recording was available — the round still deals it,
    *  but the reveal knows the language was audible. */
@@ -72,13 +83,15 @@ try {
 
 /** Current anthem statements only: P582 (end time) marks a former anthem. */
 const QUERY = `
-SELECT ?iso ?anthemLabel ?audio ?adopted ?composerLabel WHERE {
+SELECT ?iso ?anthem ?anthemLabel ?audio ?inception ?composerLabel ?kindLabel ?roleLabel WHERE {
   ?country wdt:P31 wd:Q6256 ; wdt:P297 ?iso ; p:P85 ?statement .
   ?statement ps:P85 ?anthem .
   FILTER NOT EXISTS { ?statement pq:P582 ?ended }
   OPTIONAL { ?anthem wdt:P51 ?audio }
-  OPTIONAL { ?anthem wdt:P571 ?adopted }
+  OPTIONAL { ?anthem wdt:P571 ?inception }
   OPTIONAL { ?anthem wdt:P86 ?composer }
+  OPTIONAL { ?anthem wdt:P31 ?kind }
+  OPTIONAL { ?statement pq:P3831 ?role }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
 }`
 
@@ -86,10 +99,13 @@ interface SparqlResponse {
   results: {
     bindings: {
       iso: { value: string }
+      anthem: { value: string }
       anthemLabel?: { value: string }
       audio?: { value: string }
-      adopted?: { value: string }
+      inception?: { value: string }
       composerLabel?: { value: string }
+      kindLabel?: { value: string }
+      roleLabel?: { value: string }
     }[]
   }
 }
@@ -101,8 +117,6 @@ interface SearchResponse {
 /** Commons file name out of a Special:FilePath URL. */
 const fileFromUrl = (url: string): string =>
   decodeURIComponent(url.split('/').pop() ?? '').replace(/_/g, ' ')
-
-const isInstrumental = (file: string): boolean => /instrumental|orchestr|band|organ/i.test(file)
 
 /** Last resort for the ~30 countries whose anthem item carries no P51: ask
  *  Commons directly, preferring an instrumental take. Every hit must still
@@ -136,43 +150,22 @@ if (!sparql) {
   process.exit(1)
 }
 
-/** One row per country: the best audio among its statements, plus its metadata. */
-interface Candidate {
-  title: string
-  file?: string
-  adoptedYear?: number
-  composer?: string
-}
-const candidates = new Map<ISOCountryCode, Candidate>()
+const ROYAL_ANTHEM = /\broyal anthem\b/i
 
-for (const row of sparql.results.bindings) {
-  const isoCode = row.iso.value.toUpperCase()
-  if (!validCodes.has(isoCode)) continue
-
-  const code = isoCode as ISOCountryCode
-  const title = row.anthemLabel?.value
-  // An unlabelled anthem surfaces as its Q-id; nothing to show in a reveal.
-  if (!title || /^Q\d+$/.test(title)) continue
-
-  const file = row.audio ? fileFromUrl(row.audio.value) : undefined
-  const year = row.adopted ? Number(row.adopted.value.slice(0, 4)) : undefined
-  const existing = candidates.get(code)
-
-  // Prefer an instrumental recording over whatever came first.
-  const keepFile =
-    file &&
-    isPlayable(file) &&
-    (!existing?.file || (isInstrumental(file) && !isInstrumental(existing.file)))
-      ? file
-      : existing?.file
-
-  candidates.set(code, {
-    title: existing?.title ?? title,
-    file: keepFile,
-    adoptedYear: existing?.adoptedYear ?? (Number.isFinite(year) ? year : undefined),
-    composer: existing?.composer ?? row.composerLabel?.value,
-  })
-}
+const rows: AnthemRow[] = sparql.results.bindings
+  .filter(row => validCodes.has(row.iso.value.toUpperCase()))
+  .map(row => ({
+    isoCode: row.iso.value.toUpperCase() as ISOCountryCode,
+    anthem: row.anthem.value,
+    title: row.anthemLabel?.value,
+    file: row.audio ? fileFromUrl(row.audio.value) : undefined,
+    writtenYear: row.inception ? Number(row.inception.value.slice(0, 4)) : undefined,
+    composer: row.composerLabel?.value,
+    royal: [row.kindLabel?.value, row.roleLabel?.value].some(
+      label => !!label && ROYAL_ANTHEM.test(label)
+    ),
+  }))
+const candidates = chooseAnthems(rows)
 
 console.log(`${candidates.size} countries have a current anthem on Wikidata.`)
 
@@ -182,42 +175,52 @@ const mapping: AnthemMapping = {}
 const vocalPicks: string[] = []
 const uncreditedPicks: string[] = []
 const missing: string[] = []
+const choices: string[] = []
 let index = 0
 
-for (const [isoCode, candidate] of candidates) {
+for (const [isoCode, { anthem: candidate, passedOver }] of candidates) {
   index++
   process.stdout.write(`\r  ${index}/${candidates.size} ${isoCode}          `)
 
-  let file = candidate.file
+  const title = curatedTitle(isoCode, candidate.title)
+  if (passedOver.length) {
+    const over = passedOver.map(({ title, reason }) => `${title} (${reason})`).join(', ')
+    choices.push(`${isoCode}  ${candidate.title}  over ${over}`)
+  }
+  let file = pickAnthemFile(candidate)
   const sourcedBy: AnthemEntry['sourcedBy'] = file ? 'wikidata' : 'search'
   if (!file) {
     // The country's NAME, never its ISO code: "AF national anthem" means
     // nothing to Commons and simply returns the best-ranked anthem of anyone.
-    file = await searchCommonsAudio(candidate.title, COUNTRIES[isoCode]?.name.english ?? isoCode)
+    file = await searchCommonsAudio(title, COUNTRIES[isoCode]?.name.english ?? isoCode)
     await wait(250)
   }
   if (!file) {
-    missing.push(`${isoCode}  ${candidate.title}  (no audio found)`)
+    missing.push(`${isoCode}  ${title}  (no audio found)`)
     continue
   }
 
+  // The clip on disk and the credit beside it belong to the previous run's
+  // FILE: a country whose chosen recording changed must not keep either.
+  const previous =
+    previousMapping[isoCode]?.sourceFile === file ? previousMapping[isoCode] : undefined
   const clip = await saveCommonsAudio(
     file,
     `${OUTPUT_DIRECTORY}/${isoCode}`,
     `/anthems/${isoCode}`,
     {
-      force,
+      force: force || !previous,
     }
   )
   if (!clip) {
-    missing.push(`${isoCode}  ${candidate.title}  (encode failed: ${file})`)
+    missing.push(`${isoCode}  ${title}  (encode failed: ${file})`)
     continue
   }
 
   const instrumental = isInstrumental(file)
-  if (!instrumental) vocalPicks.push(`${isoCode}  ${candidate.title}  ${file}`)
+  if (!instrumental) vocalPicks.push(`${isoCode}  ${title}  ${file}`)
 
-  const credit = await captureImageCredit(file, previousMapping[isoCode], force)
+  const credit = await captureImageCredit(file, previous, force)
   // A CC BY / BY-SA file MUST name its author to be used at all. Commons
   // sometimes carries the licence without an Artist field, and shipping that is
   // a licence breach — so the country is DROPPED rather than served uncredited.
@@ -232,12 +235,12 @@ for (const [isoCode, candidate] of candidates) {
   }
 
   mapping[isoCode] = {
-    title: candidate.title,
+    title,
     webm: clip.webm,
     m4a: clip.m4a,
     sourceFile: file,
     sourcedBy,
-    ...(candidate.adoptedYear ? { adoptedYear: candidate.adoptedYear } : {}),
+    ...(candidate.writtenYear ? { writtenYear: candidate.writtenYear } : {}),
     ...(candidate.composer ? { composer: candidate.composer } : {}),
     ...(instrumental ? { instrumental: true } : {}),
     ...credit,
@@ -247,16 +250,21 @@ for (const [isoCode, candidate] of candidates) {
 
 process.stdout.write('\r')
 
-// Merge with the previous run: fresh wins, gaps keep what an earlier run got.
+// Merge with the previous run: a fresh entry replaces the old one whole — a
+// field-by-field merge kept a stale composer under a different anthem's title —
+// and only a country this run missed keeps what an earlier run got.
 const droppedForCredit = new Set(uncreditedPicks.map(line => line.slice(0, 2)))
+const rawLabels: string[] = []
 for (const isoCode of ISOCountryCodes) {
   // A country dropped for a missing author must not walk back in off the
   // previous run — the merge would undo the licence check every time.
   if (droppedForCredit.has(isoCode)) continue
 
-  const merged = { ...previousMapping[isoCode], ...mapping[isoCode] }
-  if (merged.title && merged.webm && merged.m4a) {
-    mapping[isoCode] = { ...merged, title: merged.title, webm: merged.webm, m4a: merged.m4a }
+  const entry = mapping[isoCode] ?? previousMapping[isoCode]
+  if (!entry?.title || !entry.webm || !entry.m4a) continue
+  mapping[isoCode] = curateAnthem(isoCode, entry)
+  if (isUncuratedRawLabel(isoCode, mapping[isoCode].title)) {
+    rawLabels.push(`${isoCode}  ${mapping[isoCode].title}`)
   }
 }
 
@@ -286,6 +294,14 @@ writeFileSync(
     '',
     `NO AUDIO (${missing.length})`,
     ...missing.map(line => `  ${line}`),
+    '',
+    `CHOSEN AMONG SEVERAL (${choices.length}) — countries listing more than one current anthem.`,
+    'Every field ships from the first; check the reason each other one lost.',
+    ...choices.map(line => `  ${line}`),
+    '',
+    `DESCRIPTIVE TITLES (${rawLabels.length}) — Wikidata's label describes the anthem`,
+    'rather than naming it. Add the real title to generators/data/anthem-titles.ts.',
+    ...rawLabels.map(line => `  ${line}`),
     '',
   ].join('\n')
 )

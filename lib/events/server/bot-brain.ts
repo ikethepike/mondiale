@@ -1446,7 +1446,7 @@ export const composeClassicSubmission = async (
     }
     case 'ground-plan': {
       const plan = expectChallengeType(challenge, 'ground-plan-challenge')
-      if (hit) return { ranking: [plan.country], city: plan.city, clientScore: claim, buzzAt }
+      if (hit) return { ranking: [plan.country], cities: [plan.city], clientScore: claim, buzzAt }
       const pick = wrongPick(game, correct)
       return { ranking: pick ? [pick] : [], clientScore: 0, buzzAt }
     }
