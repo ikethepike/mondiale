@@ -233,8 +233,8 @@ import {
   GAUNTLET_LIVES,
   getFinalChallengeDetails,
   isCorrectFinalAnswer,
+  languageSpeakers,
   regionOfMapCode,
-  speaksLanguage,
   weighScalesPicks,
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
@@ -929,9 +929,8 @@ const onMapClick = (event: Event) => {
           return console.error(`Unsupported country: ${isoCode}`)
         }
 
-        for (const country of Object.values(COUNTRIES)) {
-          if (!speaksLanguage(country.isoCode, currentFinalChallenge.value.language)) continue
-          gameStore.map.highlighted.add(country.isoCode)
+        for (const speaker of languageSpeakers(currentFinalChallenge.value.language)) {
+          gameStore.map.highlighted.add(speaker)
         }
 
         const submittedAnswer = { _type: 'language-challenge', isoCode } as const

@@ -99,8 +99,8 @@ import { datasetAttribution, dedupeAttributions } from '~~/lib/attribution'
 import { speaksTongue } from '~~/lib/challenges'
 import { countryName, getCountry } from '~~/lib/country'
 import {
+  languageBounce,
   motherTongueScope,
-  speaksButOffBoard,
   tongueBuzzRule,
   tongueBuzzTally,
 } from '~~/lib/language-rounds'
@@ -132,13 +132,17 @@ const {
   // here would drift the moment the answer set grows a qualifier.
   isCorrect: (active, isoCode) => speaksTongue(active, isoCode),
   lockoutHint: name => `${name} doesn't speak it`,
-  // A speaker standing off the board is right about the world and wrong only
-  // about this round: it must not spend a lockout, and must not be broadcast
-  // to the room as a miss.
-  reject: (active, isoCode) =>
-    speaksButOffBoard(active, isoCode)
-      ? `${countryName(getCountry(isoCode))} does speak it — but this round is ${motherTongueScope(active)}`
-      : undefined,
+  // A speaker standing off the board (or a regional statute) is right about
+  // the world and wrong only about this round: it must not spend a lockout,
+  // and must not be broadcast to the room as a miss.
+  reject: (active, isoCode) => {
+    const bounce = languageBounce(active, isoCode)
+    if (!bounce) return undefined
+    const name = countryName(getCountry(isoCode))
+    return bounce === 'regional'
+      ? `${name} makes it official only regionally — not counted`
+      : `${name} does speak it — but this round is ${motherTongueScope(active)}`
+  },
   onLockoutEnd: () => guessInput.value?.focus(),
   onResolve: () => {
     const active = challenge.value

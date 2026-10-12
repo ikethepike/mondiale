@@ -4,7 +4,11 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { getRoundChallenge } from '~~/lib/challenges'
 import {
   boardSpeakers,
+  isSignLanguage,
+  languageBounce,
   speaksLanguage,
+  speaksRegionally,
+  spokenLanguages,
   tongueBuzzRule,
   tongueBuzzTally,
   motherTongueQuestion,
@@ -95,13 +99,13 @@ describe('off-board veto', () => {
   })
 
   it('credits a country on either list', () => {
-    // The two fields legitimately diverge in BOTH directions: Slovenia makes
-    // Italian official on the coast without the spoken list carrying it, and
-    // Kazakhstan speaks Russian without a statute saying so. A player who knows
-    // either must not be charged for it.
-    expect(COUNTRIES.SI?.officialLanguages).toContain('Italian')
-    expect(COUNTRIES.SI?.languages ?? []).not.toContain('Italian')
-    expect(speaksButOffBoard(challengeOf('Italian', ['IT', 'SM', 'VA'], ['europe']), 'SI')).toBe(
+    // The two fields legitimately diverge in BOTH directions: Burundi makes
+    // English official without the spoken list carrying it, and Kazakhstan
+    // speaks Russian without a statute saying so. A player who knows either
+    // must not be charged for it.
+    expect(COUNTRIES.BI?.officialLanguages).toContain('English')
+    expect(COUNTRIES.BI?.languages ?? []).not.toContain('English')
+    expect(speaksButOffBoard(challengeOf('English', ['GB', 'IE', 'MT'], ['europe']), 'BI')).toBe(
       true
     )
 
@@ -201,6 +205,53 @@ describe('the dealt round', () => {
     // And the reverse case the spoken list alone would drop: Burundi's English
     // is official there and reaches no spoken list.
     expect(boardSpeakers(ISOCountryCodes).get('English') ?? []).toContain('BI')
+  })
+
+  it('deals the speakers only a population share names', () => {
+    // A third of Ukraine, Latvia and Estonia speaks Russian, and Malaysia's
+    // Chinese fifth is larger than Singapore's whole population — none of
+    // them reached either language field, so naming one cost a point.
+    const speakers = boardSpeakers(ISOCountryCodes)
+    expect(speakers.get('Russian')).toEqual(expect.arrayContaining(['UA', 'LV', 'EE', 'MD']))
+    expect(speakers.get('Chinese')).toContain('MY')
+  })
+})
+
+describe('spoken languages', () => {
+  it('does not count an officiality confined to one region', () => {
+    // Croatian is official in Burgenland and spoken by 1.6% of Austria.
+    expect(COUNTRIES.AT.officialLanguages).toContain('Croatian')
+    expect(COUNTRIES.AT.regionalLanguages).toContain('Croatian')
+    expect(speaksLanguage('AT', 'Croatian')).toBe(false)
+    expect(speaksLanguage('SI', 'Italian')).toBe(false)
+    // A regional official the country also speaks at scale still counts.
+    expect(COUNTRIES.ES.regionalLanguages).toContain('Catalan')
+    expect(speaksLanguage('ES', 'Catalan')).toBe(true)
+  })
+
+  it('accepts a regional speaker without requiring it', () => {
+    // Naming Austria for Croatian bounces free on any board: right about a
+    // statute, never one of the answers.
+    const croatian = challengeOf('Croatian', ['BA', 'HR', 'ME'])
+    expect(speaksRegionally('AT', 'Croatian')).toBe(true)
+    expect(languageBounce(croatian, 'AT')).toBe('regional')
+    expect(languageBounce(challengeOf('Italian', ['IT', 'CH']), 'SI')).toBe('regional')
+    expect(languageBounce(croatian, 'HR')).toBeUndefined()
+    expect(languageBounce(croatian, 'FR')).toBeUndefined()
+    // Spain speaks Catalan at scale, so it is an answer, never a bounce.
+    expect(speaksRegionally('ES', 'Catalan')).toBe(false)
+    expect(languageBounce(challengeOf('French', ['FR', 'BE'], ['europe']), 'SN')).toBe('off-board')
+  })
+
+  it('never counts a sign language as spoken', () => {
+    expect(COUNTRIES.NZ.officialLanguages).toContain('New Zealand Sign Language')
+    expect(isSignLanguage('New Zealand Sign Language')).toBe(true)
+    expect(isSignLanguage('English')).toBe(false)
+    for (const isoCode of ISOCountryCodes) {
+      for (const language of spokenLanguages(isoCode)) {
+        expect(isSignLanguage(language), `${isoCode}/${language}`).toBe(false)
+      }
+    }
   })
 })
 

@@ -4,7 +4,9 @@ import { groundPlanRemainingFraction } from '~~/lib/ground-plan'
 import { sketchSubmission, sketchTarget, type OutlinePoint } from '~~/lib/outline'
 import { statDetectiveRemainingFraction, TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
 import { buzzScore, hintDockedScore } from '~~/lib/scoring'
+import type { MotherTongueChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game, Round } from '~~/types/game.types'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import type { SeatCursor } from '~~/types/seat.types'
 import { gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 
@@ -220,5 +222,36 @@ describe('sketches are scored on the server', () => {
       0
     )
     expect(await grade(sketch, { ranking: ['FR'], clientScore: MAX }, { at })).toBe(0)
+  })
+})
+
+const croatian: MotherTongueChallenge = {
+  _type: 'mother-tongue-challenge',
+  language: 'Croatian',
+  countries: ['BA', 'HR', 'ME'],
+  durationSeconds: 35,
+  maximumPoints: 3,
+}
+
+const gradeTongue = (ranking: ISOCountryCode[]) =>
+  gradeGroupAnswer({
+    game: {} as Game,
+    round: { groupChallenge: croatian, groupAnswers: {}, playerTurns: {} } as unknown as Round,
+    playerId: 'p1',
+    submission: { ranking },
+  })
+
+describe('mother tongue grading', () => {
+  it('never charges a regional speaker the view would have bounced', async () => {
+    const plain = await gradeTongue(['BA', 'HR'])
+    const withAustria = await gradeTongue(['BA', 'HR', 'AT'])
+    expect(withAustria.scoring).toEqual(plain.scoring)
+    expect(withAustria.answer.submitted).not.toContain('AT')
+  })
+
+  it('still charges a country that does not speak it', async () => {
+    const plain = await gradeTongue(['BA', 'HR'])
+    const withFrance = await gradeTongue(['BA', 'HR', 'FR'])
+    expect(withFrance.scoring.scored).toBe(plain.scoring.scored - 1)
   })
 })

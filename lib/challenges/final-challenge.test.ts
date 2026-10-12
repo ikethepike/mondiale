@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BORDERS } from '~~/data/borders.gen'
 import { CHANGES } from '~~/data/changes.gen'
 import { COUNTRIES } from '~~/data/countries.gen'
@@ -9,6 +9,7 @@ import { TREATIES } from '~~/data/treaties.gen'
 import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
+import { speaksLanguage } from '~~/lib/language-rounds'
 import { politicalLeader } from '~~/lib/leaders'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
@@ -16,6 +17,7 @@ import type {
   ChangeChallenge,
   DiasporaChallenge,
   EndonymChallenge,
+  FinalChallengeItem,
   MembershipChallenge,
   MinChallenge,
   SunsetBlitzChallenge,
@@ -38,7 +40,7 @@ import { ORGANIZATION_FACTS, OrganizationVector } from '~~/types/organization.ty
 import { TREATY_FAMILIES, TREATY_META } from '~~/types/treaty.type'
 import { resolveGlyph } from '~~/lib/stat-glyphs'
 import { MIN_STORED_EXPORTERS } from '~~/generators/data/commodity-hs-codes'
-import type { Game, GameDifficulty, GameVariant } from '~~/types/game.types'
+import { gameVariants, type Game, type GameDifficulty, type GameVariant } from '~~/types/game.types'
 import { regionsForVariant } from '~~/lib/board-regions'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import {
@@ -51,8 +53,10 @@ import {
   COLOR_CODED_REGIONS,
   changeAccepted,
   changeDecade,
+  dealFinalChallenge,
   dealReplacementChallenge,
   decisiveOrigins,
+  eligibleFinalTypes,
   exportsCommodity,
   GAUNTLET_LIVES,
   hasObviousDestination,
@@ -68,7 +72,6 @@ import {
   languageSpeakers,
   MINMAX_REVEAL_ROWS,
   regionOfMapCode,
-  speaksLanguage,
   YEARBOOK_TUNING,
   yearbookLeaksYear,
   yearbookYear,
@@ -127,6 +130,75 @@ describe('getFinalChallenges', () => {
         ]).not.toContain(challenge._type)
       }
     }
+  })
+})
+
+describe('dealFinalChallenge', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  // Boards too thin for a type that is still offered there: these must not
+  // deal, and any type missing from this list must.
+  const THIN_BOARDS: Partial<Record<GameVariant, string[]>> = {
+    'north-america': ['endonym-challenge', 'diaspora-challenge'],
+    'south-america': ['born-challenge', 'endonym-challenge'],
+  }
+
+  it('deals every eligible type on every board at every difficulty', () => {
+    const error = vi.spyOn(console, 'error')
+    for (const variant of gameVariants) {
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        const game = gameFor(variant, difficulty)
+        const pool = playableCountries(game)
+        for (const type of eligibleFinalTypes(game, pool)) {
+          if (THIN_BOARDS[variant]?.includes(type)) {
+            expect(dealFinalChallenge(type, game, pool), `${variant}/${difficulty}`).toBeUndefined()
+            continue
+          }
+          for (let attempt = 0; attempt < 5; attempt++) {
+            expect(dealFinalChallenge(type, game, pool)?._type, `${variant}/${difficulty}`).toBe(
+              type
+            )
+          }
+        }
+      }
+    }
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it('offers every type on a hard world board', () => {
+    const game = gameFor('world', 'hard')
+    const every = {
+      'region-challenge': true,
+      'leadership-challenge': true,
+      'language-challenge': true,
+      'min-challenge': true,
+      'max-challenge': true,
+      'membership-challenge': true,
+      'treaty-challenge': true,
+      'scales-challenge': true,
+      'sunset-blitz-challenge': true,
+      'born-challenge': true,
+      'made-challenge': true,
+      'city-nocturne-challenge': true,
+      'boundary-challenge': true,
+      'endonym-challenge': true,
+      'diaspora-challenge': true,
+      'yearbook-challenge': true,
+      'change-challenge': true,
+    } satisfies Record<FinalChallengeItem['_type'], true>
+    expect(new Set(eligibleFinalTypes(game, playableCountries(game)))).toEqual(
+      new Set(Object.keys(every))
+    )
+  })
+
+  it('returns undefined without logging when the board cannot support a type', () => {
+    const error = vi.spyOn(console, 'error')
+    const game = gameFor('world', 'hard')
+    for (const type of eligibleFinalTypes(game, [])) {
+      if (type === 'yearbook-challenge') continue
+      expect(dealFinalChallenge(type, game, []), type).toBeUndefined()
+    }
+    expect(error).not.toHaveBeenCalled()
   })
 })
 
@@ -1037,7 +1109,7 @@ describe('isCorrectFinalAnswer', () => {
 
   it('accepts any speaker on language questions', () => {
     const challenge = { _type: 'language-challenge', language: 'French' } as const
-    const speakers = pool.filter(isoCode => COUNTRIES[isoCode].languages.includes('French'))
+    const speakers = pool.filter(isoCode => speaksLanguage(isoCode, 'French'))
     expect(speakers.length).toBeGreaterThan(1)
     for (const isoCode of speakers.slice(0, 5)) {
       expect(
@@ -1047,11 +1119,50 @@ describe('isCorrectFinalAnswer', () => {
         })
       ).toBe(true)
     }
-    const nonSpeaker = pool.find(isoCode => !COUNTRIES[isoCode].languages.includes('French'))!
+    const nonSpeaker = pool.find(isoCode => !speaksLanguage(isoCode, 'French'))!
     expect(
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'language-challenge', isoCode: nonSpeaker },
+      })
+    ).toBe(false)
+  })
+
+  it('accepts a country whose language is official but missing from the spoken list', () => {
+    // "Speaks English" is dealt from anywhere; Burundi makes it official, and
+    // the spoken list alone graded Burundi wrong and left it off the reveal.
+    for (const [language, isoCode] of [
+      ['Guarani', 'BO'],
+      ['Swahili', 'RW'],
+      ['English', 'BI'],
+      ['Portuguese', 'GQ'],
+    ] as const) {
+      expect(COUNTRIES[isoCode].languages, `${language}/${isoCode}`).not.toContain(language)
+      const challenge = { _type: 'language-challenge', language } as const
+      expect(
+        isCorrectFinalAnswer({
+          challenge,
+          submittedAnswer: { _type: 'language-challenge', isoCode },
+        }),
+        `${language}/${isoCode}`
+      ).toBe(true)
+      expect(languageSpeakers(language), `${language}/${isoCode}`).toContain(isoCode)
+    }
+  })
+
+  it('accepts a regional speaker without listing it among the speakers', () => {
+    const challenge = { _type: 'language-challenge', language: 'Croatian' } as const
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: 'AT' },
+      })
+    ).toBe(true)
+    expect(languageSpeakers('Croatian')).not.toContain('AT')
+    expect(
+      isCorrectFinalAnswer({
+        challenge,
+        submittedAnswer: { _type: 'language-challenge', isoCode: 'FR' },
       })
     ).toBe(false)
   })

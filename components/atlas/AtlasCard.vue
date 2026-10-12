@@ -95,6 +95,7 @@ import { BORDERS } from '~~/data/borders.gen'
 import { ATLAS_SECTIONS, atlasFact, atlasSectionAttributions, type AtlasFact } from '~~/lib/atlas'
 import { datasetAttribution, mediaCreditLine } from '~~/lib/attribution'
 import { countryName, primaryCoordinates } from '~~/lib/country'
+import { spokenLanguages } from '~~/lib/language-rounds'
 import { leaderTitle, politicalLeader } from '~~/lib/leaders'
 import { REGION_LABELS } from '~~/lib/variant'
 import { isValidISOCode, type Country, type ISOCountryCode } from '~~/types/geography.types'
@@ -102,7 +103,7 @@ import { isValidISOCode, type Country, type ISOCountryCode } from '~~/types/geog
 const props = defineProps<{ country: Country }>()
 const emit = defineEmits<{ close: []; select: [iso: ISOCountryCode] }>()
 
-const languages = computed(() => props.country.languages?.slice(0, 4).join(', '))
+const languages = computed(() => [...spokenLanguages(props.country.isoCode)].slice(0, 4).join(', '))
 
 const coordinates = computed(() => primaryCoordinates(props.country))
 

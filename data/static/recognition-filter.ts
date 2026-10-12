@@ -26,12 +26,22 @@ export const SELF_ADMIN_PREDICATE = /^Self admin\./i
  * should not deal them as trivia.
  *
  * Keyed by NE's BRK_NAME. Naming two exclusions is a smaller editorial act
- * than hand-picking the other eight.
+ * than hand-picking the rest.
  */
 export const EXCLUDED_TERRITORIES = new Set([
   "Donetsk People's Republic",
   "Luhansk People's Republic",
 ])
+
+/**
+ * States that have ceased to exist, with the year they did. NE v5.1.2 still
+ * marks them "Self admin.", so the predicate alone would deal a dissolved
+ * republic as one that governs itself today. Keyed by NE's BRK_NAME.
+ */
+export const DISSOLVED_TERRITORIES: Record<string, number> = {
+  // Dissolved 1 January 2024, after nearly its whole population left in 2023.
+  Artsakh: 2024,
+}
 
 /**
  * Cast B — "No Man's Land". Uninhabited, not self-administering, and every

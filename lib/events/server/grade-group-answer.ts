@@ -1,6 +1,7 @@
 import {
   attemptPicksScore,
   getCorrectRanking,
+  ghostStateAnswers,
   isFlagPaletteMatch,
   isTwoTruthsLie,
   scoreChallengeSubmission,
@@ -31,6 +32,7 @@ import {
   statDetectiveRemainingFraction,
   TIMEOUT_SLACK_MS,
 } from '~~/lib/round-beats'
+import { languageBounce } from '~~/lib/language-rounds'
 import { expectChallengeType } from '~~/lib/rounds'
 import { blitzScore, buzzScore, clampScore, hintDockedScore, pairFraction } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
@@ -262,7 +264,11 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'mother-tongue': {
-      blitzOn(expectChallengeType(roundChallenge, 'mother-tongue-challenge'))
+      const challenge = expectChallengeType(roundChallenge, 'mother-tongue-challenge')
+      blitzOn(
+        challenge,
+        submission.ranking.filter(isoCode => !languageBounce(challenge, isoCode))
+      )
       break
     }
     case 'flag-palette': {
@@ -354,7 +360,9 @@ export const gradeGroupAnswer = async ({
     }
     case 'ghost-state': {
       const challenge = expectChallengeType(roundChallenge, 'ghost-state-challenge')
-      answer = { submitted: submission.ranking, correct: [challenge.parent] }
+      const { RECOGNITION_TERRITORIES } = await import('~~/data/recognition.gen')
+      const territory = RECOGNITION_TERRITORIES[challenge.territoryId]
+      answer = { submitted: submission.ranking, correct: ghostStateAnswers(challenge, territory) }
       scoring = await scoreGhostState({ challenge, submittedGuesses: submission.ranking })
       break
     }

@@ -121,7 +121,7 @@ const realizedFraction = async (
  * a bot claiming the whole pot slips through.
  *
  * `headroom` widens the ceiling for the kinds that pay a near miss — ghost
- * state tapers on distance from the parent, trend race on how far down the
+ * state tapers on distance from the place, trend race on how far down the
  * standings the pick sat — so a bot that misses its roll still banks something
  * and the realized mean sits legitimately above the dial. The floor stays
  * tight; it is the ceiling that has to make room for partial credit.

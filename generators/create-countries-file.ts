@@ -50,7 +50,14 @@ import {
 import type { FactbookRegion } from '~~/types/vendor/factbook/factbook-types.gen'
 import { successfulCombinations } from './link-mapping.gen'
 import { jsonParseLiteral } from './lib/emit'
-import { officialLanguages } from './lib/languages'
+import {
+  canonicalLanguage,
+  isWidelySpoken,
+  officialLanguages,
+  regionalOfficialLanguages,
+  widelySpokenLanguages,
+} from './lib/languages'
+import { SPOKEN_LANGUAGE_SHARES } from '~~/data/static/spoken-language-shares'
 
 const ISO_CODE_FILE = `data/iso-codes.gen.ts`
 const COUNTRIES_FILE = `data/countries.gen.ts`
@@ -164,6 +171,12 @@ const normalizeCountry = ({
   // data/flags.gen.ts (create-flags-file.ts), lazy-loaded via lib/country.ts.
   const flag = readFileSync(`data/static/flags/${isoCode.toLowerCase()}.svg`)
 
+  // Factbook nests the headline figure under Population.total; the bare
+  // Population node has no .text of its own (it drifted from a flat node).
+  const population =
+    wppAmount<'people'>(isoCode, 'population', 'people') ??
+    getTextNode<'people'>(data['People and Society'].Population?.total, 'people')
+
   return {
     url,
     name: names,
@@ -171,8 +184,9 @@ const normalizeCountry = ({
     coordinates: data.Geography['Geographic coordinates']?.text || '',
     region: getRegion({ data, isoCode }),
     membership: getMembership({ briMembership, data, names, isoCode }),
-    languages: getLanguages({ data, isoCode }),
+    languages: getLanguages({ data, isoCode, population: population?.amount }),
     officialLanguages: getOfficialLanguages({ data, isoCode }),
+    regionalLanguages: getRegionalLanguages(data),
     currency: getCurrency({ isoCode }),
     identity: (() => {
       const colors = getNationalColors(flag.toString())
@@ -345,11 +359,7 @@ const normalizeCountry = ({
       childrenPerWoman:
         wppAmount(isoCode, 'childrenPerWoman', 'children') ??
         getTextNode<'children'>(data['People and Society']['Total fertility rate'], 'children'),
-      // Factbook nests the headline figure under Population.total; the bare
-      // Population node has no .text of its own (it drifted from a flat node).
-      population:
-        wppAmount(isoCode, 'population', 'people') ??
-        getTextNode<'people'>(data['People and Society'].Population?.total, 'people'),
+      population,
       populationGrowthRate:
         wppAmount(isoCode, 'populationGrowthRate', '%') ??
         getTextNode<'%'>(data['People and Society']['Population growth rate'], '%'),
@@ -1058,29 +1068,60 @@ const getLeader = ({
   return ciaLeader.name
 }
 
-const getLanguages = ({ isoCode }: { data: FactbookResponse; isoCode: string }): string[] => {
+const getListedLanguages = ({ isoCode }: { isoCode: string }): string[] => {
   if (Reflect.has(countries, isoCode)) {
     const country = countries[isoCode as keyof typeof countries]
 
     return country.languages.map(languageCode => {
-      return Reflect.get(languages, languageCode).name
+      return canonicalLanguage(Reflect.get(languages, languageCode).name)
     })
   }
 
   return []
 }
 
+const factbookLanguageText = (data: FactbookResponse): string | undefined => {
+  const languagesNode = data['People and Society']?.Languages
+  return languagesNode?.Languages?.text ?? languagesNode?.text
+}
+
+/**
+ * Every language the country speaks: the `countries-list` codes, plus each
+ * language `isWidelySpoken` admits — sized by the prose's own share or, where
+ * the prose cannot size it, by `SPOKEN_LANGUAGE_SHARES`.
+ */
+const getLanguages = ({
+  data,
+  isoCode,
+  population,
+}: {
+  data: FactbookResponse
+  isoCode: string
+  population: number | undefined
+}): string[] => {
+  const sized = (SPOKEN_LANGUAGE_SHARES[isoCode] ?? [])
+    .filter(({ share }) => isWidelySpoken(share, population))
+    .map(({ language }) => language)
+  return [
+    ...new Set([
+      ...getListedLanguages({ isoCode }),
+      ...widelySpokenLanguages(factbookLanguageText(data), population),
+      ...sized,
+    ]),
+  ]
+}
+
 /**
  * The languages a country makes OFFICIAL, from the Factbook's own markers.
  *
- * `getLanguages` above reads `countries-list`, which is ISO 639-1 codes with
+ * `getListedLanguages` above reads `countries-list`, which is ISO 639-1 codes with
  * no officiality and no room for a language without a two-letter code —
  * Romansh, Tok Pisin and Bambara simply cannot be spelled there. The Factbook
  * text we already hold says which are official, so rounds that CLAIM
  * officiality ("Who speaks French?", the manhunt's subpoena) can stop guessing.
  *
- * Falls back to the spoken list for the 21 countries whose entry carries no
- * marker at all (Japan, the UK, India…): the source not saying is not the same
+ * Falls back to the `countries-list` codes for the 21 countries whose entry
+ * carries no marker at all (Japan, the UK, India…): the source not saying is not the same
  * as a country having none, and an empty list would quietly drop them from
  * every round that reads this.
  */
@@ -1091,10 +1132,13 @@ const getOfficialLanguages = ({
   data: FactbookResponse
   isoCode: string
 }): string[] => {
-  const languagesNode = data['People and Society']?.Languages
-  const text = languagesNode?.Languages?.text ?? languagesNode?.text
-  const official = officialLanguages(text)
-  return official.length ? official : getLanguages({ data, isoCode })
+  const official = officialLanguages(factbookLanguageText(data))
+  return official.length ? official : getListedLanguages({ isoCode })
+}
+
+const getRegionalLanguages = (data: FactbookResponse): string[] | undefined => {
+  const regional = regionalOfficialLanguages(factbookLanguageText(data))
+  return regional.length ? regional : undefined
 }
 
 /**

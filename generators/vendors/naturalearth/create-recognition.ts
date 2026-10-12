@@ -30,11 +30,13 @@ import { geoRobinson } from 'd3-geo-projection'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import { COUNTRIES } from '../../../data/countries.gen'
 import { ISOCountryCodes } from '../../../data/iso-codes.gen'
-import { MAP_PROJECTION } from '../../../data/map.gen'
+import { MAP_BOUNDS, MAP_PROJECTION, type MapCode } from '../../../data/map.gen'
+import { boxOverlap } from '../../../lib/geo'
 import { RECOGNITION_CORRECTIONS } from '../../../data/static/recognition-corrections'
 import {
   CAST_B_ARMISTICE_EXCLUSIONS,
   CAST_B_TONAL_EXCLUSIONS,
+  DISSOLVED_TERRITORIES,
   EXCLUDED_TERRITORIES,
   SELF_ADMIN_PREDICATE,
   TERRA_NULLIUS,
@@ -58,6 +60,15 @@ const DECIMATE_UNITS = 0.35
  */
 const MICRO_FOOTPRINT = 1.5
 
+/** A territory drawn inside its claimant also overlaps the claimant's box,
+ *  only less, so the match must be near-exact. */
+const OWN_SHAPE_OVERLAP = 0.8
+
+export const ownMapShape = (bounds: [number, number, number, number]): MapCode | undefined =>
+  (Object.keys(MAP_BOUNDS) as MapCode[]).find(
+    code => boxOverlap(MAP_BOUNDS[code], bounds) >= OWN_SHAPE_OVERLAP
+  )
+
 type Point = [number, number]
 
 export type RecognitionAssignment = ISOCountryCode | 'SELF' | 'NONE'
@@ -79,6 +90,8 @@ export interface RecognitionTerritory {
    * Rockall spans ~300m. The View renders a marker here, not the outline.
    */
   micro?: { x: number; y: number }
+  /** Set when the map draws it as a shape of its own (Taiwan, Western Sahara). */
+  mapCode?: MapCode
   /** Verbatim NE status line: "Self admin.; Claimed by Georgia". Reveal copy. */
   status: string
   /** Ghost States: the state that claims it — the answer to "where is this?". */
@@ -291,7 +304,7 @@ const parseNote = (note: string) => {
  *     → Abkhazia and South Ossetia: RU alone, of the 33 POVs. (In the wider
  *       world four more UN members recognize them — Nicaragua 2008, Venezuela
  *       2009, Nauru 2009, Syria 2018 — but none is a POV column here.)
- *     → Transnistria and Artsakh: nobody. Moscow keeps ~1,500 troops in
+ *     → Transnistria: nobody. Moscow keeps ~1,500 troops in
  *       Transnistria guarding the Cobasna depot and still draws it inside
  *       Moldova; it never extended the August 2008 Abkhazia / South Ossetia
  *       recognition here. Control and recognition are not the same thing, and
@@ -475,6 +488,12 @@ const main = async () => {
     const selfAdmin = SELF_ADMIN_PREDICATE.test(note)
     const uninhabited = pop === undefined || pop === 0
 
+    const dissolved = DISSOLVED_TERRITORIES[name]
+    if (dissolved !== undefined) {
+      rejected.push([name, `excluded: dissolved ${dissolved}`])
+      continue
+    }
+
     let cast: RecognitionCast
     if (selfAdmin) {
       if (EXCLUDED_TERRITORIES.has(name)) {
@@ -583,6 +602,7 @@ const main = async () => {
 
     seen.add(name)
     const bounds = boundsOf(rings)
+    const mapCode = ownMapShape(bounds)
     territories[id] = {
       id,
       name,
@@ -594,6 +614,7 @@ const main = async () => {
             micro: { x: roundTo(bounds[0] + bounds[2] / 2), y: roundTo(bounds[1] + bounds[3] / 2) },
           }
         : {}),
+      ...(mapCode ? { mapCode } : {}),
       status: note,
       ...(parent ? { parent } : {}),
       // Answer set for No Man's Land: whoever holds it, plus whoever wants it.
@@ -620,7 +641,7 @@ const main = async () => {
     if (!condition) throw new Error(`recognition invariant broken: ${message}`)
   }
 
-  assert(ghostStates.length === 8, `expected 8 ghost states, got ${ghostStates.length}`)
+  assert(ghostStates.length === 7, `expected 7 ghost states, got ${ghostStates.length}`)
   for (const banned of ['Gaza', 'East Jerusalem', 'West Bank', 'Mount Scopus', 'Shebaa Farms'])
     assert(
       !Object.values(territories).some(t => t.name.includes(banned)),
@@ -661,13 +682,13 @@ const main = async () => {
   assert(recognizers(byId('south-ossetia')).join() === 'RU', 'S. Ossetia: Russia alone')
 
   // Moscow recognized Abkhazia and South Ossetia in August 2008 and never
-  // extended it to Transnistria, where it still keeps troops. Artsakh likewise.
+  // extended it to Transnistria, where it still keeps troops.
   assert(recognizers(byId('transnistria')).length === 0, 'Transnistria: nobody, not even Russia')
-  assert(recognizers(byId('artsakh')).length === 0, 'Artsakh: nobody; Russia only hedges')
-  assert(
-    byId('artsakh').povs.RU?.fclass === 'breakaway',
-    'Artsakh: Russia hedges, never recognizes'
-  )
+  for (const name of Object.keys(DISSOLVED_TERRITORIES))
+    assert(
+      !Object.values(territories).some(t => t.name === name),
+      `${name}: dissolved, still dealt`
+    )
 
   // The cartographic column tells a different story, and must stay separable.
   assert(drawnApart(byId('abkhazia')).includes('US'), 'Abkhazia: the US draws it apart…')
@@ -676,6 +697,13 @@ const main = async () => {
   assert(
     recognizers(byId('taiwan')).length <= 1,
     'Taiwan: NE records almost no explicit recognition'
+  )
+
+  assert(byId('taiwan').mapCode === 'TW', 'Taiwan: the map draws it as TW')
+  assert(byId('w-sahara').mapCode === 'EH', 'W. Sahara: the map draws it as EH')
+  assert(
+    ghostStates.filter(t => t.mapCode).length === 2,
+    'only Taiwan and W. Sahara have shapes of their own'
   )
 
   // The US alone refuses to call N. Cyprus "unrecognized".
@@ -704,6 +732,7 @@ const main = async () => {
 // Source: Natural Earth 1:10m admin_0_disputed_areas (${NE_TAG}, public domain),
 // projected with the map's fitted Robinson (see data/map.gen.ts).
 // POV matrix corrected by data/static/recognition-corrections.ts.
+import type { MapCode } from '~~/data/map.gen'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 export type RecognitionAssignment = ISOCountryCode | 'SELF' | 'NONE'
@@ -720,6 +749,8 @@ export interface RecognitionTerritory {
   bounds: [number, number, number, number]
   /** Set when too small to draw (Rockall spans ~300m): render a marker here. */
   micro?: { x: number; y: number }
+  /** Set when the map draws it as a shape of its own (Taiwan, Western Sahara). */
+  mapCode?: MapCode
   /** Verbatim NE status line: "Self admin.; Claimed by Georgia". */
   status: string
   /** Ghost States: the state that claims it. */
@@ -787,4 +818,4 @@ export const RECOGNITION_FLAGS: Record<string, string> = ${JSON.stringify(flags)
   )
 }
 
-await main()
+if (import.meta.main) await main()

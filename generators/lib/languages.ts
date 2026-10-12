@@ -1,5 +1,6 @@
 /**
- * The Factbook's language prose → the official languages it names.
+ * The Factbook's language prose → the official languages it names, and the
+ * languages it puts a large enough share of the population behind.
  *
  * The pure half of the countries generator's language step, here rather than
  * beside it because `create-countries-file.ts` runs its whole fetch at import
@@ -20,6 +21,7 @@
  * list for those, which is why this returns an empty array rather than
  * guessing.
  */
+import { languages } from 'countries-list'
 
 /** Buckets that are not a language, and the trailing "(2019 est.)" tail. */
 const NOT_A_LANGUAGE =
@@ -57,15 +59,17 @@ export const splitLanguageSegments = (text: string): string[] => {
   return segments.map(segment => segment.trim()).filter(Boolean)
 }
 
+// Innermost-first, so nested dialect lists (Algeria's "Tamazight (official)
+// (dialects include Kabyle (Taqbaylit), …)") leave no orphaned bracket behind.
+const withoutParentheticals = (segment: string): string =>
+  segment
+    .replace(/\(([^()]*)\)/g, ' ')
+    .replace(/\(([^()]*)\)/g, ' ')
+    .replace(/\(([^()]*)\)/g, ' ')
+
 /** The language a segment names, shorn of parentheticals, shares and tails. */
 const segmentName = (segment: string): string =>
-  segment
-    // Drop parentheticals innermost-first, so nested dialect lists (Algeria's
-    // "Tamazight (official) (dialects include Kabyle (Taqbaylit), …)") leave
-    // no orphaned bracket behind.
-    .replace(/\(([^()]*)\)/g, ' ')
-    .replace(/\(([^()]*)\)/g, ' ')
-    .replace(/\(([^()]*)\)/g, ' ')
+  withoutParentheticals(segment)
     // An unbalanced tail is a truncated source string (Spain's "Aranese
     // (official" runs off the end) — everything from the bracket is noise.
     .replace(/[()].*$/, '')
@@ -87,7 +91,7 @@ const segmentName = (segment: string): string =>
     .trim()
 
 /**
- * Factbook spellings → the spelling the rest of the game already uses.
+ * Source spellings (Factbook and countries-list) → the spelling the rest of the game already uses.
  *
  * This maps TOWARDS the existing names even where the Factbook's are better
  * ("Rwandi" is really Kinyarwanda, "Cambodian" is Khmer): four tables key off
@@ -96,7 +100,7 @@ const segmentName = (segment: string): string =>
  * clips and answer sets. Correcting the spellings themselves means moving all
  * four together, which is its own job.
  */
-export const LANGUAGE_ALIASES: { [factbookName: string]: string } = {
+export const LANGUAGE_ALIASES: { [sourceName: string]: string } = {
   Bangla: 'Bengali',
   'Bahasa Indonesia': 'Indonesian',
   'Bahasa Malaysia': 'Malay',
@@ -122,10 +126,21 @@ export const LANGUAGE_ALIASES: { [factbookName: string]: string } = {
   Venda: 'Venda',
   Tsonga: 'Tsonga',
   Swati: 'Swati',
+  siSwati: 'Swati',
   Ndebele: 'South Ndebele',
   Xhosa: 'Xhosa',
   Zulu: 'Zulu',
-  Somali: 'Somalia',
+  Tigrigna: 'Tigrinya',
+  iTaukei: 'Fijian',
+  Aranese: 'Occitan',
+  // countries-list's own name for ISO 639-1 "so": the country, not the language.
+  Somalia: 'Somali',
+  Azeri: 'Azerbaijani',
+  Castilian: 'Spanish',
+  // countries-list's names for ISO 639-1 "pa" and "or": no table keyed them
+  // before, so the current spellings break none.
+  'Panjabi / Punjabi': 'Punjabi',
+  Oriya: 'Odia',
   Bokmal: 'Norwegian',
   'Bokmal Norwegian': 'Norwegian',
   'Nynorsk Norwegian': 'Norwegian',
@@ -142,20 +157,37 @@ const NOT_TYPEABLE = new Set(['Khoe', 'Khoisan', 'Kiunguja'])
 export const canonicalLanguage = (name: string): string => LANGUAGE_ALIASES[name] ?? name
 
 /**
- * Every language the text marks official, in the order the source lists them
- * — that order is meaningful (Burundi leads with Kirundi, not French).
- * Empty when the source marks none.
+ * A segment's own name in the game's spelling, or undefined when it names a
+ * bucket rather than a language anyone could type.
  */
-export const officialLanguages = (text: string | undefined): string[] => {
+const typeableLanguage = (segment: string): string | undefined => {
+  let name = segmentName(segment)
+  // "Tamazight languages" is Tamazight; "Khoe languages" and "13 minority
+  // languages" are buckets with no single name to type.
+  if (A_GROUP_NOT_A_LANGUAGE.test(name)) {
+    const head = name.replace(A_GROUP_NOT_A_LANGUAGE, '').trim()
+    if (!head || head.split(/\s+/).length > 1) return undefined
+    name = head
+  }
+  if (!name || NOT_A_LANGUAGE.test(name) || NOT_TYPEABLE.has(name)) return undefined
+  return canonicalLanguage(name)
+}
+
+/** "(official in Burgenland)", "(official regional working language)",
+ *  "(official, only in municipalities where Italian nationals reside)". */
+const REGIONAL_MARK = /\bofficial\s+in\b|\bregional\b|\bonly\s+in\b/i
+
+/** Each official the text names, with whether its officiality is only regional. */
+const officialEntries = (text: string | undefined): { language: string; regional: boolean }[] => {
   if (!text) return []
-  const found: string[] = []
+  const found: { language: string; regional: boolean }[] = []
 
   for (const segment of splitLanguageSegments(text)) {
     // A bucket like "other (includes … Portuguese (official) …)" is not itself
     // official, but it can hide officials inside. Recurse before rejecting it.
     const nested = segment.match(/\(\s*includes\s+([\s\S]*)\)\s*[\d.,%<>\s]*$/i)?.[1]
     if (nested) {
-      found.push(...officialLanguages(nested))
+      found.push(...officialEntries(nested))
       continue
     }
 
@@ -168,19 +200,102 @@ export const officialLanguages = (text: string | undefined): string[] => {
     const parts = marks && marks.length > 1 ? segment.split(/\s+and\s+/i) : [segment]
 
     for (const part of parts) {
-      if (!OFFICIAL_MARK.test(part)) continue
-      let name = segmentName(part)
-      // "Tamazight languages" is Tamazight; "Khoe languages" and "13 minority
-      // languages" are buckets with no single name to type.
-      if (A_GROUP_NOT_A_LANGUAGE.test(name)) {
-        const head = name.replace(A_GROUP_NOT_A_LANGUAGE, '').trim()
-        if (!head || head.split(/\s+/).length > 1) continue
-        name = head
-      }
-      if (!name || NOT_A_LANGUAGE.test(name) || NOT_TYPEABLE.has(name)) continue
-      found.push(canonicalLanguage(name))
+      const mark = part.match(OFFICIAL_MARK)?.[0]
+      if (!mark) continue
+      const language = typeableLanguage(part)
+      if (language) found.push({ language, regional: REGIONAL_MARK.test(mark) })
     }
   }
 
+  return found
+}
+
+/**
+ * Every language the text marks official, in the order the source lists them
+ * — that order is meaningful (Burundi leads with Kirundi, not French).
+ * Empty when the source marks none.
+ */
+export const officialLanguages = (text: string | undefined): string[] => [
+  ...new Set(officialEntries(text).map(({ language }) => language)),
+]
+
+/**
+ * The officials whose status is only regional — Croatian in Burgenland,
+ * Frisian in Fryslân, Italian in Slovenia's coastal municipalities. A subset of
+ * `officialLanguages`, flagged so "speaks" can tell a statute for one province
+ * from a language the country speaks.
+ */
+export const regionalOfficialLanguages = (text: string | undefined): string[] => {
+  const entries = officialEntries(text)
+  const national = new Set(
+    entries.filter(({ regional }) => !regional).map(({ language }) => language)
+  )
+  return [
+    ...new Set(
+      entries
+        .filter(({ regional, language }) => regional && !national.has(language))
+        .map(({ language }) => language)
+    ),
+  ]
+}
+
+/** The share of the population a language is spoken by, in percent. */
+export const SPOKEN_SHARE_THRESHOLD = 5
+
+/** Or the head count, where a share undersells a huge country: India's 2.7%
+ *  Punjabi is more speakers than Pakistan's 38.8% of a smaller one. */
+export const SPOKEN_POPULATION_FLOOR = 20_000_000
+
+/**
+ * Past this the shares are a can-speak survey, not a first-language census —
+ * Hungary's "English 25.3%, German 12.6%" is schooling, not a community.
+ */
+const FIRST_LANGUAGE_TALLY_MAX = 102
+
+/** Names the prose uses for a different language than the game's own: Zambia's
+ *  Tonga is not Tongan, and a bare "Creole" is Mauritian or Belizean as often
+ *  as it is Haitian. */
+const NOT_THE_SAME_LANGUAGE = new Set(['Creole', 'Tonga'])
+
+/** Every ISO 639-1 language, in the game's spelling — the languages a share
+ *  may add. The prose's long tail (Mossi, Bisaya, Oshiwambo) stays out. */
+export const ISO_LANGUAGE_NAMES: ReadonlySet<string> = new Set(
+  Object.values(languages).map(({ name }) => canonicalLanguage(name))
+)
+
+/** A segment's own share ("Russian 29.6%"), never one quoted inside its parentheticals. */
+const segmentShare = (segment: string): number | undefined => {
+  const share = withoutParentheticals(segment).match(/(\d[\d.,]*)\s*%/)?.[1]
+  return share === undefined ? undefined : Number.parseFloat(share.replace(/,/g, ''))
+}
+
+/** Is this share of this population enough to call the language spoken there? */
+export const isWidelySpoken = (share: number, population: number | undefined): boolean =>
+  share >= SPOKEN_SHARE_THRESHOLD || (share / 100) * (population ?? 0) >= SPOKEN_POPULATION_FLOOR
+
+/**
+ * Every language a first-language tally puts past `isWidelySpoken` — Ukraine's,
+ * Latvia's and Estonia's Russian, which no other source carries. Empty for a
+ * can-speak survey and for the half of the corpus that states no shares at all.
+ */
+export const widelySpokenLanguages = (
+  text: string | undefined,
+  population: number | undefined
+): string[] => {
+  if (!text) return []
+  const segments = splitLanguageSegments(text).map(segment => ({
+    segment,
+    share: segmentShare(segment),
+  }))
+  const tally = segments.reduce((sum, { share }) => sum + (share ?? 0), 0)
+  if (tally > FIRST_LANGUAGE_TALLY_MAX) return []
+
+  const found: string[] = []
+  for (const { segment, share } of segments) {
+    if (share === undefined || !isWidelySpoken(share, population)) continue
+    if (NOT_THE_SAME_LANGUAGE.has(segmentName(segment))) continue
+    const language = typeableLanguage(segment)
+    if (language && ISO_LANGUAGE_NAMES.has(language)) found.push(language)
+  }
   return [...new Set(found)]
 }

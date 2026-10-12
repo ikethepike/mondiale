@@ -28,19 +28,30 @@ type LanguageRound = Pick<MotherTongueChallenge | TongueBuzzChallenge, 'language
   countries: ISOCountryCode[]
 }
 
+/** Signed, not spoken — no "Who speaks X?" question may name one. */
+export const isSignLanguage = (language: string): boolean => /\bsign language$/i.test(language)
+
 /**
- * Every language a country speaks — the UNION of the two language fields, and
- * the one derivation everything else here is built from.
+ * Every language a country speaks — its national officials and its spoken
+ * list, and the one derivation everything else here is built from.
  *
  * Neither field alone is the answer: officiality misses Kazakhstan's and
- * Uzbekistan's Russian and every other language the Factbook files as spoken
+ * Ukraine's Russian and every other language the Factbook files as spoken
  * rather than official (naming one used to cost a point for knowing the
- * world), and the spoken list misses Burundi's English and Slovenia's coastal
- * Italian, which never reach it.
+ * world), and the spoken list misses Burundi's English, which never reaches
+ * it. An official status confined to one province is not "speaks": Austria
+ * makes Croatian official in Burgenland, where 1.6% of the country speaks it,
+ * and "Who speaks Croatian?" must not make Austria a required answer.
  */
 export const spokenLanguages = (isoCode: ISOCountryCode): Set<string> => {
   const country = COUNTRIES[isoCode]
-  return new Set([...(country?.officialLanguages ?? []), ...(country?.languages ?? [])])
+  const regional = new Set(country?.regionalLanguages)
+  return new Set(
+    [
+      ...(country?.officialLanguages ?? []).filter(language => !regional.has(language)),
+      ...(country?.languages ?? []),
+    ].filter(language => !isSignLanguage(language))
+  )
 }
 
 /** Does this country speak the language at all? The rounds ask "Who speaks
@@ -125,4 +136,30 @@ export const speaksButOffBoard = (
   // The same predicate the board was dealt with, so the veto is exactly "this
   // speaker is standing somewhere else" — never a second opinion on who speaks.
   return speaksLanguage(isoCode, challenge.language)
+}
+
+/** Does the country make the language official only in a region, without speaking it at scale? */
+export const speaksRegionally = (isoCode: ISOCountryCode, language: string): boolean =>
+  !speaksLanguage(isoCode, language) &&
+  (COUNTRIES[isoCode]?.regionalLanguages ?? []).includes(language)
+
+/** May a single-answer question accept this country for the language? Every
+ *  speaker, plus a regional statute — accepted, never required. */
+export const acceptsSpeaker = (isoCode: ISOCountryCode, language: string): boolean =>
+  speaksLanguage(isoCode, language) || speaksRegionally(isoCode, language)
+
+/**
+ * Why a guess outside the answer set bounces free instead of costing a point:
+ * the speaker stands off the board, or names a regional statute (Austria's
+ * Croatian) — accepted, never required. The ONE predicate both language rounds'
+ * views and the server's grading read, so a bounced guess is never charged.
+ */
+export const languageBounce = (
+  challenge: LanguageRound | undefined,
+  isoCode: ISOCountryCode
+): 'off-board' | 'regional' | undefined => {
+  if (!challenge || challenge.countries.includes(isoCode)) return undefined
+  if (speaksButOffBoard(challenge, isoCode)) return 'off-board'
+  if (speaksRegionally(isoCode, challenge.language)) return 'regional'
+  return undefined
 }

@@ -9,6 +9,7 @@ import { TONGUES } from '~~/data/tongues.gen'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 // Type-only: erased at compile, so the heavy water dataset stays a dynamic import.
 import type { WaterFeature } from '~~/data/water.gen'
+import type { RecognitionTerritory } from '~~/data/recognition.gen'
 import { FAR_FLUNG } from '~~/data/far-flung.gen'
 import { currencyNamesASpender, moneyHero } from '~~/lib/currency'
 import {
@@ -20,7 +21,7 @@ import {
 } from '~~/lib/clean-sweep'
 import { chronicleCountries, dealChronicleEvents } from '~~/lib/chronicle'
 import { flagsIndistinguishable, hexToRgb, sameSimplifiedPalette } from '~~/lib/palette'
-import { curatedPlaces, dealableHeritage, dealableLandmarks } from '~~/lib/places'
+import { dealableHeritage, dealableLandmarks } from '~~/lib/places'
 import { SCRIPTORIUM_POOL, scriptoriumAnswers } from '~~/lib/scriptorium'
 import {
   ANSWER_SHAPE_BY_KIND,
@@ -134,7 +135,7 @@ import {
 } from './game-rules'
 import { pickChainSeed } from './chain'
 import { flagSwatches } from './audio-palette'
-import { boardSpeakers } from './language-rounds'
+import { acceptsSpeaker, boardSpeakers } from './language-rounds'
 import { seededTongueSample } from './tongue-samples'
 import {
   initialManhuntCandidates,
@@ -152,7 +153,7 @@ import {
   terraSeconds,
   TERRA_CADENCE_MS,
 } from './terra-incognita'
-import { haversineKm, isLabelableBox, labelBoxFor, mainlandBox, type LatLng } from './geo'
+import { haversineKm, isLabelableBox, labelBoxFor, pointBoxGap, type LatLng } from './geo'
 import { parsePolygons, polylineLength } from './outline'
 import { chainContenders } from './player'
 import { pickRoundKind, ROUND_WEIGHTS } from './round-mix'
@@ -1713,7 +1714,7 @@ const recognitionPool = async (cast: 'ghost-state' | 'no-mans-land') => {
  * genuinely strange. Weight the pick by obscurity: a place most of the world
  * draws as its own shape isn't a ghost state to anyone. That demotes Taiwan,
  * which 23 of 31 governments draw apart, and Western Sahara at 22 — leaving
- * the six frozen oddities as the common draw.
+ * the five frozen oddities as the common draw.
  */
 const ghostStateOddity = (drawnApart: number, povs: number) => 1 - drawnApart / povs
 
@@ -1876,27 +1877,43 @@ const getEmpireChallenge = async (game: gameTypes.Game): Promise<EmpireChallenge
   }
 }
 
+/** The map-space gap at which a near miss stops paying. */
+const GHOST_STATE_FALLOFF = 60
+/** What a tap touching the place pays without being it or its claimant. */
+const GHOST_STATE_NEAR_MISS = 0.6
+
+/** Full marks: the claimant, or the ghost's own shape where the roster names it (Taiwan). */
+export const ghostStateAnswers = (
+  challenge: GhostStateChallenge,
+  territory: RecognitionTerritory | undefined
+): ISOCountryCode[] => {
+  const own = territory?.mapCode
+  return isValidISOCode(own) && own !== challenge.parent
+    ? [challenge.parent, own]
+    : [challenge.parent]
+}
+
 /**
- * Distance between two projected map-space boxes, centre to centre. The
- * recognition dataset and the map data share the map's fitted Robinson space,
- * so this is a subtraction rather than a reprojection.
+ * What a map tap answers, or undefined for a tap that answers nothing. A ghost
+ * the map draws apart but the roster cannot name (Western Sahara's EH) folds
+ * into its claimant on every deal, as Abkhazia does by being drawn inside Georgia.
+ */
+export const ghostStateTap = (
+  roster: Record<string, RecognitionTerritory>,
+  mapCode: string
+): ISOCountryCode | undefined => {
+  if (isValidISOCode(mapCode)) return mapCode
+  return Object.values(roster).find(territory => territory.mapCode === mapCode)?.parent
+}
+
+/**
+ * Full marks for the place itself or its claimant; for any other tap, a share
+ * that shrinks with the gap between the tapped country's nearest outline point
+ * and the place. Server-authoritative — the client's only input is which
+ * country it tapped.
  *
  * Deliberately NOT border-hops: Cyprus has no land borders at all, so a
- * hop-count would score Turkey (10km away) exactly the same as Peru.
- */
-const boxDistance = (
-  a: readonly [number, number, number, number],
-  b: readonly [number, number, number, number]
-) => Math.hypot(a[0] + a[2] / 2 - (b[0] + b[2] / 2), a[1] + a[3] / 2 - (b[1] + b[3] / 2))
-
-/** Beyond this projected distance a guess is worth nothing. Tuned so a
- *  neighbouring country still scores well and another continent scores zero. */
-const GHOST_STATE_FALLOFF = 260
-
-/**
- * Full marks for naming the claimant state; a graded fraction for landing
- * near it; nothing for the far side of the world. Server-authoritative — the
- * client's only input is which country it tapped.
+ * hop-count would score Turkey exactly the same as Peru.
  */
 export const scoreGhostState = async ({
   challenge,
@@ -1908,19 +1925,23 @@ export const scoreGhostState = async ({
   const maximum = challenge.maximumPoints
   const tapped = submittedGuesses[0]
   if (!tapped) return { scored: 0, maximum }
-  if (tapped === challenge.parent) return { scored: maximum, maximum }
 
   // Dynamic, like the water dealer: the map geometry must not ride into client
   // bundles through this module.
-  const { MAP_BOUNDS, MAP_REGIONS } = await import('~~/data/map.gen')
-  const tappedBounds = MAP_BOUNDS[tapped]
-  const parentBounds = MAP_BOUNDS[challenge.parent]
-  if (!tappedBounds || !parentBounds) return { scored: 0, maximum }
+  const [{ RECOGNITION_TERRITORIES }, { MAP_PATHS }] = await Promise.all([
+    import('~~/data/recognition.gen'),
+    import('~~/data/map.gen'),
+  ])
+  const territory = RECOGNITION_TERRITORIES[challenge.territoryId]
+  if (ghostStateAnswers(challenge, territory).includes(tapped)) return { scored: maximum, maximum }
 
-  const tappedCentre = mainlandBox(MAP_REGIONS[tapped], tappedBounds)
-  const parentCentre = mainlandBox(MAP_REGIONS[challenge.parent], parentBounds)
+  const outline = MAP_PATHS[tapped]
+  if (!territory || !outline) return { scored: 0, maximum }
 
-  const fraction = 1 - boxDistance(tappedCentre, parentCentre) / GHOST_STATE_FALLOFF
+  const gap = parsePolygons(outline)
+    .flat()
+    .reduce((nearest, point) => Math.min(nearest, pointBoxGap(point, territory.bounds)), Infinity)
+  const fraction = GHOST_STATE_NEAR_MISS * (1 - gap / GHOST_STATE_FALLOFF)
   // `scored` feeds board movement 1:1 — never emit NaN or a negative.
   const scored = Number.isFinite(fraction) ? Math.max(0, Math.round(maximum * fraction)) : 0
   return { scored: clampScore(scored, maximum), maximum }
@@ -2700,11 +2721,12 @@ const dealCapitalMatch = (
 
 /**
  * Landmark-quiz (photo): "Which country is this landmark in?" — an iconic
- * landmark photo with four flag options. Picks a random curated landmark;
- * decoys prefer the same region. The slug is carried for the reveal: the
+ * landmark photo with four flag options. Picks a random curated landmark the
+ * difficulty deals; decoys prefer the same region. The slug is carried for the reveal: the
  * dossier (name, description) and the answer marker on the result map.
  */
 const dealLandmarkQuiz = (
+  difficulty: gameTypes.GameDifficulty,
   pool: ISOCountryCode[],
   world: ISOCountryCode[]
 ):
@@ -2718,7 +2740,7 @@ const dealLandmarkQuiz = (
   // Only landmarks whose country is in play — a benched micro-nation
   // (St Peter's → the Vatican) can't be the answer to anything.
   const inPlay = new Set(world)
-  const entries = curatedPlaces().filter(([, entry]) => inPlay.has(entry.country))
+  const entries = dealableLandmarks(difficulty).filter(([, entry]) => inPlay.has(entry.country))
   if (!entries.length) return undefined
 
   // Prefer a landmark whose country is on the board; else any (widen to world).
@@ -2780,19 +2802,15 @@ const dealOddOneOut = (
         }
       }
       case 'language': {
-        const byLanguage = new Map<string, ISOCountryCode[]>()
-        for (const isoCode of countryPool) {
-          for (const language of COUNTRIES[isoCode].languages ?? []) {
-            byLanguage.set(language, [...(byLanguage.get(language) ?? []), isoCode])
-          }
-        }
-        const candidates = shuffleArray([...byLanguage.entries()].filter(([, c]) => c.length >= 3))
+        const candidates = shuffleArray(
+          [...boardSpeakers(countryPool)].filter(([, c]) => c.length >= 3)
+        )
         const entry = candidates[0]
         if (!entry) return undefined
         const [language, speakers] = entry
         const same = sampleMany(speakers, 3)
         const odd = shuffleArray([...countryPool]).find(
-          isoCode => !(COUNTRIES[isoCode].languages ?? []).includes(language)
+          isoCode => !acceptsSpeaker(isoCode, language)
         )
         if (!odd) return undefined
         return {
@@ -3751,7 +3769,7 @@ export const getIndividualChallenge = async ({
         break
       }
       case 'landmark-quiz': {
-        const dealt = dealLandmarkQuiz(pool, world)
+        const dealt = dealLandmarkQuiz(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
         break
       }
@@ -3836,7 +3854,7 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'far-flung', ...dealt }
       }
       if (roll < 0.68) {
-        const dealt = dealLandmarkQuiz(pool, world)
+        const dealt = dealLandmarkQuiz(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
       if (roll < 0.78) {
@@ -3935,7 +3953,7 @@ export const getIndividualChallenge = async ({
     case 'landmarks': {
       // The landmark gate: photo quizzes, with the capital skyline sibling.
       if (roll < 0.55) {
-        const dealt = dealLandmarkQuiz(pool, world)
+        const dealt = dealLandmarkQuiz(difficulty, pool, world)
         if (dealt) return { ...base, variant: 'landmark-quiz', ...dealt }
       }
       if (roll < 0.82) {
