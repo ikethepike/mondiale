@@ -56,25 +56,47 @@
 
     <footer v-if="!submitted && !gameStore.watching" ref="footer">
       <div class="guess-box">
-        <ul
+        <div
           v-if="suspectRail.length"
-          ref="rail"
-          class="country-chip-list rail suspects"
-          :class="{ 'fade-left': scrollableLeft, 'fade-right': scrollableRight }"
+          class="rail-wrap"
           :style="{ '--suspect-fill': UNMASK_SUSPECT_FILL }"
-          @scroll.passive="syncScrollEdges"
         >
-          <li v-for="(isoCode, index) in suspectRail" :key="isoCode" :style="{ '--i': index }">
-            <CountryChip
-              tag="button"
-              type="button"
-              compact
-              class="map-caption suspect-chip"
-              :country="getCountry(isoCode)"
-              @click="pick(isoCode)"
-            />
-          </li>
-        </ul>
+          <ul
+            ref="rail"
+            class="country-chip-list rail suspects"
+            :class="{ 'fade-left': scrollableLeft, 'fade-right': scrollableRight }"
+            @scroll.passive="syncScrollEdges"
+          >
+            <li v-for="(isoCode, index) in suspectRail" :key="isoCode" :style="{ '--i': index }">
+              <CountryChip
+                tag="button"
+                type="button"
+                compact
+                class="map-caption suspect-chip"
+                :country="getCountry(isoCode)"
+                @click="pick(isoCode)"
+              />
+            </li>
+          </ul>
+          <button
+            v-if="scrollableLeft"
+            type="button"
+            class="map-caption rail-step back"
+            aria-label="Earlier suspects"
+            @click="stepRail(-1)"
+          >
+            ‹
+          </button>
+          <button
+            v-if="scrollableRight"
+            type="button"
+            class="map-caption rail-step"
+            aria-label="More suspects"
+            @click="stepRail(1)"
+          >
+            ›
+          </button>
+        </div>
         <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
           <CountryGuessInput
             ref="guessInput"
@@ -117,6 +139,7 @@ import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
+import { legibleFrameSubjects } from '~~/lib/label-anchor'
 import { quizLeader } from '~~/lib/leaders'
 import { UNMASK_FRAME_PAD, UNMASK_SUSPECT_FILL, unmaskFacts } from '~~/lib/unmask'
 import { classicPlaySeconds } from '~~/lib/round-beats'
@@ -126,6 +149,7 @@ import { UNMASK_NAMED_FIELD, unmaskRemainingFraction, unmaskRungsShown } from '~
 import { useEdgeBerth } from '~~/lib/use-edge-berth'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
+import { prefersReducedMotion } from '~~/lib/motion'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
@@ -229,6 +253,11 @@ const suspectRail = computed(() =>
 )
 const rail = ref<HTMLElement>()
 const { scrollableLeft, scrollableRight, syncScrollEdges } = useScrollEdges(() => rail.value)
+const stepRail = (direction: 1 | -1) =>
+  rail.value?.scrollBy({
+    left: direction * rail.value.clientWidth * 0.8,
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+  })
 const pick = (isoCode: ISOCountryCode) => {
   const active = challenge.value
   if (!active || !started.value || submitted.value || gameStore.watching) return
@@ -267,7 +296,7 @@ watch(
   (next, previous) => {
     if (answer.value) return
     gameStore.map.spotlight = [...next]
-    gameStore.map.focus = [...next]
+    gameStore.map.focus = legibleFrameSubjects(next)
     gameStore.map.countryGroupings = [{ color: UNMASK_SUSPECT_FILL, countries: [...next] }]
     gameStore.map.countryLabels =
       next.length <= UNMASK_NAMED_FIELD
@@ -331,6 +360,35 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
   margin: auto 0;
   height: fit-content;
   border-bottom-left-radius: $cardRadius;
+}
+
+.rail-wrap {
+  width: 100%;
+  position: relative;
+}
+
+.rail-step {
+  top: 50%;
+  right: -0.4rem;
+  width: 3.2rem;
+  height: 3.2rem;
+  padding: 0;
+  display: grid;
+  cursor: pointer;
+  font: inherit;
+  font-size: 2rem;
+  line-height: 1;
+  position: absolute;
+  place-items: center;
+  border-radius: 50%;
+  pointer-events: auto;
+  transform: translateY(-50%);
+  border: 0.15rem solid var(--suspect-fill);
+
+  &.back {
+    left: -0.4rem;
+    right: auto;
+  }
 }
 
 .suspects li {

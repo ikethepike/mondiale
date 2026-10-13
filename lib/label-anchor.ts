@@ -1,5 +1,6 @@
 import { MAP_BOUNDS, MAP_PATHS, MAP_REGIONS, type MapCode } from '~~/data/map.gen'
-import { labelBoxFor } from '~~/lib/geo'
+import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import { largestRing, poleOfInaccessibility, type OutlinePoint } from '~~/lib/outline'
 
 export interface LabelAnchor {
@@ -46,4 +47,17 @@ export const labelAnchorFor = (code: MapCode): LabelAnchor | undefined => {
       : undefined)
   anchorCache.set(code, resolved)
   return resolved
+}
+
+/**
+ * The countries a camera should frame to show `isoCodes`: those big enough to
+ * carry their own name, or all of them when none are. A speck is a dot at any
+ * frame that holds the rest, so it must not stretch that frame across the
+ * planet — Tonga sits past the date line at the map's far edge.
+ */
+export const legibleFrameSubjects = (isoCodes: readonly ISOCountryCode[]): ISOCountryCode[] => {
+  const legible = isoCodes.filter(isoCode =>
+    isLabelableBox(labelBoxFor(MAP_BOUNDS[isoCode as MapCode], MAP_REGIONS[isoCode as MapCode]))
+  )
+  return legible.length ? legible : [...isoCodes]
 }
