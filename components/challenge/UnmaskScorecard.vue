@@ -63,9 +63,16 @@ const rows = computed(() =>
 )
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/breakpoints' as *;
+
 .unmask-scorecard {
   display: grid;
   gap: 1.2rem;
+  padding: 0 3rem 3rem;
+
+  @media (max-width: $tablet) {
+    padding: 0 1.6rem 2rem;
+  }
 
   .eyebrow {
     margin: 0.4rem 0 0;

@@ -47,6 +47,17 @@
 
     <footer v-if="!submitted && !gameStore.watching" ref="footer">
       <div class="guess-box">
+        <ul v-if="suspectRail.length" class="country-chip-list rail suspects">
+          <li v-for="isoCode in suspectRail" :key="isoCode">
+            <CountryChip
+              tag="button"
+              type="button"
+              compact
+              :country="getCountry(isoCode)"
+              @click="pick(isoCode)"
+            />
+          </li>
+        </ul>
         <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
           <div v-if="suspect" class="accusation">
             <CountryChip tag="span" :country="getCountry(suspect)" />
@@ -67,6 +78,7 @@
             v-else
             ref="guessInput"
             :disabled="!started"
+            :excluded="ruledOut"
             placeholder="Name or tap a suspect"
             @guess="country => pick(country.isoCode)"
             @miss="announce({ hint: 'No country by that name' })"
@@ -74,11 +86,21 @@
         </ChallengeConsole>
       </div>
     </footer>
+
+    <MembershipSheet
+      v-if="!isPhone && started && !gameStore.watching"
+      :countries="field"
+      subject="the file"
+      noun="suspects"
+      :settled="submitted"
+      @pick="pick"
+    />
   </section>
 </template>
 <script lang="ts" setup>
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
 import UnmaskFile from '~/components/challenge/UnmaskFile.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
@@ -87,14 +109,16 @@ import GuessTicker from '~/components/feedback/GuessTicker.vue'
 import Interstitial from '~/components/feedback/Interstitial.vue'
 import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import { BORDERS } from '~~/data/borders.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { quizLeader } from '~~/lib/leaders'
+import { UNMASK_SUSPECT_FILL } from '~~/lib/unmask'
 import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { seatVerdictOn } from '~~/lib/seat-view'
-import { unmaskRemainingFraction, unmaskRungsShown } from '~~/lib/unmask-pace'
+import { UNMASK_NAMED_FIELD, unmaskRemainingFraction, unmaskRungsShown } from '~~/lib/unmask-pace'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
@@ -153,6 +177,10 @@ const displayClues = computed(() => {
 })
 
 const field = computed(() => dossier.value?.field ?? challenge.value?.suspects ?? [])
+const ruledOut = computed(() => {
+  const lit = new Set(field.value)
+  return ISOCountryCodes.filter(isoCode => !lit.has(isoCode))
+})
 
 const bounty = computed(() => {
   const active = challenge.value
@@ -168,6 +196,11 @@ const promptLine = computed(() =>
 )
 
 const suspect = ref<ISOCountryCode>()
+const suspectRail = computed(() =>
+  isPhone.value && !suspect.value && field.value.length <= UNMASK_NAMED_FIELD
+    ? [...field.value].sort((a, b) => countryName(a).localeCompare(countryName(b)))
+    : []
+)
 const pick = (isoCode: ISOCountryCode) => {
   const active = challenge.value
   if (!active || !started.value || submitted.value || gameStore.watching) return
@@ -211,14 +244,19 @@ watch(
   }
 )
 
-// Every suspect the file has not ruled out stays lit; the rest of the world recedes.
 watch(
   field,
   (next, previous) => {
+    if (answer.value) return
     gameStore.map.spotlight = [...next]
-    const ruledOut = (previous?.length ?? next.length) - next.length
-    if (ruledOut > 0 && !submitted.value) {
-      announce({ hint: `The file rules out ${ruledOut} — ${next.length} suspects left` })
+    gameStore.map.countryGroupings = [{ color: UNMASK_SUSPECT_FILL, countries: [...next] }]
+    gameStore.map.countryLabels =
+      next.length <= UNMASK_NAMED_FIELD
+        ? Object.fromEntries(next.map(isoCode => [isoCode, countryName(isoCode)]))
+        : undefined
+    const dropped = (previous?.length ?? next.length) - next.length
+    if (dropped > 0 && !submitted.value) {
+      announce({ hint: `The file rules out ${dropped} — ${next.length} suspects left` })
     }
   },
   { immediate: true }
@@ -247,6 +285,8 @@ const missLine = computed(() => {
 watch([answer, caught], ([country]) => {
   if (!country || !outcomeShown.value) return
   gameStore.map.spotlight = []
+  gameStore.map.countryGroupings = undefined
+  gameStore.map.countryLabels = undefined
   gameStore.map.highlighted = new Set([country])
   gameStore.map.focus = [country]
   gameStore.map.focusContext = BORDERS[country] ?? []

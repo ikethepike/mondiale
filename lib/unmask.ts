@@ -142,6 +142,9 @@ export const narrowFields = (
   })
 }
 
+/** The wash every suspect still lit wears on the map. */
+export const UNMASK_SUSPECT_FILL = 'hsla(36, 88%, 60%, 0.55)'
+
 export const OFFICE_LINES: Record<UnmaskOffice, string> = {
   monarch: 'Reigns as a monarch',
   president: 'Governs as president',

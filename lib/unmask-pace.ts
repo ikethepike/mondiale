@@ -71,6 +71,9 @@ export const UNMASK_TUNING: {
 /** The largest portrait tier any ladder deals — the generator's source size. */
 export const UNMASK_SOURCE_SIZE = 32
 
+/** At or under this many suspects the map writes their names on. */
+export const UNMASK_NAMED_FIELD = 24
+
 export const unmaskKey = (gameId: string, roundIndex: number) => `${gameId}:unmask:${roundIndex}`
 
 /** Where the client store files a seat's dossier for one round. */

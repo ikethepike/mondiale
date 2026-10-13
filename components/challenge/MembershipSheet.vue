@@ -121,12 +121,16 @@ const props = defineProps<{
   total?: number
   /** The answer is in. The roster has done its job, so the sheet leaves. */
   settled: boolean
+  /** What the rows are, when "on the board" would misname them. */
+  noun?: string
 }>()
 
 const eyebrow = computed(() =>
-  props.total && props.total > props.countries.length
-    ? `${props.countries.length} of ${props.total} on the board`
-    : `${props.countries.length} on the board`
+  props.noun
+    ? `${props.countries.length} ${props.noun}`
+    : props.total && props.total > props.countries.length
+      ? `${props.countries.length} of ${props.total} on the board`
+      : `${props.countries.length} on the board`
 )
 
 const emit = defineEmits<{ pick: [isoCode: ISOCountryCode] }>()
