@@ -137,11 +137,12 @@ describe('the briefing gate', () => {
     const challenge = challengeFixture({ briefing: false, ready: ['ada', 'ben'] })
     const game = buildGame(challenge)
     const ctx = context(game)
-    game.rounds[0]!.deadline = Date.now() + 10_000
+    const stamped = Date.now() + 10_000
+    game.rounds[0]!.deadline = stamped
 
     rearmTerraIncognita(ctx, game)
     await applyTerraReady(ctx, game, challenge, 'ada')
     await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 50)
-    expect(liveRound(game.id).deadline).toBe(game.rounds[0]!.deadline)
+    expect(liveRound(game.id).deadline).toBe(stamped)
   })
 })

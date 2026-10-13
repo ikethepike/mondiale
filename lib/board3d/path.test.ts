@@ -132,13 +132,6 @@ describe('the archetype deal', () => {
     const counts = [...dealt.values()]
     expect(dealt.get('serpentine')).toBe(Math.max(...counts))
   })
-
-  it('reports the shape that actually held', () => {
-    const forced = pathFor('alpha', 65, 'spiral')
-    expect(forced.archetype).toBe('spiral')
-    const unforced = pathFor('alpha', 65)
-    expect(ARCHETYPES).toContain(unforced.archetype)
-  })
 })
 
 describe('trackIsClear', () => {

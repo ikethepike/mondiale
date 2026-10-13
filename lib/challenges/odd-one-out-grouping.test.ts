@@ -149,6 +149,5 @@ describe('odd-one-out lineup', () => {
     const lineup = buildLineup('PT' as ISOCountryCode, members)
     const unlitMembers = members.filter(isoCode => !lineup.includes(isoCode))
     expect(unlitMembers.length).toBeGreaterThan(0)
-    for (const isoCode of unlitMembers) expect(lineup).not.toContain(isoCode)
   })
 })

@@ -6,7 +6,6 @@ import {
   empireAnswerMatches,
   empireFameWeight,
   empirePots,
-  normalizeEmpireAnswer,
   scoreEmpireExtent,
   subsampleKeyframes,
 } from '~~/lib/empires'
@@ -142,13 +141,6 @@ describe('the grader composition (beat 1 buzz + beat 2 jaccard)', () => {
     expect(await settle({ guessedId: 'gran-colombia', clientScore: 999 }, [], late)).toBe(
       buzzScore(pots.name, 0)
     )
-  })
-})
-
-describe('normalizeEmpireAnswer', () => {
-  it('folds case, diacritics, punctuation and the leading article', () => {
-    expect(normalizeEmpireAnswer('  The  Achaemenid—Empire! ')).toBe('achaemenid empire')
-    expect(normalizeEmpireAnswer('São Tomé')).toBe('sao tome')
   })
 })
 

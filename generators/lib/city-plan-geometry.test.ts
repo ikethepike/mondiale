@@ -84,12 +84,9 @@ describe('tileProjection', () => {
     const top = project({ lat: 51.505, lon: -0.12 })
     const bottom = project({ lat: 51.5, lon: -0.12 })
 
-    expect(top[1]).toBeGreaterThan(0)
-    expect(bottom[1]).toBeLessThan(CITY_TILE_SPAN)
-    expect(top[1] + (CITY_TILE_SPAN - bottom[1])).toBeCloseTo(
-      CITY_TILE_SPAN - (bottom[1] - top[1]),
-      0
-    )
+    // Letterboxed top and bottom, by the same margin.
+    expect(top[1]).toBeGreaterThan(1)
+    expect(top[1]).toBeCloseTo(CITY_TILE_HEIGHT - bottom[1], 6)
   })
 })
 

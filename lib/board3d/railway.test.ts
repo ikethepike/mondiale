@@ -52,14 +52,14 @@ const dealtWorlds = (prefix: string, want: number, scan = 240): World[] => {
 
 describe('pickRailwayLoop', () => {
   it('is deterministic per seed', () => {
-    const seed = 'railway-deal-20'
-    const first = worldFor(seed).loop
-    const second = worldFor(seed).loop
-    expect(Boolean(first)).toBe(Boolean(second))
-    if (first && second) {
-      expect(first.length).toBe(second.length)
-      first.forEach((point, index) => expect(point.equals(second[index])).toBe(true))
-    }
+    const seed = Array.from({ length: 240 }, (_, index) => `railway-det-${index}`).find(
+      candidate => worldFor(candidate).loop
+    )
+    expect(seed).toBeDefined()
+    const first = worldFor(seed!).loop!
+    const second = worldFor(seed!).loop!
+    expect(second.length).toBe(first.length)
+    first.forEach((point, index) => expect(point.equals(second[index])).toBe(true))
   })
 
   it('deals a railway on a few boards and declines the rest', () => {

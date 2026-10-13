@@ -1,4 +1,4 @@
-import { Box3, Vector3 } from 'three'
+import { Box3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import {
   markerFitFactor,
@@ -273,22 +273,5 @@ describe('the final arch is exempt', () => {
       Math.abs(boxOf('final', 10).max.x)
     )
     expect(halfWidth).toBeGreaterThan(10 * TILE_RADIUS_RATIO)
-  })
-})
-
-describe('a marker keeps its silhouette', () => {
-  it('scales uniformly, so a fitted marker is the same shape', () => {
-    const { chords, spacing } = pathFor('bravo', 52)
-    const tileRadius = spacing * TILE_RADIUS_RATIO
-    const gap = markerGapFor(20, chords, tileRadius)
-    const fit = markerFitFactor(markerPartsFor('history', spacing), tileRadius, gap)
-
-    const size = boxOf('history', spacing).getSize(new Vector3())
-    expect(size.z).toBeGreaterThan(0)
-    const ratioBefore = size.y / size.z
-    // A uniform factor cannot change the proportions — this is what a
-    // per-axis squash would break.
-    const scaled = size.clone().multiplyScalar(fit)
-    expect(scaled.y / scaled.z).toBeCloseTo(ratioBefore, 10)
   })
 })

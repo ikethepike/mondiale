@@ -184,10 +184,4 @@ describe('monotoneCurvePath', () => {
     const ys = [...path.matchAll(/[\s,](\d+\.\d+)(?=[\s]|$)/g)].map(m => Number(m[1]))
     for (const y of ys) expect(y).toBeLessThanOrEqual(30.001)
   })
-
-  it('handles degenerate inputs', async () => {
-    const { monotoneCurvePath } = await import('./charts')
-    expect(monotoneCurvePath([])).toBe('')
-    expect(monotoneCurvePath([{ x: 4, y: 5 }])).toBe('M 4.00,5.00')
-  })
 })

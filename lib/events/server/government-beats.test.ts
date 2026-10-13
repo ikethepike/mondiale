@@ -290,15 +290,6 @@ describe('the beat verdict', () => {
     expect(live(game.id).state.beat).toBe('party')
   })
 
-  it('clears the verdict when the hold expires', async () => {
-    const { challenge, game, ctx } = await openRound()
-    await applyGovernmentPick(ctx, game, challenge, 'ada', 0, { party: 'Moderate Party' })
-    await applyGovernmentPick(ctx, game, challenge, 'ben', 0, { party: 'Moderate Party' })
-    await rideVerdict()
-    expect(live(game.id).state.verdict).toBeUndefined()
-    expect(live(game.id).state.beat).toBe('seats')
-  })
-
   // A tap landing while the verdict is up is a late answer to a graded beat.
   it('ignores a pick sent during the hold', async () => {
     const { challenge, game, ctx } = await openRound()

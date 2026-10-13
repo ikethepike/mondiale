@@ -46,12 +46,6 @@ describe('keyboardOverlap', () => {
     expect(keyboardOverlap(844, 490)).toBe(354)
   })
 
-  it('is unaffected by the caret-chasing pan — offsetTop is not an input', () => {
-    // Mid-pan Safari reports the same heights; the old formula subtracted
-    // offsetTop (≈ keyboard height) and read ~0 on exactly these frames
-    expect(keyboardOverlap(844, 490)).toBe(354)
-  })
-
   it('reads 0 with the keyboard down', () => {
     expect(keyboardOverlap(844, 844)).toBe(0)
   })

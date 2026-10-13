@@ -44,7 +44,6 @@ describe('pickScenerySites', () => {
   it('deals one or two cairns, kept apart', () => {
     for (let index = 0; index < 25; index++) {
       const { sites } = sitesFor(`scenery-${index}`)
-      expect(sites.cairns.length).toBeGreaterThanOrEqual(0)
       expect(sites.cairns.length).toBeLessThanOrEqual(2)
       if (sites.cairns.length === 2) {
         const [a, b] = sites.cairns
@@ -190,8 +189,10 @@ describe('pickScenerySites', () => {
     // The stones/scale-bar draws APPEND to the `${seed}:scenery` stream —
     // these pins are the shipped boards' actual placements.
     const { sites } = sitesFor('scenery-0')
-    expect(sites.cairns.length).toBeGreaterThan(0)
-    const snapshot = sites.cairns.map(cairn => [cairn.x, cairn.z])
-    expect(snapshot).toEqual(sitesFor('scenery-0').sites.cairns.map(cairn => [cairn.x, cairn.z]))
+    expect(sites.cairns.map(cairn => [cairn.x, cairn.z])).toEqual([
+      [-46, -62],
+      [-58, 14],
+    ])
+    expect([sites.compass?.x, sites.compass?.z]).toEqual([54, -46])
   })
 })

@@ -471,10 +471,11 @@ describe('sunset blitz challenge', () => {
   })
 
   it('grades the dealt field and nothing else', () => {
-    const challenge = getFinalChallenges({ game: gameFor('world', 'hard') }).challenges.find(
-      (item): item is SunsetBlitzChallenge => item._type === 'sunset-blitz-challenge'
-    )
-    if (!challenge) return
+    const challenge = dealFinalChallenge(
+      'sunset-blitz-challenge',
+      gameFor('world', 'hard')
+    ) as SunsetBlitzChallenge
+    expect(challenge?._type).toBe('sunset-blitz-challenge')
     const pool = playableCountries(gameFor('world', 'hard'))
     const outside = pool.filter(isoCode => !challenge.countries.includes(isoCode))
     const grade = (namedCountries: ISOCountryCode[]) =>
@@ -492,10 +493,11 @@ describe('sunset blitz challenge', () => {
   })
 
   it('states the pass mark in the prompt', () => {
-    const challenge = getFinalChallenges({ game: gameFor('world', 'normal') }).challenges.find(
-      (item): item is SunsetBlitzChallenge => item._type === 'sunset-blitz-challenge'
-    )
-    if (!challenge) return
+    const challenge = dealFinalChallenge(
+      'sunset-blitz-challenge',
+      gameFor('world', 'normal')
+    ) as SunsetBlitzChallenge
+    expect(challenge?._type).toBe('sunset-blitz-challenge')
     expect(getFinalChallengeDetails({ challenge }).question).toContain(
       `name ${sunsetQuota(challenge)} of these ${challenge.countries.length}`
     )
