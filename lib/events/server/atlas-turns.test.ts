@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { applyAtlasMove, currentAtlasChain } from './atlas-turns'
+import { applyAtlasMove, currentAtlasChain, scheduleAtlasTimeout } from './atlas-turns'
+import { chainReadyHandler } from './chain-ready.handler'
 import { pullRipCordHandler } from './pull-rip-cord.handler'
 import { atlasTurnSeconds } from '~~/lib/atlas-chain'
-import { TIMEOUT_SLACK_MS, TRAP_HOLD_MS } from '~~/lib/round-beats'
+import {
+  ATLAS_TUTORIAL_CAP_MS,
+  BRIEFING_CAP_MS,
+  TIMEOUT_SLACK_MS,
+  TRAP_HOLD_MS,
+} from '~~/lib/round-beats'
 import type { AtlasChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import type { EngineContext } from './round-engine'
@@ -155,5 +161,40 @@ describe('the dead end', () => {
     expect(state.chains).toHaveLength(3)
     expect(state.order[state.activeIndex]).toBe('b')
     expect(state.deadline).toBeGreaterThan(0)
+  })
+})
+
+describe('the tutorial', () => {
+  const ready = (game: Game, playerId: string) =>
+    chainReadyHandler({
+      ...context(game),
+      eventKey: 'chain-ready',
+      eventData: { event: 'chain-ready' },
+      eventTarget: { gameId: game.id, playerId },
+    })
+
+  it('holds the first clock until every seat has confirmed', async () => {
+    const game = buildGame({ briefing: true, turn: 0 })
+    await ready(game, 'a')
+    await ready(game, 'b')
+    expect(atlasOf(game.id).state.briefing).toBe(true)
+    expect(atlasOf(game.id).state.deadline).toBe(0)
+
+    await ready(store.get(game.id)!, 'c')
+    expect(atlasOf(game.id).state.briefing).toBe(false)
+    expect(atlasOf(game.id).state.deadline).toBeGreaterThan(0)
+  })
+
+  it('outlasts the generic briefing cap, and only the long backstop starts it', async () => {
+    expect(ATLAS_TUTORIAL_CAP_MS).toBeGreaterThan(BRIEFING_CAP_MS)
+    const game = buildGame({ briefing: true, turn: 0 })
+    scheduleAtlasTimeout(context(game), currentAtlasChain(game)!)
+
+    await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 1000)
+    expect(atlasOf(game.id).state.briefing).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(ATLAS_TUTORIAL_CAP_MS - BRIEFING_CAP_MS)
+    await vi.runAllTicks()
+    expect(atlasOf(game.id).state.briefing).toBe(false)
   })
 })

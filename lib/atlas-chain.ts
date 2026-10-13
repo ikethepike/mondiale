@@ -262,6 +262,15 @@ export const atlasTurnSeconds = (challenge: {
   return Math.max(challenge.turnFloorSeconds ?? challenge.turnSeconds, squeezed)
 }
 
+/** The tutorial's worked examples, one per tie. Pinned legal (and playable
+ *  on every difficulty) in atlas-chain.test.ts, so the screen that teaches
+ *  the rule can never show a link the rule refuses. */
+export const ATLAS_TUTORIAL_EXAMPLES: Record<AtlasTieKind, [ISOCountryCode, ISOCountryCode]> = {
+  letter: ['NP', 'LA'],
+  consonant: ['AL', 'NG'],
+  overlap: ['JP', 'PA'],
+}
+
 /** At or below this many unwalked names the live letter reads as nearly
  *  spent — the rail's countdown turns alert. */
 export const ATLAS_SCARCE_OPTIONS = 2

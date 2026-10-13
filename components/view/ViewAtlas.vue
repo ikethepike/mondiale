@@ -43,51 +43,18 @@
       <span v-if="!finished && iAmOut" class="map-caption sub out"> You're out — spectating </span>
     </ChallengePrompt>
 
-    <!-- The briefing: a rules card each player dismisses explicitly (Border
-         Chain's gate). The opening shot clock only starts when the whole
-         table is ready — or the server's reading cap forces it. -->
+    <!-- The tutorial: every seat confirms it understands the rules before the
+         opening shot clock starts (the server's cap only covers a seat that
+         walked away). -->
     <BriefingCard
       v-if="briefing"
       :participants="state!.order"
       :ready="state!.ready"
-      cta="Chain me in"
+      cta="I understand — chain me in"
       :sent="sentReady"
       @ready="sendReady"
     >
-      <!-- Two name chips joined by the letter tie — the rail's own motif, in
-           the stroke language the mode marks speak. -->
-      <svg class="briefing-mark" viewBox="0 0 48 24" aria-hidden="true">
-        <rect x="2" y="7" width="16" height="10" rx="5" />
-        <circle cx="24" cy="12" r="4" />
-        <rect x="30" y="7" width="16" height="10" rx="5" />
-      </svg>
-      <h2>Atlas</h2>
-      <ul class="briefing-points">
-        <li>
-          One chain, in turns: name a country that begins with the last letter of the head — Nepal →
-          Laos.
-        </li>
-        <li>
-          A name ending in vowels also offers the consonant before them: Albania → Nigeria, Germany
-          → Norway. Any longer shared ending chains too: Poland → Andorra.
-        </li>
-        <li>
-          {{ challenge.turnSeconds }} seconds a move, and the clock tightens as the chain grows. No
-          repeats — every country is named once.
-        </li>
-        <li v-if="challenge.strikes > 0">A dead clock burns your strike; the next puts you out.</li>
-        <li v-else>A dead clock puts you out — sudden death.</li>
-        <li>
-          One rip cord each: swap the head for a fresh country on your turn — or it fires by itself
-          when a dead end would knock you out.
-        </li>
-        <li v-if="challenge.placementOnly">
-          A spent ending traps whoever holds it. Only your placement pays. Outlast the table.
-        </li>
-        <li v-else>
-          A spent ending traps whoever holds it, and pays whoever sealed it. Outlast the table.
-        </li>
-      </ul>
+      <AtlasTutorial :challenge="challenge" />
     </BriefingCard>
 
     <ChainReveal
@@ -157,6 +124,7 @@
 </template>
 <script lang="ts" setup>
 import AtlasChainRail from '~/components/challenge/AtlasChainRail.vue'
+import AtlasTutorial from '~/components/challenge/AtlasTutorial.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
@@ -578,14 +546,6 @@ watch(
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
-.briefing-mark {
-  width: 4.4rem;
-  fill: none;
-  stroke: var(--dark-blue);
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
 .turn-line {
   gap: 0.6rem;
   display: inline-flex;

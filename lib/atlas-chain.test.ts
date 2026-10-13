@@ -5,6 +5,7 @@ import {
   ATLAS_TABLE_SEED_OPTIONS,
   ATLAS_TARGET_LINKS,
   ATLAS_TRAP_BOUNTY_LINKS,
+  ATLAS_TUTORIAL_EXAMPLES,
   atlasChainCredit,
   atlasContinuations,
   atlasHeadLetter,
@@ -22,7 +23,7 @@ import {
   pickAtlasHint,
   pickAtlasSeed,
 } from '~~/lib/atlas-chain'
-import { playableWorldCountries } from '~~/lib/game-rules'
+import { isMicroNation, playableWorldCountries } from '~~/lib/game-rules'
 import { gameDifficulties, type GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
@@ -219,5 +220,14 @@ describe('atlasTrapBounty', () => {
       ],
     })
     expect(bounty).toEqual({ a: 2 * ATLAS_TRAP_BOUNTY_LINKS })
+  })
+})
+
+describe('ATLAS_TUTORIAL_EXAMPLES', () => {
+  it('teaches each tie with a link the rule accepts, playable on every difficulty', () => {
+    for (const [kind, [from, to]] of Object.entries(ATLAS_TUTORIAL_EXAMPLES)) {
+      expect(atlasLinkTie(from, to)?.kind, `${from} → ${to}`).toBe(kind)
+      expect(isMicroNation(from) || isMicroNation(to), `${from} → ${to}`).toBe(false)
+    }
   })
 })

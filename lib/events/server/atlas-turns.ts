@@ -10,6 +10,7 @@ import {
 } from '~~/lib/atlas-chain'
 import { chainHead, scoreChainRound } from '~~/lib/chain'
 import { playableWorldCountries } from '~~/lib/game-rules'
+import { ROUND_BEATS } from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType } from '~~/lib/rounds'
 import type { AtlasChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
@@ -44,6 +45,7 @@ const engine = (): ChainEngine<AtlasChallenge> =>
     current: currentAtlasChain,
     openMoves: atlasOpenMoves,
     turnSeconds: atlasTurnSeconds,
+    briefingCapMs: ROUND_BEATS.atlas.briefingCapMs,
     buildTrap: (challenge, game, trappedId, byPlayerId) => {
       const head = chainHead(challenge.state)!
       const proof = atlasTrapProof(head, atlasWalked(challenge.state), playableWorldCountries(game))

@@ -59,6 +59,8 @@ export interface ChainEngineSpec<C extends ChainTurnChallenge<unknown>> {
   scores(challenge: C): { [playerId: string]: { scored: number; maximum: number } }
   /** The live turn's length when it is not the flat `turnSeconds`. */
   turnSeconds?(challenge: C): number
+  /** How long the briefing may wait on unready seats; BRIEFING_CAP_MS when unset. */
+  briefingCapMs?: number
 }
 
 export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
@@ -147,7 +149,7 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     // A dead-end hold owns the table; the trap's own follow-up re-arms the clock.
     if (challenge.state.trap) return
     if (challenge.state.briefing) {
-      scheduleEngineTask(ctx, BRIEFING_CAP_MS, async game => {
+      scheduleEngineTask(ctx, spec.briefingCapMs ?? BRIEFING_CAP_MS, async game => {
         const current = spec.current(game)
         if (!current || current.state.finished || !current.state.briefing) return
         await beginChain(ctx, game, current)

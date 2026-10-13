@@ -43,6 +43,9 @@ export const FIRST_TURN_GRACE_MS = 6000
 /** How long a briefing (the click-away rules cards manhunt and unique-or-bust
  *  open on) may hold before the round starts regardless. */
 export const BRIEFING_CAP_MS = 60000
+/** Atlas's tutorial waits for every seat's "I understand"; the cap is only
+ *  the backstop for a player who walked away from the table. */
+export const ATLAS_TUTORIAL_CAP_MS = 180000
 /** How long an audio round may sit on its play button before the settle
  *  backstop stops waiting. The clip only starts when the player taps — iOS
  *  refuses autoplay outright — so the window is `durationSeconds` measured
@@ -550,7 +553,7 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
         ? EMPIRE_INTERBEAT_HOLD_MS + challenge.tapSeconds * 1000
         : undefined,
   },
-  atlas: engine({ briefingCapMs: BRIEFING_CAP_MS }),
+  atlas: engine({ briefingCapMs: ATLAS_TUTORIAL_CAP_MS }),
   'border-chain': engine({ briefingCapMs: BRIEFING_CAP_MS }),
   'heritage-hunt': engine(),
   // The finished round's chronicle is browsable: settle waits on every seat's
