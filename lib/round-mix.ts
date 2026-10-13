@@ -45,6 +45,10 @@ export const ROUND_WEIGHTS = {
   'hot-cold': 0.06,
   sketch: 0.07,
   'stat-detective': 0.06,
+  // Shares the politics toggle with government, so the group bite keeps the
+  // two from stacking; held near a set-piece's rate because the roster is the
+  // world's sitting leaders and repeats once a table has met them.
+  unmask: 0.05,
   'two-truths': 0.07,
   'lay-of-the-land': 0.1,
   'name-that-water': 0.04,
@@ -158,6 +162,7 @@ export const MECHANIC_BY_KIND = {
   'tongue-buzz': 'buzz',
   silhouette: 'buzz',
   'stat-detective': 'buzz',
+  unmask: 'buzz',
   'flag-palette': 'buzz',
   flashpoint: 'buzz',
   'ground-plan': 'buzz',

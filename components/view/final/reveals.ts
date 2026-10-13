@@ -7,7 +7,6 @@ import MinMaxReveal from '~/components/challenge/MinMaxReveal.vue'
 import NocturneReveal from '~/components/challenge/NocturneReveal.vue'
 import OddOneOutReveal from '~/components/challenge/OddOneOutReveal.vue'
 import SunsetReveal from '~/components/challenge/SunsetReveal.vue'
-import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
 import { attributionFor, datasetAttribution, type Attribution } from '~~/lib/attribution'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { Game } from '~~/types/game.types'
@@ -85,11 +84,6 @@ export const FINAL_REVEALS: Record<FinalChallengeItem['_type'], FinalReveal | un
     component: OddOneOutReveal,
     props: ({ challenge, picked }) => ({ challenge, picked }),
   },
-  'leadership-challenge': {
-    component: LeaderReveal,
-    props: ({ challenge }) =>
-      challenge._type === 'leadership-challenge' ? { country: challenge.country } : undefined,
-  },
   'endonym-challenge': {
     component: EndonymReveal,
     props: ({ challenge, endonymPicks }) => ({ challenge, picks: endonymPicks }),
@@ -150,7 +144,6 @@ export const FINAL_PROMPT_SOURCES: Record<
   'endonym-challenge': () => datasetAttribution('countries'),
   'made-challenge': () => datasetAttribution('commodity-exporters'),
   'treaty-challenge': () => datasetAttribution('treaties'),
-  'leadership-challenge': () => datasetAttribution('leaders'),
   'diaspora-challenge': () => datasetAttribution('migration'),
   'sunset-blitz-challenge': () => datasetAttribution('cities'),
   'city-nocturne-challenge': () => datasetAttribution('cities'),

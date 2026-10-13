@@ -6,6 +6,7 @@ import type {
   ManhuntPosition,
   ManhuntReading,
   UniqueCategoryId,
+  UnmaskDossier,
   VintageOutcome,
 } from './challenges/group-modes.type'
 import type { GameConfiguration, Game, GameVariant } from './game.types'
@@ -265,6 +266,12 @@ export type ClientEventData =
       /** Vintage: a graded seat (or a spectator) asks for a round's story.
        *  Answered with a targeted 'vintage-story' emit. */
       event: 'fetch-vintage-story'
+      round: number
+    }
+  | {
+      /** Unmask: a seat asks for the rungs the round clock has reached, or the
+       *  answer once it is graded. Answered with a targeted 'unmask-dossier'. */
+      event: 'fetch-unmask-dossier'
       round: number
     }
   | {
@@ -549,6 +556,7 @@ export type ServerEventData =
   /** Vintage: a round's answer and story, emitted ONLY to a socket whose
    *  seat has been graded — the years never ride a snapshot. */
   | { event: 'vintage-story'; round: number; story: VintageOutcome }
+  | ({ event: 'unmask-dossier' } & UnmaskDossier)
   /** Two Truths: card verdicts and their receipts, emitted ONLY to a socket
    *  allowed to see them — every card once graded, one for a bought reveal.
    *  `sheets` carries the table's banked stamps, which the live snapshot

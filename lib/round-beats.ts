@@ -1,5 +1,6 @@
 import { clamp, clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
+import { unmaskSeconds } from '~~/lib/unmask-pace'
 import type {
   StatDetectiveChallenge,
   TimelineChallenge,
@@ -465,6 +466,14 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
       isChallengeOfType(challenge, 'stat-detective-challenge')
         ? (challenge.clues.length + (challenge.photo ? 1 : 0)) * challenge.secondsPerClue
         : undefined,
+  },
+  // The hold is the unmasking: the mosaic resolves into the full portrait and
+  // the file names who it was. At a buzz hold the face never finished landing.
+  unmask: {
+    owner: 'classic',
+    revealHoldMs: 6000,
+    playSeconds: challenge =>
+      isChallengeOfType(challenge, 'unmask-challenge') ? unmaskSeconds(challenge) : undefined,
   },
   'two-truths': { owner: 'classic', revealHoldMs: 4500 },
   'lay-of-the-land': { owner: 'classic', revealHoldMs: 0 },

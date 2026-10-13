@@ -6,6 +6,8 @@ import { dealRound } from './moves'
 import { advanceSeat, capDeadline } from './seat-cursor'
 import { roundSideKeys } from './seat-exits'
 import { recordCheckpoint } from './seat-journal'
+import { isUnmaskChallenge } from './unmask-file'
+import { startUnmask } from './unmask-seal'
 
 export const startGameHandler = defineGameHandler(
   'start-game',
@@ -23,11 +25,11 @@ export const startGameHandler = defineGameHandler(
     // Start the game
     game.started = true
 
-    game.rounds.push({
-      groupChallenge: await dealRound(game),
-      groupAnswers: {},
-      playerTurns: {},
-    })
+    const groupChallenge = await dealRound(game)
+    game.rounds.push({ groupChallenge, groupAnswers: {}, playerTurns: {} })
+    // Round 1 never passes `revealNextRound` (a forced round type can make it
+    // an Unmask), so its file is sealed here, before the first save.
+    if (isUnmaskChallenge(groupChallenge)) await startUnmask({ redis }, game, groupChallenge)
 
     // Every seat opens on the rules card; its cap guarantees a reader who
     // never clicks (or never returns) still joins round 1.

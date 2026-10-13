@@ -87,6 +87,8 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
       return 'Scored by how closely the drawing matches the real outline.'
     case 'stat-detective':
       return 'The fewer clues you needed, the bigger the score.'
+    case 'unmask':
+      return 'One accusation each: the less of the file you needed, the bigger the score.'
     case 'two-truths':
       return context.hardMode
         ? 'Right stamps pay, wrong ones cost, blanks are free — the first perfect sheet takes a bonus.'
@@ -163,6 +165,8 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
         return { submitted: 'Your Probe Trail', correct: 'The Country' }
       case 'stat-detective':
         return { submitted: 'Your Answer', correct: 'The Country' }
+      case 'unmask':
+        return { submitted: 'Your Accusation', correct: 'The Country' }
       case 'two-truths':
         return { submitted: 'Your Perfect Sheet', correct: 'The Country' }
       case 'capital-guess':

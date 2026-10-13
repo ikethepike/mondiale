@@ -39,7 +39,6 @@ export type FinalChallengeItem =
   | LanguageChallenge
   | MembershipChallenge
   | TreatyChallenge
-  | LeadershipChallenge
   | SunsetBlitzChallenge
   | ScalesChallenge
   | BornChallenge
@@ -59,7 +58,6 @@ export type FinalChallengeAnswer =
   | { _type: 'region-challenge'; region: Region }
   | { _type: 'min-challenge'; isoCode: ISOCountryCode }
   | { _type: 'max-challenge'; isoCode: ISOCountryCode }
-  | { _type: 'leadership-challenge'; isoCode: ISOCountryCode }
   | { _type: 'language-challenge'; isoCode: ISOCountryCode }
   | { _type: 'membership-challenge'; isoCode: ISOCountryCode }
   | { _type: 'treaty-challenge'; isoCode: ISOCountryCode }
@@ -160,11 +158,6 @@ export type OddOneOutChallenge = MembershipChallenge | TreatyChallenge
 /** The country that does not belong, whichever question is being asked. */
 export const oddOneOut = (challenge: OddOneOutChallenge): ISOCountryCode =>
   challenge._type === 'membership-challenge' ? challenge.exception : challenge.holdout
-
-export interface LeadershipChallenge {
-  _type: 'leadership-challenge'
-  country: ISOCountryCode
-}
 
 export interface LanguageChallenge {
   _type: 'language-challenge'

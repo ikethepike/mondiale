@@ -10,6 +10,7 @@ import StatDetectiveReveal from '~/components/challenge/StatDetectiveReveal.vue'
 import SweepRevealCard from '~/components/challenge/SweepRevealCard.vue'
 import TerraRevealCard from '~/components/challenge/TerraRevealCard.vue'
 import TimelineScorecard from '~/components/challenge/TimelineScorecard.vue'
+import UnmaskScorecard from '~/components/challenge/UnmaskScorecard.vue'
 import VintageScorecard from '~/components/challenge/VintageScorecard.vue'
 import SketchOverlay from '~/components/country/SketchOverlay.vue'
 import type { FlagMeaning } from '~~/data/flag-meanings.gen'
@@ -174,6 +175,19 @@ export const SCORECARD_REVEALS: Partial<Record<RoundChallengeKind, ScorecardReve
       props: ({ challenge, roundAnswers, players, playerId, viewerId, round }) =>
         isChallengeOfType(challenge, 'vintage-challenge')
           ? { challenge, roundAnswers, players, playerId, viewerId, round }
+          : undefined,
+    },
+  ],
+
+  // The answer never rode the snapshot, so the generic ledger has nothing to
+  // show: the file opens here, from the seat's own dossier.
+  unmask: [
+    {
+      component: UnmaskScorecard,
+      mode: 'replace',
+      props: ({ challenge, roundAnswers, players, viewerId, round }) =>
+        round && isChallengeOfType(challenge, 'unmask-challenge')
+          ? { challenge, roundAnswers, players, viewerId, round }
           : undefined,
     },
   ],

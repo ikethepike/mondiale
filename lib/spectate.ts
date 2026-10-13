@@ -154,6 +154,7 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   'hot-cold': true,
   sketch: false,
   'stat-detective': true,
+  unmask: true,
   'two-truths': true,
   'lay-of-the-land': true,
   'name-that-water': true,

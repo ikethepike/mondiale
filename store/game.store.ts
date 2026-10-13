@@ -7,6 +7,7 @@ import type {
   CompositionBoardView,
   ManhuntPosition,
   ManhuntReading,
+  UnmaskDossier,
   VintageOutcome,
 } from '~~/types/challenges/group-modes.type'
 import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
@@ -87,6 +88,9 @@ interface GameStoreState {
   /** Vintage round stories this socket has been sent, by game and round —
    *  from the targeted 'vintage-story' emit, never a snapshot. */
   vintageStories: Record<string, VintageOutcome>
+  /** This seat's Unmask dossiers, by game and round — from the targeted
+   *  'unmask-dossier' emit, never a snapshot. */
+  unmaskDossiers: Record<string, UnmaskDossier>
   /** Two Truths receipts this socket has been sent, by game and round: the
    *  verdicts by card and the table's banked sheets by seat — from the
    *  targeted 'two-truths-receipts' emit, never a snapshot. */
@@ -295,6 +299,7 @@ export const useGameStore = defineStore('game', {
     manhunt: undefined,
     manhuntReadings: undefined,
     vintageStories: {},
+    unmaskDossiers: {},
     twoTruthsReceipts: {},
     compositionBoards: {},
     refusedLights: {},

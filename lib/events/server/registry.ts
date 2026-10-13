@@ -26,6 +26,7 @@ import { submitManhuntSubpoenaHandler } from './submit-manhunt-subpoena.handler'
 import { fetchManhuntIntelHandler } from './fetch-manhunt-intel.handler'
 import { fetchTwoTruthsReceiptsHandler } from './fetch-two-truths-receipts.handler'
 import { fetchVintageStoryHandler } from './fetch-vintage-story.handler'
+import { fetchUnmaskDossierHandler } from './fetch-unmask-dossier.handler'
 import { fetchCompositionBoardHandler } from './fetch-composition-board.handler'
 import { submitCompositionDropHandler } from './submit-composition-drop.handler'
 import { manhuntReadyHandler } from './manhunt-ready.handler'
@@ -157,6 +158,10 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   'fetch-vintage-story': {
     handler: fetchVintageStoryHandler,
   },
+  // Reads one seat's dossier; answers the requesting socket only
+  'fetch-unmask-dossier': {
+    handler: fetchUnmaskDossierHandler,
+  },
   // Reads one round's receipts; answers the requesting socket once it may see them
   'fetch-two-truths-receipts': {
     handler: fetchTwoTruthsReceiptsHandler,
@@ -256,6 +261,7 @@ export const UNRECORDED_CLIENT_EVENTS: readonly ClientEvent[] = [
   'manhunt-taunt',
   'fetch-manhunt-intel',
   'fetch-vintage-story',
+  'fetch-unmask-dossier',
   'fetch-two-truths-receipts',
   'fetch-composition-board',
 ]

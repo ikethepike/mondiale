@@ -110,6 +110,7 @@ const KINDS_BY_MECHANIC: Record<RoundMechanic, RoundChallengeKind[]> = {
     'tongue-buzz',
     'silhouette',
     'stat-detective',
+    'unmask',
     'flag-palette',
     'flashpoint',
     'ground-plan',

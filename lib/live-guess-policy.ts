@@ -60,6 +60,7 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   silhouette: 'presence',
   'anthem-buzz': 'presence',
   'stat-detective': 'presence',
+  unmask: 'presence',
   'two-truths': 'presence',
   'name-that-water': 'presence',
   // Both recognition modes hunt one shared answer: the state that claims

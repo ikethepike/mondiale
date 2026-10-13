@@ -33,6 +33,7 @@
     "generate:migration": "bun run generators/vendors/undesa/create-migration.ts",
     "generate:treaties": "bun run generators/vendors/untc/create-treaties.ts",
     "generate:leaders": "bun run generators/create-leaders-file.ts",
+    "generate:unmask": "bun run generators/create-unmask-file.ts",
     "generate:parties": "bun run generators/create-polity-file.ts",
     "generate:logo-dims": "bun run generators/stamp-logo-dims.ts",
     "generate:capitals": "bun run generators/create-capitals-file.ts",

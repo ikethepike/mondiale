@@ -10,7 +10,6 @@ import type { EventEntry } from '~~/generators/create-events-file'
 import { countryEndonym, isLargeCountry, mentionsCountry } from '~~/lib/country'
 import { playableCountries } from '~~/lib/game-rules'
 import { isHeadlineLanguage, speakerRow, speaksLanguage } from '~~/lib/language-rounds'
-import { politicalLeader } from '~~/lib/leaders'
 import { type OutlinePoint, resampleOpen } from '~~/lib/outline'
 import type {
   BoundaryChallenge,
@@ -169,7 +168,6 @@ describe('dealFinalChallenge', () => {
     const game = gameFor('world', 'hard')
     const every = {
       'region-challenge': true,
-      'leadership-challenge': true,
       'language-challenge': true,
       'min-challenge': true,
       'max-challenge': true,
@@ -1208,47 +1206,6 @@ describe('isCorrectFinalAnswer', () => {
       isCorrectFinalAnswer({
         challenge,
         submittedAnswer: { _type: 'born-challenge', isoCodes: ['FI'] },
-      })
-    ).toThrow(TypeError)
-  })
-
-  it('asks about the leader its reveal headlines', () => {
-    let dealt = 0
-    for (let round = 0; round < DEAL_ROUNDS; round++) {
-      for (const variant of ['world', 'europe', 'africa'] as const) {
-        const { challenges } = getFinalChallenges({ game: gameFor(variant, 'hard') })
-        for (const challenge of challenges) {
-          if (challenge._type !== 'leadership-challenge') continue
-          dealt++
-          const headline = politicalLeader(challenge.country)?.name
-          expect(headline, challenge.country).toBeTruthy()
-          expect(getFinalChallengeDetails({ challenge }).question, challenge.country).toBe(
-            `Which country is led by ${headline}?`
-          )
-        }
-      }
-    }
-    expect(dealt).toBeGreaterThan(0)
-  })
-
-  it('stays strict on leadership questions and throws on shape mismatches', () => {
-    const challenge = { _type: 'leadership-challenge', country: 'SE' } as const
-    expect(
-      isCorrectFinalAnswer({
-        challenge,
-        submittedAnswer: { _type: 'leadership-challenge', isoCode: 'SE' },
-      })
-    ).toBe(true)
-    expect(
-      isCorrectFinalAnswer({
-        challenge,
-        submittedAnswer: { _type: 'leadership-challenge', isoCode: 'NO' },
-      })
-    ).toBe(false)
-    expect(() =>
-      isCorrectFinalAnswer({
-        challenge,
-        submittedAnswer: { _type: 'region-challenge', region: 'europe' },
       })
     ).toThrow(TypeError)
   })

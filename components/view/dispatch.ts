@@ -29,6 +29,7 @@ import ViewStarChart from '~/components/view/ViewStarChart.vue'
 import ViewGovernment from '~/components/view/ViewGovernment.vue'
 import ViewTerraIncognita from '~/components/view/ViewTerraIncognita.vue'
 import ViewStatDetective from '~/components/view/ViewStatDetective.vue'
+import ViewUnmask from '~/components/view/ViewUnmask.vue'
 import ViewTimeline from '~/components/view/ViewTimeline.vue'
 import ViewTongueBuzz from '~/components/view/ViewTongueBuzz.vue'
 import ViewTraversalChallenge from '~/components/view/ViewTraversalChallenge.vue'
@@ -74,6 +75,7 @@ const GROUP_VIEWS: Record<RoundChallengeKind, Component> = {
   'hot-cold': ViewHotCold,
   sketch: ViewSketch,
   'stat-detective': ViewStatDetective,
+  unmask: ViewUnmask,
   'two-truths': ViewTwoTruths,
   'lay-of-the-land': ViewWaterBlitz,
   'name-that-water': ViewNameThatWater,

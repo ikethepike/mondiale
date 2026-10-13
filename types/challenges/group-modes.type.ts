@@ -3,8 +3,9 @@ import type { VintageRegionId } from '../vintage.types'
 import type { GroupChallengeAccessorId } from './group-challenge.type'
 import type { LatLng } from '~~/lib/geo'
 import type { TrendMetricId } from '~~/lib/trends'
+import type { Spectrum } from '~~/lib/parties'
 import type { BoardRegion, GameDifficulty } from '../game.types'
-import type { ISOCountryCode } from '../geography.types'
+import type { ISOCountryCode, Region } from '../geography.types'
 
 /**
  * The newer group round formats. Like ranking and traversal rounds, every
@@ -146,6 +147,68 @@ export interface StatDetectiveChallenge {
   /** A capital skyline or landmark, revealed as the final visual clue on every
    *  difficulty — absent only when the country has no photo. */
   photo?: string
+}
+
+/** What one rung of an Unmask ladder discloses. */
+export type UnmaskRungKind =
+  'portrait' | 'region' | 'born' | 'tenure' | 'office' | 'party' | 'logo' | 'initials' | 'name'
+
+/** How a leader holds power, as a player can be told it without the country. */
+export type UnmaskOffice = 'monarch' | 'president' | 'premier' | 'ruler'
+
+/** One rung's contents, as the dossier delivers it. */
+export type UnmaskClue =
+  /** `pixels` is base64 RGB, `size`×`size`, row-major. */
+  | { kind: 'portrait'; size: number; pixels: string }
+  | { kind: 'region'; region: Region }
+  | { kind: 'born'; decade: number }
+  | { kind: 'tenure'; since: number }
+  | { kind: 'office'; office: UnmaskOffice }
+  | { kind: 'party'; band: Spectrum | 'none' }
+  /** An opaque copy of the governing party's logo — the roster's own file
+   *  names carry the ISO code. */
+  | { kind: 'logo'; logo: string; ratio?: number }
+  | { kind: 'initials'; initials: string }
+  | { kind: 'name'; name: string }
+
+/**
+ * Unmask: a leader's file opens one rung at a time — a portrait that sharpens,
+ * then facts, then the name — and each seat makes ONE accusation on the map.
+ * The earlier it lands, the more it pays.
+ *
+ * Only the ladder's SHAPE rides the snapshot. Who it is and what each rung
+ * says live in the `unmaskKey` side key (`UnmaskFile`); a rung's contents
+ * reach a seat over the targeted 'unmask-dossier' emit once the round clock
+ * has reached it, and the answer only once that seat is graded.
+ */
+export interface UnmaskChallenge {
+  _type: 'unmask-challenge'
+  rungs: UnmaskRungKind[]
+  secondsPerRung: number
+  maximumPoints: number
+  /** Every board country with a file — the suspects before any rung lands. */
+  suspects: ISOCountryCode[]
+  /** The dealer's output, on the SERVER copy only: `startUnmask` moves it to
+   *  the side key before the reveal saves. */
+  sealed?: UnmaskFile
+}
+
+/** The round's secret: the subject and every rung, as the side key holds it. */
+export interface UnmaskFile {
+  country: ISOCountryCode
+  /** Aligned with `UnmaskChallenge.rungs`. */
+  clues: UnmaskClue[]
+  /** The suspects still lit once each rung has landed, aligned with `rungs`. */
+  fields: ISOCountryCode[][]
+}
+
+/** One seat's view of the file: the rungs the clock has reached, and the
+ *  answer once that seat can no longer use it. */
+export interface UnmaskDossier {
+  round: number
+  clues: UnmaskClue[]
+  field: ISOCountryCode[]
+  reveal?: { country: ISOCountryCode }
 }
 
 /**
@@ -1408,6 +1471,7 @@ export type GroupModeChallenge =
   | HotColdChallenge
   | SketchChallenge
   | StatDetectiveChallenge
+  | UnmaskChallenge
   | TwoTruthsChallenge
   | WaterBlitzChallenge
   | NameWaterChallenge

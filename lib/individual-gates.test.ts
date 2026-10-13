@@ -100,24 +100,6 @@ describe('getIndividualChallenge (gate accessors)', { timeout: TIMEOUT }, () => 
   })
 })
 
-describe('dealLeaderPick (via forced variant)', { timeout: TIMEOUT }, () => {
-  it('names, shows and reveals one profile per option', async () => {
-    process.env.FORCE_INDIVIDUAL_VARIANT = 'leader-pick'
-    for (const regions of [[], ['europe'], ['africa']] as BoardRegion[][]) {
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const dealt = await getIndividualChallenge({ accessorId: 'government.leader', regions })
-        expect(dealt.variant).toBe('leader-pick')
-        expect(quizLeader(dealt.country)).toBe(politicalLeader(dealt.country))
-        for (const option of dealt.options ?? []) {
-          const shown = quizLeader(option)
-          expect(shown, option).toBeTruthy()
-          expect(countryLedBy(dealt.country, shown!.name), option).toBe(option === dealt.country)
-        }
-      }
-    }
-  })
-})
-
 describe('flag-only option tables', { timeout: TIMEOUT }, () => {
   const twinPairs = (options: readonly ISOCountryCode[]) =>
     options.flatMap((a, index) =>

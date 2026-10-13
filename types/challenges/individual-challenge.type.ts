@@ -21,8 +21,6 @@ import type { ISOCountryCode } from '../geography.types'
  *   pairs with one guaranteed riser + one faller, graded like higher-lower
  * - 'trajectory-match': a mystery sparkline — whose chart is this? Timed like
  *   border-detective, one buyable strike-out hint
- * - 'leader-pick': whose leader is named — `options` are the candidate
- *   countries, their leaders shown as the answers
  * - 'outline-reveal' (hard mode): `country`'s border draws itself in; name
  *   it by typing before the clock runs out — one wrong guess fails the gate
  * - 'leader-portrait': a leader's photo (from the Wikidata-generated leader
@@ -256,7 +254,6 @@ export const individualChallengeVariants = [
   'higher-lower',
   'trend-duel',
   'trajectory-match',
-  'leader-pick',
   'logo-politics',
   'outline-reveal',
   'leader-portrait',

@@ -108,6 +108,7 @@ import { borderChainOpenMoves, currentBorderChain } from './chain-turns'
 import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 import { compositionBoardOf } from './composition-board'
+import { fetchUnmaskFile } from './unmask-file'
 import { currentGovernment } from './government-beats'
 import { currentHeritageHunt } from './heritage-beats'
 import { currentManhunt, fetchManhuntSecret, isManhuntParticipant } from './manhunt-beats'
@@ -836,7 +837,7 @@ const dispatchClassicAnswer = (ctx: EngineContext, seq: number) => {
     }
     const live = latestRound(table)
     if (!live) return
-    const submission = await composeClassicSubmission(table, live, playerId)
+    const submission = await composeClassicSubmission(table, live, playerId, ctx.redis)
     if (!submission) return
 
     // Through the REAL submit handler, exactly like the gate and gauntlet
@@ -1373,8 +1374,7 @@ export const finalAnswerFor = async (
       return { _type: question._type, region }
     }
     case 'min-challenge':
-    case 'max-challenge':
-    case 'leadership-challenge': {
+    case 'max-challenge': {
       const pick = iso(question.country)
       return pick ? { _type: question._type, isoCode: pick } : undefined
     }
@@ -1526,7 +1526,8 @@ const botPlacements = (board: CompositionBoard, share: number): CompositionPlace
 export const composeClassicSubmission = async (
   game: Game,
   round: Round,
-  playerId: string
+  playerId: string,
+  redis?: EngineContext['redis']
 ): Promise<GroupSubmission | undefined> => {
   let correct: ISOCountryCode[]
   try {
@@ -1566,6 +1567,7 @@ export const composeClassicSubmission = async (
       playerId,
       submission: landed,
       seat: game.players[playerId]?.cursor,
+      redis,
     })
     const outOf = pot ?? scoring.maximum
     const worth = outOf ? scoring.scored / outOf : 0
@@ -1586,6 +1588,18 @@ export const composeClassicSubmission = async (
       const landed = { ranking: [target] }
       if (await lands(landed)) return landed
       const miss = wrongPick(game, correct)
+      return miss ? { ranking: [miss] } : { ranking: [] }
+    }
+    case 'unmask': {
+      // The subject lives in the side key; the probe's `correct` is empty by
+      // design, so the bot reads the file the grader will grade against.
+      const file = redis
+        ? await fetchUnmaskFile(redis, game.id, game.rounds.indexOf(round))
+        : undefined
+      if (!file) return { ranking: [] }
+      const landed = { ranking: [file.country] }
+      if (await lands(landed)) return landed
+      const miss = wrongPick(game, [file.country])
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'pyramid-scheme': {
