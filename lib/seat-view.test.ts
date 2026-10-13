@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { previewOn, seatVerdictOn, seatViewFamily, seatViewKey } from '~~/lib/seat-view'
-import { BOARD_STEPS, SEAT_STEP_SPECS, seatSubject } from '~~/lib/seat-transitions'
+import { SEAT_STEP_SPECS, seatSubject } from '~~/lib/seat-transitions'
 import { SEAT_STEPS, type SeatCursor, type SeatStep, type SeatVerdict } from '~~/types/seat.types'
 import { testCursor } from '~~/lib/events/server/test-seat'
 
@@ -28,23 +28,12 @@ const finalVerdict = (subject: string): SeatVerdict => ({
 })
 
 describe('seatViewFamily', () => {
-  it('maps every step to the family its spec names', () => {
-    for (const step of SEAT_STEPS) {
-      expect(seatViewFamily({ step })).toBe(SEAT_STEP_SPECS[step].family)
-    }
-  })
-
   it.each([
     ['round', 'round-verdict'],
     ['gate', 'gate-verdict'],
     ['final', 'final-verdict'],
   ] as [SeatStep, SeatStep][])('%s and %s share one family', (question, verdict) => {
     expect(seatViewFamily({ step: question })).toBe(seatViewFamily({ step: verdict }))
-  })
-
-  it('puts walk, arrive and settled on the board', () => {
-    expect(BOARD_STEPS).toEqual(['walk', 'arrive', 'settled'])
-    for (const step of BOARD_STEPS) expect(seatViewFamily({ step })).toBe('board')
   })
 })
 

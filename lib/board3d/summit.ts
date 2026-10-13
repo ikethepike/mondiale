@@ -345,12 +345,3 @@ export const summitClimbIndex = (
     ? flankCount
     : Math.min(flankCount - 1, Math.ceil((cleared / total) * flankCount) - 1)
 }
-
-export const summitClimbAnchor = (
-  site: SummitSite,
-  cleared: number,
-  total: number
-): Vector3 | undefined => {
-  const index = summitClimbIndex(site, cleared, total)
-  return index === undefined ? undefined : site.climbAnchors[index].clone()
-}

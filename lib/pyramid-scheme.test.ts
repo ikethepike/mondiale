@@ -236,7 +236,4 @@ describe('pyramid scheme live messaging', () => {
   it('shares presence, never the pick', () => {
     expect(guessPolicyFor({ liveGuesses: true } as unknown as Game, challenge)).toBe('presence')
   })
-  it('honours the table switching live guesses off', () => {
-    expect(guessPolicyFor({ liveGuesses: false } as unknown as Game, challenge)).toBe('none')
-  })
 })

@@ -126,15 +126,16 @@ describe('handleTimelineRevealDone', () => {
   })
 
   it('drops an ack that lands after the settle marked the round', async () => {
-    const game = buildGame([seat('a', 'round'), seat('b', 'round')], timelineChallenge(['a', 'b']))
+    const game = buildGame([seat('a', 'round'), seat('b', 'round')], timelineChallenge(['a']))
     game.rounds[0].groupAnswers = { a: {} } as never
     const ctx = context(game)
 
     await handleTimelineRevealDone(ctx, game, 'b')
 
-    const challenge = store.get(game.id)?.rounds[0].groupChallenge as TimelineChallenge | undefined
     // Nothing saved: the handler bailed before touching state.
-    expect(challenge ?? null).not.toBeNull()
+    const fresh = store.get(game.id)!
+    expect((fresh.rounds[0].groupChallenge as TimelineChallenge).state.revealDone).toEqual(['a'])
+    expect(fresh.rounds[0].groupAnswers).toEqual({ a: {} })
     expect(emitted.filter(entry => entry.gameId === game.id)).toEqual([])
   })
 

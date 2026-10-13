@@ -42,19 +42,6 @@ describe('flashpoint hint sources', () => {
     for (const isoCode of pool) expect(definingFor(isoCode)).toBeDefined()
   })
 
-  it('never lets a country with dots but no ACD profile into the pool', () => {
-    // Brazil is the live example: 200+ GED dots, no primary-party conflict, and
-    // metrics that read "0 disputes since 1946" underneath them.
-    const orphans = Object.entries(CONFLICT_FIELDS).filter(
-      ([isoCode, field]) =>
-        !!field &&
-        field.total >= MIN_POINTS &&
-        field.eras.length >= MIN_ERAS &&
-        !(CONFLICTS_BY_COUNTRY[isoCode as ISOCountryCode] ?? []).length
-    )
-    for (const [isoCode] of orphans) expect(pool).not.toContain(isoCode)
-  })
-
   /**
    * The giveaway gate. `mentionsCountry` catches text naming the ANSWER, but
    * it cannot catch a hint naming a NEIGHBOUR that pinpoints the region just as

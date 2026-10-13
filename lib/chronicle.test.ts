@@ -62,10 +62,10 @@ describe('isChronicleOrdered', () => {
     expect(isChronicleOrdered(['not-a-real-slug', 'also-fake'])).toBe(false)
   })
 
-  it('spans the hand first to last', () => {
-    const hand = dealChronicleEvents(chronicleCountries(WORLD, 'normal')[0], 'normal')!
-    const years = hand.map(slug => EVENTS[slug]!.year)
-    expect(chronicleSpanYears(hand)).toBe(Math.max(...years) - Math.min(...years))
+  it('spans the hand first to last, in any order', () => {
+    expect(chronicleSpanYears(['fall-of-the-berlin-wall', 'battle-of-marathon'])).toBe(2479)
+    // An unknown slug drops out, and one dated event is no span at all.
+    expect(chronicleSpanYears(['battle-of-marathon', 'not-a-real-slug'])).toBe(0)
   })
 })
 

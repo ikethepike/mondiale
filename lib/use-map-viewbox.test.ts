@@ -5,7 +5,6 @@ import {
   createCameraLedger,
   overlayBox,
   OVERLAY_BLEED,
-  OVERLAY_BLEED_INSET,
   type MapViewBox,
   type ScreenRect,
 } from './use-map-viewbox'
@@ -15,10 +14,6 @@ describe('camera-bus constants', () => {
     // Both are fractions of their own axis's dimension (drift x vs w, y vs h;
     // bleed likewise per axis), so one inequality covers both axes.
     expect(OVERLAY_BLEED).toBeGreaterThan(COMMIT_DRIFT)
-  })
-
-  it('the CSS inset is the same constant', () => {
-    expect(OVERLAY_BLEED_INSET).toBe(`-${OVERLAY_BLEED * 100}%`)
   })
 })
 

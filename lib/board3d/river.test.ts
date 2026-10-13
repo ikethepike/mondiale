@@ -16,13 +16,14 @@ const riverFor = (seed: string, count = 65) => {
 
 describe('pickRiverPath', () => {
   it('is deterministic per seed', () => {
-    const first = riverFor('river-a').river
-    const second = riverFor('river-a').river
-    expect(Boolean(first)).toBe(Boolean(second))
-    if (first && second) {
-      expect(first.points.length).toBe(second.points.length)
-      expect(first.points[0].equals(second.points[0])).toBe(true)
-    }
+    const seed = Array.from({ length: 40 }, (_, index) => `river-det-${index}`).find(
+      candidate => riverFor(candidate).river
+    )
+    expect(seed).toBeDefined()
+    const first = riverFor(seed!).river!
+    const second = riverFor(seed!).river!
+    expect(second.points.length).toBe(first.points.length)
+    first.points.forEach((point, index) => expect(point.equals(second.points[index])).toBe(true))
   })
 
   it('deals a river on some boards and declines on others', () => {

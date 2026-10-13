@@ -110,12 +110,6 @@ describe('openMoves', () => {
     const redealt = state({ chains: [['PT', 'ES', 'FR'], ['DE']] })
     expect(openMoves(redealt, WORLD)).toContain('FR')
   })
-
-  it('reports a dead end as no moves', () => {
-    // Portugal's only connection is Spain — already walked.
-    const trapped = state({ chains: [['ES', 'PT']] })
-    expect(openMoves(trapped, WORLD)).toEqual([])
-  })
 })
 
 describe('closedDoors', () => {

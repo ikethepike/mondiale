@@ -588,17 +588,6 @@ export const decorativeLogos = (): Party[] =>
     partiesOf(isoCode).filter(isDecorativeLogo)
   )
 
-/**
- * Every country with a party in this transnational grouping (EPP, ECR, the
- * Progressive Alliance). Membership rides Wikidata's `P463`, already filtered
- * to open statements by the generator, so a party that has LEFT a grouping is
- * never counted.
- */
-export const countriesInGrouping = (grouping: string): ISOCountryCode[] =>
-  (Object.keys(PARTIES) as ISOCountryCode[]).filter(isoCode =>
-    partiesOf(isoCode).some(party => party.groupings?.includes(grouping))
-  )
-
 export const groupingsOf = (party: Party): string[] => party.groupings ?? []
 
 /**

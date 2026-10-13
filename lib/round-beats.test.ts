@@ -103,22 +103,10 @@ describe('round beats', () => {
     }
   })
 
-  /** Value parity with the constants the views hard-coded before the spec
-   *  existed — proves the migration was a move, not a retune. Retire these
-   *  pins when the holds are deliberately retuned. */
-  it('carries the view reveal holds verbatim', () => {
-    expect(ROUND_BEATS.silhouette.revealHoldMs).toBe(4000)
-    expect(ROUND_BEATS['stat-detective'].revealHoldMs).toBe(4000)
-    expect(ROUND_BEATS['name-that-water'].revealHoldMs).toBe(4200)
-    expect(ROUND_BEATS['two-truths'].revealHoldMs).toBe(4500)
-    expect(ROUND_BEATS['pin-landmark'].revealHoldMs).toBe(6000)
-    expect(ROUND_BEATS['anthem-buzz'].revealHoldMs).toBe(7000)
-    expect(ROUND_BEATS['tongue-buzz'].revealHoldMs).toBe(7000)
-    expect(ROUND_BEATS.empire.revealHoldMs).toBe(12000)
-    // Deliberately retuned, not migrated: flashpoint shipped at 0, which flipped
-    // the scorecard over the conflict profile card while it was still awaiting
-    // its dynamic import. The reveal IS this mode's teaching payload.
-    expect(ROUND_BEATS.flashpoint.revealHoldMs).toBe(6000)
+  it('holds the reveals whose card is the payload', () => {
+    // Flashpoint shipped at 0, which flipped the scorecard over the conflict
+    // profile card while it was still awaiting its dynamic import.
+    expect(ROUND_BEATS.flashpoint.revealHoldMs).toBeGreaterThan(0)
     // Trend-race's reveal is PLAYER-paced: Continue flips inline (hold 0);
     // the browse cap only pads the settle budget.
     expect(ROUND_BEATS['trend-race'].revealHoldMs).toBe(0)

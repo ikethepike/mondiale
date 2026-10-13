@@ -5,7 +5,6 @@ import {
   benchesOf,
   benchStandings,
   chambersWithGovernment,
-  countriesInGrouping,
   governingParty,
   impostorParties,
   oppositionParties,
@@ -465,12 +464,6 @@ describe('seatingOrder', () => {
 describe('partiesWithLogo', () => {
   it('returns only parties carrying a logo path', () => {
     for (const party of partiesWithLogo('DE')) expect(party.logo).toBeTruthy()
-  })
-})
-
-describe('countriesInGrouping', () => {
-  it('is empty for an unknown grouping rather than throwing', () => {
-    expect(countriesInGrouping('not-a-real-grouping')).toEqual([])
   })
 })
 
