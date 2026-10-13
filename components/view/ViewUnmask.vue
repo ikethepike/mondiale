@@ -56,12 +56,20 @@
 
     <footer v-if="!submitted && !gameStore.watching" ref="footer">
       <div class="guess-box">
-        <ul v-if="suspectRail.length" class="country-chip-list rail suspects">
-          <li v-for="isoCode in suspectRail" :key="isoCode">
+        <ul
+          v-if="suspectRail.length"
+          ref="rail"
+          class="country-chip-list rail suspects"
+          :class="{ 'fade-left': scrollableLeft, 'fade-right': scrollableRight }"
+          :style="{ '--suspect-fill': UNMASK_SUSPECT_FILL }"
+          @scroll.passive="syncScrollEdges"
+        >
+          <li v-for="(isoCode, index) in suspectRail" :key="isoCode" :style="{ '--i': index }">
             <CountryChip
               tag="button"
               type="button"
               compact
+              class="map-caption suspect-chip"
               :country="getCountry(isoCode)"
               @click="pick(isoCode)"
             />
@@ -118,6 +126,7 @@ import { UNMASK_NAMED_FIELD, unmaskRemainingFraction, unmaskRungsShown } from '~
 import { useEdgeBerth } from '~~/lib/use-edge-berth'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
 import { useIsPhone, useIsRailless } from '~~/lib/use-viewport'
@@ -218,6 +227,8 @@ const suspectRail = computed(() =>
     ? [...field.value].sort((a, b) => countryName(a).localeCompare(countryName(b)))
     : []
 )
+const rail = ref<HTMLElement>()
+const { scrollableLeft, scrollableRight, syncScrollEdges } = useScrollEdges(() => rail.value)
 const pick = (isoCode: ISOCountryCode) => {
   const active = challenge.value
   if (!active || !started.value || submitted.value || gameStore.watching) return
@@ -320,6 +331,16 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
   margin: auto 0;
   height: fit-content;
   border-bottom-left-radius: $cardRadius;
+}
+
+.suspects li {
+  animation: row-land var(--motion-base) var(--ease-out-expressive) both;
+  animation-delay: calc(var(--i) * 0.04s);
+}
+
+.suspect-chip {
+  border-radius: 999px;
+  border: 0.15rem solid var(--suspect-fill);
 }
 
 .guess-box :deep(.suggestions) {

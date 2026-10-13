@@ -34,6 +34,14 @@
     }
   }
 
+  // A tappable chip still names its surface (`map-caption` over the map); the
+  // resets here only keep the UA button dress from bleeding through.
+  @at-root button#{&} {
+    cursor: pointer;
+    font: inherit;
+    color: var(--dark-blue);
+  }
+
   &.compact {
     gap: 0.55rem;
     padding: 0.3rem 0.9rem;
@@ -79,6 +87,9 @@
   justify-content: flex-start;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
+  // A rail parked on a chip boundary reads as complete; the fade says there is
+  // more. Hosts opt in by binding `useScrollEdges`'s `.fade-left`/`.fade-right`.
+  @include scroll-mask-x($left: 2.4rem, $right: 2.4rem);
 
   .country-chip {
     flex-shrink: 0;
