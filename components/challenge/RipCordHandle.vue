@@ -13,18 +13,15 @@
     @click="pullFromKeyboard"
     @contextmenu.prevent
   >
-    <svg class="handle" viewBox="0 0 28 44" aria-hidden="true">
-      <path class="cord" d="M14 0v18" />
-      <g class="ring">
-        <path class="ring-path" d="M6 20h16a2 2 0 0 1 2 2v4a10 10 0 0 1-20 0v-4a2 2 0 0 1 2-2z" />
-      </g>
-    </svg>
+    <ParachuteGlyph class="chute" @animationend="sprung = false" />
     <span class="label">{{ pulling ? 'Hold…' : 'Rip cord' }}</span>
   </button>
 </template>
 <script lang="ts" setup>
+import ParachuteGlyph from '~/components/challenge/ParachuteGlyph.vue'
+
 /**
- * The rip cord's pull: a D-ring you hold down until the cord gives — the hold
+ * The rip cord's pull: a packed parachute you hold until it opens — the hold
  * is the confirmation for a once-a-round lifeline. A keyboard press pulls at
  * once (Enter/Space has no pointer to hold).
  */
@@ -92,51 +89,40 @@ onBeforeUnmount(clearHold)
   }
 }
 
-.handle {
-  width: 2.2rem;
-  height: 3.4rem;
+.chute {
+  width: 3rem;
+  height: 3rem;
   overflow: visible;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.cord {
-  transform-origin: 50% 0;
+  transform-origin: 50% 80%;
   transition: transform 0.25s var(--ease-out-expressive);
 }
 
-.ring {
-  transition: transform 0.25s var(--ease-out-expressive);
+.chute :deep(.canopy) {
+  transition: fill-opacity 0.25s var(--ease-out-expressive);
 }
 
-.ring-path {
-  fill: currentColor;
-  fill-opacity: 0.16;
+// The hold fills the canopy with air over exactly the hold's length — it
+// swells and lifts; letting go early lets it sag back.
+.pulling .chute {
+  transform: translateY(-0.3rem) scale(1.18);
+  transition: transform var(--hold-ms) var(--ease-smooth);
+}
+.pulling .chute :deep(.canopy),
+.sprung .chute :deep(.canopy) {
+  fill-opacity: 0.85;
+  transition: fill-opacity var(--hold-ms) var(--ease-smooth);
 }
 
-// The hold stretches the cord and draws the ring down; letting go early
-// springs it back.
-.pulling {
-  .cord {
-    transform: scaleY(1.45);
-    transition: transform var(--hold-ms) linear;
+.sprung .chute {
+  animation: chute-open 0.5s var(--ease-out-expressive);
+}
+
+@keyframes chute-open {
+  0% {
+    transform: translateY(-0.3rem) scale(1.18);
   }
-  .ring {
-    transform: translateY(0.8rem);
-    transition: transform var(--hold-ms) linear;
-  }
-}
-
-.sprung .ring {
-  animation: ring-free 0.5s var(--ease-out-expressive);
-}
-
-@keyframes ring-free {
   40% {
-    transform: translateY(1.2rem) rotate(-12deg);
+    transform: translateY(-0.7rem) scale(1.3);
   }
 }
 
@@ -149,13 +135,13 @@ onBeforeUnmount(clearHold)
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cord,
-  .ring,
-  .pulling .cord,
-  .pulling .ring {
+  .chute,
+  .pulling .chute,
+  .chute :deep(.canopy),
+  .pulling .chute :deep(.canopy) {
     transition: none;
   }
-  .sprung .ring {
+  .sprung .chute {
     animation: none;
   }
 }
