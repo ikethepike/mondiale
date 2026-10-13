@@ -75,7 +75,15 @@ jobs:
       name: pr-${{ github.event.number }}
       url: https://pr-${{ github.event.number }}-mondiale.fly.dev
     steps:
+      # Deploying a built image needs only the Fly config, not ~650 MB of media.
       - uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /fly*.toml
+            /Dockerfile
+            /.dockerignore
       - uses: superfly/flyctl-actions/setup-flyctl@1.5
 
       # --ha=false keeps previews on one machine (rooms shard per machine via
