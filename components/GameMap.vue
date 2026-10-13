@@ -981,8 +981,10 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   // inside the clear band — the zoom-out ceiling follows the actual rest.
   // Cached: this runs every gesture frame, and the berth chain behind it
   // only moves with the rect or the berth props.
+  // A side berth narrows the band a framed subject must fit, so the ceiling
+  // widens with it — the rest ignores side berths and would cap that frame.
   clampCache ??= {
-    maxWidth: Math.max(WORLD_VIEW.width, restView().width),
+    maxWidth: Math.max(WORLD_VIEW.width, restView().width) * berthMetrics().scaleX,
     centerFraction: berthMetrics().centerFraction,
   }
   const { maxWidth, centerFraction } = clampCache
