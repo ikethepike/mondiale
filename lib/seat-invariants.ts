@@ -285,6 +285,18 @@ export const subjectStallMs = (step: SeatStep, challenge?: unknown): number | un
       ? roundStallMs(challenge)
       : undefined
 
+/**
+ * What a turn or beat engine has advanced to on the live round. A turn chain
+ * holds every seat on one `round:N` subject for as long as the chain lives,
+ * so a stall watcher keyed on the subject alone reads a long, healthy chain
+ * as stuck: key it on this too. Each turn's own clock is held by the engine
+ * deadline checks.
+ */
+export const roundProgress = (challenge: unknown): string => {
+  const state = (challenge as { state?: { turn?: unknown; beat?: unknown } } | undefined)?.state
+  return `${String(state?.turn ?? '')}/${String(state?.beat ?? '')}`
+}
+
 const engineStateNote = (challenge: unknown): string => {
   const state = (challenge as { state?: Record<string, unknown> } | undefined)?.state
   if (!state) return ''
