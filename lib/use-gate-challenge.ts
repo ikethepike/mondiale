@@ -27,6 +27,7 @@ import type {
   TrendDuelOutcome,
 } from '~~/types/challenges/individual-challenge.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
+import type { AtlasSpellings } from './atlas-chain'
 import { isCorrectIndividualAnswer } from './challenges'
 import { getCountry } from './country'
 import { createRedeliver, useClientEvents } from './events/client-side'
@@ -97,6 +98,8 @@ export interface GateChallengeContext {
   trendDuelOutcomes: Ref<TrendDuelOutcome[]>
   /** The atlas gate's chain (seed first), kept for the same reason. */
   atlasChain: Ref<ISOCountryCode[]>
+  /** Names in that chain played under another spelling. */
+  atlasSpellings: Ref<AtlasSpellings>
   /** The chronicle gate's submitted order (event slugs), kept for the same
    *  reason — the reveal ghosts where each card had been placed. */
   chronicleOrder: Ref<string[]>
@@ -216,6 +219,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
   const duelOutcomes = ref<DuelOutcome[]>([])
   const trendDuelOutcomes = ref<TrendDuelOutcome[]>([])
   const atlasChain = ref<ISOCountryCode[]>([])
+  const atlasSpellings = ref<AtlasSpellings>({})
   const chronicleOrder = ref<string[]>([])
   const browseReveal = computed(() => isBrowsableGateVariant(variant.value))
 
@@ -321,6 +325,7 @@ export const provideGateChallenge = (): GateChallengeContext => {
     duelOutcomes,
     trendDuelOutcomes,
     atlasChain,
+    atlasSpellings,
     chronicleOrder,
     browseReveal,
     holdUntil,

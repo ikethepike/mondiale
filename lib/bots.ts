@@ -119,3 +119,11 @@ export const botShare = (
  *  rather than metronomic. Clamped off the floor: even a cold seat plays. */
 export const jitteredShare = (share: number, random: () => number = Math.random): number =>
   clamp01(share + (random() - 0.5) * 0.3)
+
+/** Turn-chain recall: a share is calibrated against this many legal moves.
+ *  Each move is its own chance to remember a name, so a busy letter comes
+ *  easier than one down to its last name or two. */
+export const CHAIN_RECALL_OPTIONS = 4
+
+export const chainRecall = (share: number, options: number): number =>
+  options <= 0 ? 0 : 1 - (1 - clamp01(share)) ** (options / CHAIN_RECALL_OPTIONS)

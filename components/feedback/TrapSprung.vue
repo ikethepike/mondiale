@@ -1,10 +1,20 @@
 <template>
-  <div v-if="!watching" ref="root" class="intro-overlay trap-sprung" @click="skip">
+  <div
+    ref="root"
+    class="intro-overlay trap-sprung"
+    :class="{ over, watching }"
+    role="status"
+    :tabindex="watching ? -1 : 0"
+    @click="skipSign"
+    @keydown.enter.prevent="skipSign"
+    @keydown.space.prevent="skipSign"
+  >
     <div class="content">
       <span data-intro class="kicker map-caption">Dead end</span>
       <h1 data-intro>{{ title }}</h1>
       <hr data-intro />
       <p data-intro class="stakes">{{ blame }}</p>
+      <p v-if="sealedLine" data-intro class="sealed">{{ sealedLine }}</p>
 
       <!-- The proof. Every connection of the dead head, struck through with
            the reason it was shut — the table sees the count and the closure,
@@ -16,6 +26,7 @@
           class="spent"
           compact
           :country="getCountry(door.isoCode)"
+          :name="spellings?.[door.isoCode]"
         >
           <small class="door-reason">{{ reasonOf(door) }}</small>
         </CountryChip>
@@ -37,6 +48,7 @@ import { playerDisplayName } from '~~/lib/player'
 import { useIntroBeat } from '~~/lib/use-intro-beat'
 import { TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { AtlasTrap, BorderChainTrap, ClosedDoor } from '~~/types/challenges/group-modes.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
 
 /**
@@ -56,15 +68,18 @@ const props = defineProps<{
   /** The victim's rip cord cushioned the dead end: they stay in and play the
    *  fresh chain. */
   rescued?: boolean
+  /** Who named each walked country — an atlas door says whose name sealed it. */
+  walkedBy?: Partial<Record<ISOCountryCode, string>>
+  /** Names played under another spelling (Atlas). */
+  spellings?: Partial<Record<ISOCountryCode, string>>
 }>()
 
 const emit = defineEmits<{ done: [] }>()
 
-// Watch mode: the booth's inert wrapper makes a tap-held overlay unskippable —
-// skip the beat and fire done immediately (same contract as Interstitial).
+// The booth plays the beat too, but its inert wrapper takes no taps — the sign
+// runs its course and passes clicks through.
 const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
-if (watching.value) onMounted(() => emit('done'))
 
 const doors = computed<ClosedDoor[]>(() =>
   'doors' in props.trap
@@ -105,14 +120,26 @@ const verdict = computed(() => {
   return `${doorWord} — ${who} out without a move.`
 })
 
-const reasonOf = (door: ClosedDoor) =>
-  door.reason === 'walked'
-    ? door.step
-      ? `walked · step ${door.step}`
-      : 'already walked'
-    : 'off the board'
+/** The atlas proof's opening line: every letter the head offered, spent. */
+const sealedLine = computed(() => {
+  if (!('openers' in props.trap)) return undefined
+  const letters = props.trap.openers.map(letter => `${letter.toUpperCase()}…`).join(' and ')
+  return `Every ${letters} name — and every shared ending — was already walked.`
+})
+
+const reasonOf = (door: ClosedDoor) => {
+  if (door.reason !== 'walked') return 'off the board'
+  if (door.step) return `walked · step ${door.step}`
+  const by = props.walkedBy?.[door.isoCode]
+  return by ? `walked by ${by}` : 'already walked'
+}
 
 const root = ref<HTMLElement>()
+/** Faded out: the sign no longer catches taps meant for the map. */
+const over = ref(false)
+/** However many doors there are, they all snap shut inside this much of the hold. */
+const DOOR_STAGGER_BUDGET = 1.2
+const DOOR_STAGGER = 0.09
 // The sign fades a beat before the server deals fresh ground, so the table
 // never watches an empty overlay sitting over a live chain.
 const HOLD_SECONDS = TRAP_HOLD_MS / 1000 - 1.4
@@ -130,7 +157,13 @@ const { skip } = useIntroBeat(
       timeline.fromTo(
         chips,
         { opacity: 0, scale: 1.04 },
-        { opacity: 1, scale: 1, duration: 0.28, ease: EASE.exit, stagger: 0.09 },
+        {
+          opacity: 1,
+          scale: 1,
+          duration: 0.28,
+          ease: EASE.exit,
+          stagger: Math.min(DOOR_STAGGER, DOOR_STAGGER_BUDGET / chips.length),
+        },
         '>-0.2'
       )
     },
@@ -139,8 +172,15 @@ const { skip } = useIntroBeat(
       gsap.set(shell.querySelectorAll('[data-intro], .doors .country-chip'), { opacity: 1 })
     },
   },
-  () => emit('done')
+  () => {
+    over.value = true
+    emit('done')
+  }
 )
+
+const skipSign = () => {
+  if (!watching.value) skip()
+}
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
@@ -151,6 +191,18 @@ const { skip } = useIntroBeat(
 .trap-sprung {
   background: milk(0.34);
   backdrop-filter: none;
+
+  &.over,
+  &.watching {
+    pointer-events: none;
+  }
+}
+
+.sealed {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--dark-blue);
+  text-shadow: 0 0 1.2rem #{milk(1)};
 }
 
 .kicker {

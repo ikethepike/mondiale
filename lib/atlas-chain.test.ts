@@ -6,8 +6,19 @@ import {
   ATLAS_TARGET_LINKS,
   ATLAS_TRAP_BOUNTY_LINKS,
   ATLAS_TUTORIAL_EXAMPLES,
+  ATLAS_SPELLINGS,
   atlasChainCredit,
   atlasContinuations,
+  atlasFollowSpelling,
+  atlasInDegree,
+  atlasRecordSpelling,
+  atlasRoundStats,
+  atlasSpellingFor,
+  atlasSqueeze,
+  atlasStep,
+  atlasTeachingPicks,
+  parseAtlasSteps,
+  pickAtlasMove,
   atlasHeadLetter,
   atlasKey,
   atlasLinkOverlap,
@@ -24,9 +35,12 @@ import {
   pickAtlasReseed,
   pickAtlasSeed,
 } from '~~/lib/atlas-chain'
+import { chainMovers } from '~~/lib/chain'
+import { resolveTypedCountry } from '~~/lib/country'
 import { isMicroNation, playableWorldCountries } from '~~/lib/game-rules'
+import type { ChainTurnState } from '~~/types/challenges/group-modes.type'
 import { gameDifficulties, type GameRules } from '~~/types/game.types'
-import type { ISOCountryCode } from '~~/types/geography.types'
+import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
 const WORLD: ISOCountryCode[] = [...ISOCountryCodes]
 const RULES: GameRules = { regions: [], difficulty: 'normal', includeMicroNations: false }
@@ -231,6 +245,14 @@ describe('ATLAS_TUTORIAL_EXAMPLES', () => {
       expect(isMicroNation(from) || isMicroNation(to), `${from} → ${to}`).toBe(false)
     }
   })
+
+  it('teaches with names a chain can actually reach', () => {
+    const degree = atlasInDegree(playableWorldCountries(RULES))
+    for (const [from, to] of Object.values(ATLAS_TUTORIAL_EXAMPLES)) {
+      expect(degree.get(from), from).toBeGreaterThan(1)
+      expect(degree.get(to), to).toBeGreaterThan(1)
+    }
+  })
 })
 
 describe('pickAtlasReseed', () => {
@@ -239,5 +261,136 @@ describe('pickAtlasReseed', () => {
     const walked = pool.filter(isoCode => !['NP', 'LA'].includes(isoCode))
     expect(pickAtlasReseed(RULES, walked)).toBe('NP') // Nepal → Laos is the last live link
     expect(pickAtlasReseed(RULES, pool)).toBeUndefined()
+  })
+})
+
+describe('spellings', () => {
+  it('judges a country by the name it was typed under', () => {
+    // Vietnam ends in M: only Myanmar opens on it — Burma does not.
+    expect(atlasFollowSpelling('VN', 'MM', undefined, 'Myanmar')).toEqual({ spelling: 'Myanmar' })
+    expect(atlasFollowSpelling('VN', 'MM', undefined, 'Burma')).toEqual({ spelling: 'Myanmar' })
+    // Cuba's consonant B opens Burma under the data's own name.
+    expect(atlasFollowSpelling('CU', 'MM', undefined, 'Burma')).toEqual({ spelling: undefined })
+    expect(atlasFollowSpelling('LA', 'MM', undefined, 'Burma')).toBeUndefined()
+    expect(atlasOpeners('MM', { MM: 'Myanmar' })).toEqual(['r'])
+    expect(atlasOpeners('MM')).toEqual(['a', 'm'])
+  })
+
+  it('prefers the typed spelling when both names chain', () => {
+    // Egypt's T opens Turkey and Türkiye alike — the player's word wins.
+    expect(atlasFollowSpelling('EG', 'TR', undefined, 'Türkiye')).toEqual({ spelling: 'Türkiye' })
+    expect(atlasFollowSpelling('EG', 'TR', undefined, 'Turkiye')).toEqual({ spelling: 'Türkiye' })
+    expect(atlasFollowSpelling('EG', 'TR', undefined, 'Turkey')).toEqual({ spelling: undefined })
+  })
+
+  it("ignores a spelling that is not the country's own", () => {
+    expect(atlasSpellingFor('FR', 'Myanmar')).toBeUndefined()
+    expect(atlasSpellingFor('MM', 'x'.repeat(200))).toBeUndefined()
+  })
+
+  it('reads a dropdown pick by the prefix the player had typed', () => {
+    expect(atlasSpellingFor('MM', 'Myan')).toBe('Myanmar')
+    expect(atlasSpellingFor('MM', 'Bur')).toBeUndefined()
+  })
+
+  it('records the played spelling on the round', () => {
+    const state = { chains: [['VN']], spellings: undefined } as unknown as ChainTurnState<unknown>
+    atlasRecordSpelling(state, 'MM', 'Myanmar')
+    expect(state.spellings).toEqual({ MM: 'Myanmar' })
+    atlasRecordSpelling(state, 'RU', 'Russia')
+    expect(state.spellings).toEqual({ MM: 'Myanmar' })
+  })
+
+  it('only lists names the console resolves to the same country', () => {
+    for (const [isoCode, names] of Object.entries(ATLAS_SPELLINGS)) {
+      for (const name of names ?? []) expect(resolveTypedCountry(name)?.isoCode, name).toBe(isoCode)
+    }
+  })
+
+  it('carries spellings through the gate steps and refuses invented ones', () => {
+    const steps = ['VN', 'MM'].map(isoCode =>
+      atlasStep(isoCode as ISOCountryCode, { MM: 'Myanmar' })
+    )
+    expect(steps).toEqual(['VN', 'MM:Myanmar'])
+    expect(parseAtlasSteps(steps, isValidISOCode)).toEqual({
+      links: ['VN', 'MM'],
+      spellings: { MM: 'Myanmar' },
+    })
+    expect(parseAtlasSteps(['MM:Rangoonia'], isValidISOCode)).toBeUndefined()
+    expect(parseAtlasSteps(['XX'], isValidISOCode)).toBeUndefined()
+  })
+})
+
+describe('the link graph', () => {
+  it('pins the names nothing can lead into — a data change shows up here', () => {
+    const degree = atlasInDegree(playableWorldCountries(RULES))
+    const unreachable = [...degree].filter(([, count]) => count === 0).map(([isoCode]) => isoCode)
+    const lonely = [...degree].filter(([, count]) => count === 1).map(([isoCode]) => isoCode)
+    expect(unreachable.sort()).toEqual(['FI', 'FJ', 'FR'])
+    expect(lonely.sort()).toEqual(['JM', 'JO', 'JP', 'ZM', 'ZW'])
+  })
+
+  it('leans seeds toward the names a chain can never reach', () => {
+    const pool = playableWorldCountries(RULES)
+    const degree = atlasInDegree(pool)
+    const rare = new Set([...degree].filter(([, count]) => count <= 1).map(([isoCode]) => isoCode))
+    const draws = 2000
+    let rareDraws = 0
+    for (let draw = 0; draw < draws; draw++) {
+      const seed = pickAtlasSeed(RULES, { minOptions: ATLAS_TABLE_SEED_OPTIONS })!
+      if (rare.has(seed)) rareDraws++
+    }
+    const uniform = rare.size / pool.length
+    expect(rareDraws / draws).toBeGreaterThan(uniform * 1.6)
+    expect(rareDraws / draws).toBeLessThan(0.25)
+  })
+})
+
+describe('atlasTeachingPicks', () => {
+  it('puts the names that would have carried on first', () => {
+    const pool = playableWorldCountries(RULES)
+    const used = pool.filter(isoCode => !['NP', 'LA', 'LV', 'LB', 'SE'].includes(isoCode))
+    // From Nepal: Laos dead-ends (everything after it is walked); Latvia leads on to Afghanistan… unless walked.
+    const candidates = atlasContinuations('NP', used, pool)
+    const picks = atlasTeachingPicks(candidates, used, pool, candidates.length)
+    const alive = (isoCode: ISOCountryCode) => atlasSqueeze(isoCode, used, pool) > 0
+    const firstDead = picks.findIndex(isoCode => !alive(isoCode))
+    if (firstDead >= 0) expect(picks.slice(firstDead).every(isoCode => !alive(isoCode))).toBe(true)
+  })
+})
+
+describe('pickAtlasMove', () => {
+  it('springs the tightest squeeze when cunning', () => {
+    const pool = playableWorldCountries(RULES)
+    const open = atlasContinuations('NP', [], pool)
+    const pick = pickAtlasMove(open, ['NP'], pool, 1)!
+    const tightest = Math.min(...open.map(isoCode => atlasSqueeze(isoCode, ['NP'], pool)))
+    expect(atlasSqueeze(pick, ['NP'], pool)).toBe(tightest)
+  })
+
+  it('plays any legal move when not', () => {
+    const pool = playableWorldCountries(RULES)
+    const open = atlasContinuations('NP', [], pool)
+    expect(open).toContain(pickAtlasMove(open, ['NP'], pool, 0))
+  })
+})
+
+describe('atlasRoundStats', () => {
+  it('reads runs, depth, the busiest letter and cords off the state', () => {
+    const state = {
+      chains: [
+        ['NP', 'LA', 'AF'],
+        ['BY', 'RU'],
+      ],
+      named: { a: ['LA', 'AF'], b: ['RU'] },
+      breaks: [{ kind: 'rip-cord', playerId: 'b' }],
+    } as unknown as ChainTurnState<unknown>
+    const stats = atlasRoundStats(state, chainMovers(state))
+    expect(stats.links).toBe(3)
+    expect(stats.chains).toBe(2)
+    expect(stats.longestRun).toEqual({ playerId: 'a', run: 2 })
+    expect(stats.deepest?.to).toBe('RU')
+    expect(stats.deepest?.tie.fragment).toBe('rus')
+    expect(stats.cords).toBe(1)
   })
 })

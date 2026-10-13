@@ -39,6 +39,7 @@
       :sea-links="gameStore.map.seaLinks"
       :ringed="gameStore.map.ringed"
       :land-routes="gameStore.map.landRoutes"
+      :hop-links="gameStore.map.hopLinks"
       :sea-glow="gameStore.map.seaGlow"
       :staggered="gameStore.map.staggered"
       :dimmed="gameStore.map.dimmed"

@@ -23,6 +23,7 @@
 </template>
 <script lang="ts" setup>
 import SonarGlyph from '~/components/challenge/SonarGlyph.vue'
+import { labelAnchorFor } from '~~/lib/label-anchor'
 import { mapRegionCentre } from '~~/lib/sunset-window'
 import { useMapPanTrack, useMapViewBox } from '~~/lib/use-map-viewbox'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -75,7 +76,8 @@ const chips = computed(() => {
     index: number
   }[] = []
   for (const entry of props.entries) {
-    const centre = mapRegionCentre(entry.isoCode)
+    const anchor = labelAnchorFor(entry.isoCode)?.point
+    const centre = anchor ? { x: anchor[0], y: anchor[1] } : mapRegionCentre(entry.isoCode)
     const left = ((centre.x - vb.x) / vb.w) * 100
     const top = ((centre.y - vb.y) / vb.h) * 100
     if (left < 2 || left > 98 || top < 4 || top > 96) continue

@@ -3,6 +3,8 @@ import {
   BOT_ID_PREFIX,
   BOT_NAMES,
   botShare,
+  CHAIN_RECALL_OPTIONS,
+  chainRecall,
   createBot,
   DIFFICULTY_SHARE,
   isBotId,
@@ -120,5 +122,14 @@ describe('jitteredShare', () => {
 
   it('centres on the share', () => {
     expect(jitteredShare(0.5, () => 0.5)).toBeCloseTo(0.5)
+  })
+})
+
+describe('chainRecall', () => {
+  it('reads the share at the calibration count and eases with more names', () => {
+    expect(chainRecall(0.5, CHAIN_RECALL_OPTIONS)).toBeCloseTo(0.5)
+    expect(chainRecall(0.5, 1)).toBeLessThan(0.5)
+    expect(chainRecall(0.5, 12)).toBeGreaterThan(0.8)
+    expect(chainRecall(0.9, 0)).toBe(0)
   })
 })

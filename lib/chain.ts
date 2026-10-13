@@ -10,6 +10,7 @@ import type {
 import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import { shuffleArray } from './arrays'
+import { countryName } from './country'
 import { isCountryPlayable } from './game-rules'
 import { clampScore } from './scoring'
 
@@ -38,12 +39,16 @@ export const walkColor = (index: number, count: number, head = false): string =>
   return `hsla(212, 58%, ${72 - t * 30}%, ${0.5 + t * 0.35})`
 }
 
+/** A retired chain's fill — walked, but no longer in play. */
+export const RETIRED_CHAIN_FILL = 'hsla(215.7, 15%, 55%, 0.32)'
+
 export const liveChain = (state: ChainTurnState<unknown>): ISOCountryCode[] =>
   state.chains[state.chains.length - 1] ?? []
 
 /** The table beats a narration watcher diffs between two snapshots. */
 export interface ChainBeats {
   links: number
+  chains: number
   eliminated: number
   breaks: number
   strikes: { [playerId: string]: number }
@@ -51,6 +56,7 @@ export interface ChainBeats {
 
 export const chainBeats = (state: ChainTurnState<unknown>): ChainBeats => ({
   links: state.chains.reduce((total, walkedChain) => total + walkedChain.length, 0),
+  chains: state.chains.length,
   eliminated: state.eliminated.length,
   breaks: state.breaks?.length ?? 0,
   // A copy, not the live record — the diff must survive the state mutating.
@@ -100,7 +106,8 @@ export const chainNarration = (
   const pulled = now.breaks > before.breaks ? state.breaks?.at(-1) : undefined
   if (pulled?.kind === 'rip-cord') {
     if (pulled.playerId === copy.seatId) return undefined
-    return `${copy.seatName(pulled.playerId)} pulls the rip cord — fresh ground`
+    const landing = liveChain(state)[0]
+    return `${copy.seatName(pulled.playerId)} pulls the rip cord — ${landing ? `parachutes into ${countryName(landing)}` : 'fresh ground'}`
   }
 
   if (now.links > before.links && state.lastMoverId && state.lastMoverId !== copy.seatId) {
@@ -111,6 +118,22 @@ export const chainNarration = (
   }
 
   return undefined
+}
+
+/** A rip cord that just dealt fresh ground, read off two snapshots: the live
+ *  chain is new, and the break that retired the last one was a pulled cord or
+ *  a dead end a cord cushioned. Undefined for every other beat. */
+export const chainParachute = (
+  state: ChainTurnState<unknown>,
+  before: ChainBeats,
+  now: ChainBeats
+): { playerId: string; retired: ISOCountryCode[]; seed: ISOCountryCode } | undefined => {
+  if (now.chains <= before.chains || state.trap) return undefined
+  const sealed = state.breaks?.[state.chains.length - 2]
+  if (!sealed || (sealed.kind === 'trap' && !sealed.rescued)) return undefined
+  const seed = liveChain(state)[0]
+  if (!seed) return undefined
+  return { playerId: sealed.playerId, retired: state.chains.at(-2) ?? [], seed }
 }
 
 export const chainHead = (state: ChainTurnState<unknown>): ISOCountryCode | undefined => {
@@ -172,8 +195,6 @@ export const canPullRipCord = (state: ChainTurnState<unknown>, playerId: string)
   activePlayerId(state) === playerId &&
   ripCordsLeft(state, playerId) > 0
 
-/** Retire the live chain for a fresh seed. The puller stays on the clock —
- *  the engine bumps the turn and stamps the deadline. */
 /** Open a fresh chain on `seed`. Nobody moved, so nobody may be credited
  *  with a dead end the seed itself deals. */
 export const dealFreshChain = (state: ChainTurnState<unknown>, seed: ISOCountryCode): void => {
@@ -181,6 +202,75 @@ export const dealFreshChain = (state: ChainTurnState<unknown>, seed: ISOCountryC
   state.lastMoverId = undefined
 }
 
+// The turn-chain state moves the engine and the preview harness share — the
+// hosts own only the clock (turn counter and deadline) and the timers.
+
+/** Hand the clock to the next standing seat. */
+export const passTurn = (state: ChainTurnState<unknown>): void => {
+  const standing = new Set(standingPlayers(state))
+  for (let step = 1; step <= state.order.length; step++) {
+    const index = (state.activeIndex + step) % state.order.length
+    if (standing.has(state.order[index])) {
+      state.activeIndex = index
+      return
+    }
+  }
+}
+
+/** The active seat extends the live chain. */
+export const recordLink = (state: ChainTurnState<unknown>, isoCode: ISOCountryCode): void => {
+  const moverId = activePlayerId(state)
+  liveChain(state).push(isoCode)
+  ;(state.named[moverId] ??= []).push(isoCode)
+  state.lastMoverId = moverId
+}
+
+export const eliminateSeat = (
+  state: ChainTurnState<unknown>,
+  playerId: string,
+  outcome: ChainTurnOutcome,
+  outs: ISOCountryCode[]
+): void => {
+  state.eliminated.push(playerId)
+  state.outcomes[playerId] = outcome
+  state.missedOuts[playerId] = outs
+}
+
+/** A miss lands on the active seat: a strike burns if one is left, otherwise
+ *  the seat is out holding `outs`. Returns whether the round is over. */
+export const chargeMiss = (
+  state: ChainTurnState<unknown>,
+  kind: 'wrong' | 'timeout',
+  outs: () => ISOCountryCode[]
+): boolean => {
+  const missedId = activePlayerId(state)
+  if ((state.strikesLeft[missedId] ?? 0) > 0) {
+    state.strikesLeft[missedId]--
+    return false
+  }
+  eliminateSeat(state, missedId, kind, outs())
+  return standingPlayers(state).length <= 1
+}
+
+/** One seat left: crown it and freeze the state for the reveal. */
+export const closeChainRound = (state: ChainTurnState<unknown>): void => {
+  const winnerId = standingPlayers(state)[0]
+  if (winnerId) state.outcomes[winnerId] = 'won'
+  state.finished = true
+}
+
+/** Who named each walked country — the reveal's runs and the trap card's
+ *  "walked by" both read it. */
+export const chainMovers = (state: ChainTurnState<unknown>): Map<ISOCountryCode, string> => {
+  const movers = new Map<ISOCountryCode, string>()
+  for (const [playerId, named] of Object.entries(state.named)) {
+    for (const isoCode of named) movers.set(isoCode, playerId)
+  }
+  return movers
+}
+
+/** Retire the live chain for a fresh seed. The puller stays on the clock —
+ *  the engine bumps the turn and stamps the deadline. */
 export const pullRipCord = (
   state: ChainTurnState<unknown>,
   playerId: string,

@@ -5,13 +5,15 @@ import { gradeGateSteps, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-s
 import { readTrend } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
-import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { playableWorldCountries } from '~~/lib/game-rules'
+import type { GameRules } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 const gate = (extra: Partial<IndividualChallenge>): IndividualChallenge =>
   ({ _type: 'individual-challenge', id: 'flag', country: 'SE', ...extra }) as IndividualChallenge
 
-const pool = [...ISOCountryCodes] as ISOCountryCode[]
+const RULES: GameRules = { regions: [], difficulty: 'normal' }
+const pool = playableWorldCountries(RULES)
 
 describe('step-graded gates are graded from their steps, never the token', () => {
   it('higher-lower wants every duel won, in order', async () => {
@@ -25,10 +27,10 @@ describe('step-graded gates are graded from their steps, never the token', () =>
         ],
       },
     })
-    expect(await gradeGateSteps(challenge, ['RU', 'US'])).toBe(true)
-    expect(await gradeGateSteps(challenge, ['RU', 'PT'])).toBe(false)
-    expect(await gradeGateSteps(challenge, ['RU'])).toBe(false)
-    expect(await gradeGateSteps(challenge, undefined)).toBe(false)
+    expect(await gradeGateSteps(challenge, ['RU', 'US'], RULES)).toBe(true)
+    expect(await gradeGateSteps(challenge, ['RU', 'PT'], RULES)).toBe(false)
+    expect(await gradeGateSteps(challenge, ['RU'], RULES)).toBe(false)
+    expect(await gradeGateSteps(challenge, undefined, RULES)).toBe(false)
     expect(await solveGateSteps(challenge, pool)).toEqual(['RU', 'US'])
   })
 
@@ -42,8 +44,8 @@ describe('step-graded gates are graded from their steps, never the token', () =>
       variant: 'trend-duel',
       trendDuels: [{ metric, seek: 'falling', a: riser, b: faller }],
     })
-    expect(await gradeGateSteps(challenge, [faller])).toBe(true)
-    expect(await gradeGateSteps(challenge, [riser])).toBe(false)
+    expect(await gradeGateSteps(challenge, [faller], RULES)).toBe(true)
+    expect(await gradeGateSteps(challenge, [riser], RULES)).toBe(false)
     expect(await solveGateSteps(challenge, pool)).toEqual([faller])
   })
 
@@ -55,14 +57,14 @@ describe('step-graded gates are graded from their steps, never the token', () =>
     })
     const solved = (await solveGateSteps(challenge, pool))!
     expect(solved.length).toBeGreaterThanOrEqual(3)
-    expect(await gradeGateSteps(challenge, solved)).toBe(true)
-    expect(await gradeGateSteps(challenge, solved.slice(0, 2))).toBe(false)
-    expect(await gradeGateSteps(challenge, [...solved.slice(0, 2), solved[1]!])).toBe(false)
+    expect(await gradeGateSteps(challenge, solved, RULES)).toBe(true)
+    expect(await gradeGateSteps(challenge, solved.slice(0, 2), RULES)).toBe(false)
+    expect(await gradeGateSteps(challenge, [...solved.slice(0, 2), solved[1]!], RULES)).toBe(false)
     const last = solved.at(-1) as ISOCountryCode
     const broken = pool.find(
       isoCode => !isAtlasLink(last, isoCode) && isoCode !== 'SE' && !solved.includes(isoCode)
     )!
-    expect(await gradeGateSteps(challenge, [...solved, broken])).toBe(false)
+    expect(await gradeGateSteps(challenge, [...solved, broken], RULES)).toBe(false)
   })
 
   it('chronicle wants the dealt hand, earliest to latest', async () => {
@@ -73,9 +75,9 @@ describe('step-graded gates are graded from their steps, never the token', () =>
       .slice(0, 4)
     const challenge = gate({ variant: 'chronicle', chronicle: { events: [...hand].reverse() } })
     const solved = (await solveGateSteps(challenge, pool))!
-    expect(await gradeGateSteps(challenge, solved)).toBe(true)
-    expect(await gradeGateSteps(challenge, [...solved].reverse())).toBe(false)
-    expect(await gradeGateSteps(challenge, solved.slice(1))).toBe(false)
+    expect(await gradeGateSteps(challenge, solved, RULES)).toBe(true)
+    expect(await gradeGateSteps(challenge, [...solved].reverse(), RULES)).toBe(false)
+    expect(await gradeGateSteps(challenge, solved.slice(1), RULES)).toBe(false)
   })
 
   it('logo politics grades the ruling and the band', async () => {
@@ -83,13 +85,13 @@ describe('step-graded gates are graded from their steps, never the token', () =>
       variant: 'logo-politics',
       partyLogo: { image: '', name: '', ask: 'ruling', rules: false },
     })
-    expect(await gradeGateSteps(ruling, [LOGO_RULING_STEPS.out])).toBe(true)
-    expect(await gradeGateSteps(ruling, [LOGO_RULING_STEPS.governs])).toBe(false)
+    expect(await gradeGateSteps(ruling, [LOGO_RULING_STEPS.out], RULES)).toBe(true)
+    expect(await gradeGateSteps(ruling, [LOGO_RULING_STEPS.governs], RULES)).toBe(false)
     const spectrum = gate({
       variant: 'logo-politics',
       partyLogo: { image: '', name: '', ask: 'spectrum', band: 'centre-left' },
     })
-    expect(await gradeGateSteps(spectrum, ['centre-left'])).toBe(true)
-    expect(await gradeGateSteps(spectrum, ['right'])).toBe(false)
+    expect(await gradeGateSteps(spectrum, ['centre-left'], RULES)).toBe(true)
+    expect(await gradeGateSteps(spectrum, ['right'], RULES)).toBe(false)
   })
 })

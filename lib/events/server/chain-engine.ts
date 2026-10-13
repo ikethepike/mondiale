@@ -1,15 +1,19 @@
 import {
   activePlayerId,
   canPullRipCord,
+  chargeMiss,
+  closeChainRound,
   deadEndRescued,
   dealFreshChain,
-  liveChain,
+  eliminateSeat,
+  passTurn,
   pullRipCord,
+  recordLink,
   sealDeadEnd,
   standingPlayers,
 } from '~~/lib/chain'
 import { latestRound } from '~~/lib/rounds'
-import type { ChainTurnChallenge, ChainTurnOutcome } from '~~/types/challenges/group-modes.type'
+import type { ChainTurnChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 import { useServerSideEvents } from '../server-side'
@@ -62,6 +66,9 @@ export interface ChainEngineSpec<C extends ChainTurnChallenge<unknown>> {
   turnSeconds?(challenge: C): number
   /** How long the briefing may wait on unready seats; BRIEFING_CAP_MS when unset. */
   briefingCapMs?: number
+  /** Called with a legal move just before it joins the chain — Atlas records
+   *  the name it was typed under. */
+  admitMove?(challenge: C, isoCode: ISOCountryCode, typed: string | undefined): void
 }
 
 export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
@@ -76,13 +83,13 @@ export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
   handleMove(
     ctx: ChainContext,
     game: Game,
-    eventData: { isoCode: ISOCountryCode; turn: number },
+    eventData: { isoCode: ISOCountryCode; turn: number; typed?: string },
     playerId: string
   ): Promise<void>
   /** The chain-ready wire event — a dismissed briefing card. */
   handleReady(ctx: ChainContext, game: Game, playerId: string): Promise<void>
   /** The pull-rip-cord wire event: the player on the clock trades the live
-   *  chain for a fresh seed and keeps the clock. Only seats dealt a cord act. */
+   *  chain for a fresh seed on a full clock. Only seats dealt a cord act. */
   handleRipCord(
     ctx: ChainContext,
     game: Game,
@@ -91,7 +98,13 @@ export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
   ): Promise<void>
   /** A validated legal move — exported for the engine tests; the wire path
    *  goes through `handleMove`, which guards and validates first. */
-  applyMove(ctx: ChainContext, game: Game, challenge: C, isoCode: ISOCountryCode): Promise<void>
+  applyMove(
+    ctx: ChainContext,
+    game: Game,
+    challenge: C,
+    isoCode: ISOCountryCode,
+    typed?: string
+  ): Promise<void>
   /** A wrong answer or an expired clock — burn a strike or eliminate. */
   resolveMiss(ctx: ChainContext, game: Game, challenge: C, kind: 'wrong' | 'timeout'): Promise<void>
   /** Re-arm whatever follow-up the live round is waiting on (rejoin recovery). */
@@ -115,29 +128,9 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
 
   /** Pass the clock to the next standing player. */
   const advanceTurn = (challenge: C) => {
-    const { state } = challenge
-    const standing = new Set(standingPlayers(state))
-    for (let step = 1; step <= state.order.length; step++) {
-      const index = (state.activeIndex + step) % state.order.length
-      if (standing.has(state.order[index])) {
-        state.activeIndex = index
-        break
-      }
-    }
-    state.turn++
+    passTurn(challenge.state)
+    challenge.state.turn++
     stampDeadline(challenge)
-  }
-
-  const eliminate = (
-    challenge: C,
-    playerId: string,
-    outcome: ChainTurnOutcome,
-    outs: ISOCountryCode[]
-  ) => {
-    const { state } = challenge
-    state.eliminated.push(playerId)
-    state.outcomes[playerId] = outcome
-    state.missedOuts[playerId] = outs
   }
 
   const startClock = (challenge: C) => {
@@ -203,14 +196,11 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     ctx: ChainContext,
     game: Game,
     challenge: C,
-    isoCode: ISOCountryCode
+    isoCode: ISOCountryCode,
+    typed?: string
   ) => {
-    const { state } = challenge
-    const moverId = activePlayerId(state)
-
-    liveChain(state).push(isoCode)
-    ;(state.named[moverId] ??= []).push(isoCode)
-    state.lastMoverId = moverId
+    spec.admitMove?.(challenge, isoCode, typed)
+    recordLink(challenge.state, isoCode)
     advanceTurn(challenge)
 
     if (spec.openMoves(challenge, game).length === 0) {
@@ -235,7 +225,7 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     const byPlayerId =
       state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
     if (!sealDeadEnd(state, trappedId, byPlayerId)) {
-      eliminate(challenge, trappedId, 'trapped', [])
+      eliminateSeat(state, trappedId, 'trapped', [])
     }
 
     state.trap = spec.buildTrap(challenge, game, trappedId, byPlayerId)
@@ -294,16 +284,8 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     challenge: C,
     kind: 'wrong' | 'timeout'
   ) => {
-    const { state } = challenge
-    const missedId = activePlayerId(state)
-
-    if ((state.strikesLeft[missedId] ?? 0) > 0) {
-      state.strikesLeft[missedId]--
-    } else {
-      eliminate(challenge, missedId, kind, spec.openMoves(challenge, game))
-      if (standingPlayers(state).length <= 1) {
-        return finishRound(ctx, game, challenge)
-      }
+    if (chargeMiss(challenge.state, kind, () => spec.openMoves(challenge, game))) {
+      return finishRound(ctx, game, challenge)
     }
 
     // The chain itself is untouched by a miss, so the next player can never be
@@ -325,12 +307,8 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
    * path uses.
    */
   const finishRound = async (ctx: ChainContext, game: Game, challenge: C) => {
-    const { state } = challenge
     const server = useServerSideEvents(ctx)
-
-    const winnerId = standingPlayers(state)[0]
-    if (winnerId) state.outcomes[winnerId] = 'won'
-    state.finished = true
+    closeChainRound(challenge.state)
 
     await server.updateGameState(game)
     server.emit({ event: 'chain-updated', game }, ctx.eventTarget)
@@ -389,7 +367,8 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     if (!isValidISOCode(eventData.isoCode)) return
 
     if (spec.openMoves(challenge, game).includes(eventData.isoCode)) {
-      await applyMove(ctx, game, challenge, eventData.isoCode)
+      const typed = typeof eventData.typed === 'string' ? eventData.typed : undefined
+      await applyMove(ctx, game, challenge, eventData.isoCode, typed)
     } else {
       await resolveMiss(ctx, game, challenge, 'wrong')
     }

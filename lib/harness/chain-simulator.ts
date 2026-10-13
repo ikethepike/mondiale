@@ -1,16 +1,20 @@
 import {
   activePlayerId,
   canPullRipCord,
+  chargeMiss,
+  closeChainRound,
   deadEndRescued,
   dealFreshChain,
-  liveChain,
+  eliminateSeat,
+  passTurn,
   pullRipCord,
+  recordLink,
   sealDeadEnd,
   standingPlayers,
 } from '~~/lib/chain'
 import { sample } from '~~/lib/arrays'
 import { TRAP_HOLD_MS } from '~~/lib/round-beats'
-import type { ChainTurnOutcome, ChainTurnState } from '~~/types/challenges/group-modes.type'
+import type { ChainTurnState } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -35,7 +39,7 @@ const LATENCY_MS = 300
 /** The shot clock is the round's own, plus a beat of slack. */
 const CLOCK_SLACK_MS = 400
 
-export interface ChainSimSpec<C> {
+export interface ChainSimSpec<C extends Stateful> {
   /** The live challenge of this kind, or undefined when it is not in play. */
   current: () => C | undefined
   /** Turn length, in seconds. */
@@ -47,28 +51,19 @@ export interface ChainSimSpec<C> {
     challenge: C,
     trappedId: string,
     byPlayerId: string | undefined
-  ) => Record<string, unknown>
+  ) => NonNullable<C['state']['trap']>
   /** Fresh ground for the survivors after a trap. */
   reseed: (challenge: C) => ISOCountryCode | undefined
+  /** The engine spec's own hook, called before a legal move joins the chain. */
+  admitMove?: (challenge: C, isoCode: ISOCountryCode, typed: string | undefined) => void
+  /** A rival's pick when the mode plays smarter than a random legal move. */
+  rivalMove?: (challenge: C) => ISOCountryCode | undefined
   /** The seat the harness plays. */
   meId: string
 }
 
 interface Stateful {
-  state: ChainTurnState<unknown> & {
-    chains: ISOCountryCode[][]
-    named: { [playerId: string]: ISOCountryCode[] }
-    strikesLeft: { [playerId: string]: number }
-    eliminated: string[]
-    outcomes: { [playerId: string]: ChainTurnOutcome }
-    missedOuts: { [playerId: string]: ISOCountryCode[] }
-    trappedBy?: { [playerId: string]: string }
-    trap?: unknown
-    briefing?: boolean
-    ready?: string[]
-    lastMoverId?: string
-    finished?: boolean
-  }
+  state: ChainTurnState<unknown>
 }
 
 export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) => {
@@ -81,48 +76,24 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
     return current
   }
 
-  const advanceTurn = (challenge: C) => {
-    const { state } = challenge
-    const standing = new Set(standingPlayers(state))
-    for (let step = 1; step <= state.order.length; step++) {
-      const index = (state.activeIndex + step) % state.order.length
-      if (standing.has(state.order[index]!)) {
-        state.activeIndex = index
-        break
-      }
-    }
-    state.turn++
-    state.deadline = Date.now() + spec.turnSeconds(challenge) * 1000
-  }
-
   const holdTurn = (challenge: C) => {
     challenge.state.turn++
     challenge.state.deadline = Date.now() + spec.turnSeconds(challenge) * 1000
   }
 
-  const finish = (challenge: C) => {
-    const winner = standingPlayers(challenge.state)[0]
-    if (winner) challenge.state.outcomes[winner] = 'won'
-    challenge.state.finished = true
+  const advanceTurn = (challenge: C) => {
+    passTurn(challenge.state)
+    holdTurn(challenge)
   }
 
-  const eliminate = (
-    challenge: C,
-    playerId: string,
-    outcome: ChainTurnOutcome,
-    outs: ISOCountryCode[]
-  ) => {
-    challenge.state.eliminated.push(playerId)
-    challenge.state.outcomes[playerId] = outcome
-    challenge.state.missedOuts[playerId] = outs
-  }
+  const finish = (challenge: C) => closeChainRound(challenge.state)
 
   const springTrap = (challenge: C) => {
     const { state } = challenge
     const trappedId = activePlayerId(state)
     const byPlayerId =
       state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
-    if (!sealDeadEnd(state, trappedId, byPlayerId)) eliminate(challenge, trappedId, 'trapped', [])
+    if (!sealDeadEnd(state, trappedId, byPlayerId)) eliminateSeat(state, trappedId, 'trapped', [])
     state.trap = spec.buildTrap(challenge, trappedId, byPlayerId)
     state.deadline = 0
     armTrapResume(challenge)
@@ -145,26 +116,16 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
     }, TRAP_HOLD_MS)
   }
 
-  const applyMove = (challenge: C, isoCode: ISOCountryCode) => {
-    const { state } = challenge
-    const moverId = activePlayerId(state)
-    liveChain(state).push(isoCode)
-    ;(state.named[moverId] ??= []).push(isoCode)
-    state.lastMoverId = moverId
+  const applyMove = (challenge: C, isoCode: ISOCountryCode, typed?: string) => {
+    spec.admitMove?.(challenge, isoCode, typed)
+    recordLink(challenge.state, isoCode)
     advanceTurn(challenge)
     if (!spec.openMoves(challenge).length) return springTrap(challenge)
     continueTurn(challenge)
   }
 
   const resolveMiss = (challenge: C, kind: 'wrong' | 'timeout') => {
-    const { state } = challenge
-    const missedId = activePlayerId(state)
-    if ((state.strikesLeft[missedId] ?? 0) > 0) {
-      state.strikesLeft[missedId]--
-    } else {
-      eliminate(challenge, missedId, kind, spec.openMoves(challenge))
-      if (standingPlayers(state).length <= 1) return finish(challenge)
-    }
+    if (chargeMiss(challenge.state, kind, () => spec.openMoves(challenge))) return finish(challenge)
     advanceTurn(challenge)
     continueTurn(challenge)
   }
@@ -189,7 +150,7 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
       const current = stillLive(challenge, turn)
       if (!current || current.state.trap) return
       if (activePlayerId(current.state) !== activeId) return
-      const move = sample(spec.openMoves(current))
+      const move = spec.rivalMove?.(current) ?? sample(spec.openMoves(current))
       if (move) applyMove(current, move)
     }, RIVAL_BEAT_MS)
   }
@@ -218,11 +179,12 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
       if (eventData.turn !== state.turn) return
       if (activePlayerId(state) !== spec.meId) return
       const isoCode = String(eventData.isoCode ?? '') as ISOCountryCode
+      const typed = typeof eventData.typed === 'string' ? eventData.typed : undefined
       const turn = state.turn
       window.setTimeout(() => {
         const current = stillLive(challenge, turn)
         if (!current || current.state.trap) return
-        if (spec.openMoves(current).includes(isoCode)) applyMove(current, isoCode)
+        if (spec.openMoves(current).includes(isoCode)) applyMove(current, isoCode, typed)
         else resolveMiss(current, 'wrong')
       }, LATENCY_MS)
     },

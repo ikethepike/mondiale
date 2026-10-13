@@ -190,6 +190,12 @@
           class="map-land-route"
           :d="arc.d"
         />
+        <path
+          v-for="(arc, index) in hopLinkArcs"
+          :key="`hop-link-${index}`"
+          class="map-hop-link"
+          :d="arc.d"
+        />
         <!-- Water crossings (chain strait hops, manhunt sea passages): a bowed
              dashed arc, dashes drifting toward the destination, with a sail
              chip at the crown so the line reads as "sailed", not "borders". -->
@@ -412,6 +418,12 @@ const props = defineProps({
    *  journey language (manhunt's escape trail). Water legs belong in
    *  `seaLinks` instead. */
   landRoutes: {
+    type: Array as PropType<string[]>,
+    default: () => [],
+  },
+  /** Directed 'FROM>TO' hops that are not travel — Atlas's letter links:
+   *  dotted, and drawn across the map even when they span the antimeridian. */
+  hopLinks: {
     type: Array as PropType<string[]>,
     default: () => [],
   },
@@ -679,7 +691,10 @@ const SEA_CHIP_SHIP = DEPARTMENT_GLYPHS['department.trade'].paths ?? []
 
 /** One gently north-bowed arc between a directed or sorted pair key.
  *  'FROM>TO' keys carry travel direction; legacy 'A-B' keys stay sorted. */
-const arcForPair = (pair: string): { d: string; mid: { x: number; y: number } } | undefined => {
+const arcForPair = (
+  pair: string,
+  { acrossAntimeridian = false } = {}
+): { d: string; mid: { x: number; y: number } } | undefined => {
   const directed = pair.includes('>')
   const [a, b] = (directed ? pair.split('>') : pair.split('-')) as ISOCountryCode[]
   const sortedKey = a < b ? `${a}-${b}` : `${b}-${a}`
@@ -697,7 +712,7 @@ const arcForPair = (pair: string): { d: string; mid: { x: number; y: number } } 
   }
   if (!crossing) return undefined
   // A crossing hugging the antimeridian would draw across the whole world.
-  if (Math.abs(crossing.from.lng - crossing.to.lng) > 180) return undefined
+  if (!acrossAntimeridian && Math.abs(crossing.from.lng - crossing.to.lng) > 180) return undefined
   const from = projectRobinson(crossing.from, MAP_PROJECTION)
   const to = projectRobinson(crossing.to, MAP_PROJECTION)
   const chordX = to.x - from.x
@@ -724,12 +739,22 @@ const arcForPair = (pair: string): { d: string; mid: { x: number; y: number } } 
 }
 
 const seaLinkArcs = computed(() =>
-  props.seaLinks.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
+  props.seaLinks
+    .map(pair => arcForPair(pair))
+    .filter((arc): arc is NonNullable<typeof arc> => !!arc)
+)
+
+const hopLinkArcs = computed(() =>
+  props.hopLinks
+    .map(pair => arcForPair(pair, { acrossAntimeridian: true }))
+    .filter((arc): arc is NonNullable<typeof arc> => !!arc)
 )
 
 /** Overland legs: same bow, solid stroke, no chip — walked, not sailed. */
 const landRouteArcs = computed(() =>
-  props.landRoutes.map(arcForPair).filter((arc): arc is NonNullable<typeof arc> => !!arc)
+  props.landRoutes
+    .map(pair => arcForPair(pair))
+    .filter((arc): arc is NonNullable<typeof arc> => !!arc)
 )
 
 // ringed/seaGlow change on every hover crossing — as template bindings they
@@ -2498,6 +2523,15 @@ path.sea-glow-country {
   stroke: hsla(215.7, 40%, 30%, 0.8);
   stroke-width: calc(2px * var(--stroke-zoom, 1));
   stroke-linecap: round;
+}
+
+.map-hop-link {
+  fill: none;
+  pointer-events: none;
+  stroke: ink(0.7, 41%);
+  stroke-width: calc(2.2px * var(--stroke-zoom, 1));
+  stroke-linecap: round;
+  stroke-dasharray: 0 calc(5px * var(--stroke-zoom, 1));
 }
 
 .map-sea-link {
