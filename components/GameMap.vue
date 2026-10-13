@@ -884,10 +884,18 @@ const bandOn = (start: number, end: number, extent: number) => {
   return { scale: extent / band, center: (start + band / 2) / extent }
 }
 
+/** The map's layout size. Berths are CSS px of the layout, and the screen
+ *  rect can be cached mid-way through `.game-map`'s 0.8 rest scale — a
+ *  shrunken rect read a two-panel side berth as under the band guard. */
+const mapLayoutSize = () => ({
+  width: wrapper.value?.clientWidth ?? 0,
+  height: wrapper.value?.clientHeight ?? 0,
+})
+
 const berthMetrics = () => {
-  const rect = mapRect()
-  const vertical = bandOn(props.berth?.top ?? 0, props.berth?.bottom ?? 0, rect?.height ?? 0)
-  const horizontal = bandOn(props.berth?.left ?? 0, props.berth?.right ?? 0, rect?.width ?? 0)
+  const size = mapLayoutSize()
+  const vertical = bandOn(props.berth?.top ?? 0, props.berth?.bottom ?? 0, size.height)
+  const horizontal = bandOn(props.berth?.left ?? 0, props.berth?.right ?? 0, size.width)
   return {
     scale: vertical.scale,
     centerFraction: vertical.center,
@@ -911,13 +919,13 @@ const berthedView = (
   const sided = content.x !== undefined && content.width !== undefined
   const sideIdentity = !sided || (scaleX === 1 && centerFractionX === 0.5)
   if (bandScale === 1 && centerFraction === 0.5 && sideIdentity) return view
-  const rect = mapRect()
-  const viewportHeight = rect?.height ?? 0
+  const size = mapLayoutSize()
+  const viewportHeight = size.height
   const bandHeightPx = viewportHeight / bandScale
   const contentHeightPx = viewportHeight * (content.height / view.height)
   let scale = Math.max(1, contentHeightPx / bandHeightPx)
   if (sided && !sideIdentity) {
-    const viewportWidth = rect?.width ?? 0
+    const viewportWidth = size.width
     const contentWidthPx = viewportWidth * (content.width! / view.width)
     scale = Math.max(scale, contentWidthPx / (viewportWidth / scaleX))
   }
