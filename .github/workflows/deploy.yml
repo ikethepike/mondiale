@@ -20,8 +20,18 @@ env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
 jobs:
+  # GIT_SHA bakes the commit into /health (.git is dockerignored, so the build
+  # can't read it itself — same as bun run deploy).
+  build:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      app: mondiale
+      sha: ${{ github.sha }}
+    secrets: inherit
+
   deploy:
     name: Deploy app
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,6 +42,4 @@ jobs:
       # instead of a ~25s outage. --ha=false keeps the default machine count
       # at one; scaling out is safe now that game-routing.ts shards each room
       # to its owning machine.
-      # GIT_SHA bakes the commit into /health (.git is dockerignored, so the
-      # build can't read it itself — same as bun run deploy).
-      - run: flyctl deploy --remote-only --ha=false --strategy bluegreen --build-arg GIT_SHA=${{ github.sha }}
+      - run: flyctl deploy --image ${{ needs.build.outputs.image }} --ha=false --strategy bluegreen

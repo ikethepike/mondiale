@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "NODE_OPTIONS=--max-old-space-size=4608 nuxt build",
-    "deploy": "fly deploy --strategy bluegreen --build-arg GIT_SHA=$(git rev-parse --short=7 HEAD)",
+    "deploy": "fly deploy --depot-scope=app --strategy bluegreen --build-arg GIT_SHA=$(git rev-parse --short=7 HEAD)",
     "start": "node .output/server/index.mjs",
     "dev": "NODE_OPTIONS=--max-old-space-size=16384 nuxt dev --host=0.0.0.0",
     "generate": "nuxt generate",

@@ -31,20 +31,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Deploy preview
+  # The app must exist before its registry repository can take the image.
+  prepare:
+    name: Prepare preview app
     # Forks don't get secrets, so a fork PR would only fail noisily here.
     if: >
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    environment:
-      name: pr-${{ github.event.number }}
-      url: https://pr-${{ github.event.number }}-mondiale.fly.dev
     steps:
-      - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@1.5
 
       - name: Create the preview app on first deploy
@@ -61,16 +56,36 @@ jobs:
         if: env.PLAYTEST_DEBUG_TOKEN != ''
         run: flyctl secrets set --app "$APP" --stage NUXT_DEBUG_TOKEN="$PLAYTEST_DEBUG_TOKEN"
 
+  build:
+    needs: prepare
+    uses: ./.github/workflows/build-image.yml
+    with:
+      app: pr-${{ github.event.number }}-mondiale
+      sha: ${{ github.event.pull_request.head.sha }}
+      harness_answers: '1'
+    secrets: inherit
+
+  deploy:
+    name: Deploy preview
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    environment:
+      name: pr-${{ github.event.number }}
+      url: https://pr-${{ github.event.number }}-mondiale.fly.dev
+    steps:
+      - uses: actions/checkout@v7
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+
       # --ha=false keeps previews on one machine (rooms shard per machine via
       # game-routing.ts, but a preview never needs more than one). Rolling
       # strategy is fine here — nobody's live game rides a preview.
       - name: Deploy
         run: |
-          flyctl deploy --remote-only --ha=false \
+          flyctl deploy --image ${{ needs.build.outputs.image }} --ha=false \
             --config fly.preview.toml \
-            --app "$APP" \
-            --build-arg GIT_SHA=${{ github.event.pull_request.head.sha }} \
-            --build-arg HARNESS_ANSWERS=1
+            --app "$APP"
 
       - name: Comment the preview link on the PR
         uses: actions/github-script@v7

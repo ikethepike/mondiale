@@ -1,0 +1,58 @@
+name: Build image
+
+# Builds the Docker image on a GitHub-hosted runner and pushes it to Fly's
+# registry; deploy.yml and fly-preview.yml then deploy it with `--image`.
+#
+# Fly's remote builder is ONE Depot machine shared by the whole org (prod and
+# every PR preview), and overlapping builds there were SIGKILLed at ~3.3 GB RSS
+# while `nuxt build` alone peaks well above that. A hosted runner is a fresh
+# 16 GB VM per job, so no other build can ever share its memory.
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Fly app whose registry repository receives the image
+        required: true
+        type: string
+      sha:
+        description: Commit baked into /health
+        required: true
+        type: string
+      harness_answers:
+        description: '"1" keeps the test harness answer key in the bundle (previews only)'
+        required: false
+        type: string
+        default: ''
+    outputs:
+      image:
+        description: The pushed image reference
+        value: ${{ jobs.build.outputs.image }}
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+      - run: flyctl auth docker
+      - uses: docker/setup-buildx-action@v3
+
+      - id: ref
+        run: echo "image=registry.fly.io/${{ inputs.app }}:${{ inputs.sha }}" >> "$GITHUB_OUTPUT"
+
+      # No layer cache: mode=max would export the ~760 MB `COPY . .` layer and
+      # node_modules to the Actions cache on every run, costing more than the
+      # bun install it saves.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.ref.outputs.image }}
+          build-args: |
+            GIT_SHA=${{ inputs.sha }}
+            HARNESS_ANSWERS=${{ inputs.harness_answers }}
