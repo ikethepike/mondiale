@@ -20,7 +20,10 @@ export const unmaskPortraitKey = (leader: Pick<LeaderProfile, 'image' | 'name'>)
 
 const OFFICE_PATTERNS: [UnmaskOffice, RegExp][] = [
   ['monarch', /\b(king|queen|emir|sultan|prince|grand duke|monarch|emperor|pope)\b/i],
-  ['premier', /\b(prime minister|premier|chancellor|taoiseach)\b/i],
+  [
+    'premier',
+    /\b(prime minister|premier|chancellor|taoiseach|president of the (council|government))\b/i,
+  ],
   ['president', /\bpresident\b/i],
 ]
 
@@ -50,11 +53,13 @@ const NAME_PARTICLES = new Set([
   'von',
 ])
 
-/** "Emmanuel Macron" → "E. M." — particles drop, regnal numerals stay whole. */
+/** "Emmanuel Macron" → "E. M." — particles, quoted nicknames and anything
+ *  after a comma (", 8th Lord …") drop; regnal numerals stay whole. */
 export const unmaskInitials = (name: string): string =>
-  name
+  (name.split(',')[0] ?? name)
+    .replace(/["“”«»][^"“”«»]*["“”«»]/g, ' ')
     .split(/[\s-]+/)
-    .filter(word => word && !NAME_PARTICLES.has(word.toLowerCase()))
+    .filter(word => /^\p{L}/u.test(word) && !NAME_PARTICLES.has(word.toLowerCase()))
     .map(word => (/^[IVXL]+$/.test(word) ? word : `${word[0]!.toUpperCase()}.`))
     .join(' ')
 
@@ -156,33 +161,6 @@ export const OFFICE_LINES: Record<UnmaskOffice, string> = {
   ruler: 'Rules under another title',
 }
 
-/** A rung as the file prints it: its label and its line. Pictures have no line. */
-export const unmaskClueLine = (clue: UnmaskClue): { label: string; line?: string } => {
-  switch (clue.kind) {
-    case 'portrait':
-      return { label: 'Photograph' }
-    case 'region':
-      return { label: 'Region', line: REGION_LABELS[clue.region] }
-    case 'born':
-      return { label: 'Born', line: `In the ${clue.decade}s` }
-    case 'tenure':
-      return { label: 'In office', line: `Since ${clue.since}` }
-    case 'office':
-      return { label: 'Office', line: OFFICE_LINES[clue.office] }
-    case 'party':
-      return {
-        label: 'Party',
-        line: clue.band === 'none' ? 'Answers to no party' : `${SPECTRUM_LABELS[clue.band]} party`,
-      }
-    case 'logo':
-      return { label: 'Party mark' }
-    case 'initials':
-      return { label: 'Initials', line: clue.initials }
-    case 'name':
-      return { label: 'Name', line: clue.name }
-  }
-}
-
 export const UNMASK_RUNG_LABELS: Record<UnmaskRungKind, string> = {
   portrait: 'Photograph',
   region: 'Region',
@@ -193,6 +171,40 @@ export const UNMASK_RUNG_LABELS: Record<UnmaskRungKind, string> = {
   logo: 'Party mark',
   initials: 'Initials',
   name: 'Name',
+}
+
+const NOT_ON_FILE = 'Not on file'
+
+/** A rung as the file prints it: its label and its line. Pictures have no line. */
+export const unmaskClueLine = (clue: UnmaskClue): { label: string; line?: string } => {
+  const label = UNMASK_RUNG_LABELS[clue.kind]
+  switch (clue.kind) {
+    case 'portrait':
+      return { label }
+    case 'region':
+      return { label, line: REGION_LABELS[clue.region] }
+    case 'born':
+      return { label, line: clue.decade ? `In the ${clue.decade}s` : NOT_ON_FILE }
+    case 'tenure':
+      return { label, line: clue.since ? `Since ${clue.since}` : NOT_ON_FILE }
+    case 'office':
+      return { label, line: OFFICE_LINES[clue.office] }
+    case 'party':
+      return {
+        label,
+        line: !clue.band
+          ? NOT_ON_FILE
+          : clue.band === 'none'
+            ? 'Answers to no party'
+            : `${SPECTRUM_LABELS[clue.band]} party`,
+      }
+    case 'logo':
+      return clue.logo ? { label } : { label, line: NOT_ON_FILE }
+    case 'initials':
+      return { label, line: clue.initials }
+    case 'name':
+      return { label, line: clue.name }
+  }
 }
 
 /** Base64 RGB ↔ bytes, isomorphic (`atob`/`btoa` exist on both ends). */

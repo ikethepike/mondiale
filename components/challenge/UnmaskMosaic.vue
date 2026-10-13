@@ -22,6 +22,7 @@
   </div>
 </template>
 <script lang="ts" setup>
+import { INK } from '~~/lib/ink'
 import { decodePixels } from '~~/lib/unmask'
 import { prefersReducedMotion } from '~~/lib/motion'
 
@@ -35,7 +36,6 @@ const props = defineProps<{
 
 /** The whole sweep, centre to corner, whatever the tier. */
 const SWEEP_MS = 900
-const INK = 'hsl(215.7 76.4% 21.6%)'
 
 const rgb = (bytes: Uint8Array, index: number) =>
   `rgb(${bytes[index * 3]} ${bytes[index * 3 + 1]} ${bytes[index * 3 + 2]})`

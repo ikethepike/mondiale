@@ -55,18 +55,18 @@ const clueFor = (
     case 'region':
       return isWorldBoard(game.regions) ? { kind, region: facts.region } : undefined
     case 'born':
-      return facts.born ? { kind, decade: facts.born } : undefined
+      return { kind, ...(facts.born ? { decade: facts.born } : {}) }
     case 'tenure':
-      return facts.since ? { kind, since: facts.since } : undefined
+      return { kind, ...(facts.since ? { since: facts.since } : {}) }
     case 'office':
       return { kind, office: facts.office }
     case 'party':
-      return facts.band ? { kind, band: facts.band } : undefined
+      return { kind, ...(facts.band ? { band: facts.band } : {}) }
     case 'logo': {
       const logo = facts.logo && UNMASK_LOGOS[facts.logo.path]
       return logo
         ? { kind, logo, ...(facts.logo?.ratio ? { ratio: facts.logo.ratio } : {}) }
-        : undefined
+        : { kind }
     }
     case 'initials':
       return { kind, initials: unmaskInitials(facts.leader.name) }

@@ -121,17 +121,20 @@ const optionId = (country: Country) => `${listId}-${country.isoCode}`
 const gameStore = useGameStore()
 const benched = computed(() => new Set(gameStore.game ? excludedMicroNations(gameStore.game) : []))
 
+const excluded = computed(() => {
+  const people = props.people
+  const peopleless = people
+    ? Object.values(COUNTRIES)
+        .map(country => country.isoCode)
+        .filter(isoCode => !people[isoCode])
+    : []
+  return new Set([...props.excluded, ...benched.value, ...peopleless])
+})
+
 const suggestions = computed(() => {
   if (props.disabled || !props.suggest) return []
   if (query.value.trim().length < props.suggestFrom) return []
-  const excluded = new Set([...props.excluded, ...benched.value])
-  const people = props.people
-  if (people) {
-    for (const country of Object.values(COUNTRIES)) {
-      if (!people[country.isoCode]) excluded.add(country.isoCode)
-    }
-  }
-  return searchCountriesByName(query.value, 6, excluded, people)
+  return searchCountriesByName(query.value, 6, excluded.value, props.people)
 })
 
 /**

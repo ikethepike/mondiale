@@ -161,13 +161,15 @@ export type UnmaskClue =
   /** `pixels` is base64 RGB, `size`×`size`, row-major. */
   | { kind: 'portrait'; size: number; pixels: string }
   | { kind: 'region'; region: Region }
-  | { kind: 'born'; decade: number }
-  | { kind: 'tenure'; since: number }
+  /* A fact the file lacks still opens its rung, empty: a ladder that skipped
+   * it would tell the table who has no birth year on record. */
+  | { kind: 'born'; decade?: number }
+  | { kind: 'tenure'; since?: number }
   | { kind: 'office'; office: UnmaskOffice }
-  | { kind: 'party'; band: Spectrum | 'none' }
+  | { kind: 'party'; band?: Spectrum | 'none' }
   /** An opaque copy of the governing party's logo — the roster's own file
    *  names carry the ISO code. */
-  | { kind: 'logo'; logo: string; ratio?: number }
+  | { kind: 'logo'; logo?: string; ratio?: number }
   | { kind: 'initials'; initials: string }
   | { kind: 'name'; name: string }
 

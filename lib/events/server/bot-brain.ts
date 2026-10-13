@@ -110,6 +110,7 @@ import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 import { compositionBoardOf } from './composition-board'
 import { fetchUnmaskFile } from './unmask-file'
+import { unmaskRungsShown } from '~~/lib/unmask-pace'
 import { currentGovernment } from './government-beats'
 import { currentHeritageHunt } from './heritage-beats'
 import { currentManhunt, fetchManhuntSecret, isManhuntParticipant } from './manhunt-beats'
@@ -1601,7 +1602,14 @@ export const composeClassicSubmission = async (
       if (!file) return { ranking: [] }
       const landed = { ranking: [file.country] }
       if (await lands(landed)) return landed
-      const miss = wrongPick(game, [file.country])
+      // A miss accuses a suspect still lit — the only accusation a human can make.
+      const unmask = expectChallengeType(challenge, 'unmask-challenge')
+      const shown =
+        round.playStartsAt === undefined
+          ? 0
+          : unmaskRungsShown(unmask, Math.max(0, Date.now() - round.playStartsAt))
+      const field = file.fields[shown - 1] ?? unmask.suspects
+      const miss = sample(field.filter(isoCode => isoCode !== file.country))
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'pyramid-scheme': {

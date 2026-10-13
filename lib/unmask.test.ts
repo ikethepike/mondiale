@@ -4,7 +4,7 @@ import { mentionsCountry } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
 import { TIMEOUT_SLACK_MS, briefingHolds } from '~~/lib/round-beats'
 import { dealUnmask } from '~~/lib/events/server/unmask-deal'
-import { unmaskDossier } from '~~/lib/events/server/unmask-file'
+import { UNMASK_RELEASE_LEAD_MS, unmaskDossier } from '~~/lib/events/server/unmask-file'
 import { startUnmask } from '~~/lib/events/server/unmask-seal'
 import { gradeGroupAnswer, type GroupSubmission } from '~~/lib/events/server/grade-group-answer'
 import {
@@ -62,6 +62,21 @@ describe('the Unmask deal', () => {
     }
   })
 
+  it('deals the same ladder whoever the subject is, so its shape names no one', () => {
+    for (const variant of ['world', 'europe'] as const) {
+      for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+        const game = gameFor(variant, difficulty)
+        const { suspects, rungs } = deal(variant, difficulty)
+        for (const subject of suspects) {
+          expect(
+            dealUnmask(game, MAX, subject)?.rungs,
+            `${variant}/${difficulty}/${subject}`
+          ).toEqual(rungs)
+        }
+      }
+    }
+  })
+
   it('never lets the map answer for the player', () => {
     for (const difficulty of ['easy', 'normal', 'hard'] as const) {
       const { floor } = UNMASK_TUNING[difficulty]
@@ -83,7 +98,7 @@ describe('the Unmask deal', () => {
           const { line } = unmaskClueLine(clue)
           if (line && clue.kind !== 'region')
             expect(mentionsCountry(line, sealed.country), line).toBe(false)
-          if (clue.kind === 'logo') expect(clue.logo).not.toContain(sealed.country)
+          if (clue.kind === 'logo' && clue.logo) expect(clue.logo).not.toContain(sealed.country)
         }
       }
     }
@@ -197,6 +212,12 @@ describe('the accusation', () => {
     expect(late.answer.unmaskRung).toBe(5)
   })
 
+  it('prices a fresh rung from the moment the dossier hands it out', async () => {
+    const step = challenge.secondsPerRung * 1000
+    const seen = await accuse([file.country], step - UNMASK_RELEASE_LEAD_MS + 100)
+    expect(seen.answer.unmaskRung).toBe(2)
+  })
+
   it('pays a wrong country nothing, and never banks a country on the snapshot', async () => {
     const wrong = await accuse([file.country === 'FR' ? 'DE' : 'FR'], 0)
     expect(wrong.scoring.scored).toBe(0)
@@ -228,12 +249,21 @@ describe('the file helpers', () => {
     expect(unmaskInitials('Emmanuel Macron')).toBe('E. M.')
     expect(unmaskInitials('Mohammed bin Zayed Al Nahyan')).toBe('M. Z. N.')
     expect(unmaskInitials('Charles III')).toBe('C. III')
+    expect(unmaskInitials('Philip "Brave" Davis')).toBe('P. D.')
+    expect(unmaskInitials('Fatafehi Fakafānua, 8th Lord Fakafānua')).toBe('F. F.')
+  })
+
+  it('prints a fact the file lacks as an empty rung, never a missing one', () => {
+    expect(unmaskClueLine({ kind: 'born' })).toEqual({ label: 'Born', line: 'Not on file' })
+    expect(unmaskClueLine({ kind: 'party' }).line).toBe('Not on file')
+    expect(unmaskClueLine({ kind: 'logo' }).line).toBe('Not on file')
   })
 
   it('reads the office off the title, not a second role in the description', () => {
     expect(unmaskFacts('FR')?.office).toBe('president')
     expect(unmaskFacts('QA')?.office).toBe('monarch')
     expect(unmaskFacts('JP')?.office).toBe('premier')
+    expect(unmaskFacts('TG')?.office).toBe('premier')
   })
 
   it('narrows only while the floor holds', () => {
