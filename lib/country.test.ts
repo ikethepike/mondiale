@@ -118,6 +118,17 @@ describe('searchCountriesByName', () => {
     expect(ind.indexOf('IN')).toBeLessThan(ind.indexOf('ID'))
   })
 
+  it('finds countries through the extra names handed to it', () => {
+    const people = { FR: 'Emmanuel Macron', BR: 'Luiz Inácio Lula da Silva' }
+    const search = (query: string) =>
+      searchCountriesByName(query, 6, undefined, people).map(country => country.isoCode)
+    expect(search('macron')[0]).toBe('FR')
+    expect(search('Emmanuel Macron')[0]).toBe('FR')
+    expect(search('lula')[0]).toBe('BR')
+    expect(search('inacio')).toContain('BR')
+    expect(search('france')[0]).toBe('FR')
+  })
+
   it('finds countries through local-language variants', () => {
     expect(isoCodes('deutsch')[0]).toBe('DE')
     expect(isoCodes('nippon')[0]).toBe('JP')

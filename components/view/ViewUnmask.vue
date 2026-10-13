@@ -1,0 +1,453 @@
+<template>
+  <section v-if="challenge" class="unmask challenge-shell passthrough">
+    <Interstitial
+      v-if="showInterstitial"
+      tone="info"
+      kind="unmask"
+      title="Who is behind the file?"
+      stakes="A leader's file opens rung by rung. See through it before the name lands."
+      @done="brief"
+    />
+
+    <UnmaskBriefing
+      v-if="briefing"
+      :challenge="challenge"
+      :ready="state.ready"
+      :participants="state.order"
+      :sent="sentReady"
+      @ready="sendReady"
+    />
+
+    <ChallengePrompt
+      v-if="!briefing"
+      ref="prompt"
+      compact
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="sources"
+    >
+      <template v-if="!verdictShown">
+        <h1 class="map-caption">Who is behind the file?</h1>
+        <span v-if="!isPhone || accusedAt !== undefined" class="map-caption sub">
+          {{ promptLine }}
+        </span>
+      </template>
+      <ChallengeResult
+        v-else
+        :status="caught ? 'correct' : 'incorrect'"
+        :correct-message="`Unmasked — ${leaderName}`"
+        :incorrect-message="missLine"
+      >
+        <LeaderReveal v-if="answer" :country="answer" />
+      </ChallengeResult>
+      <UnmaskFile
+        v-if="railless && !verdictShown"
+        compact
+        :rungs="challenge.rungs"
+        :clues="displayClues"
+        :bounty="bounty"
+        :suspects="field.length"
+      />
+      <GuessTicker :entries="entries" :players="gameStore.game?.players ?? {}" />
+    </ChallengePrompt>
+
+    <UnmaskFile
+      v-if="!railless && !briefing"
+      ref="sideFile"
+      class="side-stage"
+      :rungs="challenge.rungs"
+      :clues="displayClues"
+      :bounty="bounty"
+      :suspects="field.length"
+      :revealed="!!answer"
+      :photo="answerLeader?.image"
+      :photo-label="answerLeader?.name"
+    />
+
+    <footer v-if="!submitted && !gameStore.watching && !briefing" ref="footer">
+      <div class="guess-box">
+        <div
+          v-if="suspectRail.length"
+          class="rail-wrap"
+          :style="{ '--suspect-fill': UNMASK_SUSPECT_FILL }"
+        >
+          <ul
+            ref="rail"
+            class="country-chip-list rail suspects"
+            :class="{ 'fade-left': scrollableLeft, 'fade-right': scrollableRight }"
+            @scroll.passive="syncScrollEdges"
+          >
+            <li v-for="(isoCode, index) in suspectRail" :key="isoCode" :style="{ '--i': index }">
+              <CountryChip
+                tag="button"
+                type="button"
+                compact
+                class="map-caption suspect-chip"
+                :country="getCountry(isoCode)"
+                @click="pick(isoCode)"
+              />
+            </li>
+          </ul>
+          <button
+            v-if="scrollableLeft"
+            type="button"
+            class="rail-step back"
+            aria-label="Earlier suspects"
+            @click="stepRail(-1)"
+          >
+            <svg viewBox="0 0 10 10" aria-hidden="true">
+              <polyline points="6,2 3,5 6,8" />
+            </svg>
+          </button>
+          <button
+            v-if="scrollableRight"
+            type="button"
+            class="rail-step"
+            aria-label="More suspects"
+            @click="stepRail(1)"
+          >
+            <svg viewBox="0 0 10 10" aria-hidden="true">
+              <polyline points="4,2 7,5 4,8" />
+            </svg>
+          </button>
+        </div>
+        <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
+          <CountryGuessInput
+            ref="guessInput"
+            :disabled="!started"
+            :excluded="ruledOut"
+            :people="suspects"
+            placeholder="Leader or country"
+            @guess="country => pick(country.isoCode)"
+            @miss="announce({ hint: 'No country by that name' })"
+          />
+        </ChallengeConsole>
+      </div>
+    </footer>
+
+    <MembershipSheet
+      v-if="!railless && started && !gameStore.watching"
+      ref="roster"
+      class="suspect-roster"
+      :countries="field"
+      subject="the file"
+      noun="suspects"
+      :settled="submitted"
+      @pick="pick"
+    />
+  </section>
+</template>
+<script lang="ts" setup>
+import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
+import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
+import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
+import UnmaskBriefing from '~/components/challenge/UnmaskBriefing.vue'
+import UnmaskFile from '~/components/challenge/UnmaskFile.vue'
+import CountryChip from '~/components/country/CountryChip.vue'
+import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
+import ChallengeResult from '~/components/feedback/ChallengeResult.vue'
+import GuessTicker from '~/components/feedback/GuessTicker.vue'
+import Interstitial from '~/components/feedback/Interstitial.vue'
+import LeaderReveal from '~/components/feedback/LeaderReveal.vue'
+import { BORDERS } from '~~/data/borders.gen'
+import { ISOCountryCodes } from '~~/data/iso-codes.gen'
+import { datasetAttribution } from '~~/lib/attribution'
+import { countryName, getCountry } from '~~/lib/country'
+import { useClientEvents } from '~~/lib/events/client-side'
+import { legibleFrameSubjects } from '~~/lib/label-anchor'
+import { quizLeader } from '~~/lib/leaders'
+import { UNMASK_FRAME_PAD, UNMASK_SUSPECT_FILL, unmaskFacts } from '~~/lib/unmask'
+import { classicPlaySeconds } from '~~/lib/round-beats'
+import { buzzScore } from '~~/lib/scoring'
+import { seatVerdictOn } from '~~/lib/seat-view'
+import { UNMASK_NAMED_FIELD, unmaskRemainingFraction, unmaskRungsShown } from '~~/lib/unmask-pace'
+import { useEdgeBerth } from '~~/lib/use-edge-berth'
+import { useFooterBerth } from '~~/lib/use-footer-berth'
+import { usePromptBerth } from '~~/lib/use-prompt-berth'
+import { prefersReducedMotion } from '~~/lib/motion'
+import { useScrollEdges } from '~~/lib/use-scroll-edges'
+import { useAckOnce } from '~~/lib/use-ack-once'
+import { useServerWindow } from '~~/lib/use-server-window'
+import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
+import { useIsPhone, useIsRailless } from '~~/lib/use-viewport'
+import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import type { ClassicBriefingState } from '~~/types/challenges/group-modes.type'
+import { isMapClickEvent } from '~~/types/events.types'
+import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
+
+const {
+  challenge,
+  showInterstitial,
+  started,
+  submitted,
+  begin: beginRound,
+  hint,
+  hintTone,
+  announce,
+  entries,
+  submitOnce,
+  currentRound,
+  gameStore,
+  outcomeShown,
+  registerCleanup,
+} = useGroupChallenge('unmask-challenge', { solo: false })
+const { seatCursor } = useClientEvents()
+
+const sources = datasetAttribution('leaders')
+const isPhone = useIsPhone()
+const railless = useIsRailless()
+const sideFile = ref<InstanceType<typeof UnmaskFile>>()
+const roster = ref<InstanceType<typeof MembershipSheet>>()
+useEdgeBerth(
+  computed(() => sideFile.value?.$el as HTMLElement | undefined),
+  'left',
+  () => !railless.value
+)
+useEdgeBerth(
+  computed(() => roster.value?.$el as HTMLElement | undefined),
+  'right',
+  () => !railless.value
+)
+gameStore.map.framePad = UNMASK_FRAME_PAD
+registerCleanup(() => (gameStore.map.framePad = undefined))
+const footer = ref<HTMLElement>()
+useFooterBerth(footer)
+const prompt = ref<InstanceType<typeof ChallengePrompt>>()
+usePromptBerth(computed(() => prompt.value?.$el as HTMLElement | undefined))
+const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
+
+const roundIndex = computed(() => (gameStore.game ? gameStore.game.rounds.length - 1 : undefined))
+const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
+const playWindow = useServerWindow(() => currentRound.value?.round.playStartsAt, totalSeconds)
+const { secondsLeft } = playWindow
+
+const due = computed(() =>
+  challenge.value && playWindow.running.value
+    ? unmaskRungsShown(challenge.value, playWindow.elapsedMs.value)
+    : 0
+)
+const dossier = useUnmaskDossier(roundIndex, due, () => outcomeShown.value)
+const answer = computed(() => dossier.value?.reveal?.country)
+const answerLeader = computed(() => (answer.value ? quizLeader(answer.value) : undefined))
+const leaderName = computed(() => answerLeader.value?.name ?? '')
+
+/** The rungs open when the accusation landed — the file stops there until
+ *  the reveal opens the rest. */
+const accusedAt = ref<number>()
+const displayClues = computed(() => {
+  const clues = dossier.value?.clues ?? []
+  if (dossier.value?.reveal || accusedAt.value === undefined) return clues
+  return clues.slice(0, accusedAt.value)
+})
+
+const field = computed(() => dossier.value?.field ?? challenge.value?.suspects ?? [])
+const suspects = computed(() =>
+  Object.fromEntries(field.value.map(isoCode => [isoCode, unmaskFacts(isoCode)?.leader.name]))
+)
+const ruledOut = computed(() => {
+  const lit = new Set(field.value)
+  return ISOCountryCodes.filter(isoCode => !lit.has(isoCode))
+})
+
+const bounty = computed(() => {
+  const active = challenge.value
+  if (!active) return 0
+  const shown = Math.max(1, displayClues.value.length)
+  return buzzScore(active.maximumPoints, unmaskRemainingFraction(active, shown))
+})
+
+const promptLine = computed(() =>
+  accusedAt.value !== undefined
+    ? 'Accusation filed — the file is being checked'
+    : 'Your first pick is your accusation. The less of the file you need, the more it pays.'
+)
+
+const suspect = ref<ISOCountryCode>()
+const suspectRail = computed(() =>
+  railless.value && !suspect.value && field.value.length <= UNMASK_NAMED_FIELD
+    ? [...field.value].sort((a, b) => countryName(a).localeCompare(countryName(b)))
+    : []
+)
+const rail = ref<HTMLElement>()
+const { scrollableLeft, scrollableRight, syncScrollEdges } = useScrollEdges(() => rail.value)
+const stepRail = (direction: 1 | -1) =>
+  rail.value?.scrollBy({
+    left: direction * rail.value.clientWidth * 0.8,
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+  })
+const pick = (isoCode: ISOCountryCode) => {
+  const active = challenge.value
+  if (!active || !started.value || submitted.value || gameStore.watching) return
+  if (!active.suspects.includes(isoCode)) {
+    announce({ hint: `No file on ${countryName(isoCode)}'s leader` })
+    return
+  }
+  if (!field.value.includes(isoCode)) {
+    announce({ hint: `The file already rules ${countryName(isoCode)} out` })
+    return
+  }
+  suspect.value = isoCode
+  gameStore.map.highlighted = new Set([isoCode])
+  accusedAt.value = displayClues.value.length
+  playWindow.stop()
+  announce({ kind: 'probe' })
+  submitOnce([isoCode])
+}
+
+const begin = () => {
+  beginRound()
+  nextTick(() => guessInput.value?.focus({ auto: true }))
+}
+
+const EMPTY_STATE: ClassicBriefingState = { ready: [], order: [] }
+const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
+const briefingOpen = computed(() => !!state.value.briefing)
+const briefing = computed(() => briefingOpen.value && !showInterstitial.value)
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'unmask-ready' }))
+const startRound = () => {
+  if (gameStore.watching) return beginRound()
+  if (!started.value) begin()
+}
+const brief = () => {
+  showInterstitial.value = false
+  if (!briefingOpen.value) startRound()
+}
+watch(briefingOpen, (open, was) => {
+  if (was && !open && !showInterstitial.value) startRound()
+})
+
+watch(
+  () => playWindow.expired.value && started.value && !gameStore.watching,
+  ran => {
+    if (!ran || submitted.value) return
+    accusedAt.value = displayClues.value.length
+    submitOnce([])
+  }
+)
+
+watch(
+  field,
+  (next, previous) => {
+    if (answer.value) return
+    gameStore.map.spotlight = [...next]
+    gameStore.map.focus = legibleFrameSubjects(next)
+    gameStore.map.countryGroupings = [{ color: UNMASK_SUSPECT_FILL, countries: [...next] }]
+    gameStore.map.countryLabels =
+      next.length <= UNMASK_NAMED_FIELD
+        ? Object.fromEntries(next.map(isoCode => [isoCode, countryName(isoCode)]))
+        : undefined
+    const dropped = (previous?.length ?? next.length) - next.length
+    if (dropped > 0 && !submitted.value) {
+      announce({ hint: `The file rules out ${dropped} — ${next.length} suspects left` })
+    }
+  },
+  { immediate: true }
+)
+
+const scored = computed(() => {
+  if (gameStore.watching) {
+    return currentRound.value?.round.playerTurns[gameStore.seatId]?.points.scored ?? 0
+  }
+  return seatVerdictOn(seatCursor.value, 'round')?.scored ?? 0
+})
+const caught = computed(() => scored.value > 0)
+const verdictShown = computed(() => outcomeShown.value && !!answer.value)
+const accused = computed(
+  () =>
+    !!suspect.value ||
+    currentRound.value?.round.groupAnswers[gameStore.seatId]?.unmaskRung !== undefined
+)
+const missLine = computed(() => {
+  const country = answer.value ? countryName(answer.value) : ''
+  return accused.value
+    ? `It was ${leaderName.value} of ${country}`
+    : `Out of time — it was ${leaderName.value} of ${country}`
+})
+
+watch([answer, caught], ([country]) => {
+  if (!country || !outcomeShown.value) return
+  gameStore.map.spotlight = []
+  gameStore.map.framePad = undefined
+  gameStore.map.countryGroupings = undefined
+  gameStore.map.countryLabels = undefined
+  gameStore.map.highlighted = new Set([country])
+  gameStore.map.focus = [country]
+  gameStore.map.focusContext = BORDERS[country] ?? []
+  if (suspect.value && suspect.value !== country) gameStore.map.tints[suspect.value] = 'stray'
+  gameStore.map.tints[country] = caught.value ? 'optimal' : 'inefficient'
+})
+
+const onMapClick = (event: Event) => {
+  if (!isMapClickEvent(event) || showInterstitial.value) return
+  const isoCode = event.detail.isoCode
+  if (isValidISOCode(isoCode)) pick(isoCode)
+}
+onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
+registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
+</script>
+<style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
+
+.suspect-roster {
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  height: fit-content;
+  border-bottom-left-radius: $cardRadius;
+}
+
+.rail-wrap {
+  width: 100%;
+  position: relative;
+}
+
+.rail-step {
+  top: 50%;
+  right: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: 0;
+  display: grid;
+  cursor: pointer;
+  position: absolute;
+  place-items: center;
+  border-radius: 50%;
+  pointer-events: auto;
+  color: var(--dark-blue);
+  background: glass(0.8);
+  transform: translateY(-50%);
+  box-shadow: 0 0.1rem 0.4rem ink(0.15);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &.back {
+    left: 0;
+    right: auto;
+  }
+}
+
+.suspects li {
+  animation: row-land var(--motion-base) var(--ease-out-expressive) both;
+  animation-delay: calc(var(--i) * 0.04s);
+}
+
+.suspect-chip {
+  border-radius: 999px;
+  border: 0.15rem solid var(--suspect-fill);
+}
+
+.guess-box :deep(.suggestions) {
+  top: auto;
+  bottom: 100%;
+  margin: 0 0 0.6rem;
+}
+</style>

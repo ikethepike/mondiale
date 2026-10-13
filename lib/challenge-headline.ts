@@ -59,6 +59,10 @@ export const roundChallengeHeadline = (challenge: RoundChallenge | undefined): s
       return '_type' in challenge && challenge._type === 'stat-detective-challenge'
         ? `The numbers belonged to ${countryName(challenge.country)}`
         : ''
+    case 'unmask':
+      return isChallengeOfType(challenge, 'unmask-challenge')
+        ? `A leader's file, ${challenge.rungs.length} rungs deep`
+        : ''
     case 'two-truths':
       return '_type' in challenge && challenge._type === 'two-truths-challenge'
         ? `${challenge.cards.length} claims about ${countryName(challenge.country)}`

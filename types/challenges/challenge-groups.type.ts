@@ -124,6 +124,8 @@ export const CHALLENGE_GROUP_BY_KIND = {
   'star-chart': 'cities',
   // The chamber round: who governs, how large they are, and who is with them.
   government: 'politics',
+  // The person rather than the chamber: a leader's file, one rung at a time.
+  unmask: 'politics',
   // Where a country's people were born — foreign-born share and the corridors
   // that fed it. Society is now a visible group, so the accurate home is
   // finally the reachable one.
@@ -199,6 +201,7 @@ export const ANSWER_SHAPE_BY_KIND = {
   flashpoint: 'set',
   'flag-palette': 'set',
   'stat-detective': 'set',
+  unmask: 'set',
   'two-truths': 'set',
   'ghost-state': 'set',
   composition: 'set',

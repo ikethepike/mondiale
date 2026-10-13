@@ -17,6 +17,8 @@ import {
 import { anthemTuneMatches, sharedTuneCountries } from '~~/lib/anthems'
 import { compositionPay, parsePlacements, replayPlacements } from '~~/lib/composition'
 import { compositionBoardOf, fetchCompositionSheet } from './composition-board'
+import { fetchUnmaskFile, UNMASK_RELEASE_LEAD_MS } from './unmask-file'
+import { unmaskRemainingFraction, unmaskRungsShown } from '~~/lib/unmask-pace'
 import { empirePots, scoreEmpireExtent } from '~~/lib/empires'
 import {
   groundPlanLayersShown,
@@ -254,6 +256,31 @@ export const gradeGroupAnswer = async ({
           ? 0
           : statDetectiveRemainingFraction(challenge, statDetectiveCluesShown(challenge, elapsed))
       )
+      break
+    }
+    case 'unmask': {
+      // Graded against the side key, never the snapshot, and recorded with no
+      // country: a banked accusation would name the answer to seats still in.
+      const challenge = expectChallengeType(roundChallenge, 'unmask-challenge')
+      const file = redis
+        ? await fetchUnmaskFile(redis, game.id, roundIndexOf(game, round))
+        : undefined
+      const guess = absent ? undefined : submission.ranking[0]
+      const elapsed = elapsedMs()
+      // The dossier hands each rung out UNMASK_RELEASE_LEAD_MS early; price on
+      // the same cut, or a seat accusing on a fresh rung is paid the last one.
+      const rung =
+        elapsed === undefined
+          ? challenge.rungs.length
+          : unmaskRungsShown(challenge, elapsed + UNMASK_RELEASE_LEAD_MS)
+      answer = { submitted: [], correct: [], ...(guess ? { unmaskRung: rung } : {}) }
+      scoring = {
+        scored:
+          file && guess === file.country
+            ? landBuzz(challenge.maximumPoints, unmaskRemainingFraction(challenge, rung))
+            : 0,
+        maximum: challenge.maximumPoints,
+      }
       break
     }
     case 'two-truths': {

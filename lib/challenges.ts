@@ -128,6 +128,7 @@ import {
   flashpointSeconds,
 } from './round-beats'
 import { countryLedBy, quizLeader } from './leaders'
+import { loadUnmaskAnswers } from './unmask-answers'
 import {
   DIFFICULTY_CONFIGURATION,
   isCountryInPlay,
@@ -1258,7 +1259,7 @@ const getTerraIncognitaChallenge = (game: gameTypes.Game): TerraIncognitaChallen
     collapseThreshold: terraCollapseThreshold(vanishings.length, game.difficulty),
     durationSeconds: terraSeconds(vanishings.length, cadenceMs),
     maximumPoints: maximumRoundPoints(game),
-    // The clock stamps only when this table is briefed (terra-beats) — one
+    // The clock stamps only when this table is briefed (classic-briefing) — one
     // stamp, so every seat derives the same failing world from it.
     state: { briefing: true, ready: [], order: chainContenders(game) },
   }
@@ -2085,6 +2086,7 @@ const ROUND_DEALERS: Record<RoundChallengeKind, RoundDealer> = {
   'hot-cold': game => getHotColdChallenge({ game }),
   sketch: game => getSketchChallenge({ game }),
   'stat-detective': game => getStatDetectiveChallenge({ game }),
+  unmask: async game => (await loadUnmaskAnswers())?.dealUnmask(game, maximumRoundPoints(game)),
   'two-truths': game => getTwoTruthsChallenge(game),
   'lay-of-the-land': game => getLayOfTheLandChallenge(game),
   'name-that-water': game => getNameWaterChallenge(game),
@@ -3072,31 +3074,6 @@ const dealLogoPolitics = (
   }
 }
 
-/** Leader-pick: who runs this country, millionaire-style (decoys same region,
- *  never one whose leader also leads the dealt country). */
-const dealLeaderPick = (
-  countryPool: ISOCountryCode[],
-  world: ISOCountryCode[]
-): { country: ISOCountryCode; options: ISOCountryCode[] } | undefined => {
-  const quizzable = (isoCode: ISOCountryCode) => !!quizLeader(isoCode)
-  const poolLeaders = countryPool.filter(quizzable)
-  const withLeaders = poolLeaders.length >= 4 ? poolLeaders : world.filter(quizzable)
-  if (withLeaders.length < 4) return undefined
-
-  const country = sample(withLeaders)!
-  const decoys = pickDecoys(country, withLeaders, 3, {
-    preferRegion: true,
-    eligible: isoCode => {
-      const leader = quizLeader(isoCode)
-      return !!leader && !countryLedBy(country, leader.name)
-    },
-    widen: world,
-  })
-  if (!decoys) return undefined
-
-  return { country, options: shuffleArray([country, ...decoys]) }
-}
-
 /** The face to quiz on: the quiz leader's own portrait, never a stand-in role's. */
 const portraitFor = (isoCode: ISOCountryCode) => {
   const leader = quizLeader(isoCode)
@@ -3623,11 +3600,6 @@ export const getIndividualChallenge = async ({
         if (dealt) return { ...base, variant: 'trajectory-match', ...dealt }
         break
       }
-      case 'leader-pick': {
-        const dealt = dealLeaderPick(pool, world)
-        if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
-        break
-      }
       case 'logo-politics': {
         const dealt = dealLogoPolitics(pool, world)
         if (dealt) return { ...base, variant: 'logo-politics', ...dealt }
@@ -3775,10 +3747,7 @@ export const getIndividualChallenge = async ({
       } else if (roll < 0.48) {
         const dealt = dealHigherLower(settings, pool, world)
         if (dealt) return { ...base, variant: 'higher-lower', ...dealt }
-      } else if (roll < 0.62) {
-        const dealt = dealLeaderPick(pool, world)
-        if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
-      } else if (roll < 0.78) {
+      } else if (roll < 0.7) {
         const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       } else if (roll < 0.93) {
@@ -3788,20 +3757,14 @@ export const getIndividualChallenge = async ({
       break
     }
     case 'government.leader': {
-      // The leadership gate: faces first, names second; the find fallback is
-      // a map hunt for the phrased leader's country.
-      if (roll < 0.5) {
+      // The leadership gate: faces first, the leader analogy second; the find
+      // fallback is a map hunt for the phrased leader's country.
+      if (roll < 0.75) {
         const dealt = dealLeaderPortrait(pool, world)
         if (dealt) return { ...base, variant: 'leader-portrait', ...dealt }
       }
-      if (roll < 0.85) {
-        const dealt = dealLeaderPick(pool, world)
-        if (dealt) return { ...base, variant: 'leader-pick', ...dealt }
-      }
-      if (roll < 0.95) {
-        const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
-        if (dealt) return { ...base, variant: 'rosetta', ...dealt }
-      }
+      const dealt = dealRosetta(accessorId, pool, [...ISOCountryCodes])
+      if (dealt) return { ...base, variant: 'rosetta', ...dealt }
       break
     }
     case 'government.parties': {

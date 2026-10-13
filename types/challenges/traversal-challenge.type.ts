@@ -63,6 +63,7 @@ export type RoundChallengeKind =
   | 'hot-cold'
   | 'sketch'
   | 'stat-detective'
+  | 'unmask'
   | 'two-truths'
   | 'lay-of-the-land'
   | 'name-that-water'
@@ -113,6 +114,8 @@ export const roundChallengeKind = (challenge: RoundChallenge | undefined): Round
       return 'sketch'
     case 'stat-detective-challenge':
       return 'stat-detective'
+    case 'unmask-challenge':
+      return 'unmask'
     case 'two-truths-challenge':
       return 'two-truths'
     case 'water-blitz-challenge':

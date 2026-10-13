@@ -1,5 +1,6 @@
 import { clamp, clamp01 } from '~~/lib/number'
 import { isChallengeOfType } from '~~/lib/rounds'
+import { unmaskSeconds } from '~~/lib/unmask-pace'
 import type {
   StatDetectiveChallenge,
   TimelineChallenge,
@@ -466,6 +467,15 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
         ? (challenge.clues.length + (challenge.photo ? 1 : 0)) * challenge.secondsPerClue
         : undefined,
   },
+  // The hold is the unmasking: the mosaic resolves into the full portrait and
+  // the file names who it was. At a buzz hold the face never finished landing.
+  unmask: {
+    owner: 'classic',
+    revealHoldMs: 6000,
+    briefingCapMs: BRIEFING_CAP_MS,
+    playSeconds: challenge =>
+      isChallengeOfType(challenge, 'unmask-challenge') ? unmaskSeconds(challenge) : undefined,
+  },
   'two-truths': { owner: 'classic', revealHoldMs: 4500 },
   'lay-of-the-land': { owner: 'classic', revealHoldMs: 0 },
   'name-that-water': { owner: 'classic', revealHoldMs: 4200 },
@@ -495,7 +505,7 @@ export const ROUND_BEATS: Record<RoundChallengeKind, RoundBeatSpec> = {
   // player's own hand and the missed ones alongside. At 0 the scorecard
   // covered a map that was still visibly broken.
   // A classic clock behind a briefing: `startClassicClock` refuses the round
-  // while `state.briefing` holds, and terra-beats stamps it on the last ready
+  // while `state.briefing` holds, and classic-briefing stamps it on the last ready
   // (or this cap) — one stamp, one world failing for the whole table.
   'terra-incognita': { owner: 'classic', revealHoldMs: 6000, briefingCapMs: BRIEFING_CAP_MS },
   composition: { owner: 'classic', revealHoldMs: REVEAL_HOLD_MS },
@@ -575,6 +585,22 @@ export const briefingHolds = (challenge: RoundChallenge | undefined): boolean =>
   !!challenge &&
   'state' in challenge &&
   !!(challenge.state as { briefing?: boolean } | undefined)?.briefing
+
+/** The classic kinds that open on a rules card, and each one's ready ack. */
+export const CLASSIC_READY_EVENTS = {
+  'terra-incognita-challenge': 'terra-ready',
+  'unmask-challenge': 'unmask-ready',
+} as const
+
+export type BriefedClassicChallenge = Extract<
+  RoundChallenge,
+  { _type: keyof typeof CLASSIC_READY_EVENTS }
+>
+export type ClassicReadyEvent = (typeof CLASSIC_READY_EVENTS)[keyof typeof CLASSIC_READY_EVENTS]
+
+export const isBriefedClassic = (
+  challenge: RoundChallenge | undefined
+): challenge is BriefedClassicChallenge => !!challenge && challenge._type in CLASSIC_READY_EVENTS
 
 /** A round whose server clock is the generic classic engine — everything but
  *  the five turn/beat engines. */

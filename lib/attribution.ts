@@ -1031,7 +1031,7 @@ export const DATASETS: Record<DataSetId, DataSet> = {
   },
   leaders: {
     label: 'Heads of state and government',
-    files: ['data/leaders.gen.ts'],
+    files: ['data/leaders.gen.ts', 'data/unmask.gen.ts'],
     origins: [
       { source: 'wikidata-items', dataset: 'P35 head of state, P6 head of government' },
       { source: 'commons-media', dataset: 'Portraits' },

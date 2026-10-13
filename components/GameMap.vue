@@ -255,6 +255,7 @@ import { clamp } from '~~/lib/number'
 import { type MapTint, useGameStore } from '~~/store/game.store'
 import type { MapClickEvent } from '~~/types/events.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
+import type { Berth } from '~~/lib/map-berth'
 import MapInset from '~/components/map/MapInset.vue'
 import { useIsCoarsePointer, useIsPhone } from '~~/lib/use-viewport'
 import type {
@@ -301,10 +302,10 @@ const props = defineProps({
     default: false,
   },
   /** Chrome berth in CSS px: the camera fits its subject into the band
-   *  between `top` and `bottom` instead of the full viewport, so a view's
-   *  header card (a flag, a photo) never sits on the subject. */
+   *  inside these insets instead of the full viewport, so a view's header
+   *  card or side panel (a flag, a photo, a roster) never sits on it. */
   berth: {
-    type: Object as PropType<{ top?: number; bottom?: number }>,
+    type: Object as PropType<Berth>,
     default: undefined,
   },
   /** With solo: continents stay as one silhouette — uniform fill, no strokes,
@@ -874,35 +875,67 @@ const worldFitView = () => {
 }
 
 /** The berth as a zoom-out factor plus where the clear band's centre sits
- *  (as a fraction of viewport height). No berth → identity. Nonsense berths
- *  (band under 35% of the screen) are ignored rather than obeyed. */
+ *  (as a fraction of viewport height), and the same across the width for a
+ *  side berth. No berth → identity. Nonsense berths (band under 35% of the
+ *  screen) are ignored rather than obeyed. */
+const bandOn = (start: number, end: number, extent: number) => {
+  const band = extent - start - end
+  if ((!start && !end) || !extent || band < extent * 0.35) return { scale: 1, center: 0.5 }
+  return { scale: extent / band, center: (start + band / 2) / extent }
+}
+
+/** The map's layout size. Berths are CSS px of the layout, and the screen
+ *  rect can be cached mid-way through `.game-map`'s 0.8 rest scale — a
+ *  shrunken rect read a two-panel side berth as under the band guard. */
+const mapLayoutSize = () => ({
+  width: wrapper.value?.clientWidth ?? 0,
+  height: wrapper.value?.clientHeight ?? 0,
+})
+
 const berthMetrics = () => {
-  const top = props.berth?.top ?? 0
-  const bottom = props.berth?.bottom ?? 0
-  const viewportHeight = mapRect()?.height ?? 0
-  const band = viewportHeight - top - bottom
-  if (!top && !bottom) return { scale: 1, centerFraction: 0.5 }
-  if (!viewportHeight || band < viewportHeight * 0.35) return { scale: 1, centerFraction: 0.5 }
-  return { scale: viewportHeight / band, centerFraction: (top + band / 2) / viewportHeight }
+  const size = mapLayoutSize()
+  const vertical = bandOn(props.berth?.top ?? 0, props.berth?.bottom ?? 0, size.height)
+  const horizontal = bandOn(props.berth?.left ?? 0, props.berth?.right ?? 0, size.width)
+  return {
+    scale: vertical.scale,
+    centerFraction: vertical.center,
+    scaleX: horizontal.scale,
+    centerFractionX: horizontal.center,
+  }
 }
 
 /**
  * Re-aim a fitted view so its `content` box lands inside the berth band:
  * recentred on the band's centre, and zoomed out ONLY when the content's
- * projected height genuinely overflows the band (a wide world on a tall
- * phone already fits — it just needs to move).
+ * projected extent genuinely overflows the band (a wide world on a tall
+ * phone already fits — it just needs to move). Content without an x extent
+ * (the world at rest) ignores a side berth — only a subject is kept clear.
  */
-const berthedView = (view: typeof WORLD_VIEW, content: { y: number; height: number }) => {
-  const { scale: bandScale, centerFraction } = berthMetrics()
-  if (bandScale === 1 && centerFraction === 0.5) return view
-  const viewportHeight = mapRect()?.height ?? 0
+const berthedView = (
+  view: typeof WORLD_VIEW,
+  content: { y: number; height: number; x?: number; width?: number }
+) => {
+  const { scale: bandScale, centerFraction, scaleX, centerFractionX } = berthMetrics()
+  const sided = content.x !== undefined && content.width !== undefined
+  const sideIdentity = !sided || (scaleX === 1 && centerFractionX === 0.5)
+  if (bandScale === 1 && centerFraction === 0.5 && sideIdentity) return view
+  const size = mapLayoutSize()
+  const viewportHeight = size.height
   const bandHeightPx = viewportHeight / bandScale
   const contentHeightPx = viewportHeight * (content.height / view.height)
-  const scale = Math.max(1, contentHeightPx / bandHeightPx)
+  let scale = Math.max(1, contentHeightPx / bandHeightPx)
+  if (sided && !sideIdentity) {
+    const viewportWidth = size.width
+    const contentWidthPx = viewportWidth * (content.width! / view.width)
+    scale = Math.max(scale, contentWidthPx / (viewportWidth / scaleX))
+  }
   const width = view.width * scale
   const height = view.height * scale
   return {
-    x: view.x + view.width / 2 - width / 2,
+    x:
+      sided && !sideIdentity
+        ? content.x! + content.width! / 2 - centerFractionX * width
+        : view.x + view.width / 2 - width / 2,
     y: content.y + content.height / 2 - centerFraction * height,
     width,
     height,
@@ -956,8 +989,10 @@ const clampView = (view: typeof WORLD_VIEW, minWidth = WORLD_VIEW.width / MAX_ZO
   // inside the clear band — the zoom-out ceiling follows the actual rest.
   // Cached: this runs every gesture frame, and the berth chain behind it
   // only moves with the rect or the berth props.
+  // A side berth narrows the band a framed subject must fit, so the ceiling
+  // widens with it — the rest ignores side berths and would cap that frame.
   clampCache ??= {
-    maxWidth: Math.max(WORLD_VIEW.width, restView().width),
+    maxWidth: Math.max(WORLD_VIEW.width, restView().width) * berthMetrics().scaleX,
     centerFraction: berthMetrics().centerFraction,
   }
   const { maxWidth, centerFraction } = clampCache
@@ -1093,7 +1128,10 @@ const frameForBoxes = (
     width *= grow
     height *= grow
   }
-  return berthedView({ x, y, width, height }, { y: minY - pad, height: maxY - minY + pad * 2 })
+  return berthedView(
+    { x, y, width, height },
+    { x: minX - pad, width: maxX - minX + pad * 2, y: minY - pad, height: maxY - minY + pad * 2 }
+  )
 }
 
 /**
@@ -1169,7 +1207,7 @@ watch(
 // or zoomed, chrome growing under the map (guess chips landing, the keyboard
 // rising) must not snatch the camera back to the subject.
 watch(
-  () => [props.berth?.top, props.berth?.bottom],
+  () => [props.berth?.top, props.berth?.bottom, props.berth?.left, props.berth?.right],
   () => {
     clampCache = undefined
     if (!cameraTaken) nextTick(frameFocus)

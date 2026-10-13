@@ -10,7 +10,6 @@ import { buildLineup, isMemberOf, MIN_LINEUP_BOUND } from '~~/lib/odd-one-out'
 import { TREATY_META, treatyMeta, type TreatyId } from '~~/types/treaty.type'
 import type { CommodityExporterRow } from '~~/generators/vendors/cepii/create-commodity-exporters'
 import type { EventEntry } from '~~/generators/create-events-file'
-import { quizLeader } from '~~/lib/leaders'
 import {
   acceptsSpeaker,
   boardSpeakers,
@@ -33,7 +32,6 @@ import type {
   FinalChallengeAnswer,
   FinalChallengeItem,
   LanguageChallenge,
-  LeadershipChallenge,
   MadeChallenge,
   MaxChallenge,
   MembershipChallenge,
@@ -99,7 +97,6 @@ export const GAUNTLET_LIVES: { [difficulty in GameDifficulty]: number } = {
 // heavier modes stay out of easy runs.
 export const eligibleFinalTypes = (game: Game, pool: ISOCountryCode[]): FinalChallengeType[] => {
   const types: FinalChallengeType[] = [
-    'leadership-challenge',
     'language-challenge',
     'min-challenge',
     'max-challenge',
@@ -134,7 +131,6 @@ type FinalDealer = (
 
 const FINAL_DEALERS: Record<FinalChallengeType, FinalDealer> = {
   'region-challenge': pool => getRegionChallenge(pool),
-  'leadership-challenge': pool => getLeadershipChallenge(pool),
   'language-challenge': pool => getLanguageChallenge(pool),
   'min-challenge': pool => getMinChallenge(pool),
   'max-challenge': pool => getMaxChallenge(pool),
@@ -1200,17 +1196,6 @@ export const BORDER_STORIES: Partial<Record<string, string>> = {
 export const boundaryStory = (countries: [ISOCountryCode, ISOCountryCode]): string | undefined =>
   BORDER_STORIES[[...countries].sort().join('|')]
 
-const getLeadershipChallenge = (pool: ISOCountryCode[]): LeadershipChallenge | undefined => {
-  const country = sample(pool.filter(isoCode => !!quizLeader(isoCode)))
-
-  if (!country) return undefined
-
-  return {
-    _type: 'leadership-challenge',
-    country,
-  }
-}
-
 /** Did this country gain independence after `year`? */
 export const bornAfter = (isoCode: ISOCountryCode, year: number): boolean => {
   const independence = COUNTRIES[isoCode].government.independence
@@ -1328,12 +1313,6 @@ export const isCorrectFinalAnswer = ({
       const submitted = getValueByAccessorID(submittedAnswer.isoCode, challenge.accessorId)?.amount
       return dealt !== undefined && submitted === dealt
     }
-    case 'leadership-challenge': {
-      if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
-      return (
-        isValidISOCode(submittedAnswer.isoCode) && submittedAnswer.isoCode === challenge.country
-      )
-    }
     case 'language-challenge': {
       if (!('isoCode' in submittedAnswer)) return throwTypeMismatch()
       if (!isValidISOCode(submittedAnswer.isoCode)) return false
@@ -1442,13 +1421,6 @@ export const getFinalChallengeDetails = ({
       return {
         question: `Select a country that speaks ${challenge.language}`,
       }
-    case 'leadership-challenge': {
-      // The DEALT country's leader — asking about anyone else's makes the
-      // question unanswerable (validation compares against challenge.country)
-      return {
-        question: `Which country is led by ${quizLeader(challenge.country)?.name ?? ''}?`,
-      }
-    }
     case 'min-challenge':
     case 'max-challenge': {
       const { accessorId, _type } = challenge

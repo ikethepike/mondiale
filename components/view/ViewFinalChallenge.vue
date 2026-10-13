@@ -239,7 +239,6 @@ import {
   yearbookYear,
 } from '~~/lib/challenges/final-challenge'
 import { countryEndonym, countryName, getCountry } from '~~/lib/country'
-import { quizLeader } from '~~/lib/leaders'
 import { formatEventYear } from '~~/lib/timeline'
 import { seatVerdictOn } from '~~/lib/seat-view'
 import { finalInterstitialEndsAt, finalQuestionNumber } from '~~/lib/final-timing'
@@ -307,8 +306,7 @@ const markAnswer = (landed: NonNullable<typeof verdict.value>) => {
       : undefined
   switch (challenge?._type) {
     case 'min-challenge':
-    case 'max-challenge':
-    case 'leadership-challenge': {
+    case 'max-challenge': {
       // Stat ties share the podium — mark the country the player actually got
       // right, not the dealt extreme it happens to equal.
       const shown = landed.correct && picked ? picked : challenge.country
@@ -507,14 +505,6 @@ const lesson = computed(() => {
         : ''
       return `${countryName(country)} is one of ${siblings.length} countries in ${region}, together home to ${formatCompact(people)} people.${neighbourLine}`
     }
-    case 'leadership-challenge': {
-      // LeaderReveal carries the portrait, party and tenure — this line is
-      // what it can't say: which country the person actually leads. Naming
-      // them again here would just repeat the card's own headline.
-      return quizLeader(challenge.country)
-        ? `The country is ${countryName(COUNTRIES[challenge.country])}.`
-        : undefined
-    }
     case 'language-challenge':
       // LanguageReveal carries the whole roster and its reach
       return undefined
@@ -610,7 +600,7 @@ const promptSources = computed<Attribution[] | undefined>(() =>
 /**
  * The country this seat picked. A player's own tap sets `lastGuess`; a
  * watcher never taps, so the verdict's answer stands in — which is what lets
- * the single-subject reveal cards (min/max, leadership, membership, region…)
+ * the single-subject reveal cards (min/max, membership, region…)
  * render in the booth exactly as they do for the runner. Multi-pick modes
  * carry no single subject and fall through to the lesson line, as designed.
  */
@@ -917,7 +907,6 @@ const onMapClick = (event: Event) => {
       break
     case 'max-challenge':
     case 'min-challenge':
-    case 'leadership-challenge':
       submitFinalAnswer({
         _type: currentFinalChallenge.value._type,
         isoCode: isoCode as ISOCountryCode, // We check this in the backend

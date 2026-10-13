@@ -109,7 +109,6 @@ import { MAP_BOUNDS, MAP_REGIONS } from '~~/data/map.gen'
 import { isLabelableBox, labelBoxFor } from '~~/lib/geo'
 import { TREATIES } from '~~/data/treaties.gen'
 import { buildLineup } from '~~/lib/odd-one-out'
-import { quizLeader } from '~~/lib/leaders'
 import {
   countriesWithGoverningLogo,
   governingParty,
@@ -144,6 +143,9 @@ import { SWEEP_SETS } from '~~/lib/clean-sweep'
 import { isChallengeOfType, latestChallengeOfType, latestRound } from '~~/lib/rounds'
 import { vintageStoryKey } from '~~/lib/vintage-story'
 import { loadVintageAnswers } from '~~/lib/vintage-answers'
+import { loadUnmaskAnswers } from '~~/lib/unmask-answers'
+import { unmaskDossierKey } from '~~/lib/unmask-pace'
+import { unmaskDossier } from '~~/lib/events/server/unmask-file'
 import { loadTwoTruthsAnswers } from '~~/lib/two-truths-answers'
 import { revealedCardIndex } from '~~/lib/two-truths'
 import { twoTruthsReceiptsEvent } from '~~/lib/events/client/two-truths-receipts.event'
@@ -173,6 +175,7 @@ import {
   GROUND_PLAN_SECONDS_PER_HINT,
   TIMELINE_BROWSE_CAP_MS,
   groundPlanSeconds,
+  isBriefedClassic,
   isClassicGroupRound,
 } from '~~/lib/round-beats'
 import { settleGroupRound, stampMockClassicClock } from '~~/lib/harness/settle-group-round'
@@ -187,6 +190,7 @@ import type {
   AtlasChallenge,
   BorderChainChallenge,
   CompositionSheet,
+  UnmaskFile,
   GovernmentChallenge,
   ManhuntChallenge,
   ManhuntState,
@@ -220,6 +224,7 @@ import { generateTiles } from '~~/lib/tiles'
 import { useGameStore } from '~~/store/game.store'
 import type { FinalChallengeItem } from '~~/types/challenges/final-challenge.type'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
+import { gameDifficulties } from '~~/types/game.types'
 import type { Game, GameDifficulty, GameRules, PlayerColor, Round } from '~~/types/game.types'
 import type { ISOCountryCode } from '~~/types/geography.types'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
@@ -676,7 +681,12 @@ const simulateGroupSettle = (eventData: Record<string, unknown>) => {
       submission: eventData as unknown as GroupSubmission,
       meId: ME,
       onSettled: () => (renderKey.value += 1),
-      redis: { get: async <T,>() => (compositionSheets.get(game) ?? {}) as T },
+      redis: {
+        get: async <T,>(key: string) =>
+          (key.includes(':unmask:')
+            ? unmaskFiles.get(game.id)
+            : (compositionSheets.get(game) ?? {})) as T,
+      },
     })
   }, SIM_LATENCY_MS)
 }
@@ -692,11 +702,12 @@ const installStubSocket = () => {
     if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
     if (event === 'chain-ready') chainSim().ready()
     if (event === 'pull-rip-cord') atlasSim.ripCord(eventData ?? {})
-    if (event === 'terra-ready') simulateTerraReady()
+    if (event === 'terra-ready' || event === 'unmask-ready') simulateClassicReady()
     if (event === 'government-ready') simulateGovernmentReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
     if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
+    if (event === 'fetch-unmask-dossier') simulateUnmaskDossier(eventData ?? {})
     if (event === 'fetch-two-truths-receipts') simulateTwoTruthsReceipts(eventData ?? {})
     if (event === 'buy-hint') simulateBuyHint(eventData ?? {})
     if (event === 'spend-pick') simulateSpendPick(eventData ?? {})
@@ -756,6 +767,56 @@ const simulateComposition = async (event: string, data: Record<string, unknown>)
   }, SIM_LATENCY_MS)
 }
 
+/** The harness seat's sealed Unmask file, per dealt game — the server's side key. */
+const unmaskFiles = new Map<string, UnmaskFile>()
+
+/** The stub's half of fetch-unmask-dossier: the same server cut, answered after
+ *  the sim latency like the real targeted emit. */
+const simulateUnmaskDossier = ({ round }: Record<string, unknown>) => {
+  const game = gameStore.game
+  const index = typeof round === 'number' ? round : -1
+  const dealt = game?.rounds[index]
+  const file = game ? unmaskFiles.get(game.id) : undefined
+  if (!game || !dealt || !file || !isChallengeOfType(dealt.groupChallenge, 'unmask-challenge')) {
+    return
+  }
+  const dossier = unmaskDossier({
+    challenge: dealt.groupChallenge,
+    file,
+    round: dealt,
+    roundIndex: index,
+    now: Date.now(),
+    revealed: !!dealt.groupAnswers[ME],
+  })
+  window.setTimeout(() => {
+    if (gameStore.game !== game) return
+    gameStore.unmaskDossiers = {
+      ...gameStore.unmaskDossiers,
+      [unmaskDossierKey(game.id, index)]: dossier,
+    }
+  }, SIM_LATENCY_MS)
+}
+
+/** The Unmask dealer reaches the harness only through the dev-guarded loader. */
+let unmaskAnswers: Awaited<ReturnType<typeof loadUnmaskAnswers>>
+const prepareUnmask = async () => {
+  unmaskAnswers ??= await loadUnmaskAnswers()
+}
+
+/** A live Unmask round on the given subject, its file sealed off the snapshot
+ *  exactly as `startUnmask` does. */
+const unmaskGame = (subject: ISOCountryCode, difficulty: GameDifficulty): Game => {
+  const game = mockGame('round', [])
+  game.difficulty = difficulty
+  const dealt = unmaskAnswers?.dealUnmask(game, MAXIMUM_POINTS, subject)
+  if (dealt?.sealed) {
+    unmaskFiles.set(game.id, dealt.sealed)
+    delete dealt.sealed
+  }
+  game.rounds.push(groupRound(dealt))
+  return game
+}
+
 /** The stub's half of fetch-vintage-story: the harness holds the answer key,
  *  so it plays the server's targeted reply. */
 const simulateVintageStory = ({ round }: Record<string, unknown>) => {
@@ -785,14 +846,15 @@ const simulateGovernmentReady = () => {
   }, SIM_LATENCY_MS)
 }
 
-/** The stub's half of terra-beats: the harness seat is the last ready, so
+/** The stub's half of classic-briefing: the harness seat is the last ready, so
  *  its click closes the briefing and the view starts the (local) clock. */
-const simulateTerraReady = () => {
-  const challenge = gameStore.game?.rounds.at(-1)?.groupChallenge
-  if (!challenge || !('_type' in challenge) || challenge._type !== 'terra-incognita-challenge')
-    return
+const simulateClassicReady = () => {
+  const round = gameStore.game?.rounds.at(-1)
+  const challenge = round?.groupChallenge
+  if (!round || !isBriefedClassic(challenge)) return
   if (!challenge.state.ready.includes(ME)) challenge.state.ready.push(ME)
   challenge.state.briefing = false
+  stampMockClassicClock(round)
 }
 
 const mockPlayer = (id: string, name: string, color: PlayerColor, step: SeatStep): Player =>
@@ -2530,6 +2592,25 @@ const scenarios: Scenario[] = [
       ]),
   },
   {
+    id: 'unmask',
+    label: "Unmask (a leader's file, rung by rung)",
+    prepare: prepareUnmask,
+    variants: [
+      { id: 'normal-FR', label: 'France — normal', country: 'FR' },
+      { id: 'easy-BR', label: 'Brazil — easy, region and initials', country: 'BR' },
+      { id: 'hard-JP', label: 'Japan — hard, three tiers', country: 'JP' },
+      { id: 'normal-QA', label: 'Qatar — an emir, no party', country: 'QA' },
+    ],
+    anyCountry: true,
+    build: variant => {
+      const difficulty = (variant?.id.split('-')[0] ?? 'normal') as GameDifficulty
+      return unmaskGame(
+        variant?.country ?? 'FR',
+        gameDifficulties.includes(difficulty) ? difficulty : 'normal'
+      )
+    },
+  },
+  {
     id: 'pin-landmark',
     label: 'Pin the landmark (photo dock)',
     build: () =>
@@ -3849,30 +3930,6 @@ const scenarios: Scenario[] = [
       }),
   },
   {
-    id: 'individual-leader-pick',
-    label: 'Individual: leader pick',
-    // The reveal's party chip degrades across these rungs, so a logo-less or
-    // unresolved party is as easy to eyeball as the happy path. A free pick
-    // deals the country against its own regional neighbours.
-    variants: [
-      { id: 'DE', label: 'Germany — the ordinary deal', country: 'DE' },
-      { id: 'SV', label: 'El Salvador — widest wordmark', country: 'SV' },
-      { id: 'AL', label: 'Albania — tallest roundel', country: 'AL' },
-      { id: 'BD', label: 'Bangladesh — ideology, no band', country: 'BD' },
-      { id: 'UA', label: 'Ukraine — independent, no party', country: 'UA' },
-    ],
-    anyCountry: true,
-    build: variant => {
-      const picked = variant?.country
-      const isoCode = picked && quizLeader(picked) ? picked : 'DE'
-      return individualGame({
-        variant: 'leader-pick',
-        country: isoCode,
-        options: leaderPickOptions(isoCode),
-      })
-    },
-  },
-  {
     id: 'individual-logo-politics',
     label: 'Individual: logo politics (origin)',
     build: () =>
@@ -4749,11 +4806,6 @@ const scenarios: Scenario[] = [
     build: () => finalGame([{ _type: 'language-challenge', language: 'Portuguese' }]),
   },
   {
-    id: 'final-leadership',
-    label: 'Final: leadership',
-    build: () => finalGame([{ _type: 'leadership-challenge', country: 'FR' }]),
-  },
-  {
     id: 'final-region',
     label: 'Final: region',
     build: () => finalGame([{ _type: 'region-challenge', country: 'KZ' }]),
@@ -4857,17 +4909,6 @@ const leaderFindGame = (difficulty: GameDifficulty): Game => {
   return game
 }
 
-/** Individual gates read the challenge off the player's pending move. */
-/** A leader-pick lineup: the country plus three from its own region, so a
- *  freely picked country is asked among plausible neighbours. */
-const leaderPickOptions = (isoCode: ISOCountryCode): ISOCountryCode[] => {
-  const { region } = getCountry(isoCode)
-  const neighbours = playableWorldCountries({ regions: [], difficulty: 'normal' })
-    .filter(code => code !== isoCode && getCountry(code).region === region && !!quizLeader(code))
-    .slice(0, 3)
-  return [isoCode, ...neighbours]
-}
-
 const ODD_ONE_OUT_GATE: Partial<IndividualChallenge> = {
   variant: 'odd-one-out',
   country: 'BR',
@@ -4879,6 +4920,7 @@ const ODD_ONE_OUT_GATE: Partial<IndividualChallenge> = {
   },
 }
 
+/** Individual gates read the challenge off the player's pending move. */
 const individualGame = (challenge: Partial<IndividualChallenge>): Game => {
   const game = mockGame('gate', [settledRound()])
   const me = game.players[ME]!
@@ -4927,6 +4969,7 @@ const SCENARIO_GROUPS: [group: string, prefixes: string[]][] = [
   ['Star Chart', ['star-chart']],
   ['Terra Incognita', ['terra-incognita']],
   ['Stat Detective', ['stat-detective']],
+  ['Unmask', ['unmask']],
   ['Flag Palette', ['flag-palette']],
   ['Composition', ['composition']],
   ['Water', ['water-', 'name-that-water']],

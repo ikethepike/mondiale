@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import type { BoardFactFamily } from '~~/lib/board-facts'
 import type { LatLng, MapBox } from '~~/lib/geo'
+import type { Berth } from '~~/lib/map-berth'
 import { compareStandings } from '~~/lib/player'
 import { previewOn } from '~~/lib/seat-view'
 import type {
   CompositionBoardView,
   ManhuntPosition,
   ManhuntReading,
+  UnmaskDossier,
   VintageOutcome,
 } from '~~/types/challenges/group-modes.type'
 import type { CheerEmoji, GuessKind, ServerEventData } from '~~/types/events.types'
@@ -87,6 +89,9 @@ interface GameStoreState {
   /** Vintage round stories this socket has been sent, by game and round —
    *  from the targeted 'vintage-story' emit, never a snapshot. */
   vintageStories: Record<string, VintageOutcome>
+  /** This seat's Unmask dossiers, by game and round — from the targeted
+   *  'unmask-dossier' emit, never a snapshot. */
+  unmaskDossiers: Record<string, UnmaskDossier>
   /** Two Truths receipts this socket has been sent, by game and round: the
    *  verdicts by card and the table's banked sheets by seat — from the
    *  targeted 'two-truths-receipts' emit, never a snapshot. */
@@ -134,9 +139,9 @@ interface GameStoreState {
     /** Each logo's intrinsic width/height, so every mark is drawn at equal
      *  painted area regardless of its country's size or its own shape. */
     countryLogoRatios?: Partial<Record<ISOCountryCode, number>>
-    /** Chrome berth (CSS px): the camera frames its subject between these
+    /** Chrome berth (CSS px): the camera frames its subject inside these
      *  insets so a header card never covers it. */
-    berth?: { top?: number; bottom?: number }
+    berth?: Berth
     /** Countries the map camera should frame together. */
     focus: ISOCountryCode[]
     /** Context countries whose centers stay in frame (soft inclusion). */
@@ -295,6 +300,7 @@ export const useGameStore = defineStore('game', {
     manhunt: undefined,
     manhuntReadings: undefined,
     vintageStories: {},
+    unmaskDossiers: {},
     twoTruthsReceipts: {},
     compositionBoards: {},
     refusedLights: {},

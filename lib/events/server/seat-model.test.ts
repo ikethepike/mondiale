@@ -12,7 +12,7 @@ import {
 } from '~~/lib/round-beats'
 import { ROUND_KINDS } from '~~/lib/round-mix'
 import { latestRound } from '~~/lib/rounds'
-import { seatInvariantViolations, subjectStallMs } from '~~/lib/seat-invariants'
+import { roundProgress, seatInvariantViolations, subjectStallMs } from '~~/lib/seat-invariants'
 import { isTerminalStep, RETIREMENT_STEPS } from '~~/lib/seat-transitions'
 import { generateTiles } from '~~/lib/tiles'
 import {
@@ -463,7 +463,9 @@ const runScenario = async (scenario: Scenario) => {
       state = await check(`liveness +${elapsed}ms`)
       const live = latestRound(state)?.groupChallenge
       for (const seat of Object.values(state.players)) {
-        const subject = `${seat.cursor.step} ${seat.cursor.subject}`
+        const subject = `${seat.cursor.step} ${seat.cursor.subject}${
+          seat.cursor.step === 'round' ? ` ${roundProgress(live)}` : ''
+        }`
         const last = lastMove.get(seat.id)
         if (!last || last.subject !== subject) {
           lastMove.set(seat.id, { subject, at: Date.now() })

@@ -107,7 +107,7 @@ import { useCollectSetRound } from '~~/lib/use-collect-set-round'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
-import type { TerraBriefingState } from '~~/types/challenges/group-modes.type'
+import type { ClassicBriefingState } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -162,7 +162,7 @@ const promptHost = ref<InstanceType<typeof ChallengePrompt>>()
 
 // Total fallback: watchers keep evaluating for a beat after the round
 // advances past this mode, so the state must never dereference undefined.
-const EMPTY_STATE: TerraBriefingState = { ready: [], order: [] }
+const EMPTY_STATE: ClassicBriefingState = { ready: [], order: [] }
 const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
 const briefingOpen = computed(() => !!state.value.briefing)
 

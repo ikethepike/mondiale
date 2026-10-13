@@ -132,6 +132,9 @@ export interface GroupChallengeAnswer {
   buzzAt?: number
   /** Vintage rounds: the year the player dated the map to. */
   year?: number
+  /** Unmask rounds: how many rungs were open when the accusation landed. The
+   *  accused country stays off the snapshot — it would answer for the room. */
+  unmaskRung?: number
   /** Two Truths rounds: the player's stamps, for the reveal's table tally. */
   sheet?: TwoTruthsSheet
 }

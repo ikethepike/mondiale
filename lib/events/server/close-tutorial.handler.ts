@@ -12,7 +12,7 @@ import { currentHeritageHunt, scheduleHeritageTimeout, startHeritageClock } from
 import { currentManhunt, scheduleManhuntTimeout, startManhunt } from './manhunt-beats'
 import { currentTimeline, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { currentCleanSweep, scheduleSweepTimeout } from './sweep-beats'
-import { currentTerraIncognita, scheduleTerraTimeout } from './terra-beats'
+import { currentBriefedClassic, scheduleClassicBriefingTimeout } from './classic-briefing'
 import { currentGovernment, scheduleGovernmentTimeout, startGovernment } from './government-beats'
 import { currentUniqueOrBust, scheduleUniqueTimeout } from './unique-beats'
 
@@ -132,9 +132,9 @@ export const closeTutorial = async ({
     scheduleSweepTimeout({ io, redis, socket, eventTarget }, game, sweep)
   }
 
-  const terra = currentTerraIncognita(game)
-  if (terra?.state.briefing) {
-    scheduleTerraTimeout({ io, redis, socket, eventTarget }, game, terra)
+  const briefed = currentBriefedClassic(game)
+  if (briefed?.state.briefing) {
+    scheduleClassicBriefingTimeout({ io, redis, socket, eventTarget }, game, briefed)
   }
 
   // And for the turn-chain briefings, which hold their first shot clock the

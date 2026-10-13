@@ -229,8 +229,6 @@ const promptSources = computed<Attribution[] | undefined>(() => {
     case 'rosetta':
     case 'atlas':
       return datasetAttribution('countries')
-    case 'leader-pick':
-      return datasetAttribution('leaders')
     case 'logo-politics':
     case 'rulers':
       return datasetAttribution('parties')
@@ -274,8 +272,6 @@ const interstitialTitle = computed(() => {
       return 'Which country is this landmark in?'
     case 'odd-one-out':
       return active.oddOneOut?.propertyLabel ?? 'Find the odd one out'
-    case 'leader-pick':
-      return `Who leads ${countryName(active.country)}?`
     case 'logo-politics':
       return logoPoliticsPrompt(active.partyLogo?.ask, countryName(active.country))
     case 'higher-lower': {
@@ -358,8 +354,6 @@ const incorrectMessage = computed(() => {
       return active ? `It's in ${countryName(active.country)}` : 'Not quite.'
     case 'odd-one-out':
       return active ? `The odd one out was ${countryName(active.country)}` : 'Not quite.'
-    case 'leader-pick':
-      return picked ? `That's ${countryName(picked)}'s leader` : 'Not that one.'
     case 'logo-politics':
       return picked ? `That's a party of ${countryName(picked)}` : 'Not that one.'
     case 'trajectory-match':

@@ -59,6 +59,7 @@ import {
   isBrowsableRound,
   isClassicGroupRound,
   seatWindowMsFor,
+  CLASSIC_READY_EVENTS,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { gateClockFor } from '~~/lib/gate-timing'
@@ -108,6 +109,8 @@ import { borderChainOpenMoves, currentBorderChain } from './chain-turns'
 import { scheduleGameTask } from './deferred-task'
 import { ABSENT_SUBMISSION, gradeGroupAnswer, type GroupSubmission } from './grade-group-answer'
 import { compositionBoardOf } from './composition-board'
+import { fetchUnmaskFile } from './unmask-file'
+import { unmaskRungsShown } from '~~/lib/unmask-pace'
 import { currentGovernment } from './government-beats'
 import { currentHeritageHunt } from './heritage-beats'
 import { currentManhunt, fetchManhuntSecret, isManhuntParticipant } from './manhunt-beats'
@@ -116,7 +119,7 @@ import { scheduleEngineTask, type EngineContext } from './round-engine'
 import { retireSeat } from './seat-exits'
 import { recordSeatEvent } from './seat-journal'
 import { currentCleanSweep } from './sweep-beats'
-import { currentTerraIncognita } from './terra-beats'
+import { currentBriefedClassic } from './classic-briefing'
 import { currentTimeline, mayPlaceTimeline } from './timeline-turns'
 import { currentUniqueOrBust } from './unique-beats'
 import { sunsetQuota } from '~~/lib/sunset-pace'
@@ -420,15 +423,15 @@ const planGroupChallenge = ({
 }) => {
   const challenge = round.groupChallenge
 
-  // Terra Incognita is a classic round behind a briefing: the ready ack comes
-  // first, and the composed answer only once the world is actually failing.
-  const terra = currentTerraIncognita(game)
-  if (terra?.state.briefing) {
-    if (!terra.state.order.includes(seat.id) || terra.state.ready.includes(seat.id)) return
+  // A classic round behind a briefing (Terra, Unmask): the ready ack comes
+  // first, and the composed answer only once the clock has stamped.
+  const briefed = currentBriefedClassic(game)
+  if (briefed?.state.briefing) {
+    if (!briefed.state.order.includes(seat.id) || briefed.state.ready.includes(seat.id)) return
     if (
-      due(`terra-ready:${roundIndex}:${seat.id}`, () => rollMs(BOT_READY_MS, BOT_READY_JITTER_MS))
+      due(`classic-ready:${roundIndex}:${seat.id}`, () => rollMs(BOT_READY_MS, BOT_READY_JITTER_MS))
     ) {
-      dispatchTerraReady(ctx, seat.id)
+      dispatchClassicReady(ctx, seat.id)
     }
     return
   }
@@ -836,7 +839,7 @@ const dispatchClassicAnswer = (ctx: EngineContext, seq: number) => {
     }
     const live = latestRound(table)
     if (!live) return
-    const submission = await composeClassicSubmission(table, live, playerId)
+    const submission = await composeClassicSubmission(table, live, playerId, ctx.redis)
     if (!submission) return
 
     // Through the REAL submit handler, exactly like the gate and gauntlet
@@ -1106,10 +1109,11 @@ const dispatchUniqueAnswer = (ctx: EngineContext, playerId: string, category: Un
   })
 }
 
-const dispatchTerraReady = (ctx: EngineContext, playerId: string) => {
+const dispatchClassicReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    if (currentTerraIncognita(fresh)) await botAct(ctx, { event: 'terra-ready' })
+    const briefed = currentBriefedClassic(fresh)
+    if (briefed) await botAct(ctx, { event: CLASSIC_READY_EVENTS[briefed._type] })
   })
 }
 
@@ -1373,8 +1377,7 @@ export const finalAnswerFor = async (
       return { _type: question._type, region }
     }
     case 'min-challenge':
-    case 'max-challenge':
-    case 'leadership-challenge': {
+    case 'max-challenge': {
       const pick = iso(question.country)
       return pick ? { _type: question._type, isoCode: pick } : undefined
     }
@@ -1526,7 +1529,8 @@ const botPlacements = (board: CompositionBoard, share: number): CompositionPlace
 export const composeClassicSubmission = async (
   game: Game,
   round: Round,
-  playerId: string
+  playerId: string,
+  redis?: EngineContext['redis']
 ): Promise<GroupSubmission | undefined> => {
   let correct: ISOCountryCode[]
   try {
@@ -1566,6 +1570,7 @@ export const composeClassicSubmission = async (
       playerId,
       submission: landed,
       seat: game.players[playerId]?.cursor,
+      redis,
     })
     const outOf = pot ?? scoring.maximum
     const worth = outOf ? scoring.scored / outOf : 0
@@ -1586,6 +1591,25 @@ export const composeClassicSubmission = async (
       const landed = { ranking: [target] }
       if (await lands(landed)) return landed
       const miss = wrongPick(game, correct)
+      return miss ? { ranking: [miss] } : { ranking: [] }
+    }
+    case 'unmask': {
+      // The subject lives in the side key; the probe's `correct` is empty by
+      // design, so the bot reads the file the grader will grade against.
+      const file = redis
+        ? await fetchUnmaskFile(redis, game.id, game.rounds.indexOf(round))
+        : undefined
+      if (!file) return { ranking: [] }
+      const landed = { ranking: [file.country] }
+      if (await lands(landed)) return landed
+      // A miss accuses a suspect still lit — the only accusation a human can make.
+      const unmask = expectChallengeType(challenge, 'unmask-challenge')
+      const shown =
+        round.playStartsAt === undefined
+          ? 0
+          : unmaskRungsShown(unmask, Math.max(0, Date.now() - round.playStartsAt))
+      const field = file.fields[shown - 1] ?? unmask.suspects
+      const miss = sample(field.filter(isoCode => isoCode !== file.country))
       return miss ? { ranking: [miss] } : { ranking: [] }
     }
     case 'pyramid-scheme': {

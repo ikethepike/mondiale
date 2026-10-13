@@ -9,8 +9,9 @@ import {
   STEP_INTERVAL_MS,
   WALK_LEAD_MS,
   WALK_RESUME_LEAD_MS,
+  isBriefedClassic,
 } from '~~/lib/round-beats'
-import { isChallengeOfType, latestRound } from '~~/lib/rounds'
+import { latestRound } from '~~/lib/rounds'
 import { seatSubject, tableOwesNextRound, type SeatTimerKind } from '~~/lib/seat-transitions'
 import type { FinalChallenge, FinalChallengeAnswer } from '~~/types/challenges/final-challenge.type'
 import type { Game, PlayerMove } from '~~/types/game.types'
@@ -38,10 +39,13 @@ import { governmentKey } from '~~/lib/government'
 import { manhuntKey } from '~~/lib/manhunt'
 import { uniqueKey } from '~~/lib/unique-or-bust'
 import { compositionSheetKey } from '~~/lib/composition'
+import { unmaskKey } from '~~/lib/unmask-pace'
+import { isUnmaskChallenge } from './unmask-file'
+import { startUnmask } from './unmask-seal'
 import { advanceSeat, capDeadline } from './seat-cursor'
 import { recordCheckpoint } from './seat-journal'
 import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
-import { scheduleTerraTimeout } from './terra-beats'
+import { scheduleClassicBriefingTimeout } from './classic-briefing'
 import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 
@@ -465,6 +469,7 @@ export const roundSideKeys = (game: Game): string[] => {
     governmentKey(game.id, roundIndex),
     uniqueKey(game.id, roundIndex),
     compositionSheetKey(game.id, roundIndex),
+    unmaskKey(game.id, roundIndex),
   ]
 }
 
@@ -505,13 +510,14 @@ export const revealNextRound = async (ctx: EngineContext, game: Game, server: Se
   if (isHeritageHuntChallenge(revealed)) startHeritageClock(revealed)
   if (isTimelineChallenge(revealed)) startTimelineClock(revealed)
   startClassicClock(revealedRound)
-  // Manhunt and government seed their secrets into side keys before the
+  // Manhunt, government and unmask seed their secrets into side keys before the
   // reveal saves, so the answers never ride a broadcast. A reveal that died
   // before its save left a previous deal's secrets under this index: the
   // seeders are idempotent on the key, so clear it first.
   for (const key of roundSideKeys(game)) await ctx.redis.del(key)
   if (isManhuntChallenge(revealed)) await startManhunt(ctx, game, revealed)
   if (isGovernmentChallenge(revealed)) await startGovernment(ctx, game, revealed)
+  if (isUnmaskChallenge(revealed)) await startUnmask(ctx, game, revealed)
 
   await server.updateGameState(game)
   server.emit({ event: 'new-round', game }, ctx.eventTarget)
@@ -530,8 +536,6 @@ export const revealNextRound = async (ctx: EngineContext, game: Game, server: Se
   // The briefed kinds open on their rules card: these arm the reading caps.
   if (isUniqueOrBustChallenge(revealed)) scheduleUniqueTimeout(ctx, game, revealed)
   if (isCleanSweepChallenge(revealed)) scheduleSweepTimeout(ctx, game, revealed)
-  if (isChallengeOfType(revealed, 'terra-incognita-challenge')) {
-    scheduleTerraTimeout(ctx, game, revealed)
-  }
+  if (isBriefedClassic(revealed)) scheduleClassicBriefingTimeout(ctx, game, revealed)
   scheduleClassicSettle(ctx, game)
 }
