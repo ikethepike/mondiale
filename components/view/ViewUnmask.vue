@@ -5,7 +5,7 @@
       tone="info"
       kind="unmask"
       title="Who is behind the file?"
-      :stakes="`A leader's file opens a rung every ${challenge.secondsPerRung} seconds — a face that sharpens, then the facts, then the name. You get ONE accusation: tap their country. The earlier it lands, the more it pays.`"
+      :stakes="`A leader's file opens a rung every ${challenge.secondsPerRung} seconds — a face that sharpens, then the facts, then the name. You get ONE accusation — name them or their country, and your first pick is final. The earlier it lands, the more it pays.`"
       @done="begin"
     />
 
@@ -59,27 +59,12 @@
           </li>
         </ul>
         <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
-          <div v-if="suspect" class="accusation">
-            <CountryChip tag="span" :country="getCountry(suspect)" />
-            <button
-              ref="accuseButton"
-              class="accuse"
-              type="button"
-              :disabled="!started"
-              @click="accuse"
-            >
-              Accuse · {{ bounty }} pts
-            </button>
-            <button class="cancel" type="button" aria-label="Change suspect" @click="clearSuspect">
-              ✕
-            </button>
-          </div>
           <CountryGuessInput
-            v-else
             ref="guessInput"
             :disabled="!started"
             :excluded="ruledOut"
-            placeholder="Name or tap a suspect"
+            :people="suspects"
+            placeholder="Leader or country"
             @guess="country => pick(country.isoCode)"
             @miss="announce({ hint: 'No country by that name' })"
           />
@@ -114,7 +99,7 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { quizLeader } from '~~/lib/leaders'
-import { UNMASK_SUSPECT_FILL } from '~~/lib/unmask'
+import { UNMASK_SUSPECT_FILL, unmaskFacts } from '~~/lib/unmask'
 import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { seatVerdictOn } from '~~/lib/seat-view'
@@ -150,7 +135,6 @@ const isPhone = useIsPhone()
 const footer = ref<HTMLElement>()
 useFooterBerth(footer)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
-const accuseButton = ref<HTMLButtonElement>()
 
 const roundIndex = computed(() => (gameStore.game ? gameStore.game.rounds.length - 1 : undefined))
 const totalSeconds = computed(() => classicPlaySeconds(challenge.value) ?? 0)
@@ -177,6 +161,9 @@ const displayClues = computed(() => {
 })
 
 const field = computed(() => dossier.value?.field ?? challenge.value?.suspects ?? [])
+const suspects = computed(() =>
+  Object.fromEntries(field.value.map(isoCode => [isoCode, unmaskFacts(isoCode)?.leader.name]))
+)
 const ruledOut = computed(() => {
   const lit = new Set(field.value)
   return ISOCountryCodes.filter(isoCode => !lit.has(isoCode))
@@ -192,7 +179,7 @@ const bounty = computed(() => {
 const promptLine = computed(() =>
   accusedAt.value !== undefined
     ? 'Accusation filed — the file is being checked'
-    : 'One accusation each. The less of the file you need, the more it pays.'
+    : 'Your first pick is your accusation. The less of the file you need, the more it pays.'
 )
 
 const suspect = ref<ISOCountryCode>()
@@ -214,20 +201,10 @@ const pick = (isoCode: ISOCountryCode) => {
   }
   suspect.value = isoCode
   gameStore.map.highlighted = new Set([isoCode])
-  nextTick(() => accuseButton.value?.focus())
-}
-const clearSuspect = () => {
-  suspect.value = undefined
-  gameStore.map.highlighted = new Set()
-  nextTick(() => guessInput.value?.focus())
-}
-
-const accuse = () => {
-  if (!suspect.value || submitted.value) return
   accusedAt.value = displayClues.value.length
   playWindow.stop()
   announce({ kind: 'probe' })
-  submitOnce([suspect.value])
+  submitOnce([isoCode])
 }
 
 const begin = () => {
@@ -303,55 +280,9 @@ onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
 registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/ink' as *;
-
 .guess-box :deep(.suggestions) {
   top: auto;
   bottom: 100%;
   margin: 0 0 0.6rem;
-}
-
-.accusation {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  pointer-events: auto;
-}
-
-.accuse {
-  flex: 1;
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 1.6rem;
-  font-weight: bold;
-  padding: 1rem 1.6rem;
-  border-radius: 1rem;
-  color: milk();
-  background: flame();
-  box-shadow: 0 0.4rem 1.2rem flame(0.35);
-  transition: background var(--motion-quick) var(--ease-smooth);
-
-  &:hover,
-  &:focus-visible {
-    background: flame(1, 52%);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-}
-
-.cancel {
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 1.4rem;
-  width: 3.6rem;
-  height: 3.6rem;
-  border-radius: 50%;
-  color: var(--dark-blue);
-  background: ink(0.08);
 }
 </style>

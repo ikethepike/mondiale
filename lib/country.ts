@@ -312,7 +312,8 @@ const compareRank = (a: MatchRank, b: MatchRank): number =>
   a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
 
 /**
- * Autocomplete over english names, local-name variants and aliases.
+ * Autocomplete over english names, local-name variants and aliases — plus
+ * `alsoNamed`, more names that resolve to a country (a leader's).
  * Tiers: prefix, then word-prefix ("guinea" → "Papua New Guinea"), then
  * substring, then fuzzy (typo-tolerant, edit budget scaled to query length).
  * Fuzzy hits can never outrank a literal match, so the tolerance costs no
@@ -321,16 +322,20 @@ const compareRank = (a: MatchRank, b: MatchRank): number =>
 export const searchCountriesByName = (
   query: string,
   limit = 6,
-  excluded?: ReadonlySet<ISOCountryCode>
+  excluded?: ReadonlySet<ISOCountryCode>,
+  alsoNamed?: Partial<Record<ISOCountryCode, string>>
 ): Country[] => {
   const normalized = normalizeCountryName(query)
   if (!normalized) return []
 
   const maxEdits = normalized.length >= 7 ? 2 : normalized.length >= 4 ? 1 : 0
+  const extra = Object.entries(alsoNamed ?? {}).map(
+    ([isoCode, name]) => [normalizeCountryName(name ?? ''), isoCode as ISOCountryCode] as const
+  )
 
   const best = new Map<ISOCountryCode, MatchRank>()
-  for (const [name, isoCode] of getNameIndex()) {
-    if (excluded?.has(isoCode)) continue
+  for (const [name, isoCode] of [...getNameIndex(), ...extra]) {
+    if (!name || excluded?.has(isoCode)) continue
 
     let rank: MatchRank | undefined
     if (name.startsWith(normalized)) rank = [0, 0, name.length]

@@ -33,11 +33,20 @@
         :class="{ highlighted: index === highlightedIndex }"
         @mousedown.prevent="pick(suggestion)"
       >
-        <CountryFlag class="suggestion-flag" :country="suggestion" mode="background" />
-        <span class="suggestion-name">{{ countryName(suggestion) }}</span>
-        <span v-if="localCountryName(suggestion)" class="suggestion-local">
-          {{ localCountryName(suggestion) }}
+        <span v-if="people" class="suggestion-person">
+          <span class="person-name">{{ people[suggestion.isoCode] }}</span>
+          <span class="person-country">
+            <CountryFlag class="suggestion-flag" :country="suggestion" mode="background" />
+            <span class="suggestion-name">{{ countryName(suggestion) }}</span>
+          </span>
         </span>
+        <template v-else>
+          <CountryFlag class="suggestion-flag" :country="suggestion" mode="background" />
+          <span class="suggestion-name">{{ countryName(suggestion) }}</span>
+          <span v-if="localCountryName(suggestion)" class="suggestion-local">
+            {{ localCountryName(suggestion) }}
+          </span>
+        </template>
       </li>
     </ul>
   </form>
@@ -51,6 +60,7 @@ import {
   searchCountriesByName,
 } from '~~/lib/country'
 import { excludedMicroNations } from '~~/lib/game-rules'
+import { COUNTRIES } from '~~/data/countries.gen'
 import { useGameStore } from '~~/store/game.store'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 import CountryFlag from './CountryFlag.vue'
@@ -89,6 +99,12 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  /** One person per country, typeable in its place and shown over it; a
+   *  country without one is left out of the suggestions. */
+  people: {
+    type: Object as PropType<Partial<Record<ISOCountryCode, string>>>,
+    default: undefined,
+  },
 })
 
 const emit = defineEmits<{ guess: [country: Country, typed: string]; miss: [input: string] }>()
@@ -108,7 +124,14 @@ const benched = computed(() => new Set(gameStore.game ? excludedMicroNations(gam
 const suggestions = computed(() => {
   if (props.disabled || !props.suggest) return []
   if (query.value.trim().length < props.suggestFrom) return []
-  return searchCountriesByName(query.value, 6, new Set([...props.excluded, ...benched.value]))
+  const excluded = new Set([...props.excluded, ...benched.value])
+  const people = props.people
+  if (people) {
+    for (const country of Object.values(COUNTRIES)) {
+      if (!people[country.isoCode]) excluded.add(country.isoCode)
+    }
+  }
+  return searchCountriesByName(query.value, 6, excluded, people)
 })
 
 /**
@@ -273,6 +296,34 @@ defineExpose({
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.suggestion-person {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+
+  .person-name {
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .person-country {
+    gap: 0.6rem;
+    display: flex;
+    min-width: 0;
+    opacity: 0.7;
+    font-size: 0.8em;
+    align-items: center;
+  }
+
+  .suggestion-flag {
+    width: 2rem;
+    height: 1.4rem;
+  }
 }
 
 .suggestion-local {
