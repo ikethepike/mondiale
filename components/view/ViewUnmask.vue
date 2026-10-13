@@ -31,7 +31,7 @@
         <LeaderReveal v-if="answer" :country="answer" />
       </ChallengeResult>
       <UnmaskFile
-        v-if="isPhone && !verdictShown"
+        v-if="railless && !verdictShown"
         compact
         :rungs="challenge.rungs"
         :clues="displayClues"
@@ -42,7 +42,8 @@
     </ChallengePrompt>
 
     <UnmaskFile
-      v-if="!isPhone"
+      v-if="!railless"
+      ref="sideFile"
       class="side-stage"
       :rungs="challenge.rungs"
       :clues="displayClues"
@@ -81,7 +82,9 @@
     </footer>
 
     <MembershipSheet
-      v-if="!isPhone && started && !gameStore.watching"
+      v-if="!railless && started && !gameStore.watching"
+      ref="roster"
+      class="suspect-roster"
       :countries="field"
       subject="the file"
       noun="suspects"
@@ -107,16 +110,17 @@ import { datasetAttribution } from '~~/lib/attribution'
 import { countryName, getCountry } from '~~/lib/country'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { quizLeader } from '~~/lib/leaders'
-import { UNMASK_SUSPECT_FILL, unmaskFacts } from '~~/lib/unmask'
+import { UNMASK_FRAME_PAD, UNMASK_SUSPECT_FILL, unmaskFacts } from '~~/lib/unmask'
 import { classicPlaySeconds } from '~~/lib/round-beats'
 import { buzzScore } from '~~/lib/scoring'
 import { seatVerdictOn } from '~~/lib/seat-view'
 import { UNMASK_NAMED_FIELD, unmaskRemainingFraction, unmaskRungsShown } from '~~/lib/unmask-pace'
+import { useEdgeBerth } from '~~/lib/use-edge-berth'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
-import { useIsPhone } from '~~/lib/use-viewport'
+import { useIsPhone, useIsRailless } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
@@ -141,6 +145,21 @@ const { seatCursor } = useClientEvents()
 
 const sources = datasetAttribution('leaders')
 const isPhone = useIsPhone()
+const railless = useIsRailless()
+const sideFile = ref<InstanceType<typeof UnmaskFile>>()
+const roster = ref<InstanceType<typeof MembershipSheet>>()
+useEdgeBerth(
+  computed(() => sideFile.value?.$el as HTMLElement | undefined),
+  'left',
+  () => !railless.value
+)
+useEdgeBerth(
+  computed(() => roster.value?.$el as HTMLElement | undefined),
+  'right',
+  () => !railless.value
+)
+gameStore.map.framePad = UNMASK_FRAME_PAD
+registerCleanup(() => (gameStore.map.framePad = undefined))
 const footer = ref<HTMLElement>()
 useFooterBerth(footer)
 const prompt = ref<InstanceType<typeof ChallengePrompt>>()
@@ -195,7 +214,7 @@ const promptLine = computed(() =>
 
 const suspect = ref<ISOCountryCode>()
 const suspectRail = computed(() =>
-  isPhone.value && !suspect.value && field.value.length <= UNMASK_NAMED_FIELD
+  railless.value && !suspect.value && field.value.length <= UNMASK_NAMED_FIELD
     ? [...field.value].sort((a, b) => countryName(a).localeCompare(countryName(b)))
     : []
 )
@@ -274,6 +293,7 @@ const missLine = computed(() => {
 watch([answer, caught], ([country]) => {
   if (!country || !outcomeShown.value) return
   gameStore.map.spotlight = []
+  gameStore.map.framePad = undefined
   gameStore.map.countryGroupings = undefined
   gameStore.map.countryLabels = undefined
   gameStore.map.highlighted = new Set([country])
@@ -292,6 +312,16 @@ onBeforeMount(() => document.addEventListener('mapClick', onMapClick))
 registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 </script>
 <style lang="scss" scoped>
+@use '~/assets/scss/rules/ink' as *;
+
+.suspect-roster {
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  height: fit-content;
+  border-bottom-left-radius: $cardRadius;
+}
+
 .guess-box :deep(.suggestions) {
   top: auto;
   bottom: 100%;

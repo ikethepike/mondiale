@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { BoardFactFamily } from '~~/lib/board-facts'
 import type { LatLng, MapBox } from '~~/lib/geo'
+import type { Berth } from '~~/lib/map-berth'
 import { compareStandings } from '~~/lib/player'
 import { previewOn } from '~~/lib/seat-view'
 import type {
@@ -138,9 +139,9 @@ interface GameStoreState {
     /** Each logo's intrinsic width/height, so every mark is drawn at equal
      *  painted area regardless of its country's size or its own shape. */
     countryLogoRatios?: Partial<Record<ISOCountryCode, number>>
-    /** Chrome berth (CSS px): the camera frames its subject between these
+    /** Chrome berth (CSS px): the camera frames its subject inside these
      *  insets so a header card never covers it. */
-    berth?: { top?: number; bottom?: number }
+    berth?: Berth
     /** Countries the map camera should frame together. */
     focus: ISOCountryCode[]
     /** Context countries whose centers stay in frame (soft inclusion). */

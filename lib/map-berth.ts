@@ -6,14 +6,16 @@ type GameStore = ReturnType<typeof useGameStore>
 export const BERTH_GAP_PX = 12
 
 /**
- * Share of the layout height a reservation may claim. The camera ignores any
+ * Share of the layout height (or width) a reservation may claim. The camera ignores any
  * berth leaving a band under 35% (berthMetrics in GameMap.vue) — capping at
  * 60% keeps a 40% band, so the reservation can never be silently dropped
  * exactly when the subject most needs lifting. Move one, check the other.
  */
 export const BERTH_CAP_FRACTION = 0.6
 
-export type Berth = { top?: number; bottom?: number }
+export type Berth = { top?: number; bottom?: number; left?: number; right?: number }
+
+const reserves = (berth?: Berth) => !!(berth?.top || berth?.bottom || berth?.left || berth?.right)
 
 /**
  * Claims keyed by owner. `gameStore.map.berth` is a single slot, so two
@@ -32,25 +34,31 @@ const applyClaims = (gameStore: GameStore) => {
     return
   }
 
-  let top = 0
-  let bottom = 0
+  const edges = { top: 0, bottom: 0, left: 0, right: 0 }
   for (const claim of claims.values()) {
-    top = Math.max(top, claim.top ?? 0)
-    bottom = Math.max(bottom, claim.bottom ?? 0)
+    for (const edge of Object.keys(edges) as (keyof Berth)[]) {
+      edges[edge] = Math.max(edges[edge], claim[edge] ?? 0)
+    }
   }
 
   // Cap the combined reservation, not each claim: two modest claims can
   // still add up past the camera's band guard.
-  const cap = Math.round(document.documentElement.clientHeight * BERTH_CAP_FRACTION)
-  const scale = top + bottom > cap ? cap / (top + bottom) : 1
-  const scaled = { top: Math.round(top * scale), bottom: Math.round(bottom * scale) }
+  const fit = (a: number, b: number, extent: number) => {
+    const cap = Math.round(extent * BERTH_CAP_FRACTION)
+    const scale = a + b > cap ? cap / (a + b) : 1
+    return [Math.round(a * scale), Math.round(b * scale)] as const
+  }
+  const root = document.documentElement
+  const [top, bottom] = fit(edges.top, edges.bottom, root.clientHeight)
+  const [left, right] = fit(edges.left, edges.right, root.clientWidth)
+  const scaled = { top, bottom, left, right }
 
-  gameStore.map.berth = scaled.top || scaled.bottom ? scaled : undefined
+  gameStore.map.berth = reserves(scaled) ? scaled : undefined
 }
 
 /** Register or update a claim. Passing `undefined` releases it. */
 export const claimMapBerth = (gameStore: GameStore, key: string, berth: Berth | undefined) => {
-  if (berth?.top || berth?.bottom) claims.set(key, berth)
+  if (reserves(berth)) claims.set(key, berth!)
   else claims.delete(key)
   applyClaims(gameStore)
 }

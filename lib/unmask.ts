@@ -142,6 +142,10 @@ export const narrowFields = (
   })
 }
 
+/** A tight frame: the field spans continents, and the camera's default pad
+ *  (a third of the subject per side) framed it wider than the world. */
+export const UNMASK_FRAME_PAD = { scale: 0.06, floor: 30 }
+
 /** The wash every suspect still lit wears on the map. */
 export const UNMASK_SUSPECT_FILL = 'hsla(36, 88%, 60%, 0.55)'
 

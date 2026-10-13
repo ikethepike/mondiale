@@ -21,6 +21,12 @@ export const PHONE_MAX_PX = 640
 /** Phone-width viewport — the same boundary the SCSS mobile blocks use. */
 export const useIsPhone = () => useMediaMatch(`(max-width: ${PHONE_MAX_PX}px)`)
 
+// Keep in sync with $tablet-wide in assets/scss/rules/_breakpoints.scss.
+export const SIDE_RAIL_MAX_PX = 900
+
+/** No side rail to spare — where `.side-stage` reparks (templates/_side-stage.scss). */
+export const useIsRailless = () => useMediaMatch(`(max-width: ${SIDE_RAIL_MAX_PX}px)`)
+
 // Keep in sync with $short in assets/scss/rules/_breakpoints.scss.
 export const SHORT_MAX_PX = 480
 
