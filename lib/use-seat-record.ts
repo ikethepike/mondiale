@@ -3,7 +3,8 @@ import { createRedeliver, useClientEvents } from '~~/lib/events/client-side'
 
 /**
  * Records a fact on this seat's cursor for one subject — a hint bought
- * (`buy-hint`), a gauntlet stage's name taken (`final-light`) — once per
+ * (`buy-hint`), an option spent (`spend-pick`), a gauntlet stage's name taken
+ * (`final-light`) — once per
  * value, kept alive past `update`'s ack batch by the one redeliver home. The
  * server's record is what the grade reads; the view only shows it.
  */
@@ -11,16 +12,28 @@ export const useSeatRecord = () => {
   const { gameStore, update, seatEcho } = useClientEvents()
   const redeliver = createRedeliver('seat record')
   onScopeDispose(() => redeliver.dispose())
-  const sent = new Set<string>()
+  const sent = new Map<string, Promise<boolean>>()
+  /** Resolves true once the server holds the record; a repeat shares the first. */
   const once = (subject: string, key: string, send: () => Promise<boolean>) => {
-    if (gameStore.watching || !subject || sent.has(`${subject}|${key}`)) return
-    sent.add(`${subject}|${key}`)
-    void redeliver.deliver(send)
+    if (gameStore.watching || !subject) return Promise.resolve(false)
+    const id = `${subject}|${key}`
+    const held = sent.get(id)
+    if (held) return held
+    const pending = redeliver.deliver(send).then(delivered => {
+      if (!delivered) sent.delete(id)
+      return delivered
+    })
+    sent.set(id, pending)
+    return pending
   }
   return {
     buyHint: (subject: string, hint: string) =>
       once(subject, `hint|${hint}`, () =>
         update({ event: 'buy-hint', hint, ...seatEcho(subject) })
+      ),
+    spendPick: (subject: string, pick: string) =>
+      once(subject, `pick|${pick}`, () =>
+        update({ event: 'spend-pick', pick, ...seatEcho(subject) })
       ),
     lightFinal: (subject: string, name: string) =>
       once(subject, `light|${name}`, () =>

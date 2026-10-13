@@ -66,6 +66,10 @@ export interface SeatCursor {
   /** Names a timed gauntlet stage took in time (`final-light`) — what its
    *  verdict counts. Carried like `hints`. */
   lit?: string[]
+  /** The options an option-board round's seat has picked, in order
+   *  (`spend-pick`) — what its attempt price counts, so a reload cannot hand
+   *  the guesses back. Carried like `hints`. */
+  spent?: string[]
   cause: SeatCause
   /** Movesets dealt to this seat so far — names walk subjects, never checked as a token. */
   walk: number

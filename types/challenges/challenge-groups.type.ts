@@ -203,12 +203,9 @@ export const ANSWER_SHAPE_BY_KIND = {
   'ghost-state': 'set',
   composition: 'set',
   'trend-race': 'set',
+  'pyramid-scheme': 'set',
   // A year, not a country: the scorecard replaces the ledger.
   vintage: 'set',
-  // Never reaches the answer rows either: the answer is an array of countries
-  // whose POSITION is the claim (index = which pyramid it was dropped on), so
-  // reordering it would destroy the match it encodes.
-  'pyramid-scheme': 'sequence',
   // The order is the answer.
   traversal: 'sequence',
   'hot-cold': 'sequence',

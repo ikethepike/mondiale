@@ -179,8 +179,8 @@ const KIND_MOUNTABLE: Record<RoundChallengeKind, boolean> = {
   // Nothing local gates the board: the claims ride the snapshot, so the booth
   // watches the pool drain exactly as the racers do.
   'clean-sweep': true,
-  // The four pyramids are the round, and they ride the challenge — a
-  // spectator reads the same shapes the racer is matching.
+  // The pyramid rides the challenge — a spectator reads the same shape the
+  // racer is naming.
   'pyramid-scheme': true,
   vintage: true,
 }

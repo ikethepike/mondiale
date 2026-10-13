@@ -20,7 +20,9 @@ describe('guessPolicyFor', () => {
     // A small flag table makes a named wrong pick eliminate a share of the
     // field; hard mode free-types the whole world and a wrong name is noise.
     for (const _type of ['capital-guess-challenge', 'flashpoint-challenge']) {
-      expect(guessPolicyFor(liveGame, challenge({ _type, options: ['FR', 'DE'] }))).toBe('presence')
+      expect(
+        guessPolicyFor(liveGame, challenge({ _type, options: ['FR', 'DE'], maximumGuesses: 2 }))
+      ).toBe('presence')
       expect(guessPolicyFor(liveGame, challenge({ _type }))).toBe('label')
     }
   })
@@ -95,9 +97,6 @@ describe('placedCount for government benches', () => {
 
 describe('placedTotalFor (the one home for a race’s full hand)', () => {
   it('reads each racing mode’s own deal', () => {
-    expect(
-      placedTotalFor(challenge({ _type: 'pyramid-scheme-challenge', countries: ['DE', 'JP'] }))
-    ).toBe(2)
     expect(
       placedTotalFor(challenge({ _type: 'government-challenge', sorted: ['A', 'B', 'C'] }))
     ).toBe(3)

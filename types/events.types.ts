@@ -133,6 +133,13 @@ export type ClientEventData =
       hint: string
     })
   | (SeatEcho & {
+      /** An option-board round's pick, sent before the view judges it. Recorded
+       *  on the cursor, once per option — the attempt price counts that record,
+       *  so a reload cannot restore the guesses. */
+      event: 'spend-pick'
+      pick: string
+    })
+  | (SeatEcho & {
       /** A timed gauntlet stage took a name (Sunset Blitz's country, City
        *  Nocturne's city). The server keeps it only if it landed in time —
        *  the stage's verdict counts that record, never the submitted set. */
@@ -392,10 +399,8 @@ export type ClientEventData =
       /** Hot & Cold: the clicked point the probe is measured from. Like the
        *  probe's isoCode it feeds the server's radius and is never echoed. */
       latLng?: LatLng
-      /** Pyramid Scheme: how many subjects this player has now seated, and out
-       *  of how many. A count carries the race without naming a placement —
-       *  with four subjects there are only 24 arrangements, so a named one
-       *  would hand the room the puzzle. */
+      /** Government: how many benches this player has now filed, and out of
+       *  how many. A count carries the race without naming a placement. */
       placed?: { seated: number; total: number }
     }
   | {
@@ -425,6 +430,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-group-challenge-answers',
   'submit-individual-challenge-answer',
   'buy-hint',
+  'spend-pick',
   'submit-final-challenge-answer',
   'final-light',
   'submit-chain-move',
@@ -570,7 +576,7 @@ export type ServerEventData =
        *  rounded server-side. Broadcast under 'presence' where isoCode is not —
        *  a radius carries no bearing on its own. */
       distanceKm?: number
-      /** Pyramid Scheme: seated-of-total, clamped server-side. Survives under
+      /** Government: seated-of-total, clamped server-side. Survives under
        *  'presence' for the same reason a radius does — a count says how far
        *  along a player is without saying what they decided. */
       placed?: { seated: number; total: number }

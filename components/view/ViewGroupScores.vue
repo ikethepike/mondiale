@@ -196,6 +196,7 @@ import { scorecardRevealsFor, type ScorecardRevealContext } from '~/components/v
 import { roundChallengeHeadline } from '~~/lib/challenge-headline'
 import { tongueBuzzTally } from '~~/lib/language-rounds'
 import { playerDisplayName } from '~~/lib/player'
+import { attemptBoardOf } from '~~/lib/attempt-boards'
 import { answerBreakdown, getChallengeDetails, rankingHasTies } from '~~/lib/challenges'
 import { countryName } from '~~/lib/country'
 import { isHardMode } from '~~/lib/game-rules'
@@ -289,16 +290,6 @@ const submittedIsoCodes = computed(
 
 const correctIsoCodes = computed(
   () => traversalReveal.value?.shortest ?? selectedScorecard.value?.answers?.correct ?? []
-)
-
-const capitalGuessChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'capital-guess-challenge')
-    ? roundChallenge.value
-    : undefined
-)
-
-const flashpointChallenge = computed(() =>
-  isChallengeOfType(roundChallenge.value, 'flashpoint-challenge') ? roundChallenge.value : undefined
 )
 
 const cleanSweepChallenge = computed(() =>
@@ -516,8 +507,7 @@ const explainer = computed(() =>
     bridged: !!traversalReveal.value?.route,
     hasTies: rankingTies.value,
     hardMode: isHardMode(gameStore.game),
-    maximumGuesses:
-      capitalGuessChallenge.value?.maximumGuesses ?? flashpointChallenge.value?.maximumGuesses,
+    maximumGuesses: attemptBoardOf(roundChallenge.value)?.maximumGuesses,
   })
 )
 
@@ -545,12 +535,7 @@ const breakdown = computed(() => {
 /** The sequence rounds' fallback: rails, but only with something to put in
  *  them — the empty-payload kinds stay silent here as they do in the ledger. */
 const showsAnswerRails = computed(
-  () =>
-    // Pyramid Scheme states both sides per ROW in its own card (each country
-    // beside the shape it belonged to). Two flag rails above that would say the
-    // same thing worse — an order the round never asked for.
-    kind.value !== 'pyramid-scheme' &&
-    (submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0)
+  () => submittedIsoCodes.value.length > 0 || correctIsoCodes.value.length > 0
 )
 
 /** Only the blitz family really pays a point per wrong name (`blitzScore`'s

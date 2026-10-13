@@ -708,6 +708,7 @@ const installStubSocket = () => {
     if (event === 'fetch-vintage-story') simulateVintageStory(eventData ?? {})
     if (event === 'fetch-two-truths-receipts') simulateTwoTruthsReceipts(eventData ?? {})
     if (event === 'buy-hint') simulateBuyHint(eventData ?? {})
+    if (event === 'spend-pick') simulateSpendPick(eventData ?? {})
     if (event === 'submit-composition-drop' || event === 'fetch-composition-board') {
       void simulateComposition(event, eventData ?? {})
     }
@@ -1007,6 +1008,13 @@ const simulateBuyHint = ({ hint }: Record<string, unknown>) => {
   const cursor = gameStore.game?.players[ME]?.cursor
   if (!cursor || typeof hint !== 'string' || cursor.hints?.includes(hint)) return
   cursor.hints = [...(cursor.hints ?? []), hint]
+}
+
+/** The stub's half of spend-pick: the server records the option on the seat's cursor. */
+const simulateSpendPick = ({ pick }: Record<string, unknown>) => {
+  const cursor = gameStore.game?.players[ME]?.cursor
+  if (!cursor || typeof pick !== 'string' || cursor.spent?.includes(pick)) return
+  cursor.spent = [...(cursor.spent ?? []), pick]
 }
 
 /** The stub's half of fetch-two-truths-receipts: the harness holds the deck,
@@ -1685,27 +1693,30 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'pyramid-scheme',
-    label: 'Pyramid scheme (drag countries onto their shapes)',
+    label: 'Pyramid scheme (whose pyramid is this?)',
     variants: [
-      { id: 'normal', label: 'Normal — four subjects' },
-      // Hard deals five, which is where the phone's two-abreast board runs to
-      // three rows and has to stay on one screen.
-      { id: 'hard', label: 'Hard — five subjects' },
+      { id: 'easy', label: 'Easy — four different families' },
+      { id: 'normal', label: 'Normal — coffins only' },
+      { id: 'hard', label: 'Hard — lookalikes today, apart in 1963' },
     ],
-    build: variant =>
-      mockGame('round', [
+    build: variant => {
+      const deals: Record<string, { country: ISOCountryCode; options: ISOCountryCode[] }> = {
+        easy: { country: 'JP', options: ['NE', 'JP', 'QA', 'IN'] },
+        normal: { country: 'JP', options: ['DE', 'FI', 'JP', 'PT'] },
+        hard: { country: 'GB', options: ['ME', 'GB', 'MK', 'BB'] },
+      }
+      const deal = deals[variant?.id ?? 'easy']!
+      return mockGame('round', [
         groupRound({
           _type: 'pyramid-scheme-challenge',
-          // The four extremes, so every axis the round reads on is on screen:
-          // Niger's triangle, Japan's coffin, Qatar's migrant slab and the US
-          // barrel between them.
-          countries:
-            variant?.id === 'hard' ? ['NE', 'JP', 'QA', 'US', 'DE'] : ['NE', 'JP', 'QA', 'US'],
-          distinctnessFloor: variant?.id === 'hard' ? 16 : 22,
-          durationSeconds: variant?.id === 'hard' ? 50 : 55,
+          ...deal,
+          band: variant?.id === 'hard' ? 'hard' : variant?.id === 'normal' ? 'normal' : 'easy',
+          maximumGuesses: 2,
+          durationSeconds: 40,
           maximumPoints: MAXIMUM_POINTS,
         }),
-      ]),
+      ])
+    },
   },
   {
     id: 'vintage',
@@ -1742,26 +1753,22 @@ const scenarios: Scenario[] = [
   },
   {
     id: 'pyramid-scheme-reveal',
-    label: 'Pyramid scheme — reveal (two right, two wrong)',
+    label: 'Pyramid scheme — scorecard (right at the second try)',
     build: () => {
-      const countries: ISOCountryCode[] = ['DE', 'NE', 'QA', 'JP']
       const game = mockGame('scores', [
         groupRound({
           _type: 'pyramid-scheme-challenge',
-          countries,
-          distinctnessFloor: 22,
-          durationSeconds: 55,
+          country: 'CN',
+          options: ['TH', 'CN', 'KR', 'BR'],
+          band: 'normal',
+          maximumGuesses: 2,
+          durationSeconds: 40,
           maximumPoints: MAXIMUM_POINTS,
         }),
       ])
       const round = game.rounds[game.rounds.length - 1]!
-      // Germany and Niger matched; Qatar and Japan swapped — so the card has to
-      // render both verdicts, a hand-written scar and a derived lesson.
       for (const playerId of Object.keys(game.players)) {
-        round.groupAnswers[playerId] = {
-          submitted: ['DE', 'NE', 'JP', 'QA'],
-          correct: countries,
-        }
+        round.groupAnswers[playerId] = { submitted: ['KR', 'CN'], correct: ['CN'] }
         round.playerTurns[playerId] = {
           points: { scored: Math.round(MAXIMUM_POINTS / 2), maximum: MAXIMUM_POINTS },
         }

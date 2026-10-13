@@ -94,6 +94,8 @@ export const scorecardExplainer = (context: ScorecardCopyContext): string => {
     case 'composition':
       return 'The biggest group pays most; every other group placed adds a share. Run out of strikes and the crowd closes.'
     case 'capital-guess':
+    case 'pyramid-scheme':
+      if (context.maximumGuesses === 1) return 'One guess: right pays in full, wrong pays nothing.'
       return context.maximumGuesses
         ? 'Name it first try for full marks — the second guess is worth less.'
         : "The sooner you name it, the more it's worth."
@@ -164,6 +166,7 @@ export const scorecardLabels = (context: ScorecardCopyContext): ScorecardLabels 
       case 'two-truths':
         return { submitted: 'Your Perfect Sheet', correct: 'The Country' }
       case 'capital-guess':
+      case 'pyramid-scheme':
         return { submitted: 'Your Answer', correct: 'The Country' }
       case 'composition':
         return { submitted: 'Groups You Placed', correct: 'The Crowd' }

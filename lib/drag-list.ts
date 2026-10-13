@@ -55,7 +55,7 @@ export const DRAG_HOLD_SLOP_PX = 6
 
 /**
  * The hold itself, spread onto EITHER list shape: a reorder hand (below) or a
- * drop-target pair (the pyramid board's tray and plates, which share the
+ * drop-target pair (a tray and its targets, which share the
  * screen with a scrolling board). `delayOnTouchOnly` leaves pointer drags
  * immediate — a mouse never competes with a pan — and a release inside the
  * hold never starts a drag at all, so a tap stays a tap.

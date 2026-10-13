@@ -163,3 +163,124 @@ describe('useAttemptOptions named picks', () => {
     expect((await grade([7, 'Chicago'])).scoring.scored).toBe(capitalGuessScore(2, 2, 20))
   })
 })
+
+describe('useAttemptOptions against the server record', () => {
+  const flush = () => new Promise(resolve => setTimeout(resolve, 0))
+  const board = (recordedPicks: string[], land: (pick: string) => Promise<boolean>) => {
+    const submitted = ref(false)
+    const scores: number[] = []
+    const announced: string[] = []
+    const recorded = ref<string[]>(recordedPicks)
+    const deal = () => ({ country: 'JP' as ISOCountryCode, maximumGuesses: 2, maximumPoints: 100 })
+    const live = ref(deal())
+    const machine = useAttemptOptions({
+      challenge: computed(() => live.value),
+      submitted,
+      started: ref(true),
+      remainingFraction: computed(() => 1),
+      announce: entry => announced.push(entry.isoCode),
+      recorded: computed(() => recorded.value),
+      record: pick =>
+        land(pick).then(landed => {
+          if (landed) recorded.value = [...recorded.value, pick]
+          return landed
+        }),
+      submitRound: score => {
+        scores.push(score)
+        submitted.value = true
+      },
+    })
+    /** A fresh snapshot: the same round, a new challenge object. */
+    const resnapshot = () => (live.value = deal())
+    return { ...machine, scores, announced, recorded, resnapshot }
+  }
+
+  it("restores the server's spent picks instead of handing the guesses back", async () => {
+    const { spent, attemptsLeft, onGuess, scores } = board(['NE'], async () => true)
+    expect(spent.value).toEqual(['NE'])
+    expect(attemptsLeft.value).toBe(1)
+    onGuess(getCountry('JP'))
+    await flush()
+    expect(scores).toEqual([capitalGuessScore(2, 2, 100)])
+  })
+
+  it('records every pick before judging it, right and wrong alike', async () => {
+    const { onGuess, recorded, announced, scores, spent } = board([], async () => true)
+    onGuess(getCountry('QA'))
+    expect(announced).toEqual([])
+    await flush()
+    expect(spent.value).toEqual(['QA'])
+    onGuess(getCountry('JP'))
+    expect(scores).toEqual([])
+    await flush()
+    expect(recorded.value).toEqual(['QA', 'JP'])
+    expect(scores).toEqual([capitalGuessScore(2, 2, 100)])
+  })
+
+  it('shows nothing for a pick the server never holds', async () => {
+    const { onGuess, pending, announced, spent } = board([], () => new Promise(() => {}))
+    onGuess(getCountry('QA'))
+    await flush()
+    expect(pending.value).toBe('QA')
+    expect(announced).toEqual([])
+    expect(spent.value).toEqual([])
+  })
+
+  it('lets a pick the server refused be tried again', async () => {
+    const { onGuess, pending, spent } = board([], async () => false)
+    onGuess(getCountry('QA'))
+    await flush()
+    expect(pending.value).toBeUndefined()
+    expect(spent.value).toEqual([])
+  })
+
+  it('finishes a reloaded round whose answer the server already holds', () => {
+    const { scores, spent } = board(['NE', 'JP'], async () => true)
+    expect(scores).toEqual([capitalGuessScore(2, 2, 100)])
+    expect(spent.value).toEqual(['NE'])
+  })
+
+  it('fails out a reloaded round whose guesses the server already spent', () => {
+    const { scores, onGuess } = board(['NE', 'QA'], async () => true)
+    expect(scores).toEqual([0])
+    onGuess(getCountry('JP'))
+    expect(scores).toEqual([0])
+  })
+
+  it('still judges a pick whose snapshot arrived while it was on the wire', async () => {
+    const { onGuess, resnapshot, announced, scores } = board([], async () => true)
+    onGuess(getCountry('QA'))
+    resnapshot()
+    await flush()
+    expect(announced).toEqual(['QA'])
+    onGuess(getCountry('NE'))
+    resnapshot()
+    await flush()
+    expect(scores).toEqual([0])
+  })
+
+  it('lets a pick on the wire at the buzzer land before the round times out', async () => {
+    const right = board([], async () => true)
+    right.onGuess(getCountry('JP'))
+    right.expire()
+    expect(right.scores).toEqual([])
+    await flush()
+    expect(right.scores).toEqual([100])
+
+    const wrong = board([], async () => true)
+    wrong.onGuess(getCountry('QA'))
+    wrong.expire()
+    await flush()
+    expect(wrong.scores).toEqual([0])
+    expect(wrong.spent.value).toEqual(['QA'])
+  })
+
+  it('times out at once with nothing on the wire, and takes no pick after', async () => {
+    const { expire, onGuess, scores } = board([], async () => true)
+    expire()
+    expect(scores).toEqual([0])
+    onGuess(getCountry('JP'))
+    await flush()
+    expect(scores).toEqual([0])
+  })
+})

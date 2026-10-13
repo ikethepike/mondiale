@@ -1,108 +1,119 @@
 <template>
-  <div class="pyramid-reveal">
-    <ol class="rows">
-      <li v-for="row in rows" :key="row.isoCode" class="row" :class="{ missed: !row.matched }">
-        <!-- The shape the sentence is about, then and now. A claim about a
-             country's century should be visible, not just asserted. -->
-        <div class="then-now">
+  <div v-if="facts" class="pyramid-reveal">
+    <div v-if="withShapes" class="then-now">
+      <PopulationPyramid
+        :iso-code="challenge.country"
+        :frame="0"
+        :scars="scars"
+        :caption="String(PYRAMID_YEARS[0])"
+      />
+      <PopulationPyramid
+        :iso-code="challenge.country"
+        :frame="PYRAMID_YEARS.length - 1"
+        :scars="scars"
+        :caption="String(PYRAMID_YEARS.at(-1))"
+      />
+    </div>
+
+    <div class="told">
+      <CountryChip
+        v-if="withShapes"
+        tag="span"
+        compact
+        class="who"
+        :country="getCountry(challenge.country)"
+      />
+      <p v-if="family" class="lesson">
+        <span class="eyebrow">{{ PYRAMID_FAMILY_LABELS[family] }}</span>
+        {{ PYRAMID_FAMILY_LESSONS[family] }}
+      </p>
+
+      <ul v-if="scars.length" class="scars">
+        <li v-for="scar in scars" :key="scar.bornFrom">{{ scar.note }}</li>
+      </ul>
+
+      <ul class="stats">
+        <li v-for="row in rows" :key="row.label">
+          <span class="stat-label">{{ row.label }}</span>
+          <strong>{{ row.now }}</strong>
+          <span class="was">from {{ row.then }} in {{ PYRAMID_YEARS[0] }}</span>
+        </li>
+      </ul>
+
+      <p v-if="facts.twin" class="aside">
+        Its closest match today is {{ countryName(facts.twin) }} — two countries, one shape.
+      </p>
+    </div>
+
+    <section class="lineup">
+      <span class="eyebrow">Every option in {{ PYRAMID_YEARS.at(-1) }}</span>
+      <ol>
+        <li
+          v-for="option in lineup"
+          :key="option.isoCode"
+          class="option"
+          :class="{ answer: option.isAnswer, picked: option.picked }"
+        >
           <PopulationPyramid
-            :iso-code="row.isoCode"
-            :frame="0"
-            :caption="String(PYRAMID_YEARS[0])"
-          />
-          <PopulationPyramid
-            :iso-code="row.isoCode"
+            :iso-code="option.isoCode"
             :frame="PYRAMID_YEARS.length - 1"
-            :scar="row.scar"
-            :caption="String(PYRAMID_YEARS.at(-1))"
+            :peak="peak"
           />
-        </div>
-
-        <div class="told">
-          <p class="who">
-            <CountryChip tag="span" compact :country="getCountry(row.isoCode)" />
-            <span class="verdict" :class="{ hit: row.matched }">
-              {{ row.matched ? '✓ matched' : `✗ was ${row.letter}` }}
-            </span>
-          </p>
-          <p class="note">{{ row.note }}</p>
-          <span class="family">{{ row.family }}</span>
-        </div>
-      </li>
-    </ol>
-
-    <p class="coda">
-      Every dent is a piece of history. A war, a policy, an epidemic or a boom leaves the same mark
-      — one thin cohort, carried upward year after year for the rest of the century.
-    </p>
+          <span class="name">
+            {{ countryName(option.isoCode) }}
+            <span v-if="option.isAnswer" class="mark">✓</span>
+            <span v-else-if="option.picked" class="mark miss">✗</span>
+          </span>
+          <span v-if="option.aged" class="aged">{{ pyramidAgedLabel(option.aged) }}</span>
+        </li>
+      </ol>
+    </section>
   </div>
 </template>
 
 <script lang="ts" setup>
+/** What one Pyramid Scheme round teaches: the subject's numbers, its scars and
+ *  family, and the other options' shapes beside it. */
 import PopulationPyramid from '~/components/challenge/PopulationPyramid.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
-import { getCountry } from '~~/lib/country'
+import { countryName, getCountry } from '~~/lib/country'
 import {
-  latestPyramid,
   PYRAMID_FAMILY_LABELS,
+  PYRAMID_FAMILY_LESSONS,
   PYRAMID_YEARS,
+  pyramidAgedAt,
+  pyramidAgedLabel,
+  pyramidFactRows,
+  pyramidFacts,
   pyramidFamily,
-  pyramidFrameAt,
-  pyramidScar,
-  shareOver65,
-  shareUnder15,
+  pyramidPeakShare,
+  pyramidScars,
 } from '~~/lib/pyramids'
 import type { PyramidSchemeChallenge } from '~~/types/challenges/group-modes.type'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-const SLOT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
-
 const props = defineProps({
   challenge: { type: Object as PropType<PyramidSchemeChallenge>, required: true },
-  /** What this player put in each slot — index i is their pick for pyramid i. */
+  /** The player's picks in the order they were made. */
   submitted: { type: Array as PropType<ISOCountryCode[]>, default: () => [] },
+  /** The subject's then-and-now pyramids — off where the round's own chart is
+   *  already on screen. */
+  withShapes: { type: Boolean, default: true },
 })
 
-/**
- * The lesson when a country carries no hand-written scar. It switches on the
- * SAME family the chip prints — a generic "middle of its transition" under an
- * EXPANSIVE TRIANGLE label makes the card argue with itself.
- */
-const lessonFor = (isoCode: ISOCountryCode): string => {
-  const now = latestPyramid(isoCode)
-  const then = pyramidFrameAt(isoCode, 0)
-  if (!now || !then) return ''
-  const young = Math.round(shareUnder15(now))
-  const old = Math.round(shareOver65(now))
-  const wasYoung = Math.round(shareUnder15(then))
+const facts = computed(() => pyramidFacts(props.challenge.country))
+const rows = computed(() => (facts.value ? pyramidFactRows(facts.value) : []))
+const family = computed(() => pyramidFamily(props.challenge.country))
+const scars = computed(() => pyramidScars(props.challenge.country))
+const peak = computed(() => pyramidPeakShare(props.challenge.options))
 
-  switch (pyramidFamily(isoCode)) {
-    case 'expansive':
-      return `Still widest at the base: ${young}% of the country is under fifteen, against ${wasYoung}% in ${PYRAMID_YEARS[0]}. Every cohort outnumbers the one above it.`
-    case 'narrowing':
-      return `Under-fifteens have fallen from ${wasYoung}% to ${young}% — a base still broad, but no longer growing.`
-    case 'coffin':
-      return `More pensioners than children: ${old}% is over sixty-five against ${young}% under fifteen. The base has pulled in beneath a heavy middle.`
-    case 'migrant-slab':
-      return `Imported working-age men fill the middle; both the base and the top stay thin.`
-    default:
-      return `Near balance from bottom to middle — under-fifteens ${young}%, over-sixty-fives ${old}%.`
-  }
-}
-
-const rows = computed(() =>
-  props.challenge.countries.map((isoCode, slot) => {
-    const scar = pyramidScar(isoCode)
-    const family = pyramidFamily(isoCode)
-    return {
-      isoCode,
-      letter: SLOT_LETTERS[slot] ?? String(slot + 1),
-      matched: props.submitted[slot] === isoCode,
-      scar,
-      note: scar?.note ?? lessonFor(isoCode),
-      family: family ? PYRAMID_FAMILY_LABELS[family] : '',
-    }
-  })
+const lineup = computed(() =>
+  props.challenge.options.map(isoCode => ({
+    isoCode,
+    aged: pyramidAgedAt(isoCode),
+    isAnswer: isoCode === props.challenge.country,
+    picked: props.submitted.includes(isoCode),
+  }))
 )
 </script>
 
@@ -110,88 +121,182 @@ const rows = computed(() =>
 @use '~/assets/scss/rules/ink' as *;
 @use '~/assets/scss/rules/breakpoints' as *;
 
-.rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.pyramid-reveal {
   display: grid;
-  gap: 1.1rem;
-}
-
-.row {
-  display: grid;
+  gap: 1.4rem;
   grid-template-columns: auto 1fr;
-  gap: 1.6rem;
-  align-items: center;
-  padding: 1.2rem 1.4rem;
-  border-radius: 1.6rem;
-  background: #{milk(0.9)};
-  border: 0.1rem solid #{ink(0.12)};
-
-  &.missed {
-    border-color: #{flame(0.4)};
-  }
+  align-items: start;
 }
 
 .then-now {
   display: flex;
-  gap: 0.7rem;
+  gap: 0.8rem;
 
   :deep(.population-pyramid) {
-    width: 8.8rem;
+    width: 10rem;
   }
+}
+
+.told {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
 }
 
 .who {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  margin: 0 0 0.2rem;
-  font-weight: 700;
-  flex-wrap: wrap;
+  justify-self: start;
 }
 
-.verdict {
-  font-weight: 400;
-  font-size: 1.3rem;
-  color: var(--hior-ange);
+.lesson {
+  margin: 0;
+  line-height: 1.45;
+  color: #{ink(0.85)};
 
-  &.hit {
-    color: hsl(150, 46%, 34%);
+  .eyebrow {
+    display: block;
+    margin-bottom: 0.2rem;
   }
 }
 
-.note {
+.scars {
   margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
   line-height: 1.45;
-  color: #{ink(0.8)};
+  color: #{ink(0.85)};
+
+  li {
+    padding-left: 1.2rem;
+    border-left: 0.3rem solid var(--hior-ange);
+  }
 }
 
-.family {
-  display: inline-block;
-  margin-top: 0.5rem;
+.stats {
+  margin: 0.4rem 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+
+  li {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.9rem 1.2rem;
+    border-radius: 1.2rem;
+    background: #{ink(0.04)};
+  }
+
+  strong {
+    font-size: 2.6rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.stat-label {
   font-size: 1.05rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #{ink(0.55)};
-  border: 0.1rem solid #{ink(0.12)};
-  border-radius: 999px;
-  padding: 0.2rem 0.9rem;
-  background: #{ink(0.06)};
 }
 
-.coda {
-  margin: 1.6rem 0 0;
-  color: #{ink(0.55)};
-  line-height: 1.5;
+.was {
+  font-size: 1.2rem;
+  color: #{ink(0.6)};
+  font-variant-numeric: tabular-nums;
+}
+
+.aside {
+  margin: 0;
+  line-height: 1.45;
+  color: #{ink(0.65)};
+}
+
+.lineup {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.6rem;
+
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.option {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: center;
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 1.2rem;
+  border: 0.1rem solid transparent;
+
+  :deep(.population-pyramid) {
+    width: 100%;
+    max-width: 8rem;
+  }
+
+  &.answer {
+    border-color: hsla(170.5, 34.7%, 45%, 0.6);
+    background: hsla(170.5, 34.7%, 55.1%, 0.12);
+  }
+  &.picked:not(.answer) {
+    border-color: #{flame(0.4)};
+  }
+}
+
+.name {
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.aged {
+  font-size: 1.1rem;
+  color: #{ink(0.6)};
+  font-variant-numeric: tabular-nums;
+}
+
+.mark {
+  color: hsl(150, 46%, 34%);
+  &.miss {
+    color: var(--hior-ange);
+  }
 }
 
 @media screen and (max-width: $tablet) {
-  .row {
+  .pyramid-reveal {
     grid-template-columns: 1fr;
   }
   .then-now {
     justify-content: center;
+  }
+  .lineup ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stats {
+    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+
+    li {
+      padding: 0.7rem 0.9rem;
+    }
+    strong {
+      font-size: 2rem;
+    }
+  }
+  .stat-label {
+    font-size: 0.9rem;
+  }
+  .was {
+    font-size: 1.05rem;
   }
 }
 </style>

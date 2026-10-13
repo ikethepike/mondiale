@@ -87,8 +87,12 @@ describe('scorecardExplainer', () => {
     expect(plain).not.toContain('internal')
   })
 
+  it('says a one-guess board is all or nothing', () => {
+    expect(scorecardExplainer({ kind: 'pyramid-scheme', maximumGuesses: 1 })).toContain('One guess')
+  })
+
   it('changes the guess-cap wording when a cap was dealt', () => {
-    for (const kind of ['capital-guess', 'flashpoint'] as const) {
+    for (const kind of ['capital-guess', 'flashpoint', 'pyramid-scheme'] as const) {
       expect(scorecardExplainer({ kind, maximumGuesses: 2 })).toContain('first try')
       expect(scorecardExplainer({ kind, maximumGuesses: undefined })).not.toContain('first try')
     }

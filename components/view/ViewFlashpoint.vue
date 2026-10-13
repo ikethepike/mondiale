@@ -94,7 +94,7 @@
                 class="option card-option"
                 :class="{ 'is-spent': spent.includes(option) }"
                 type="button"
-                :disabled="submitted || !started || spent.includes(option)"
+                :disabled="submitted || !started || !!pending || spent.includes(option)"
                 @click="onGuess(getCountry(option))"
               >
                 <CountryTileFlag class="option-flag" :country="getCountry(option)" />
@@ -159,6 +159,8 @@ const {
   gameStore,
   isDisposed,
   previewVerdict,
+  spentPicks,
+  spendPick,
 } = useGroupChallenge('flashpoint-challenge')
 
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -266,7 +268,7 @@ const start = async () => {
   if (bounds) gameStore.map.feature = { d: '', kind: 'area', bounds }
 
   begin({
-    onTimeout: () => submitRound(0, spent.value),
+    onTimeout: expire,
     onTick: left => {
       const elapsed = active.durationSeconds - left
       shownWaves.value = Math.min(
@@ -307,13 +309,15 @@ const submitRound = (score: number, picks: ISOCountryCode[]) => {
 
 // The winning guess is never broadcast — outside hard mode the small option
 // table makes even a wrong name too strong a clue (policy drops to presence).
-const { spent, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess, expire } = useAttemptOptions({
   challenge,
   submitted,
   started,
   remainingFraction,
   announce,
   submitRound,
+  recorded: spentPicks,
+  record: spendPick,
 })
 </script>
 <style lang="scss" scoped>

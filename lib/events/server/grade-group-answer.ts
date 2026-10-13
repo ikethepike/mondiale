@@ -1,3 +1,4 @@
+import { attemptSequence } from '~~/lib/attempt-boards'
 import {
   attemptPicksScore,
   getCorrectRanking,
@@ -35,14 +36,7 @@ import {
 } from '~~/lib/round-beats'
 import { languageBounce } from '~~/lib/language-rounds'
 import { expectChallengeType } from '~~/lib/rounds'
-import {
-  blitzCounted,
-  blitzScore,
-  buzzScore,
-  clampScore,
-  hintDockedScore,
-  pairFraction,
-} from '~~/lib/scoring'
+import { blitzCounted, blitzScore, buzzScore, hintDockedScore } from '~~/lib/scoring'
 import { starChartAnswers } from '~~/lib/star-chart'
 import { terraAnswers, terraRestoredHoles } from '~~/lib/terra-incognita'
 import { clamp } from '~~/lib/number'
@@ -102,7 +96,7 @@ export const gradeGroupAnswer = async ({
   playerId: string
   submission: GroupSubmission
   /** The answering seat's cursor: its own play window and its bought hints. */
-  seat?: Pick<SeatCursor, 'deadline' | 'hints'>
+  seat?: Pick<SeatCursor, 'deadline' | 'hints' | 'spent'>
   /** When the answer reached the server. */
   at?: number
   absent?: boolean
@@ -161,10 +155,11 @@ export const gradeGroupAnswer = async ({
     fraction?: number
   ) => {
     if (!challenge.maximumGuesses) return buzzOn(challenge, undefined, fraction)
-    answer = { submitted: submission.ranking, correct: [challenge.country] }
+    const picks = attemptSequence(seat?.spent, submission.ranking)
+    answer = { submitted: picks, correct: [challenge.country] }
     scoring = {
       scored: attemptPicksScore(
-        submission.ranking,
+        picks,
         challenge.country,
         challenge.maximumGuesses,
         challenge.maximumPoints
@@ -210,21 +205,15 @@ export const gradeGroupAnswer = async ({
       break
     }
     case 'pyramid-scheme': {
-      // Position IS the claim: submitted[i] is whoever the player dropped on
-      // pyramid i, and challenge.countries[i] is whose pyramid that was. Paid
-      // linearly per correct pairing — see pairFraction on why set overlap
-      // would quietly underpay a near-miss.
       const challenge = expectChallengeType(roundChallenge, 'pyramid-scheme-challenge')
-      answer = { submitted: submission.ranking, correct: challenge.countries }
-      scoring = {
-        scored: clampScore(
-          Math.round(
-            pairFraction(submission.ranking, challenge.countries) * challenge.maximumPoints
-          ),
-          challenge.maximumPoints
-        ),
-        maximum: challenge.maximumPoints,
+      // A round dealt before the redesign carries `countries[]` and no subject:
+      // the buzz fallback would grade `undefined === undefined` as a hit.
+      if (!challenge.country) {
+        answer = { submitted: [], correct: [] }
+        scoring = { scored: 0, maximum: challenge.maximumPoints }
+        break
       }
+      attemptsOn(challenge)
       break
     }
     case 'silhouette': {
@@ -328,7 +317,7 @@ export const gradeGroupAnswer = async ({
       // on the named cities rather than the country the ranking carries.
       if (challenge.maximumGuesses) {
         const scored = attemptPicksScore(
-          cities,
+          attemptSequence(seat?.spent, cities),
           namesCity,
           challenge.maximumGuesses,
           challenge.maximumPoints

@@ -54,6 +54,7 @@ import {
   BOT_UNTIMED_THINK_JITTER_MS,
   BOT_UNTIMED_THINK_MS,
   classicPlaySeconds,
+  isBrowsableRound,
   isClassicGroupRound,
   seatWindowMsFor,
 } from '~~/lib/round-beats'
@@ -309,6 +310,19 @@ const pumpGame = (ctx: EngineContext, game: Game, record: PumpRecord) => {
       case 'round': {
         if (!round) break
         planGroupChallenge({ ctx: actorCtx, game, round, roundIndex, seat, due })
+        break
+      }
+      case 'round-verdict': {
+        // A browsable reveal holds the seat until its Continue; unacked, every
+        // bot keeps the table waiting out the whole browse cap.
+        if (!isBrowsableRound(round?.groupChallenge)) break
+        if (
+          due(`${seat.id}:${subject}:browse`, () =>
+            rollMs(BOT_BROWSE_ACK_MS, BOT_BROWSE_ACK_JITTER_MS)
+          )
+        ) {
+          dispatchRevealDone(actorCtx, seq)
+        }
         break
       }
       case 'scores': {
@@ -850,6 +864,14 @@ const dispatchClassicAnswer = (ctx: EngineContext, seq: number) => {
       },
       ctx.eventTarget
     )
+  })
+}
+
+const dispatchRevealDone = (ctx: EngineContext, seq: number) => {
+  scheduleEngineTask(ctx, 0, async fresh => {
+    const seat = brainSeat(fresh, ctx.eventTarget.playerId)
+    if (seat?.cursor.seq !== seq) return
+    await botAct(ctx, { event: 'round-reveal-done', subject: seat.cursor.subject, seq })
   })
 }
 
@@ -1548,6 +1570,16 @@ export const composeClassicSubmission = async (
       if (await lands(landed)) return landed
       const miss = wrongPick(game, correct)
       return miss ? { ranking: [miss] } : { ranking: [] }
+    }
+    case 'pyramid-scheme': {
+      // A miss spends both guesses on decoys: a second-try hit would pay on
+      // top of the roll and overshoot the dial.
+      const deal = expectChallengeType(challenge, 'pyramid-scheme-challenge')
+      if (!deal.options) return { ranking: [] }
+      const landed = { ranking: [deal.country] }
+      if (await lands(landed)) return landed
+      const decoys = deal.options.filter(option => option !== deal.country)
+      return { ranking: sampleMany(decoys, deal.maximumGuesses) }
     }
     case 'composition': {
       const { board } = await compositionBoardOf(

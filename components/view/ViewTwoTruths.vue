@@ -208,13 +208,13 @@ const {
   announce,
   entries,
   submitOnce,
-  submitted,
   gameStore,
   secondsLeft,
   elapsedFraction,
   stopCountdown,
   buyHint,
   boothAnswer,
+  outcomeShown,
   registerCleanup,
 } = useGroupChallenge('two-truths-challenge')
 const { player: me, seatCursor } = useClientEvents()
@@ -243,7 +243,7 @@ const banked = computed(() =>
       ? round.value?.groupAnswers[viewerId.value]
       : undefined
 )
-const revealed = computed(() => (gameStore.watching ? !!banked.value : submitted.value))
+const revealed = outcomeShown
 const settled = computed(() => roundSettled(Object.values(gameStore.game?.players ?? {})))
 
 const hintBought = computed(() => (seatCursor.value?.hints ?? []).includes('reveal'))

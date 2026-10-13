@@ -98,6 +98,7 @@ describe('single writer', () => {
     verdict: true,
     hints: true,
     lit: true,
+    spent: true,
     cause: true,
     walk: true,
     leg: true,
@@ -216,7 +217,7 @@ describe('server waits', () => {
     'lib/events/server/timeline-turns.ts': { count: 3, owner: 'table', token: 'state.turn' },
     'lib/events/server/unique-beats.ts': { count: 3, owner: 'table', token: 'state.briefing' },
     'lib/events/server/bot-brain.ts': {
-      count: 24,
+      count: 25,
       owner: 'a bot thinking — every act re-checks seq',
       token: 'seq',
     },
@@ -257,7 +258,7 @@ describe('client timers', () => {
     'lib/use-viewport.ts': { count: 2, category: 'local-input' },
     'lib/use-map-viewbox.ts': { count: 2, category: 'cosmetic' },
     'lib/events/client-side.ts': { count: 2, category: 'transport' },
-    'components/view/ViewPyramidScheme.vue': { count: 2, category: 'cosmetic' },
+    'components/challenge/PyramidTimeline.vue': { count: 2, category: 'cosmetic' },
     'components/view/ViewComposition.vue': { count: 1, category: 'cosmetic' },
     'components/map/ContourBackdropGl.client.vue': { count: 2, category: 'cosmetic' },
     'components/challenge/ZoomableImage.vue': { count: 2, category: 'cosmetic' },
@@ -454,6 +455,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer',
     'gate-reveal-done',
     'buy-hint',
+    'spend-pick',
     'final-light',
   ] as const satisfies readonly ClientEventData['event'][]
   const echoes: { [E in (typeof SEAT_EVENTS)[number]]: Echoes<E> } = {
@@ -466,6 +468,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer': true,
     'gate-reveal-done': true,
     'buy-hint': true,
+    'spend-pick': true,
     'final-light': true,
   }
 
@@ -485,6 +488,7 @@ describe('the wire', () => {
     'submit-final-challenge-answer': true,
     'gate-reveal-done': true,
     'buy-hint': true,
+    'spend-pick': true,
     'final-light': true,
   }
 

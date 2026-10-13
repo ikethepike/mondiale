@@ -96,12 +96,10 @@ export const ROUND_WEIGHTS = {
   // it stays an event — a game usually sees one, and two never read as a
   // rotation slot.
   'terra-incognita': 0.05,
-  // A one-insight round: a triangular pyramid is a young country, a lopsided
-  // slab is Gulf migrant labour, and once a player has that they have it for
-  // every deal after. At a staple's rate the insight would wear out inside a
-  // session; at 0.05 — empire's rate, for the same reason — a game usually
-  // sees one and the read still lands.
-  'pyramid-scheme': 0.05,
+  // Capital-guess's rate: one subject against four options, and the decoys
+  // climb from a different family on easy to history-only lookalikes on hard,
+  // so the read keeps deepening instead of wearing out after one insight.
+  'pyramid-scheme': 0.056,
   // A set-piece like terra-incognita: a long rewind that rewrites the map, so
   // it stays an event rather than a rotation slot.
   vintage: 0.05,
@@ -154,6 +152,7 @@ export const MECHANIC_BY_KIND = {
   // Pick from a small table of options.
   'two-truths': 'choice',
   'trend-race': 'choice',
+  'pyramid-scheme': 'choice',
   // Beat the room to the answer while it plays out.
   'anthem-buzz': 'buzz',
   'tongue-buzz': 'buzz',
@@ -173,9 +172,6 @@ export const MECHANIC_BY_KIND = {
   sketch: 'draw',
   // File each bench with or against the government.
   government: 'match',
-  // The same verb on a different target — a flag onto the pyramid it belongs
-  // to — so it decays against government rather than reading as a new one.
-  'pyramid-scheme': 'match',
   // An origin onto the group of the crowd it belongs to.
   composition: 'match',
 } as const satisfies Record<RoundChallengeKind, RoundMechanic>

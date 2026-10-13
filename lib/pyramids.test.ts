@@ -5,8 +5,18 @@ import {
   pyramidFrameAt,
   pyramidYearAt,
   pyramidDistance,
-  pyramidsAreDistinct,
+  pyramidReadoutGap,
+  pyramidAgedAt,
+  pyramidAgedApart,
+  pyramidAgedLabel,
   pyramidFamily,
+  frameFamily,
+  medianAge,
+  pyramidFacts,
+  pyramidFactRows,
+  PYRAMID_SCARS,
+  PYRAMID_TUNING,
+  pyramidDecoyFits,
   PYRAMID_FAMILY_LABELS,
   pyramidScarIndex,
   latestPyramid,
@@ -35,11 +45,32 @@ describe('pyramids lib', () => {
     expect(pyramidFrameAt('JP', -5)!.year).toBe(1963)
     expect(pyramidFrameAt('JP', 99)!.year).toBe(2023)
   })
-  it('measures distance the dealer gates on', () => {
+  it('measures the distance the decoys are drawn by', () => {
     expect(pyramidDistance('CM', 'BJ')).toBeLessThan(5)
+    expect(pyramidDistance('GB', 'NO')).toBeLessThan(8)
     expect(pyramidDistance('NE', 'JP')).toBeGreaterThan(60)
-    expect(pyramidsAreDistinct(['NE', 'JP', 'QA', 'US'], 20)).toBe(true)
-    expect(pyramidsAreDistinct(['CM', 'BJ'], 20)).toBe(false)
+    expect(pyramidDistance('QA', 'NE')).toBeGreaterThan(60)
+  })
+  it('dates when a country aged', () => {
+    expect(pyramidAgedAt('GB')).toBe('before')
+    expect(pyramidAgedAt('NE')).toBe('never')
+    expect(pyramidAgedAt('ME')).toBe(1978)
+    expect(pyramidAgedApart('GB', 'ME')).toBe(20)
+    expect(pyramidAgedLabel('before')).toBe('Median 25+ before 1963')
+    expect(pyramidAgedLabel(1978)).toBe('Median hit 25 in 1978')
+  })
+  it('separates a converged pair by what the readout shows', () => {
+    // Britain and Montenegro look alike today; in 1963 Montenegro was young.
+    expect(pyramidDistance('GB', 'ME')).toBeLessThan(12)
+    expect(pyramidReadoutGap('GB', 'ME')).toBeGreaterThan(6)
+    expect(pyramidReadoutGap('GB', 'NO')).toBeLessThan(6)
+  })
+  it('makes hard decoys lookalikes and easy decoys strangers', () => {
+    expect(pyramidDecoyFits('GB', 'ME', PYRAMID_TUNING.hard.decoys)).toBe(true)
+    expect(pyramidDecoyFits('GB', 'ME', PYRAMID_TUNING.easy.decoys)).toBe(false)
+    expect(pyramidDecoyFits('JP', 'NE', PYRAMID_TUNING.easy.decoys)).toBe(true)
+    expect(pyramidDecoyFits('JP', 'NE', PYRAMID_TUNING.hard.decoys)).toBe(false)
+    expect(pyramidDecoyFits('JP', 'JP', PYRAMID_TUNING.easy.decoys)).toBe(false)
   })
   it('classifies families distinctly', () => {
     expect(pyramidFamily('QA')).toBe('migrant-slab')
@@ -50,6 +81,33 @@ describe('pyramids lib', () => {
     // ever wears is a lesson the reveal can never teach.
     const seen = new Set(PYRAMID_COUNTRIES.map(c => pyramidFamily(c)))
     for (const family of Object.keys(PYRAMID_FAMILY_LABELS)) expect(seen).toContain(family)
+  })
+  it('classifies the frame on screen with the same rule as today', () => {
+    for (const isoCode of PYRAMID_COUNTRIES) {
+      expect(frameFamily(latestPyramid(isoCode)!)).toBe(pyramidFamily(isoCode))
+    }
+    // Korea's transition: a triangle in 1963, a coffin now.
+    expect(frameFamily(pyramidFrameAt('KR', 0)!)).toBe('expansive')
+  })
+  it('reads the median age off the cohorts', () => {
+    expect(medianAge(latestPyramid('JP')!)).toBeGreaterThan(45)
+    expect(medianAge(latestPyramid('NE')!)).toBeLessThan(17)
+    expect(medianAge(pyramidFrameAt('KR', 0)!)).toBeLessThan(21)
+  })
+  it('derives the facts a reveal prints', () => {
+    expect(pyramidFacts('GB')!.twin).toBe('NO')
+    const labels = (isoCode: 'QA' | 'FR') =>
+      pyramidFactRows(pyramidFacts(isoCode)!).map(r => r.label)
+    expect(labels('QA')).toContain('Men per 100 women, 20–49')
+    expect(labels('FR')).not.toContain('Men per 100 women, 20–49')
+  })
+  it('points every scar at a cohort some frame shows', () => {
+    for (const [isoCode, scars] of Object.entries(PYRAMID_SCARS)) {
+      for (const scar of scars!) {
+        const visible = PYRAMID_YEARS.some(year => pyramidScarIndex(scar, year) !== undefined)
+        expect(visible, `${isoCode} ${scar.bornFrom}`).toBe(true)
+      }
+    }
   })
   it('moves a scar cohort up the pyramid as it ages', () => {
     // Germany's Pillenknick cohort (born 1966) sits low in 1968, high in 2023
@@ -70,16 +128,20 @@ describe('pyramids lib', () => {
     expect(workingAgeSexSkew(latestPyramid('QA')!)).toBeGreaterThan(30)
   })
 
-  it('leaves the dealer a wide pool at the readability floor', () => {
-    // The whole mode rests on this: a floor that reads well must still let most
-    // of the roster appear. If a data revision narrows this, the round degrades
-    // to the same handful of countries every game.
-    const roster = PYRAMID_COUNTRIES
-    const usable = roster.filter(
-      country =>
-        roster.filter(other => other !== country && pyramidDistance(country, other) >= 20).length >=
-        3
-    )
-    expect(usable.length).toBeGreaterThan(150)
+  it('leaves every difficulty a wide pool of subjects on the world board', () => {
+    // Hard is narrower by design: only lookalikes that aged decades apart.
+    const SUBJECT_FLOOR = { easy: 100, normal: 100, hard: 60 }
+    // A subject needs three decoys in its band; if a data revision narrows
+    // this, the round degrades to the same handful of countries every game.
+    for (const difficulty of ['easy', 'normal', 'hard'] as const) {
+      const usable = PYRAMID_COUNTRIES.filter(
+        country =>
+          PYRAMID_COUNTRIES.filter(other =>
+            pyramidDecoyFits(country, other, PYRAMID_TUNING[difficulty].decoys)
+          ).length >=
+          PYRAMID_TUNING[difficulty].options - 1
+      )
+      expect(usable.length, difficulty).toBeGreaterThan(SUBJECT_FLOOR[difficulty])
+    }
   })
 })

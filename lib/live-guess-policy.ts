@@ -4,6 +4,7 @@ import {
   roundChallengeKind,
 } from '~~/types/challenges/traversal-challenge.type'
 import type { Game } from '~~/types/game.types'
+import { attemptBoardOf } from './attempt-boards'
 
 /**
  * How much of a guess the room may see.
@@ -42,7 +43,7 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // player who lights a star hands the room tension, not the answer.
   'star-chart': 'label',
   // Benches are dragged and options are tapped, never named — but each pick is
-  // a race beat, and beat 3's bench count rides `placed` like Pyramid Scheme's.
+  // a race beat, and beat 3's bench count rides `placed`.
   government: 'presence',
   // The room shares one failing atlas, but a NAMED guess here is always a
   // wrong one — the composable sends hits as bare presence — and a wrong name
@@ -98,12 +99,8 @@ const BASE_POLICY: Record<RoundChallengeKind, GuessPolicy> = {
   // country the room can already see is taken.
   'clean-sweep': 'label',
 
-  // Presence, NOT label. Every country is on every screen from the start, so a
-  // name leaks no identity — but with only four subjects there are just 24
-  // possible arrangements, and watching a confident player seat one would hand
-  // the room most of the puzzle. What travels is the RACE: someone has placed
-  // their third, someone has taken one back. The round is otherwise a silent
-  // minute, and it is the one mode with real intermediate state to broadcast.
+  // Four options on every screen: a named wrong pick strikes a quarter of the
+  // table for everyone still reading the shape.
   'pyramid-scheme': 'presence',
   // One hidden span of years, shared by the room: a guess is a bearing on it.
   vintage: 'presence',
@@ -140,18 +137,9 @@ export const guessPolicyFor = (
     return 'none'
   }
 
-  // Outside hard mode the option variants offer a small flag table, so naming
-  // a wrong pick eliminates a share of the field. Hard mode free-types the
-  // whole world. Scoped to exactly these kinds: other challenges carry an
-  // `options` field too (government's party list, trend-race's cards), and a
-  // bare truthiness check silently overrode their BASE_POLICY rows.
-  if (
-    (kind === 'capital-guess' || kind === 'flashpoint' || kind === 'ground-plan') &&
-    'options' in challenge &&
-    challenge.options
-  ) {
-    return 'presence'
-  }
+  // An option board's small table means naming a wrong pick eliminates a share
+  // of the field; its free-typed twin keeps the kind's own row.
+  if (attemptBoardOf(challenge)) return 'presence'
 
   return BASE_POLICY[kind]
 }
@@ -174,7 +162,6 @@ export const probeCarriesIso = (challenge: RoundChallenge | undefined): boolean 
  */
 export const placedTotalFor = (challenge: RoundChallenge | undefined): number | undefined => {
   if (!challenge || !('_type' in challenge)) return undefined
-  if (challenge._type === 'pyramid-scheme-challenge') return challenge.countries.length
   if (challenge._type === 'government-challenge') return challenge.sorted.length
   return undefined
 }

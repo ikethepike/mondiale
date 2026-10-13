@@ -76,7 +76,7 @@
             class="option card-option"
             :class="{ 'is-spent': isSpent(option) }"
             type="button"
-            :disabled="submitted || !started || isSpent(option)"
+            :disabled="submitted || !started || !!pending || isSpent(option)"
             @click="onOption(option)"
           >
             <span>{{ option }}</span>
@@ -145,6 +145,8 @@ const {
   stopCountdown,
   gameStore,
   previewVerdict,
+  spentPicks,
+  spendPick,
 } = useGroupChallenge('ground-plan-challenge')
 
 // A cut is wider than it is tall, so a portrait screen cannot fill without
@@ -235,14 +237,14 @@ const resolve = (correct: boolean, cities: string[]) => {
 const submitRound = (score: number, picks: string[]) => resolve(score > 0, picks)
 
 const start = () => {
-  begin({ onTimeout: () => submitRound(0, spent.value) })
+  begin({ onTimeout: expire })
   nextTick(() => guessInput.value?.focus())
 }
 
 // Options pay by attempt through the shared table; the typed variant pays by
 // LADDER instead, so it must not route through the same helper — its clock
 // branch would price the answer on seconds, which is not this round's tension.
-const { spent, onGuess } = useAttemptOptions({
+const { spent, pending, onGuess, expire } = useAttemptOptions({
   challenge: computed(() =>
     challenge.value
       ? {
@@ -258,6 +260,8 @@ const { spent, onGuess } = useAttemptOptions({
   announce,
   namesAnswer: (city: string) => !!challenge.value && namesGroundPlanCity(challenge.value, city),
   submitRound,
+  recorded: spentPicks,
+  record: spendPick,
 })
 
 const isSpent = (option: string): boolean => spent.value.includes(option)

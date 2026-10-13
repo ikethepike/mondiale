@@ -106,7 +106,14 @@ export const settleGroupRound = async ({
 
   const seats = Object.keys(game.players)
 
-  const mine = await gradeGroupAnswer({ game, round, playerId: meId, submission, redis })
+  const mine = await gradeGroupAnswer({
+    game,
+    round,
+    playerId: meId,
+    submission,
+    seat: game.players[meId]?.cursor,
+    redis,
+  })
   round.groupAnswers[meId] = mine.answer
   round.playerTurns[meId] = { points: mine.scoring }
 

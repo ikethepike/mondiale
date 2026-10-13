@@ -1872,37 +1872,23 @@ export const scoreNoMansLand = ({
   return { scored: clampScore(maximum * jaccardFraction(guess, truth), maximum), maximum }
 }
 
-/**
- * Pyramid Scheme: four age structures animate across sixty years, and the table
- * drags each country onto its own shape.
- *
- * The gate is everything here. Age structures converge — a quarter of all
- * country pairs sit under 20 apart across the 42 cohort bins, and the pairs that
- * collapse hardest are the famous ones (Britain and Norway are 5.0 apart, the US
- * and Australia 5.5). Dealt at random, four countries contain a visually
- * identical pair 85% of the time. `drawDistinctPyramids` refuses those sets, and
- * a board too thin to clear the floor returns undefined so the mix buys another
- * kind rather than dealing an unreadable round.
- */
+/** Pyramid Scheme: one age structure, four options — see `drawPyramidDeal`. */
 const getPyramidSchemeChallenge = async (
   game: gameTypes.Game
 ): Promise<PyramidSchemeChallenge | undefined> => {
   // ~583KB of cohort frames — lazily loaded so it stays out of the eager bundle
   // (issue #110), the same way trend-race defers its series table.
-  const { PYRAMID_TUNING, drawDistinctPyramids } = await import('./pyramids')
+  const { PYRAMID_TUNING, drawPyramidDeal, pyramidAttempts } = await import('./pyramids')
   const tuning = PYRAMID_TUNING[game.difficulty]
-  const countries = drawDistinctPyramids(
-    playableCountries(game),
-    tuning.subjects,
-    tuning.floor,
-    sample
-  )
-  if (!countries) return undefined
+  const deal = drawPyramidDeal(playableCountries(game), game.difficulty)
+  if (!deal) return undefined
 
   return {
     _type: 'pyramid-scheme-challenge',
-    countries: shuffleArray(countries),
-    distinctnessFloor: tuning.floor,
+    country: deal.country,
+    options: shuffleArray([deal.country, ...deal.decoys]),
+    band: deal.band,
+    maximumGuesses: pyramidAttempts(game.difficulty, deal.band),
     durationSeconds: tuning.durationSeconds,
     maximumPoints: maximumRoundPoints(game),
   }

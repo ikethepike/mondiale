@@ -33,25 +33,33 @@ export const REDELIVER_MAX_BATCHES = 15
  */
 export const createRedeliver = (label: string) => {
   let disposed = false
-  const timers = new Set<ReturnType<typeof setTimeout>>()
+  const waits = new Map<ReturnType<typeof setTimeout>, (delivered: boolean) => void>()
 
-  const deliver = async (send: () => Promise<boolean>, attempt = 1): Promise<void> => {
+  /** Resolves true once the server acked, false once it gave up or was disposed. */
+  const deliver = async (send: () => Promise<boolean>, attempt = 1): Promise<boolean> => {
     const delivered = await send().catch(() => false)
-    if (delivered || disposed) return
+    if (delivered) return true
+    if (disposed) return false
     if (attempt >= REDELIVER_MAX_BATCHES) {
-      return console.error(`Giving up on ${label} delivery — a rejoin heals the seat from here`)
+      console.error(`Giving up on ${label} delivery — a rejoin heals the seat from here`)
+      return false
     }
-    const timer = setTimeout(() => {
-      timers.delete(timer)
-      void deliver(send, attempt + 1)
-    }, REDELIVER_PAUSE_MS)
-    timers.add(timer)
+    return new Promise<boolean>(resolve => {
+      const timer = setTimeout(() => {
+        waits.delete(timer)
+        resolve(deliver(send, attempt + 1))
+      }, REDELIVER_PAUSE_MS)
+      waits.set(timer, resolve)
+    })
   }
 
   const dispose = () => {
     disposed = true
-    timers.forEach(clearTimeout)
-    timers.clear()
+    for (const [timer, resolve] of waits) {
+      clearTimeout(timer)
+      resolve(false)
+    }
+    waits.clear()
   }
 
   return { deliver, dispose }
