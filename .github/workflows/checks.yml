@@ -3,11 +3,11 @@
 # red commit could reach Fly and the 634 unit tests only ran when someone
 # remembered locally.
 #
-# The four checks are independent, so they run as separate steps rather than a
-# chain: a formatting slip and a failing test should both be visible from one
-# run, not hidden behind whichever fails first. `--frozen-lockfile` install +
-# `nuxt prepare` (via postinstall) is what makes vue-tsc able to see .nuxt's
-# generated types.
+# The four checks are independent, so none hides another: a formatting slip and
+# a failing test should both be visible from one run, not hidden behind
+# whichever fails first. The unit tests own a job because they take minutes and
+# the static checks take one; `--frozen-lockfile` install + `nuxt prepare` (via
+# postinstall) is what makes vue-tsc able to see .nuxt's generated types.
 name: Checks
 on:
   pull_request:
@@ -26,8 +26,9 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: Test, typecheck, lint, format
+  # Full checkout: places.test.ts and the anthem tests read public/ media.
+  test:
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -42,9 +43,30 @@ jobs:
       - name: Unit tests
         run: bun run test
 
+  static:
+    name: Typecheck, lint, format
+    runs-on: ubuntu-latest
+    steps:
+      # Nothing here reads public/'s ~650 MB of media, so the clone skips its
+      # blobs; the manifest is the one file in it prettier formats.
+      - uses: actions/checkout@v7
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/public/*
+            /public/site.webmanifest
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       # Nuxt's generated types come from the postinstall `nuxt prepare` above.
       - name: Typecheck
-        if: '!cancelled()'
         run: bun run typecheck
 
       - name: Lint

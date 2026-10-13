@@ -19,3 +19,8 @@ public/anthems/lyrics
 # generate:parties silently reverts.
 generators/data/party-match-cache.json
 generators/data/party-label-cache.json
+
+# Media, not code: walking it was half of format:check. The manifest is the one
+# file in it prettier formats.
+public/*
+!public/site.webmanifest
