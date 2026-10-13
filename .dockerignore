@@ -19,8 +19,17 @@ fly.toml
 test-results
 playwright-report
 e2e
+screenshots
+docs
+playwright*.config.ts
+fly.preview.toml
 dump.rdb
 docker-compose.yml
+
+# Generator caches and reports (app code imports a few generator .ts files, never these)
+generators/**/*.json
+generators/**/*.jpg
+generators/**/*.txt
 
 # Logs & OS cruft
 **/*.log*

@@ -76,6 +76,21 @@ export default defineNuxtConfig({
           return { code: code.replace(register, ''), map: null }
         },
       },
+      {
+        // Left to Nitro, the SSR bundle's generated data resolves to the SAME
+        // modules server/ imports; inlined, the server shipped and parsed each twice.
+        name: 'ssr-shared-generated-data',
+        apply: 'build',
+        enforce: 'pre',
+        applyToEnvironment: environment => environment.name === 'ssr',
+        async resolveId(source, importer, options) {
+          if (!importer || !source.includes('data/')) return
+          const resolved = await this.resolve(source, importer, { ...options, skipSelf: true })
+          if (resolved && /\/data\/[^/]+\.gen\.ts$/.test(resolved.id)) {
+            return { id: resolved.id, external: true }
+          }
+        },
+      },
     ],
     // CJS-only, so Vite must pre-bundle it — without this the dev server
     // re-optimises mid-session and reloads the page under whoever is playing.
@@ -92,6 +107,8 @@ export default defineNuxtConfig({
       },
     },
   },
+  // The runtime never passes --enable-source-maps, so server maps were pure build cost.
+  sourcemap: { server: false, client: false },
   // The codebase predates Nuxt 4's noUncheckedIndexedAccess default
   typescript: {
     tsConfig: {
@@ -119,6 +136,21 @@ export default defineNuxtConfig({
     },
   },
   nitro: {
+    hooks: {
+      // The prerenderer is a second Nitro build that the build process imports
+      // and never unloads, so the game server it would carry stays resident
+      // through the final build. Assign, never push: this config is a shallow
+      // copy and its `ignore` array is the production server's too.
+      'prerender:config'(config) {
+        config.ignore = [
+          ...(config.ignore ?? []),
+          '**/middleware/socket.server.ts',
+          '**/routes/debug/**',
+          '**/plugins/memory-watch.ts',
+          '**/plugins/process-guard.ts',
+        ]
+      },
+    },
     typescript: {
       tsConfig: {
         compilerOptions: {

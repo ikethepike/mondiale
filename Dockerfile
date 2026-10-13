@@ -26,7 +26,8 @@ ARG HARNESS_ANSWERS
 ENV HARNESS_ANSWERS=$HARNESS_ANSWERS
 # Bundling the generated country/water data needs more heap than the container
 # default, and the ceiling has moved BOTH ways as the tree changed: 1536, then
-# 3584, then 5120, then back down to 3072, up again to 3584 — and now 4608.
+# 3584, then 5120, then back down to 3072, up again to 3584, then 4608 — and
+# now, with the build itself slimmed, down to 3328.
 #
 # The history matters, because the two failures look alike and want opposite
 # fixes:
@@ -57,7 +58,16 @@ ENV HARNESS_ANSWERS=$HARNESS_ANSWERS
 # GitHub's e2e/playtest builds died in the Nitro step, main included:
 #   3584 → OOM, live heap 3527 MB at death (main and the seat-cursor branch alike)
 #   4096 → exit 0, live heap peaked at 3486 MB — ~600 MB clear, too thin
-#   4608 → exit 0, live heap peaked at 3361 MB  ← chosen
+#   4608 → exit 0, live heap peaked at 3361 MB  ← chosen then (2026-10-11)
+#
+# 2026-10-13, after the build diet (nuxt.config.ts: no sourcemaps, a
+# prerenderer without the game server, one copy of data/*.gen in the server
+# bundle). macOS, node 24, peak RSS of the build process tree:
+#   main @ 3584 → OOM in the Nitro step (reproduces the CI failure)
+#   2304 → OOM in the Nitro step
+#   2560 → 3071 MB, exit 0
+#   3072 → 3291 MB, exit 0
+#   3328 → chosen: ~1 GB above the last failing cap, like 4608 was
 #
 # Note what the numbers say: peak RSS runs ~1.4 GB ABOVE the JS heap cap. That
 # gap is everything outside V8's heap — source text held by rollup, esbuild's
@@ -65,17 +75,18 @@ ENV HARNESS_ANSWERS=$HARNESS_ANSWERS
 # 24 MB of TS/Vue source is transformed, held as module graph, chunked, and
 # sourcemapped, several representations live at once.
 #
-# The builder is Depot (16 GB), not the 4 GB machine the 2026-08 note assumed,
-# so 4608 (peak RSS ~1.4 GB above it) is not close to any kernel limit. If this fails again as SIGKILL
-# rather than a V8 message, the answer is to shrink the data, not to raise
-# this.
+# Fly's remote builder is ONE Depot machine shared by the org: prod and every PR
+# preview. Overlapping builds there were SIGKILLed at ~3.3 GB RSS (2026-10-10 and
+# 10-12), so its 16 GB is not this build's to use. If this fails again as SIGKILL
+# rather than a V8 message, the answer is to shrink the build or give it its own
+# machine, not to raise this.
 #
 # The `build` script in package.json SETS NODE_OPTIONS ITSELF, so it overrides
 # whatever the caller exports — `NODE_OPTIONS=6144 bun run build` silently
 # still runs at the script's value. Keep the two numbers identical, and when
 # measuring a new ceiling call `npx nuxt build` directly or the experiment
 # measures nothing.
-ENV NODE_OPTIONS="--max-old-space-size=4608"
+ENV NODE_OPTIONS="--max-old-space-size=3328"
 RUN bun run build
 
 # ---- Runtime stage ----
