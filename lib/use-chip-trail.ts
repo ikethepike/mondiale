@@ -57,9 +57,12 @@ export const useChipTrail = (
     const startOf = (chip: HTMLElement) => chip.offsetLeft - first.offsetLeft
     const anchor = restOn ? chips.findLast(chip => chip.matches(restOn)) : undefined
     const flush = startOf(newest) + newest.offsetWidth - element.clientWidth
-    const target = anchor
-      ? Math.min(startOf(anchor), Math.max(0, flush))
-      : startOf(chips.find(chip => startOf(chip) >= flush) ?? newest)
+    // With an anchor, the newest cell may run off the end, but the rail still
+    // rests on a boundary no later than the anchor's own start.
+    const limit = anchor ? startOf(anchor) : Infinity
+    const target = startOf(
+      chips.find(chip => startOf(chip) >= flush && startOf(chip) <= limit) ?? anchor ?? newest
+    )
     element.style.paddingInlineEnd = `${Math.max(0, target - overflow)}px`
     return target
   }

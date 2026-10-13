@@ -42,6 +42,10 @@ export const walkColor = (index: number, count: number, head = false): string =>
 /** A retired chain's fill — walked, but no longer in play. */
 export const RETIRED_CHAIN_FILL = 'hsla(215.7, 15%, 55%, 0.32)'
 
+/** A retired chain whose names stay banned for the round (Atlas): spent, and
+ *  plainly so — a warm grey no stop on the walk ramp can be mistaken for. */
+export const SPENT_CHAIN_FILL = 'hsla(30, 16%, 46%, 0.58)'
+
 export const liveChain = (state: ChainTurnState<unknown>): ISOCountryCode[] =>
   state.chains[state.chains.length - 1] ?? []
 

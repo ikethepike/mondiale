@@ -9,6 +9,17 @@
   >
     <!-- A marathon chain shows only its live tail here — the head is what the
          next move plays off; the reveal card tells the whole story. -->
+    <!-- After a break: the earlier chains' names are still banned, and the
+         rail says so where the live chain begins. -->
+    <li v-if="spent" key="spent" class="rail-cell">
+      <span
+        class="spent map-caption"
+        :title="`${spent} countries from earlier chains can't be named again`"
+      >
+        <span class="spent-swatch" aria-hidden="true" />
+        {{ spent }} walked
+      </span>
+    </li>
     <li v-if="hiddenCount" key="earlier" class="rail-cell">
       <span class="earlier map-caption">+ {{ hiddenCount }} earlier</span>
     </li>
@@ -60,7 +71,7 @@ import {
   type AtlasSpellings,
   type AtlasTie,
 } from '~~/lib/atlas-chain'
-import { walkColor } from '~~/lib/chain'
+import { SPENT_CHAIN_FILL, walkColor } from '~~/lib/chain'
 import { getCountry } from '~~/lib/country'
 import { useChipTrail } from '~~/lib/use-chip-trail'
 import type { ISOCountryCode } from '~~/types/geography.types'
@@ -86,6 +97,8 @@ const props = defineProps<{
   /** The live trail: one row that follows the head when the footer is
    *  squeezed (a phone, the keyboard up). */
   live?: boolean
+  /** Countries walked in earlier chains this round — still banned. */
+  spent?: number
   /** Show only the last N links (plus a "+N earlier" pill) — the live rail's
    *  guard against marathon chains eating the stage. Unset shows everything. */
   tail?: number
@@ -125,6 +138,7 @@ const scarce = computed(
 @use '~/assets/scss/rules/ink' as *;
 
 .atlas-rail {
+  --spent-fill: v-bind(SPENT_CHAIN_FILL);
   row-gap: 0.8rem;
 }
 
@@ -221,6 +235,26 @@ const scarce = computed(
   border: 0.1rem dashed ink(0.35);
   background: milk(0.6);
   white-space: nowrap;
+}
+
+// The earlier chains, folded to a count in the spent fill the map paints them.
+.spent {
+  gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  font-size: 1.2rem;
+  padding: 0.3rem 0.9rem;
+  white-space: nowrap;
+  border-radius: 1.2rem;
+  background: milk(0.85);
+  border: 0.1rem solid ink(0.25);
+}
+
+.spent-swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.2rem;
+  background: var(--spent-fill);
 }
 
 // The live question: a chip-shaped hole waiting for the next name.

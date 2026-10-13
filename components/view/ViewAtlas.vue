@@ -98,6 +98,7 @@
           :next-openers="briefing ? undefined : openers"
           :options-left="briefing || isHardGame ? undefined : openNames.length"
           :tail="LIVE_RAIL_TAIL"
+          :spent="walked.length - chain.length"
           live
         />
         <RipCordDeploy
@@ -161,7 +162,7 @@ import {
 } from '~~/lib/atlas-chain'
 import { sampleMany } from '~~/lib/arrays'
 import { datasetAttribution } from '~~/lib/attribution'
-import { chainMovers, deadEndRescued, liveChain } from '~~/lib/chain'
+import { chainMovers, deadEndRescued, liveChain, SPENT_CHAIN_FILL } from '~~/lib/chain'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { useChainTurnView } from '~~/lib/use-chain-turn-view'
 import type { ChainBreak } from '~~/types/challenges/group-modes.type'
@@ -227,6 +228,7 @@ const {
     return { hopLinks: live.slice(1).map((isoCode, index) => `${live[index]}>${isoCode}`) }
   },
   frame: current => liveChain(current).slice(-2),
+  retiredFill: SPENT_CHAIN_FILL,
   trapProof: sprung => sprung.spent,
 })
 

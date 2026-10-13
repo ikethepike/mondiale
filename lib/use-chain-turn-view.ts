@@ -48,6 +48,9 @@ export interface ChainViewSpec<T extends ChainKind> {
   links: (state: ChainChallenge<T>['state']) => { seaLinks?: string[]; hopLinks?: string[] }
   /** What the camera holds while the chain is live. */
   frame: (state: ChainChallenge<T>['state']) => ISOCountryCode[]
+  /** How a retired chain is filled — RETIRED_CHAIN_FILL unless the mode
+   *  keeps its names banned. */
+  retiredFill?: string
   /** The dead-end proof's countries, washed and framed with the sealed head. */
   trapProof: (trap: NonNullable<ChainChallenge<T>['state']['trap']>) => ISOCountryCode[]
 }
@@ -241,7 +244,9 @@ export const useChainTurnView = <T extends ChainKind>(typeName: T, spec: ChainVi
       walkedChain.forEach((isoCode, index) => {
         const isHead = live && !current.finished && index === walkedChain.length - 1
         groupings.push({
-          color: live ? walkColor(index, walkedChain.length, isHead) : RETIRED_CHAIN_FILL,
+          color: live
+            ? walkColor(index, walkedChain.length, isHead)
+            : (spec.retiredFill ?? RETIRED_CHAIN_FILL),
           countries: [isoCode],
         })
       })
