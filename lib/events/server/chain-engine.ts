@@ -2,6 +2,7 @@ import {
   activePlayerId,
   canPullRipCord,
   deadEndRescued,
+  dealFreshChain,
   liveChain,
   pullRipCord,
   sealDeadEnd,
@@ -275,7 +276,7 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
 
     const seed = spec.reseed(challenge, game)
     if (!seed) return finishRound(ctx, game, challenge)
-    state.chains.push([seed])
+    dealFreshChain(state, seed)
     if (deadEndRescued(state)) holdTurn(challenge)
     else advanceTurn(challenge)
 

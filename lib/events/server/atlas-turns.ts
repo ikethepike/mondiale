@@ -1,12 +1,11 @@
 import { drawLabel, recordedDraw } from './draws'
 import {
-  ATLAS_TABLE_SEED_OPTIONS,
   atlasLiveMoves,
   atlasTrapBounty,
   atlasTrapProof,
   atlasTurnSeconds,
   atlasWalked,
-  pickAtlasSeed,
+  pickAtlasReseed,
 } from '~~/lib/atlas-chain'
 import { chainHead, scoreChainRound } from '~~/lib/chain'
 import { playableWorldCountries } from '~~/lib/game-rules'
@@ -52,14 +51,8 @@ const engine = (): ChainEngine<AtlasChallenge> =>
       return { playerId: trappedId, head, byPlayerId, ...proof }
     },
     reseed: (challenge, game) =>
-      recordedDraw(
-        game,
-        drawLabel.chainSeed(),
-        () =>
-          pickAtlasSeed(game, {
-            minOptions: ATLAS_TABLE_SEED_OPTIONS,
-            exclude: new Set(atlasWalked(challenge.state)),
-          }) ?? pickAtlasSeed(game, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
+      recordedDraw(game, drawLabel.chainSeed(), () =>
+        pickAtlasReseed(game, atlasWalked(challenge.state))
       ),
     scores: challenge =>
       scoreChainRound(

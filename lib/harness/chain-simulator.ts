@@ -2,6 +2,7 @@ import {
   activePlayerId,
   canPullRipCord,
   deadEndRescued,
+  dealFreshChain,
   liveChain,
   pullRipCord,
   sealDeadEnd,
@@ -137,7 +138,7 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
       if (standingPlayers(state).length <= 1) return finish(current)
       const seed = spec.reseed(current)
       if (!seed) return finish(current)
-      state.chains.push([seed])
+      dealFreshChain(state, seed)
       if (deadEndRescued(state)) holdTurn(current)
       else advanceTurn(current)
       continueTurn(current)

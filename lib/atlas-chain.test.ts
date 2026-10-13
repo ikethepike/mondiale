@@ -21,6 +21,7 @@ import {
   hasAtlasChain,
   isAtlasLink,
   pickAtlasHint,
+  pickAtlasReseed,
   pickAtlasSeed,
 } from '~~/lib/atlas-chain'
 import { isMicroNation, playableWorldCountries } from '~~/lib/game-rules'
@@ -229,5 +230,14 @@ describe('ATLAS_TUTORIAL_EXAMPLES', () => {
       expect(atlasLinkTie(from, to)?.kind, `${from} → ${to}`).toBe(kind)
       expect(isMicroNation(from) || isMicroNation(to), `${from} → ${to}`).toBe(false)
     }
+  })
+})
+
+describe('pickAtlasReseed', () => {
+  it('never deals a walked country, and settles for any live seed late in a round', () => {
+    const pool = playableWorldCountries(RULES)
+    const walked = pool.filter(isoCode => !['NP', 'LA'].includes(isoCode))
+    expect(pickAtlasReseed(RULES, walked)).toBe('NP') // Nepal → Laos is the last live link
+    expect(pickAtlasReseed(RULES, pool)).toBeUndefined()
   })
 })

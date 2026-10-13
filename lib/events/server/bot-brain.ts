@@ -873,20 +873,20 @@ const dispatchChainReady = (ctx: EngineContext, playerId: string) => {
 const dispatchChainMove = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const share = jitteredShare(botShare(fresh, playerId))
+    const knows = Math.random() < jitteredShare(botShare(fresh, playerId))
     const border = currentBorderChain(fresh)
     if (border) {
-      const isoCode = pickChainIso(borderChainOpenMoves(border, fresh), fresh, share)
+      const isoCode = pickChainIso(borderChainOpenMoves(border, fresh), fresh, knows)
       if (!isoCode) return
       return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })
     }
     const atlas = currentAtlasChain(fresh)
     if (atlas) {
       // A bot that blanks pulls its cord before it gives a wrong name.
-      if (Math.random() >= share && canPullRipCord(atlas.state, playerId)) {
+      if (!knows && canPullRipCord(atlas.state, playerId)) {
         return botAct(ctx, { event: 'pull-rip-cord', turn })
       }
-      const isoCode = pickChainIso(atlasOpenMoves(atlas, fresh), fresh, share)
+      const isoCode = pickChainIso(atlasOpenMoves(atlas, fresh), fresh, knows)
       if (!isoCode) return
       return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })
     }
@@ -899,9 +899,9 @@ const dispatchChainMove = (ctx: EngineContext, playerId: string, turn: number) =
 const pickChainIso = (
   open: ISOCountryCode[],
   game: Game,
-  share: number
+  knows: boolean
 ): ISOCountryCode | undefined => {
-  if (Math.random() < share) return sample(open) ?? wrongPick(game, open)
+  if (knows) return sample(open) ?? wrongPick(game, open)
   return wrongPick(game, open) ?? sample(open)
 }
 

@@ -64,9 +64,8 @@ export const chainBeats = (state: ChainTurnState<unknown>): ChainBeats => ({
  * durable record; the toast is a single channel). Own beats return nothing —
  * the ticker never mirrors the viewer's own moves.
  *
- * A trap redeal grows `links` without anyone moving (`resumeFromTrap` pushes a
- * fresh seed chain and leaves `lastMoverId` stale), so a one-country live
- * chain is a deal, not a move, and stays silent. Strikes diff per key — a
+ * A redeal grows `links` without anyone moving (`dealFreshChain`), so a
+ * one-country live chain is a deal, not a move, and stays silent. Strikes diff per key — a
  * serialized comparison would fire on key order alone.
  */
 export const chainNarration = (
@@ -175,6 +174,13 @@ export const canPullRipCord = (state: ChainTurnState<unknown>, playerId: string)
 
 /** Retire the live chain for a fresh seed. The puller stays on the clock —
  *  the engine bumps the turn and stamps the deadline. */
+/** Open a fresh chain on `seed`. Nobody moved, so nobody may be credited
+ *  with a dead end the seed itself deals. */
+export const dealFreshChain = (state: ChainTurnState<unknown>, seed: ISOCountryCode): void => {
+  state.chains.push([seed])
+  state.lastMoverId = undefined
+}
+
 export const pullRipCord = (
   state: ChainTurnState<unknown>,
   playerId: string,
@@ -182,7 +188,7 @@ export const pullRipCord = (
 ): void => {
   state.ripCords![playerId]--
   ;(state.breaks ??= []).push({ kind: 'rip-cord', playerId })
-  state.chains.push([seed])
+  dealFreshChain(state, seed)
 }
 
 /**

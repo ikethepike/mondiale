@@ -96,7 +96,7 @@
         :options-left="briefing || isHardGame ? undefined : openNames.length"
         :tail="LIVE_RAIL_TAIL"
       />
-      <div v-if="myTurn && !briefing && canPullCord" class="hint-row">
+      <div v-if="canPullCord" class="hint-row">
         <button class="hint-button rip-cord" type="button" :disabled="pending" @click="pullCord">
           Pull the rip cord — swap {{ headName }} for a fresh country
         </button>
@@ -258,7 +258,7 @@ const headline = computed(() => {
 })
 
 const turnLabel = computed(() => {
-  const needs = openersLabel.value ? ` — needs ${openersLabel.value}` : ''
+  const needs = openersLabel.value ? ` — needs ${openersLabel.value}, or a shared ending` : ''
   if (myTurn.value) return `Your move${needs}`
   return `${playerDisplayName(activePlayer.value)} is on the clock${needs}`
 })
@@ -411,22 +411,29 @@ const submitGuess = (country: Country) => {
   if (!isAtlasLink(head.value, country.isoCode)) {
     return announce({
       tone: 'alert',
-      hint: `${countryName(country)} doesn't chain from ${headName.value} — try ${openersLabel.value}`,
+      hint: `${countryName(country)} doesn't chain from ${headName.value} — try ${openersLabel.value}, or a shared ending`,
     })
   }
   pending.value = true
   update({ event: 'submit-chain-move', isoCode: country.isoCode, turn: active.state.turn })
 }
 
-const canPullCord = computed(() =>
-  state.value ? canPullRipCord(state.value, gameStore.seatId) : false
+// Latched per turn rather than on `pending`: a pull the server refuses moves
+// no turn, and must not leave the guess input locked until the clock dies.
+const pulledOnTurn = ref<number>()
+const canPullCord = computed(
+  () =>
+    !!state.value &&
+    canPullRipCord(state.value, gameStore.seatId) &&
+    pulledOnTurn.value !== state.value.turn
 )
 
-const pullCord = () => {
+const pullCord = async () => {
   const active = challenge.value
   if (!active || !canPullCord.value || pending.value) return
-  pending.value = true
-  update({ event: 'pull-rip-cord', turn: active.state.turn })
+  const { turn } = active.state
+  pulledOnTurn.value = turn
+  if (!(await update({ event: 'pull-rip-cord', turn }))) pulledOnTurn.value = undefined
 }
 
 // Each server turn unlocks the input and refocuses it for whoever's up next.

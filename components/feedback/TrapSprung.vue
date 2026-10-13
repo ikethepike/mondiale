@@ -66,13 +66,6 @@ const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
 if (watching.value) onMounted(() => emit('done'))
 
-/** The letter-trap's discriminant ("A or N"); its spent list renders as
- *  walked doors. */
-const sealedLetter = computed(() =>
-  'openers' in props.trap
-    ? props.trap.openers.map(letter => `“${letter.toUpperCase()}”`).join(' and ')
-    : undefined
-)
 const doors = computed<ClosedDoor[]>(() =>
   'doors' in props.trap
     ? props.trap.doors
@@ -88,28 +81,21 @@ const title = computed(() =>
 
 const blame = computed(() => {
   const head = countryName(getCountry(props.trap.head))
-  const letter = sealedLetter.value
-  if (!props.trap.byPlayerId) {
-    return letter
-      ? `The chain dead-ends at ${head} — ${letter} ${'openers' in props.trap && props.trap.openers.length > 1 ? 'are' : 'is'} spent.`
-      : `The chain dead-ends at ${head}.`
-  }
+  if (!props.trap.byPlayerId) return `The chain dead-ends at ${head}.`
   const closer = props.trap.byPlayerId === props.playerId ? 'You' : nameOf(props.trap.byPlayerId)
-  return letter
-    ? `${closer} sealed ${letter} at ${head}.`
-    : `${closer} closed the chain at ${head}.`
+  return `${closer} closed the chain at ${head}.`
 })
 
 const verdict = computed(() => {
   const count = doors.value.length
-  const letter = sealedLetter.value
-  const doorWord = letter
-    ? count === 1
-      ? 'The one country that chained was already walked'
-      : `All ${count} countries that chained were already walked`
-    : count === 1
-      ? 'The only way out was shut'
-      : `All ${count} ways out were shut`
+  const doorWord =
+    'openers' in props.trap
+      ? count === 1
+        ? 'The one country that chained was already walked'
+        : `All ${count} countries that chained were already walked`
+      : count === 1
+        ? 'The only way out was shut'
+        : `All ${count} ways out were shut`
   if (props.rescued) {
     const who = mine.value ? 'you pull' : `${nameOf(props.trap.playerId)} pulls`
     return `${count ? doorWord : 'Nowhere to go'} — ${who} the rip cord. Fresh ground.`

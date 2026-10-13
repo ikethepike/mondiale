@@ -18,12 +18,12 @@
       <span
         v-if="hiddenCount + index > 0"
         class="letter-tie"
-        :class="tieOf(hiddenCount + index)?.kind"
+        :class="ties[hiddenCount + index]?.kind"
         aria-hidden="true"
       >
-        {{ tieOf(hiddenCount + index)?.fragment.toUpperCase() }}
-        <sup v-if="paysOverlaps && (tieOf(hiddenCount + index)?.overlap ?? 0) > 1" class="bonus">
-          +{{ tieOf(hiddenCount + index)?.overlap }}
+        {{ ties[hiddenCount + index]?.fragment.toUpperCase() }}
+        <sup v-if="paysOverlaps && (ties[hiddenCount + index]?.overlap ?? 0) > 1" class="bonus">
+          +{{ ties[hiddenCount + index]?.overlap }}
         </sup>
       </span>
       <CountryChip
@@ -37,7 +37,7 @@
     </li>
     <li v-if="nextOpeners?.length && !finished" key="ghost" class="rail-cell">
       <span class="ghost-chip map-caption">
-        <span v-if="ghostLead" class="lead">{{ ghostLead }}</span>
+        <span v-if="ghostLead && nextOpeners.length === 1" class="lead">{{ ghostLead }}</span>
         <template v-for="(letter, letterIndex) in nextOpeners" :key="letter">
           <span v-if="letterIndex" class="or">/</span>
           <span class="letter">{{ letter.toUpperCase() }}</span>
@@ -58,12 +58,8 @@ import { getCountry } from '~~/lib/country'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
-/**
- * The atlas chain as chips — seed first, joined by their ties. One rail for
- * the gate, the group round and both reveals, so a junction never computes
- * its fragment two ways: everything reads lib/atlas-chain. A shared ending
- * ("PAL") burns ember like a trick shot; a consonant tie wears a dashed ring.
- */
+/** The atlas chain as chips, seed first, joined by their ties — the gate, the
+ *  table round and both reveals draw it. */
 const props = defineProps<{
   chain: ISOCountryCode[]
   /** Hard gate credit: a shared ending's tie carries its paid length. */
@@ -94,7 +90,11 @@ const hiddenCount = computed(() =>
 )
 const shownChain = computed(() => props.chain.slice(hiddenCount.value))
 
-const tieOf = (index: number) => atlasLinkTie(props.chain[index - 1], props.chain[index])
+const ties = computed(() =>
+  props.chain.map((isoCode, index) =>
+    index ? atlasLinkTie(props.chain[index - 1], isoCode) : undefined
+  )
+)
 
 const scarce = computed(
   () => props.optionsLeft !== undefined && props.optionsLeft <= ATLAS_SCARCE_OPTIONS

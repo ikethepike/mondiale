@@ -153,13 +153,12 @@ import { REGION_LABELS } from '~~/lib/variant'
 import { wireGame } from '~~/lib/wire-view'
 import { resolveSeatView } from '~/components/view/dispatch'
 import {
-  ATLAS_TABLE_SEED_OPTIONS,
   atlasContinuations,
   atlasLiveMoves,
   atlasTrapProof,
   atlasTurnSeconds,
   atlasWalked,
-  pickAtlasSeed,
+  pickAtlasReseed,
 } from '~~/lib/atlas-chain'
 import { chainHead, closedDoors, liveChain, openMoves, pickChainSeed } from '~~/lib/chain'
 import { createChainSimulator } from '~~/lib/harness/chain-simulator'
@@ -337,11 +336,7 @@ const atlasSim = createChainSimulator<AtlasChallenge>({
       ...atlasTrapProof(head, atlasWalked(challenge.state), atlasPool()),
     }
   },
-  reseed: challenge =>
-    pickAtlasSeed(gameStore.game!, {
-      minOptions: ATLAS_TABLE_SEED_OPTIONS,
-      exclude: new Set(challenge.state.chains.flat()),
-    }) ?? pickAtlasSeed(gameStore.game!, { minOptions: ATLAS_TABLE_SEED_OPTIONS }),
+  reseed: challenge => pickAtlasReseed(gameStore.game!, atlasWalked(challenge.state)),
 })
 
 const borderChainOf = () => {

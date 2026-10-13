@@ -109,6 +109,7 @@ describe('pull-rip-cord', () => {
     expect(state.ripCords?.a).toBe(0)
     expect(state.breaks?.at(-1)).toEqual({ kind: 'rip-cord', playerId: 'a' })
     expect(state.order[state.activeIndex]).toBe('a')
+    expect(state.lastMoverId).toBeUndefined()
     expect(state.turn).toBe(2)
     expect(state.deadline).toBe(Date.now() + atlasTurnSeconds(atlasOf(game.id)) * 1000)
   })
@@ -161,6 +162,8 @@ describe('the dead end', () => {
     expect(state.chains).toHaveLength(3)
     expect(state.order[state.activeIndex]).toBe('b')
     expect(state.deadline).toBeGreaterThan(0)
+    // Fresh ground was dealt, not moved: a dead end it springs credits nobody.
+    expect(state.lastMoverId).toBeUndefined()
   })
 })
 

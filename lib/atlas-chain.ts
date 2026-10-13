@@ -10,14 +10,12 @@ import { playableWorldCountries } from './game-rules'
  * Atlas — the country name chain. Each link must start where the previous one
  * ended, and three ties count: the last letter (Nepal → Laos), the consonant
  * under a trailing vowel run (Albania → Nigeria, Germany → Norway), or any
- * longer shared ending (Poland → Andorra). This module is the one home for the
+ * longer shared ending (Japan → Panama). This module is the one home for the
  * rule: validation, credit, seeds, hints and the trap proof all read it, on
  * both sides of the wire.
  *
- * The plain last-letter rule drowned in A: 71 of 183 names end in it, 9 start
- * with it, and 7 of those 9 end in it again — every round collapsed into
- * counting the A's left. The consonant tie is the fix; overlaps alone are not
- * (nothing starts "Ia", which is how most of the A's end).
+ * Shared endings alone do not break the A-spiral — nothing starts "Ia", which
+ * is how most A-enders end. The consonant tie is what does.
  */
 
 /** How credit is paid, never which links are legal — one rule for every
@@ -56,8 +54,9 @@ export const atlasConsonant = (isoCode: ISOCountryCode): string | undefined => {
   return stripped.length && stripped.length < key.length ? stripped.at(-1) : undefined
 }
 
-/** Every single letter a follower may open with: the tail, then the
- *  consonant under a trailing vowel run. */
+/** The single letters a follower may open with: the tail, then the
+ *  consonant under a trailing vowel run. A longer shared ending can open on
+ *  an earlier letter still — copy built on this says so. */
 export const atlasOpeners = (isoCode: ISOCountryCode): string[] => {
   const consonant = atlasConsonant(isoCode)
   return consonant ? [atlasTailLetter(isoCode), consonant] : [atlasTailLetter(isoCode)]
@@ -306,6 +305,20 @@ export const pickAtlasSeed = (
   const pool = playableWorldCountries(rules)
   return shuffleArray(pool.filter(isoCode => !exclude?.has(isoCode))).find(
     isoCode => atlasContinuations(isoCode, exclude ?? [], pool).length >= minOptions
+  )
+}
+
+/** Fresh ground mid-round (a dead end's redeal, a pulled rip cord): never a
+ *  walked country, and never a seed that is itself a dead end. Prefers the
+ *  table's healthy opening, settles for any live seed late in a round. */
+export const pickAtlasReseed = (
+  rules: GameRules,
+  walked: readonly ISOCountryCode[]
+): ISOCountryCode | undefined => {
+  const exclude = new Set(walked)
+  return (
+    pickAtlasSeed(rules, { minOptions: ATLAS_TABLE_SEED_OPTIONS, exclude }) ??
+    pickAtlasSeed(rules, { minOptions: 1, exclude })
   )
 }
 

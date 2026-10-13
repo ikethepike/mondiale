@@ -9,7 +9,7 @@
       <p class="teach">
         {{
           continuations.length
-            ? `You needed a country starting with ${letter} —`
+            ? `You needed a country chaining from ${headName} —`
             : `Every country chaining from ${headName} was already spent.`
         }}
       </p>
@@ -27,7 +27,7 @@
 <script lang="ts" setup>
 import AtlasChainRail from '~/components/challenge/AtlasChainRail.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
-import { atlasChainCredit, atlasContinuations, atlasOpenersLabel } from '~~/lib/atlas-chain'
+import { atlasChainCredit, atlasContinuations } from '~~/lib/atlas-chain'
 import { countryName, getCountry } from '~~/lib/country'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { useGameStore } from '~~/store/game.store'
@@ -51,10 +51,6 @@ const banked = computed(() =>
 )
 const won = computed(() => banked.value >= (props.challenge.atlas?.target ?? Infinity))
 
-const letter = computed(() => {
-  const head = props.chain.at(-1)
-  return head ? atlasOpenersLabel(head) : ''
-})
 const headName = computed(() => {
   const head = props.chain.at(-1)
   return head ? countryName(head) : ''
