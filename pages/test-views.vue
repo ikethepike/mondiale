@@ -175,6 +175,7 @@ import {
   GROUND_PLAN_SECONDS_PER_HINT,
   TIMELINE_BROWSE_CAP_MS,
   groundPlanSeconds,
+  isBriefedClassic,
   isClassicGroupRound,
 } from '~~/lib/round-beats'
 import { settleGroupRound, stampMockClassicClock } from '~~/lib/harness/settle-group-round'
@@ -701,7 +702,7 @@ const installStubSocket = () => {
     if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
     if (event === 'chain-ready') chainSim().ready()
     if (event === 'pull-rip-cord') atlasSim.ripCord(eventData ?? {})
-    if (event === 'terra-ready') simulateTerraReady()
+    if (event === 'terra-ready' || event === 'unmask-ready') simulateClassicReady()
     if (event === 'government-ready') simulateGovernmentReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
     if (event === 'submit-group-challenge-answers') simulateGroupSettle(eventData ?? {})
@@ -845,14 +846,15 @@ const simulateGovernmentReady = () => {
   }, SIM_LATENCY_MS)
 }
 
-/** The stub's half of terra-beats: the harness seat is the last ready, so
+/** The stub's half of classic-briefing: the harness seat is the last ready, so
  *  its click closes the briefing and the view starts the (local) clock. */
-const simulateTerraReady = () => {
-  const challenge = gameStore.game?.rounds.at(-1)?.groupChallenge
-  if (!challenge || !('_type' in challenge) || challenge._type !== 'terra-incognita-challenge')
-    return
+const simulateClassicReady = () => {
+  const round = gameStore.game?.rounds.at(-1)
+  const challenge = round?.groupChallenge
+  if (!round || !isBriefedClassic(challenge)) return
   if (!challenge.state.ready.includes(ME)) challenge.state.ready.push(ME)
   challenge.state.briefing = false
+  stampMockClassicClock(round)
 }
 
 const mockPlayer = (id: string, name: string, color: PlayerColor, step: SeatStep): Player =>

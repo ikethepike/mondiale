@@ -191,6 +191,7 @@ export interface UnmaskChallenge {
   /** The dealer's output, on the SERVER copy only: `startUnmask` moves it to
    *  the side key before the reveal saves. */
   sealed?: UnmaskFile
+  state: ClassicBriefingState
 }
 
 /** The round's secret: the subject and every rung, as the side key holds it. */
@@ -1388,10 +1389,12 @@ export interface TerraIncognitaChallenge {
    *  The one classic clock (`Round.deadline`) stamps only when the table is
    *  ready or the cap forces it, so the world never starts failing under a
    *  card and every seat watches the SAME world come apart. */
-  state: TerraBriefingState
+  state: ClassicBriefingState
 }
 
-export interface TerraBriefingState {
+/** A classic round behind a rules card (Terra Incognita, Unmask): the clock
+ *  stamps only when every dealt seat is ready or the cap forces it. */
+export interface ClassicBriefingState {
   briefing?: boolean
   /** Players who dismissed their briefing card. */
   ready: string[]

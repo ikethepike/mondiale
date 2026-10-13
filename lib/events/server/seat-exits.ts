@@ -9,8 +9,9 @@ import {
   STEP_INTERVAL_MS,
   WALK_LEAD_MS,
   WALK_RESUME_LEAD_MS,
+  isBriefedClassic,
 } from '~~/lib/round-beats'
-import { isChallengeOfType, latestRound } from '~~/lib/rounds'
+import { latestRound } from '~~/lib/rounds'
 import { seatSubject, tableOwesNextRound, type SeatTimerKind } from '~~/lib/seat-transitions'
 import type { FinalChallenge, FinalChallengeAnswer } from '~~/types/challenges/final-challenge.type'
 import type { Game, PlayerMove } from '~~/types/game.types'
@@ -44,7 +45,7 @@ import { startUnmask } from './unmask-seal'
 import { advanceSeat, capDeadline } from './seat-cursor'
 import { recordCheckpoint } from './seat-journal'
 import { isCleanSweepChallenge, scheduleSweepTimeout } from './sweep-beats'
-import { scheduleTerraTimeout } from './terra-beats'
+import { scheduleClassicBriefingTimeout } from './classic-briefing'
 import { isTimelineChallenge, scheduleTimelineTimeout, startTimelineClock } from './timeline-turns'
 import { isUniqueOrBustChallenge, scheduleUniqueTimeout } from './unique-beats'
 
@@ -535,8 +536,6 @@ export const revealNextRound = async (ctx: EngineContext, game: Game, server: Se
   // The briefed kinds open on their rules card: these arm the reading caps.
   if (isUniqueOrBustChallenge(revealed)) scheduleUniqueTimeout(ctx, game, revealed)
   if (isCleanSweepChallenge(revealed)) scheduleSweepTimeout(ctx, game, revealed)
-  if (isChallengeOfType(revealed, 'terra-incognita-challenge')) {
-    scheduleTerraTimeout(ctx, game, revealed)
-  }
+  if (isBriefedClassic(revealed)) scheduleClassicBriefingTimeout(ctx, game, revealed)
   scheduleClassicSettle(ctx, game)
 }

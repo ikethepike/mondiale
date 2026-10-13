@@ -213,7 +213,7 @@ describe('server waits', () => {
     'lib/events/server/heritage-beats.ts': { count: 3, owner: 'table', token: 'state.beat' },
     'lib/events/server/manhunt-beats.ts': { count: 3, owner: 'table', token: 'state.turn' },
     'lib/events/server/sweep-beats.ts': { count: 3, owner: 'table', token: 'state.briefing' },
-    'lib/events/server/terra-beats.ts': { count: 1, owner: 'table', token: 'state.briefing' },
+    'lib/events/server/classic-briefing.ts': { count: 1, owner: 'table', token: 'state.briefing' },
     'lib/events/server/timeline-turns.ts': { count: 3, owner: 'table', token: 'state.turn' },
     'lib/events/server/unique-beats.ts': { count: 3, owner: 'table', token: 'state.briefing' },
     'lib/events/server/bot-brain.ts': {

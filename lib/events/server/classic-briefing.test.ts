@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  applyTerraReady,
-  currentTerraIncognita,
-  rearmTerraIncognita,
-  scheduleTerraTimeout,
-} from './terra-beats'
+  applyClassicReady,
+  currentBriefedClassic,
+  rearmClassicBriefing,
+  scheduleClassicBriefingTimeout,
+} from './classic-briefing'
 import { startClassicClock } from './classic-rounds'
 import { BRIEFING_CAP_MS } from '~~/lib/round-beats'
 import { terraCollapseThreshold, terraSeconds, TERRA_CADENCE_MS } from '~~/lib/terra-incognita'
@@ -82,14 +82,14 @@ describe('the briefing gate', () => {
     const game = buildGame(challenge)
     const ctx = context(game)
 
-    await applyTerraReady(ctx, game, challenge, 'ada')
+    await applyClassicReady(ctx, game, challenge, 'ada')
     expect(challenge.state.ready).toEqual(['ada'])
     expect(challenge.state.briefing).toBe(true)
     expect(liveRound(game.id).deadline).toBeUndefined()
     // Short of the last ready is still a whole-table repaint.
     expect(emitted).toContain('table-updated')
 
-    await applyTerraReady(ctx, game, challenge, 'ben')
+    await applyClassicReady(ctx, game, challenge, 'ben')
     expect(challenge.state.briefing).toBe(false)
     expect(liveRound(game.id).deadline).toBeGreaterThan(Date.now())
   })
@@ -99,9 +99,9 @@ describe('the briefing gate', () => {
     const game = buildGame(challenge)
     const ctx = context(game)
 
-    await applyTerraReady(ctx, game, challenge, 'stranger')
-    await applyTerraReady(ctx, game, challenge, 'ada')
-    await applyTerraReady(ctx, game, challenge, 'ada')
+    await applyClassicReady(ctx, game, challenge, 'stranger')
+    await applyClassicReady(ctx, game, challenge, 'ada')
+    await applyClassicReady(ctx, game, challenge, 'ada')
     expect(challenge.state.ready).toEqual(['ada'])
     expect(challenge.state.briefing).toBe(true)
   })
@@ -111,10 +111,10 @@ describe('the briefing gate', () => {
     const game = buildGame(challenge)
     const ctx = context(game)
 
-    scheduleTerraTimeout(ctx, game, challenge)
+    scheduleClassicBriefingTimeout(ctx, game, challenge)
     await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 50)
 
-    const current = currentTerraIncognita(store.get(game.id)!)!
+    const current = currentBriefedClassic(store.get(game.id)!)!
     expect(current.state.briefing).toBe(false)
     expect(liveRound(game.id).deadline).toBeGreaterThan(0)
   })
@@ -124,13 +124,13 @@ describe('the briefing gate', () => {
     const game = buildGame(challenge)
     const ctx = context(game)
 
-    rearmTerraIncognita(ctx, game, { armBriefingCaps: false })
+    rearmClassicBriefing(ctx, game, { armBriefingCaps: false })
     await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 50)
-    expect(currentTerraIncognita(store.get(game.id)!)!.state.briefing).toBe(true)
+    expect(currentBriefedClassic(store.get(game.id)!)!.state.briefing).toBe(true)
 
-    rearmTerraIncognita(ctx, game)
+    rearmClassicBriefing(ctx, game)
     await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 50)
-    expect(currentTerraIncognita(store.get(game.id)!)!.state.briefing).toBe(false)
+    expect(currentBriefedClassic(store.get(game.id)!)!.state.briefing).toBe(false)
   })
 
   it('leaves a briefed round alone', async () => {
@@ -140,8 +140,8 @@ describe('the briefing gate', () => {
     const stamped = Date.now() + 10_000
     game.rounds[0]!.deadline = stamped
 
-    rearmTerraIncognita(ctx, game)
-    await applyTerraReady(ctx, game, challenge, 'ada')
+    rearmClassicBriefing(ctx, game)
+    await applyClassicReady(ctx, game, challenge, 'ada')
     await vi.advanceTimersByTimeAsync(BRIEFING_CAP_MS + 50)
     expect(liveRound(game.id).deadline).toBe(stamped)
   })

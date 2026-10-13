@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { regionsForVariant } from '~~/lib/board-regions'
 import { mentionsCountry } from '~~/lib/country'
 import { buzzScore } from '~~/lib/scoring'
-import { TIMEOUT_SLACK_MS } from '~~/lib/round-beats'
+import { TIMEOUT_SLACK_MS, briefingHolds } from '~~/lib/round-beats'
 import { dealUnmask } from '~~/lib/events/server/unmask-deal'
 import { unmaskDossier } from '~~/lib/events/server/unmask-file'
 import { startUnmask } from '~~/lib/events/server/unmask-seal'
@@ -19,9 +19,16 @@ import { UNMASK_TUNING, unmaskKey, unmaskRemainingFraction, unmaskRungsShown } f
 import type { UnmaskChallenge, UnmaskFile } from '~~/types/challenges/group-modes.type'
 import type { Game, GameDifficulty, GameVariant, Round } from '~~/types/game.types'
 import type { EngineContext } from '~~/lib/events/server/round-engine'
+import { testSeat } from '~~/lib/events/server/test-seat'
 
 const gameFor = (variant: GameVariant, difficulty: GameDifficulty) =>
-  ({ id: 'g', regions: regionsForVariant(variant), difficulty, rounds: [] }) as unknown as Game
+  ({
+    id: 'g',
+    regions: regionsForVariant(variant),
+    difficulty,
+    rounds: [],
+    players: { ada: testSeat('ada'), ben: testSeat('ben') },
+  }) as unknown as Game
 
 const DEALS = 60
 const MAX = 10
@@ -33,6 +40,12 @@ const deal = (variant: GameVariant, difficulty: GameDifficulty) => {
 }
 
 describe('the Unmask deal', () => {
+  it('opens behind the briefing card, with the whole table seated in it', () => {
+    const { state } = deal('world', 'normal')
+    expect(state).toEqual({ briefing: true, ready: [], order: ['ada', 'ben'] })
+    expect(briefingHolds(deal('europe', 'hard'))).toBe(true)
+  })
+
   it('opens on a face and ends on the name, rung for rung with its file', () => {
     for (const variant of ['world', 'europe', 'africa', 'asia'] as const) {
       for (const difficulty of ['easy', 'normal', 'hard'] as const) {

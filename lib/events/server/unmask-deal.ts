@@ -3,6 +3,7 @@ import { sample } from '~~/lib/arrays'
 import { isWorldBoard } from '~~/lib/board-regions'
 import { COUNTRIES } from '~~/data/countries.gen'
 import { playableCountries } from '~~/lib/game-rules'
+import { chainContenders } from '~~/lib/player'
 import {
   decodePixels,
   downsamplePixels,
@@ -123,6 +124,7 @@ export const dealUnmask = (
     secondsPerRung: tuning.secondsPerRung,
     maximumPoints,
     suspects,
+    state: { briefing: true, ready: [], order: chainContenders(game) },
     sealed: {
       country,
       clues,

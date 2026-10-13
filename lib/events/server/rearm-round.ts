@@ -10,7 +10,7 @@ import { rearmGovernment } from './government-beats'
 import { rearmSeats } from './seat-cursor'
 import { rearmTimeline } from './timeline-turns'
 import { rearmCleanSweep } from './sweep-beats'
-import { rearmTerraIncognita } from './terra-beats'
+import { rearmClassicBriefing } from './classic-briefing'
 import { rearmUniqueOrBust } from './unique-beats'
 
 /** How long one rearm sweep covers a game. A flapping (or replaying) client
@@ -63,7 +63,7 @@ export const rearmLiveRound = (
   rearmGovernment(ctx, game, options)
   rearmUniqueOrBust(ctx, game, options)
   rearmCleanSweep(ctx, game, options)
-  rearmTerraIncognita(ctx, game, options)
+  rearmClassicBriefing(ctx, game, options)
   rearmClassicRound(ctx, game)
   // Not a round engine: every seat's cursor timer and the table's reveal.
   rearmSeats(ctx, game)

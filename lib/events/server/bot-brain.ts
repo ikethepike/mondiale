@@ -59,6 +59,7 @@ import {
   isBrowsableRound,
   isClassicGroupRound,
   seatWindowMsFor,
+  CLASSIC_READY_EVENTS,
 } from '~~/lib/round-beats'
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { gateClockFor } from '~~/lib/gate-timing'
@@ -117,7 +118,7 @@ import { scheduleEngineTask, type EngineContext } from './round-engine'
 import { retireSeat } from './seat-exits'
 import { recordSeatEvent } from './seat-journal'
 import { currentCleanSweep } from './sweep-beats'
-import { currentTerraIncognita } from './terra-beats'
+import { currentBriefedClassic } from './classic-briefing'
 import { currentTimeline, mayPlaceTimeline } from './timeline-turns'
 import { currentUniqueOrBust } from './unique-beats'
 import { sunsetQuota } from '~~/lib/sunset-pace'
@@ -421,15 +422,15 @@ const planGroupChallenge = ({
 }) => {
   const challenge = round.groupChallenge
 
-  // Terra Incognita is a classic round behind a briefing: the ready ack comes
-  // first, and the composed answer only once the world is actually failing.
-  const terra = currentTerraIncognita(game)
-  if (terra?.state.briefing) {
-    if (!terra.state.order.includes(seat.id) || terra.state.ready.includes(seat.id)) return
+  // A classic round behind a briefing (Terra, Unmask): the ready ack comes
+  // first, and the composed answer only once the clock has stamped.
+  const briefed = currentBriefedClassic(game)
+  if (briefed?.state.briefing) {
+    if (!briefed.state.order.includes(seat.id) || briefed.state.ready.includes(seat.id)) return
     if (
-      due(`terra-ready:${roundIndex}:${seat.id}`, () => rollMs(BOT_READY_MS, BOT_READY_JITTER_MS))
+      due(`classic-ready:${roundIndex}:${seat.id}`, () => rollMs(BOT_READY_MS, BOT_READY_JITTER_MS))
     ) {
-      dispatchTerraReady(ctx, seat.id)
+      dispatchClassicReady(ctx, seat.id)
     }
     return
   }
@@ -1107,10 +1108,11 @@ const dispatchUniqueAnswer = (ctx: EngineContext, playerId: string, category: Un
   })
 }
 
-const dispatchTerraReady = (ctx: EngineContext, playerId: string) => {
+const dispatchClassicReady = (ctx: EngineContext, playerId: string) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    if (currentTerraIncognita(fresh)) await botAct(ctx, { event: 'terra-ready' })
+    const briefed = currentBriefedClassic(fresh)
+    if (briefed) await botAct(ctx, { event: CLASSIC_READY_EVENTS[briefed._type] })
   })
 }
 

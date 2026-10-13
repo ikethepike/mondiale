@@ -316,6 +316,11 @@ export type ClientEventData =
       event: 'terra-ready'
     }
   | {
+      /** Unmask: a player dismissed their briefing card. The rung clock
+       *  stamps when everyone has (or the briefing cap forces it). */
+      event: 'unmask-ready'
+    }
+  | {
       /** Timeline: done reading the finished round's chronicle. Settle fires
        *  when every seat has acked, or the browse cap does. No turn echo —
        *  `finished` is terminal, and `revealDone` makes retries idempotent. */
@@ -466,6 +471,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'sweep-ready',
   'government-ready',
   'terra-ready',
+  'unmask-ready',
   'timeline-reveal-done',
   'gate-reveal-done',
   'submit-unique-answer',

@@ -35,7 +35,7 @@ import { chainReadyHandler } from './chain-ready.handler'
 import { submitUniqueAnswerHandler } from './submit-unique-answer.handler'
 import { sweepReadyHandler } from './sweep-ready.handler'
 import { governmentReadyHandler } from './government-ready.handler'
-import { terraReadyHandler } from './terra-ready.handler'
+import { terraReadyHandler, unmaskReadyHandler } from './classic-ready.handler'
 import { timelineRevealDoneHandler } from './timeline-reveal-done.handler'
 import { gateRevealDoneHandler } from './gate-reveal-done.handler'
 import { submitSweepClaimHandler } from './submit-sweep-claim.handler'
@@ -136,6 +136,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'terra-ready': {
     handler: terraReadyHandler,
+  },
+  'unmask-ready': {
+    handler: unmaskReadyHandler,
   },
   'timeline-reveal-done': {
     handler: timelineRevealDoneHandler,

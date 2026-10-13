@@ -5,11 +5,21 @@
       tone="info"
       kind="unmask"
       title="Who is behind the file?"
-      :stakes="`A leader's file opens a rung every ${challenge.secondsPerRung} seconds — a face that sharpens, then the facts, then the name. You get ONE accusation — name them or their country, and your first pick is final. The earlier it lands, the more it pays.`"
-      @done="begin"
+      stakes="A leader's file opens rung by rung. See through it before the name lands."
+      @done="brief"
+    />
+
+    <UnmaskBriefing
+      v-if="briefing"
+      :challenge="challenge"
+      :ready="state.ready"
+      :participants="state.order"
+      :sent="sentReady"
+      @ready="sendReady"
     />
 
     <ChallengePrompt
+      v-if="!briefing"
       ref="prompt"
       compact
       :hint="hint"
@@ -42,7 +52,7 @@
     </ChallengePrompt>
 
     <UnmaskFile
-      v-if="!railless"
+      v-if="!railless && !briefing"
       ref="sideFile"
       class="side-stage"
       :rungs="challenge.rungs"
@@ -54,7 +64,7 @@
       :photo-label="answerLeader?.name"
     />
 
-    <footer v-if="!submitted && !gameStore.watching" ref="footer">
+    <footer v-if="!submitted && !gameStore.watching && !briefing" ref="footer">
       <div class="guess-box">
         <div
           v-if="suspectRail.length"
@@ -81,20 +91,24 @@
           <button
             v-if="scrollableLeft"
             type="button"
-            class="map-caption rail-step back"
+            class="rail-step back"
             aria-label="Earlier suspects"
             @click="stepRail(-1)"
           >
-            ‹
+            <svg viewBox="0 0 10 10" aria-hidden="true">
+              <polyline points="6,2 3,5 6,8" />
+            </svg>
           </button>
           <button
             v-if="scrollableRight"
             type="button"
-            class="map-caption rail-step"
+            class="rail-step"
             aria-label="More suspects"
             @click="stepRail(1)"
           >
-            ›
+            <svg viewBox="0 0 10 10" aria-hidden="true">
+              <polyline points="4,2 7,5 4,8" />
+            </svg>
           </button>
         </div>
         <ChallengeConsole class="console" :value="secondsLeft" :total="totalSeconds">
@@ -127,6 +141,7 @@
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
 import MembershipSheet from '~/components/challenge/MembershipSheet.vue'
+import UnmaskBriefing from '~/components/challenge/UnmaskBriefing.vue'
 import UnmaskFile from '~/components/challenge/UnmaskFile.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
 import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
@@ -151,10 +166,12 @@ import { useFooterBerth } from '~~/lib/use-footer-berth'
 import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { prefersReducedMotion } from '~~/lib/motion'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
+import { useAckOnce } from '~~/lib/use-ack-once'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
 import { useIsPhone, useIsRailless } from '~~/lib/use-viewport'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import type { ClassicBriefingState } from '~~/types/challenges/group-modes.type'
 import { isMapClickEvent } from '~~/types/events.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
@@ -282,6 +299,23 @@ const begin = () => {
   nextTick(() => guessInput.value?.focus({ auto: true }))
 }
 
+const EMPTY_STATE: ClassicBriefingState = { ready: [], order: [] }
+const state = computed(() => challenge.value?.state ?? EMPTY_STATE)
+const briefingOpen = computed(() => !!state.value.briefing)
+const briefing = computed(() => briefingOpen.value && !showInterstitial.value)
+const { sent: sentReady, send: sendReady } = useAckOnce(() => ({ event: 'unmask-ready' }))
+const startRound = () => {
+  if (gameStore.watching) return beginRound()
+  if (!started.value) begin()
+}
+const brief = () => {
+  showInterstitial.value = false
+  if (!briefingOpen.value) startRound()
+}
+watch(briefingOpen, (open, was) => {
+  if (was && !open && !showInterstitial.value) startRound()
+})
+
 watch(
   () => playWindow.expired.value && started.value && !gameStore.watching,
   ran => {
@@ -369,24 +403,34 @@ registerCleanup(() => document.removeEventListener('mapClick', onMapClick))
 
 .rail-step {
   top: 50%;
-  right: -0.4rem;
-  width: 3.2rem;
-  height: 3.2rem;
+  right: 0;
+  width: 2.4rem;
+  height: 2.4rem;
   padding: 0;
+  border: 0;
   display: grid;
   cursor: pointer;
-  font: inherit;
-  font-size: 2rem;
-  line-height: 1;
   position: absolute;
   place-items: center;
   border-radius: 50%;
   pointer-events: auto;
+  color: var(--dark-blue);
+  background: glass(0.8);
   transform: translateY(-50%);
-  border: 0.15rem solid var(--suspect-fill);
+  box-shadow: 0 0.1rem 0.4rem ink(0.15);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 
   &.back {
-    left: -0.4rem;
+    left: 0;
     right: auto;
   }
 }
