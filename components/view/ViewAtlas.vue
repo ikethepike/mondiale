@@ -19,6 +19,7 @@
       :trap="trap"
       :players="gameStore.game?.players ?? {}"
       :player-id="gameStore.seatId"
+      :rescued="trapRescued"
     />
 
     <!-- Walk-order numbers pinned over the chain — the gradient shows the
@@ -37,52 +38,23 @@
       <span v-if="!finished && !briefing && !trap" class="map-caption sub turn-line">
         <span class="chip" :style="{ background: activePlayer?.color }" />
         <span>{{ turnLabel }}</span>
-        <ChallengeTimerRadial
-          class="turn-clock"
-          :value="secondsOnClock"
-          :total="challenge.turnSeconds"
-        />
+        <ChallengeTimerRadial class="turn-clock" :value="secondsOnClock" :total="turnTotal" />
       </span>
       <span v-if="!finished && iAmOut" class="map-caption sub out"> You're out — spectating </span>
     </ChallengePrompt>
 
-    <!-- The briefing: a rules card each player dismisses explicitly (Border
-         Chain's gate). The opening shot clock only starts when the whole
-         table is ready — or the server's reading cap forces it. -->
+    <!-- The tutorial: every seat confirms it understands the rules before the
+         opening shot clock starts (the server's cap only covers a seat that
+         walked away). -->
     <BriefingCard
       v-if="briefing"
       :participants="state!.order"
       :ready="state!.ready"
-      cta="Chain me in"
+      cta="I understand — chain me in"
       :sent="sentReady"
       @ready="sendReady"
     >
-      <!-- Two name chips joined by the letter tie — the rail's own motif, in
-           the stroke language the mode marks speak. -->
-      <svg class="briefing-mark" viewBox="0 0 48 24" aria-hidden="true">
-        <rect x="2" y="7" width="16" height="10" rx="5" />
-        <circle cx="24" cy="12" r="4" />
-        <rect x="30" y="7" width="16" height="10" rx="5" />
-      </svg>
-      <h2>Atlas</h2>
-      <ul class="briefing-points">
-        <li>
-          One chain, in turns: name a country that begins with the last letter of the head —
-          {{ challenge.turnSeconds }} seconds a move.
-        </li>
-        <li v-if="challenge.overlaps">
-          Any shared ending chains: Nepal → Palestine works, not just Nepal → Laos.
-        </li>
-        <li>No repeats — every country is named once.</li>
-        <li v-if="challenge.strikes > 0">
-          A wrong name or a dead clock burns your strike; the next puts you out.
-        </li>
-        <li v-else>A wrong name or a dead clock puts you out — sudden death.</li>
-        <li v-if="challenge.overlaps">
-          A spent letter traps whoever holds it. Only your placement pays. Outlast the table.
-        </li>
-        <li v-else>A spent letter traps whoever holds it. Outlast the table.</li>
-      </ul>
+      <AtlasTutorial :challenge="challenge" />
     </BriefingCard>
 
     <ChainReveal
@@ -102,12 +74,8 @@
       <div class="reveal-chains">
         <template v-for="(stanza, index) in revealStanzas" :key="index">
           <span v-if="index > 0" class="chain-start eyebrow">Fresh chain</span>
-          <AtlasChainRail :chain="stanza.chain" :overlaps="challenge.overlaps" finished compact />
-          <p v-if="stanza.brokeAt" class="chain-break">
-            Dead end — every “{{ stanza.brokeAt.letter }}” was spent:
-            {{ seatName(stanza.brokeAt.playerId) }}
-            {{ stanza.brokeAt.playerId === gameStore.seatId ? 'were' : 'was' }} knocked out
-          </p>
+          <AtlasChainRail :chain="stanza.chain" finished compact />
+          <p v-if="stanza.line" class="chain-break">{{ stanza.line }}</p>
         </template>
       </div>
     </ChainReveal>
@@ -124,14 +92,19 @@
         v-if="!finished"
         class="route"
         :chain="chain"
-        :overlaps="challenge.overlaps"
-        :next-letter="briefing ? undefined : nextLetter"
+        :next-openers="briefing ? undefined : openers"
+        :options-left="briefing || isHardGame ? undefined : openNames.length"
         :tail="LIVE_RAIL_TAIL"
       />
+      <div v-if="canPullCord" class="hint-row">
+        <button class="hint-button rip-cord" type="button" :disabled="pending" @click="pullCord">
+          Pull the rip cord — swap {{ headName }} for a fresh country
+        </button>
+      </div>
       <!-- On your turn the shot clock lives inside the guess console; between
            turns the header's turn-line chip carries the countdown. -->
       <div v-if="myTurn && !finished && !briefing" class="guess-box">
-        <ChallengeConsole class="console" :value="secondsOnClock" :total="challenge.turnSeconds">
+        <ChallengeConsole class="console" :value="secondsOnClock" :total="turnTotal">
           <!-- Pure recall — except on easy, where suggestions return from the
                third typed character (lib/atlas-chain's one constant). -->
           <CountryGuessInput
@@ -140,7 +113,7 @@
             :suggest-from="ATLAS_EASY_SUGGEST_FROM"
             :disabled="pending"
             :excluded="walked"
-            :placeholder="`Starts with ${nextLetter.toUpperCase()}…`"
+            :placeholder="`Starts with ${openersLabel}…`"
             @guess="submitGuess"
             @miss="announce({ hint: 'No country by that name' })"
           />
@@ -151,6 +124,7 @@
 </template>
 <script lang="ts" setup>
 import AtlasChainRail from '~/components/challenge/AtlasChainRail.vue'
+import AtlasTutorial from '~/components/challenge/AtlasTutorial.vue'
 import ChainReveal from '~/components/challenge/ChainReveal.vue'
 import ChallengeConsole from '~/components/challenge/ChallengeConsole.vue'
 import ChallengePrompt from '~/components/challenge/ChallengePrompt.vue'
@@ -162,24 +136,26 @@ import Interstitial from '~/components/feedback/Interstitial.vue'
 import TrapSprung from '~/components/feedback/TrapSprung.vue'
 import {
   ATLAS_EASY_SUGGEST_FROM,
-  atlasContinuations,
   atlasHeadLetter,
-  atlasKey,
-  atlasLinkOverlap,
-  atlasTailLetter,
+  atlasLinkTie,
+  atlasLiveMoves,
+  atlasOpeners,
+  atlasOpenersLabel,
+  atlasTurnSeconds,
   isAtlasLink,
 } from '~~/lib/atlas-chain'
 import { datasetAttribution } from '~~/lib/attribution'
 import {
   activePlayerId,
   type ChainBeats,
+  canPullRipCord,
   chainBeats,
   chainNarration,
+  deadEndRescued,
   liveChain,
   walkColor,
 } from '~~/lib/chain'
 import { countryName, getCountry } from '~~/lib/country'
-import { playableWorldCountries } from '~~/lib/game-rules'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
@@ -187,6 +163,7 @@ import { useAckOnce } from '~~/lib/use-ack-once'
 import { REPLAY_REDRAW_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
 import type { CountryColorGrouping } from '~~/types/map.type'
+import type { ChainBreak } from '~~/types/challenges/group-modes.type'
 import type { Country, ISOCountryCode } from '~~/types/geography.types'
 
 const promptSources = datasetAttribution('countries')
@@ -232,15 +209,19 @@ const walked = computed(() => state.value?.chains.flat() ?? [])
 
 const rules = gameStore.game ?? { regions: [], difficulty: 'normal' as const }
 const isEasyGame = computed(() => gameStore.game?.difficulty === 'easy')
-const rule = computed(() => ({ overlaps: !!challenge.value?.overlaps }))
+const isHardGame = computed(() => gameStore.game?.difficulty === 'hard')
 
 const head = computed(() => chain.value[chain.value.length - 1])
-const nextLetter = computed(() => (head.value ? atlasTailLetter(head.value) : ''))
+const headName = computed(() => (head.value ? countryName(head.value) : ''))
+const openers = computed(() => (head.value ? atlasOpeners(head.value) : []))
+const openersLabel = computed(() => (head.value ? atlasOpenersLabel(head.value) : ''))
+const trapRescued = computed(() => (state.value ? deadEndRescued(state.value) : false))
+const turnTotal = computed(() => (challenge.value ? atlasTurnSeconds(challenge.value) : 0))
 
 /** The head's legal continuations — the same function the server grades with. */
 const openNames = computed(() => {
-  if (!head.value || finished.value || !state.value) return []
-  return atlasContinuations(head.value, walked.value, playableWorldCountries(rules), rule.value)
+  if (finished.value || !state.value) return []
+  return atlasLiveMoves(state.value, rules)
 })
 
 /** Walk-order badges over the live chain (1 = seed). On easy, a hand of valid
@@ -267,10 +248,8 @@ const stakes = computed(() => {
     (challenge.value?.strikes ?? 0) > 0
       ? 'One slip is forgiven — the second is not.'
       : 'Sudden death: one slip and you are out.'
-  const ruleLine = challenge.value?.overlaps
-    ? ' Any ending chains — Nepal → Palestine works. Only your placement pays.'
-    : ''
-  return `Take turns naming a country that begins with the last letter of the one before. No repeats. ${grace}${ruleLine} Outlast everyone.`
+  const payLine = challenge.value?.placementOnly ? ' Only your placement pays.' : ''
+  return `Take turns naming a country that begins where the last one ended — its last letter, the consonant before its final vowels, or any shared ending. No repeats, one rip cord each. ${grace}${payLine} Outlast everyone.`
 })
 
 const headline = computed(() => {
@@ -279,7 +258,7 @@ const headline = computed(() => {
 })
 
 const turnLabel = computed(() => {
-  const needs = nextLetter.value ? ` — needs “${nextLetter.value.toUpperCase()}”` : ''
+  const needs = openersLabel.value ? ` — needs ${openersLabel.value}, or a shared ending` : ''
   if (myTurn.value) return `Your move${needs}`
   return `${playerDisplayName(activePlayer.value)} is on the clock${needs}`
 })
@@ -322,70 +301,82 @@ const revealStats = computed<{ label: string; value: string }[]>(() => {
     stats.push({ label: 'Longest run', value: `${seatName(bestRunner)} · ${bestRun}` })
   }
 
-  if (challenge.value?.overlaps) {
-    let deepest = 1
-    let deepestLink: [ISOCountryCode, ISOCountryCode] | undefined
-    for (const walkedChain of current.chains) {
-      for (let index = 1; index < walkedChain.length; index++) {
-        const overlap = atlasLinkOverlap(walkedChain[index - 1], walkedChain[index])
-        if (overlap > deepest) {
-          deepest = overlap
-          deepestLink = [walkedChain[index - 1], walkedChain[index]]
-        }
+  let deepest = 1
+  let deepestLink: [ISOCountryCode, ISOCountryCode] | undefined
+  const openedWith: { [letter: string]: number } = {}
+  for (const walkedChain of current.chains) {
+    for (let index = 1; index < walkedChain.length; index++) {
+      const opener = atlasHeadLetter(walkedChain[index]).toUpperCase()
+      openedWith[opener] = (openedWith[opener] ?? 0) + 1
+      const tie = atlasLinkTie(walkedChain[index - 1], walkedChain[index])
+      if (tie && tie.overlap > deepest) {
+        deepest = tie.overlap
+        deepestLink = [walkedChain[index - 1], walkedChain[index]]
       }
     }
-    if (deepestLink) {
-      stats.push({
-        label: 'Deepest link',
-        value: `${atlasKey(deepestLink[1]).slice(0, deepest).toUpperCase()} · ${countryName(deepestLink[1])}`,
-      })
-    }
   }
+  if (deepestLink) {
+    const tie = atlasLinkTie(deepestLink[0], deepestLink[1])!
+    stats.push({
+      label: 'Deepest link',
+      value: `${tie.fragment.toUpperCase()} · ${countryName(deepestLink[1])}`,
+    })
+  }
+
+  const [busiest, busiestCount] =
+    Object.entries(openedWith).sort((one, two) => two[1] - one[1])[0] ?? []
+  if (busiest && busiestCount && busiestCount >= 3) {
+    stats.push({ label: 'Busiest letter', value: `${busiest} · ${busiestCount} of ${links}` })
+  }
+
+  const cords = (current.breaks ?? []).filter(
+    sealed => sealed.kind === 'rip-cord' || sealed.rescued
+  ).length
+  if (cords) stats.push({ label: 'Rip cords', value: String(cords) })
 
   return stats
 })
 
-/** The ledger's stanzas: each chain walked, plus the dead end that ended it.
- *  Every trap ends exactly one chain, so the trapped players in elimination
- *  order map one-to-one onto the chain boundaries — the letter is simply the
- *  dead head's tail. */
-const revealStanzas = computed<
-  { chain: ISOCountryCode[]; brokeAt?: { playerId: string; letter: string } }[]
->(() => {
+/** The ledger's stanzas: each chain walked, plus the break that retired it
+ *  (`state.breaks` is index-aligned with `chains`). */
+const revealStanzas = computed<{ chain: ISOCountryCode[]; line?: string }[]>(() => {
   const current = state.value
   if (!current?.finished) return []
-  const trapped = current.eliminated.filter(playerId => current.outcomes[playerId] === 'trapped')
-  return current.chains.map((walkedChain, index) => {
-    const playerId = trapped[index]
-    const head = walkedChain[walkedChain.length - 1]
-    return {
-      chain: walkedChain,
-      brokeAt:
-        playerId && head ? { playerId, letter: atlasTailLetter(head).toUpperCase() } : undefined,
-    }
-  })
+  return current.chains.map((walkedChain, index) => ({
+    chain: walkedChain,
+    line: breakLine(current.breaks?.[index], walkedChain.at(-1)),
+  }))
 })
 
-/** Fate lines that name the fatal letter — derivable from the missed outs,
- *  which all open with the letter the player died on. */
+const breakLine = (sealed: ChainBreak | undefined, deadHead: ISOCountryCode | undefined) => {
+  if (!sealed) return undefined
+  const who = seatName(sealed.playerId)
+  if (sealed.kind === 'rip-cord') return `${who} pulled the rip cord`
+  const where = deadHead ? `Dead end at ${countryName(deadHead)}` : 'Dead end'
+  if (sealed.rescued) return `${where} — ${who} pulled the rip cord`
+  const verb = sealed.playerId === gameStore.seatId ? 'were' : 'was'
+  return `${where} — ${who} ${verb} knocked out`
+}
+
+/** Fate lines that count what was still open when the player fell. */
 const revealFates = computed<{ [playerId: string]: string } | undefined>(() => {
   const current = state.value
   if (!current?.finished) return undefined
   const fates: { [playerId: string]: string } = {}
   for (const playerId of current.eliminated) {
     const outcome = current.outcomes[playerId]
-    const firstOut = current.missedOuts[playerId]?.[0]
-    if (!firstOut) continue
-    const letter = atlasHeadLetter(firstOut).toUpperCase()
-    if (outcome === 'wrong') fates[playerId] = `broke the chain on “${letter}”`
-    if (outcome === 'timeout') fates[playerId] = `ran out of clock on “${letter}”`
+    const open = current.missedOuts[playerId]?.length ?? 0
+    if (!open) continue
+    const names = `${open} ${open === 1 ? 'name' : 'names'} open`
+    if (outcome === 'wrong') fates[playerId] = `broke the chain with ${names}`
+    if (outcome === 'timeout') fates[playerId] = `ran out of clock with ${names}`
   }
   return fates
 })
 
 const { secondsOnClock } = useDeadlineClock(
   () => state.value?.deadline,
-  () => challenge.value?.turnSeconds
+  () => turnTotal.value
 )
 
 // --- Submitting a move -------------------------------------------------------
@@ -416,17 +407,33 @@ const submitGuess = (country: Country) => {
     return announce({ hint: `${countryName(country)} is already in the chain` })
   }
   // The courtesy check — the server re-validates through the same function.
-  if (!isAtlasLink(head.value, country.isoCode, rule.value)) {
+  // A broken link never leaves the client: it costs only the clock.
+  if (!isAtlasLink(head.value, country.isoCode)) {
     return announce({
-      // A broken link is a real miss — it spends the turn and can draw a strike.
       tone: 'alert',
-      hint: rule.value.overlaps
-        ? `${countryName(country)} doesn't chain from ${countryName(getCountry(head.value))}`
-        : `${countryName(country)} doesn't start with ${nextLetter.value.toUpperCase()}`,
+      hint: `${countryName(country)} doesn't chain from ${headName.value} — try ${openersLabel.value}, or a shared ending`,
     })
   }
   pending.value = true
   update({ event: 'submit-chain-move', isoCode: country.isoCode, turn: active.state.turn })
+}
+
+// Latched per turn rather than on `pending`: a pull the server refuses moves
+// no turn, and must not leave the guess input locked until the clock dies.
+const pulledOnTurn = ref<number>()
+const canPullCord = computed(
+  () =>
+    !!state.value &&
+    canPullRipCord(state.value, gameStore.seatId) &&
+    pulledOnTurn.value !== state.value.turn
+)
+
+const pullCord = async () => {
+  const active = challenge.value
+  if (!active || !canPullCord.value || pending.value) return
+  const { turn } = active.state
+  pulledOnTurn.value = turn
+  if (!(await update({ event: 'pull-rip-cord', turn }))) pulledOnTurn.value = undefined
 }
 
 // Each server turn unlocks the input and refocuses it for whoever's up next.
@@ -460,8 +467,13 @@ watch(
       seatName,
       fate: outcome => (outcome === 'timeout' ? 'the clock ran dry' : 'the chain broke'),
       move: (name, to, from) => {
-        const overlap = current.overlaps ? atlasLinkOverlap(from, to) : 1
-        const flourish = overlap > 1 ? ` — ${overlap} letters deep` : ''
+        const tie = atlasLinkTie(from, to)
+        const flourish =
+          tie?.kind === 'overlap'
+            ? ` — ${tie.overlap} letters deep`
+            : tie?.kind === 'consonant'
+              ? ` off the ${tie.fragment.toUpperCase()}`
+              : ''
         return `${name} chained ${countryName(to)}${flourish}`
       },
     })
@@ -541,14 +553,6 @@ watch(
 </script>
 <style lang="scss" scoped>
 @use '~/assets/scss/rules/ink' as *;
-.briefing-mark {
-  width: 4.4rem;
-  fill: none;
-  stroke: var(--dark-blue);
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
 .turn-line {
   gap: 0.6rem;
   display: inline-flex;

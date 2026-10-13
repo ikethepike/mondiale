@@ -112,6 +112,8 @@ import { isBrainSeat } from './bots'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
   ATLAS_TARGET_LINKS,
+  ATLAS_CLOCK,
+  ATLAS_RIP_CORDS,
   hasAtlasChain,
   pickAtlasSeed,
 } from './atlas-chain'
@@ -351,13 +353,14 @@ const getAtlasChallenge = ({ game }: { game: gameTypes.Game }): AtlasChallenge |
   if (!seed) return undefined
 
   const strikes = game.difficulty === 'easy' ? 1 : 0
+  const clock = ATLAS_CLOCK[game.difficulty]
   return {
     _type: 'atlas-challenge',
-    turnSeconds: DIFFICULTY_CONFIGURATION[game.difficulty].chainTurnSeconds,
+    turnSeconds: clock.start,
+    turnFloorSeconds: clock.floor,
     maximumPoints: maximumRoundPoints(game),
     strikes,
-    // Hard's twin knives: any shared ending chains, and only placement pays.
-    overlaps: game.difficulty === 'hard',
+    placementOnly: game.difficulty === 'hard',
     state: {
       // The rules card holds the opening shot clock until the table is ready.
       briefing: true,
@@ -370,6 +373,8 @@ const getAtlasChallenge = ({ game }: { game: gameTypes.Game }): AtlasChallenge |
       deadline: 0,
       named: {},
       strikesLeft: Object.fromEntries(contenders.map(playerId => [playerId, strikes])),
+      ripCords: Object.fromEntries(contenders.map(playerId => [playerId, ATLAS_RIP_CORDS])),
+      breaks: [],
       eliminated: [],
       outcomes: {},
       missedOuts: {},

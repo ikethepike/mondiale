@@ -1,4 +1,13 @@
-import { activePlayerId, liveChain, standingPlayers } from '~~/lib/chain'
+import {
+  activePlayerId,
+  canPullRipCord,
+  deadEndRescued,
+  dealFreshChain,
+  liveChain,
+  pullRipCord,
+  sealDeadEnd,
+  standingPlayers,
+} from '~~/lib/chain'
 import { sample } from '~~/lib/arrays'
 import { TRAP_HOLD_MS } from '~~/lib/round-beats'
 import type { ChainTurnOutcome, ChainTurnState } from '~~/types/challenges/group-modes.type'
@@ -86,6 +95,11 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
     state.deadline = Date.now() + spec.turnSeconds(challenge) * 1000
   }
 
+  const holdTurn = (challenge: C) => {
+    challenge.state.turn++
+    challenge.state.deadline = Date.now() + spec.turnSeconds(challenge) * 1000
+  }
+
   const finish = (challenge: C) => {
     const winner = standingPlayers(challenge.state)[0]
     if (winner) challenge.state.outcomes[winner] = 'won'
@@ -106,10 +120,9 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
   const springTrap = (challenge: C) => {
     const { state } = challenge
     const trappedId = activePlayerId(state)
-    eliminate(challenge, trappedId, 'trapped', [])
     const byPlayerId =
       state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
-    if (byPlayerId) (state.trappedBy ??= {})[trappedId] = byPlayerId
+    if (!sealDeadEnd(state, trappedId, byPlayerId)) eliminate(challenge, trappedId, 'trapped', [])
     state.trap = spec.buildTrap(challenge, trappedId, byPlayerId)
     state.deadline = 0
     armTrapResume(challenge)
@@ -125,8 +138,9 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
       if (standingPlayers(state).length <= 1) return finish(current)
       const seed = spec.reseed(current)
       if (!seed) return finish(current)
-      state.chains.push([seed])
-      advanceTurn(current)
+      dealFreshChain(state, seed)
+      if (deadEndRescued(state)) holdTurn(current)
+      else advanceTurn(current)
       continueTurn(current)
     }, TRAP_HOLD_MS)
   }
@@ -210,6 +224,22 @@ export const createChainSimulator = <C extends Stateful>(spec: ChainSimSpec<C>) 
         if (!current || current.state.trap) return
         if (spec.openMoves(current).includes(isoCode)) applyMove(current, isoCode)
         else resolveMiss(current, 'wrong')
+      }, LATENCY_MS)
+    },
+
+    /** The player's rip cord: fresh ground, and the clock stays theirs. */
+    ripCord: (eventData: Record<string, unknown>) => {
+      const challenge = spec.current()
+      if (!challenge || !canPullRipCord(challenge.state, spec.meId)) return
+      if (eventData.turn !== challenge.state.turn) return
+      const turn = challenge.state.turn
+      window.setTimeout(() => {
+        const current = stillLive(challenge, turn)
+        const seed = current && spec.reseed(current)
+        if (!current || !seed || !canPullRipCord(current.state, spec.meId)) return
+        pullRipCord(current.state, spec.meId, seed)
+        holdTurn(current)
+        continueTurn(current)
       }, LATENCY_MS)
     },
 

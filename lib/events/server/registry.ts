@@ -16,6 +16,7 @@ import { setNameHandler } from './set-name.handler'
 import { startGameHandler } from './start-game.handler'
 import { submitFinalChallengeAnswerHandler } from './submit-final-challenge-answer.handler'
 import { submitChainMoveHandler } from './submit-chain-move.handler'
+import { pullRipCordHandler } from './pull-rip-cord.handler'
 import { submitManhuntMoveHandler } from './submit-manhunt-move.handler'
 import { submitGovernmentPickHandler } from './submit-government-pick.handler'
 import { submitManhuntClaimHandler } from './submit-manhunt-claim.handler'
@@ -89,6 +90,9 @@ export const SERVER_SIDE_EVENT_HANDLERS: {
   },
   'submit-chain-move': {
     handler: submitChainMoveHandler,
+  },
+  'pull-rip-cord': {
+    handler: pullRipCordHandler,
   },
   'submit-heritage-pin': {
     handler: submitHeritagePinHandler,

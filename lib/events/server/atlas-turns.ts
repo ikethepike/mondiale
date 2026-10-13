@@ -1,21 +1,24 @@
 import { drawLabel, recordedDraw } from './draws'
 import {
-  ATLAS_TABLE_SEED_OPTIONS,
-  atlasContinuations,
-  atlasTailLetter,
-  pickAtlasSeed,
+  atlasLiveMoves,
+  atlasTrapBounty,
+  atlasTrapProof,
+  atlasTurnSeconds,
+  atlasWalked,
+  pickAtlasReseed,
 } from '~~/lib/atlas-chain'
 import { chainHead, scoreChainRound } from '~~/lib/chain'
 import { playableWorldCountries } from '~~/lib/game-rules'
+import { ROUND_BEATS } from '~~/lib/round-beats'
 import { isChallengeOfType, latestChallengeOfType } from '~~/lib/rounds'
 import type { AtlasChallenge } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
 import { createChainEngine, type ChainEngine } from './chain-engine'
 
 /**
- * Atlas's slice of the turn-chain engine (chain-engine.ts): the letter rule
- * from lib/atlas-chain is the link rule, an exhausted opening letter is the
- * dead-end proof, and the rhythm is Border Chain's shared core.
+ * Atlas's slice of the turn-chain engine (chain-engine.ts): the link rule
+ * from lib/atlas-chain is the link rule, an exhausted head is the dead-end
+ * proof, and the rhythm is Border Chain's shared core.
  *
  * Unlike the border graph, the classic game forbids repeats for the WHOLE
  * round — `used` spans every chain walked, not just the live one — and the
@@ -29,16 +32,10 @@ export const isAtlasChallenge = (challenge: unknown): challenge is AtlasChalleng
 export const currentAtlasChain = (game: Game): AtlasChallenge | undefined =>
   latestChallengeOfType(game, 'atlas-challenge')
 
-const usedOf = (challenge: AtlasChallenge) => challenge.state.chains.flat()
-const rule = (challenge: AtlasChallenge) => ({ overlaps: challenge.overlaps })
-
-/** The mode's legal extensions — the spec's link rule, shared with the bot
- *  brain so a bot's options and the engine's verdicts can never drift. */
-export const atlasOpenMoves = (challenge: AtlasChallenge, game: Game) => {
-  const head = chainHead(challenge.state)
-  if (!head) return []
-  return atlasContinuations(head, usedOf(challenge), playableWorldCountries(game), rule(challenge))
-}
+/** The mode's legal extensions — shared with the bot brain so a bot's options
+ *  and the engine's verdicts can never drift. */
+export const atlasOpenMoves = (challenge: AtlasChallenge, game: Game) =>
+  atlasLiveMoves(challenge.state, game)
 
 /** Lazy for the same cycle reason as chain-turns — see its note. */
 let instance: ChainEngine<AtlasChallenge> | undefined
@@ -46,31 +43,23 @@ const engine = (): ChainEngine<AtlasChallenge> =>
   (instance ??= createChainEngine<AtlasChallenge>({
     current: currentAtlasChain,
     openMoves: atlasOpenMoves,
+    turnSeconds: atlasTurnSeconds,
+    briefingCapMs: ROUND_BEATS.atlas.briefingCapMs,
     buildTrap: (challenge, game, trappedId, byPlayerId) => {
       const head = chainHead(challenge.state)!
-      const used = new Set(usedOf(challenge))
-      // The proof: every country that chains from the head is already walked.
-      const spent = atlasContinuations(
-        head,
-        [],
-        playableWorldCountries(game),
-        rule(challenge)
-      ).filter(isoCode => used.has(isoCode))
-      return { playerId: trappedId, head, byPlayerId, letter: atlasTailLetter(head), spent }
+      const proof = atlasTrapProof(head, atlasWalked(challenge.state), playableWorldCountries(game))
+      return { playerId: trappedId, head, byPlayerId, ...proof }
     },
     reseed: (challenge, game) =>
-      recordedDraw(
-        game,
-        drawLabel.chainSeed(),
-        () =>
-          pickAtlasSeed(game, {
-            minOptions: ATLAS_TABLE_SEED_OPTIONS,
-            exclude: new Set(usedOf(challenge)),
-          }) ?? pickAtlasSeed(game, { minOptions: ATLAS_TABLE_SEED_OPTIONS })
+      recordedDraw(game, drawLabel.chainSeed(), () =>
+        pickAtlasReseed(game, atlasWalked(challenge.state))
       ),
-    // Sheer elimination on hard: placement is everything, no link consolation —
-    // the same difficulty flag that widens the rule narrows the payout.
-    scores: challenge => scoreChainRound(challenge, challenge.overlaps ? 1 : undefined),
+    scores: challenge =>
+      scoreChainRound(
+        challenge,
+        challenge.placementOnly ? 1 : undefined,
+        atlasTrapBounty(challenge.state)
+      ),
   }))
 
 type Engine = ChainEngine<AtlasChallenge>
@@ -81,5 +70,9 @@ export const handleAtlasChainMove: Engine['handleMove'] = (ctx, game, eventData,
   engine().handleMove(ctx, game, eventData, playerId)
 export const handleAtlasChainReady: Engine['handleReady'] = (ctx, game, playerId) =>
   engine().handleReady(ctx, game, playerId)
+export const handleAtlasRipCord: Engine['handleRipCord'] = (ctx, game, eventData, playerId) =>
+  engine().handleRipCord(ctx, game, eventData, playerId)
+export const applyAtlasMove: Engine['applyMove'] = (ctx, game, challenge, isoCode) =>
+  engine().applyMove(ctx, game, challenge, isoCode)
 export const rearmAtlasChain: Engine['rearm'] = (ctx, game, options) =>
   engine().rearm(ctx, game, options)

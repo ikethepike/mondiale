@@ -45,12 +45,14 @@ export const liveChain = (state: ChainTurnState<unknown>): ISOCountryCode[] =>
 export interface ChainBeats {
   links: number
   eliminated: number
+  breaks: number
   strikes: { [playerId: string]: number }
 }
 
 export const chainBeats = (state: ChainTurnState<unknown>): ChainBeats => ({
   links: state.chains.reduce((total, walkedChain) => total + walkedChain.length, 0),
   eliminated: state.eliminated.length,
+  breaks: state.breaks?.length ?? 0,
   // A copy, not the live record — the diff must survive the state mutating.
   strikes: { ...state.strikesLeft },
 })
@@ -62,9 +64,8 @@ export const chainBeats = (state: ChainTurnState<unknown>): ChainBeats => ({
  * durable record; the toast is a single channel). Own beats return nothing —
  * the ticker never mirrors the viewer's own moves.
  *
- * A trap redeal grows `links` without anyone moving (`resumeFromTrap` pushes a
- * fresh seed chain and leaves `lastMoverId` stale), so a one-country live
- * chain is a deal, not a move, and stays silent. Strikes diff per key — a
+ * A redeal grows `links` without anyone moving (`dealFreshChain`), so a
+ * one-country live chain is a deal, not a move, and stays silent. Strikes diff per key — a
  * serialized comparison would fire on key order alone.
  */
 export const chainNarration = (
@@ -94,6 +95,12 @@ export const chainNarration = (
   if (burner) {
     if (burner === copy.seatId) return undefined
     return `${copy.seatName(burner)} burns a strike`
+  }
+
+  const pulled = now.breaks > before.breaks ? state.breaks?.at(-1) : undefined
+  if (pulled?.kind === 'rip-cord') {
+    if (pulled.playerId === copy.seatId) return undefined
+    return `${copy.seatName(pulled.playerId)} pulls the rip cord — fresh ground`
   }
 
   if (now.links > before.links && state.lastMoverId && state.lastMoverId !== copy.seatId) {
@@ -153,6 +160,60 @@ export const standingPlayers = (state: ChainTurnState<unknown>): string[] => {
   return state.order.filter(playerId => !out.has(playerId))
 }
 
+export const ripCordsLeft = (state: ChainTurnState<unknown>, playerId: string): number =>
+  state.ripCords?.[playerId] ?? 0
+
+/** Whether `playerId` may pull its rip cord right now — the console's button
+ *  and the engine's guard read this one predicate. */
+export const canPullRipCord = (state: ChainTurnState<unknown>, playerId: string): boolean =>
+  !state.briefing &&
+  !state.trap &&
+  !state.finished &&
+  activePlayerId(state) === playerId &&
+  ripCordsLeft(state, playerId) > 0
+
+/** Retire the live chain for a fresh seed. The puller stays on the clock —
+ *  the engine bumps the turn and stamps the deadline. */
+/** Open a fresh chain on `seed`. Nobody moved, so nobody may be credited
+ *  with a dead end the seed itself deals. */
+export const dealFreshChain = (state: ChainTurnState<unknown>, seed: ISOCountryCode): void => {
+  state.chains.push([seed])
+  state.lastMoverId = undefined
+}
+
+export const pullRipCord = (
+  state: ChainTurnState<unknown>,
+  playerId: string,
+  seed: ISOCountryCode
+): void => {
+  state.ripCords![playerId]--
+  ;(state.breaks ??= []).push({ kind: 'rip-cord', playerId })
+  dealFreshChain(state, seed)
+}
+
+/**
+ * A dead end sprang on `trappedId`: record the break and spend their rip cord
+ * if they still hold one. Returns whether the cord saved them — a saved
+ * player is not eliminated, and plays the fresh chain the hold deals.
+ */
+export const sealDeadEnd = (
+  state: ChainTurnState<unknown>,
+  trappedId: string,
+  byPlayerId: string | undefined
+): boolean => {
+  const rescued = ripCordsLeft(state, trappedId) > 0
+  if (rescued) state.ripCords![trappedId]--
+  else if (byPlayerId) (state.trappedBy ??= {})[trappedId] = byPlayerId
+  ;(state.breaks ??= []).push({ kind: 'trap', playerId: trappedId, byPlayerId, rescued })
+  return rescued
+}
+
+/** Whether the dead end now holding the table was cushioned by a rip cord. */
+export const deadEndRescued = (state: ChainTurnState<unknown>): boolean => {
+  const last = state.breaks?.at(-1)
+  return last?.kind === 'trap' && last.rescued
+}
+
 /**
  * A seed must offer real play: at least MINIMUM_SEED_MOVES immediate outs on
  * the board, so the opening turns are never an instant trap.
@@ -187,12 +248,16 @@ export const scoreChainRound = (
   challenge: ChainTurnChallenge<unknown>,
   // Atlas on hard is sheer elimination: placement is everything, no link
   // consolation — pass 1. Everyone else keeps the 75/25 split.
-  placementShare: number = PLACEMENT_SHARE
+  placementShare: number = PLACEMENT_SHARE,
+  /** Links a player earned without naming them — Atlas pays sealed dead ends. */
+  bonusLinks: { [playerId: string]: number } = {}
 ): { [playerId: string]: { scored: number; maximum: number } } => {
   const { state, maximumPoints } = challenge
   const players = state.order
   const count = players.length
-  const maxLinks = Math.max(1, ...players.map(playerId => state.named[playerId]?.length ?? 0))
+  const linksOf = (playerId: string) =>
+    (state.named[playerId]?.length ?? 0) + (bonusLinks[playerId] ?? 0)
+  const maxLinks = Math.max(1, ...players.map(linksOf))
 
   // eliminated[0] went out first → lowest placement; the winner tops the list.
   const placementOf = new Map<string, number>()
@@ -203,7 +268,7 @@ export const scoreChainRound = (
   for (const playerId of players) {
     const placement = placementOf.get(playerId) ?? 0
     const placementFraction = count > 1 ? placement / (count - 1) : 1
-    const linkFraction = (state.named[playerId]?.length ?? 0) / maxLinks
+    const linkFraction = linksOf(playerId) / maxLinks
     const scored = Math.round(
       maximumPoints * (placementShare * placementFraction + (1 - placementShare) * linkFraction)
     )
