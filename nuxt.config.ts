@@ -108,7 +108,10 @@ export default defineNuxtConfig({
     },
   },
   // The runtime never passes --enable-source-maps, so server maps were pure build cost.
-  sourcemap: { server: false, client: false },
+  // Production only: in dev this option also owns the browser and CSS maps.
+  $production: {
+    sourcemap: { server: false, client: false },
+  },
   // The codebase predates Nuxt 4's noUncheckedIndexedAccess default
   typescript: {
     tsConfig: {
