@@ -327,6 +327,7 @@ import { warmthColor } from '~~/lib/warmth'
 import { useAckOnce } from '~~/lib/use-ack-once'
 import { REPLAY_REDRAW_MS, SONAR_HOLD_MS, SONAR_RING_MS } from '~~/lib/motion'
 import { useGroupChallenge } from '~~/lib/useGroupChallenge'
+import { createGroupingsWriter, type MapListKey, writeMapList } from '~~/lib/map-paint'
 import { sample } from '~~/lib/arrays'
 import { isCountryPlayable, playableCountries, unplayableCountries } from '~~/lib/game-rules'
 import { useDeadlineClock } from '~~/lib/use-deadline-clock'
@@ -897,22 +898,8 @@ const rippleGroupings = (rings: boolean): CountryColorGrouping[] =>
     ])
   })
 
-/** Replace a map list only when its contents changed — same-content writes
- *  retarget the camera tween and churn every watcher downstream. */
-const writeIfChanged = (
-  key: 'focus' | 'ringed' | 'seaGlow' | 'pulsing' | 'landRoutes' | 'seaLinks',
-  next: string[]
-) => {
-  if (gameStore.map[key].join('|') !== next.join('|')) gameStore.map[key] = next as never
-}
-
-let paintedGroupings = ''
-const writeGroupings = (groupings: CountryColorGrouping[]) => {
-  const key = groupings.map(g => `${g.color}:${g.countries.join(',')}`).join('|')
-  if (key === paintedGroupings) return
-  paintedGroupings = key
-  gameStore.map.countryGroupings = groupings
-}
+const writeIfChanged = (key: MapListKey, next: string[]) => writeMapList(gameStore.map, key, next)
+const writeGroupings = createGroupingsWriter(gameStore.map)
 
 /** Ground legs as routes, water legs as arcs; a beat lying low draws nothing. */
 const trailLegs = (walk: ISOCountryCode[]) => {

@@ -18,7 +18,16 @@ import { prefersReducedMotion } from './motion'
  * slack that buys goes after the newest chip, where empty space says "this is
  * the head" instead of "a name got cut".
  */
-export const useChipTrail = (count: MaybeRefOrGetter<number>) => {
+export const useChipTrail = (
+  count: MaybeRefOrGetter<number>,
+  {
+    restOn,
+  }: {
+    /** A child that must rest at the leading edge instead — a trail whose
+     *  last cell is a prompt (Atlas's ghost) keeps its head in view. */
+    restOn?: string
+  } = {}
+) => {
   const trail = ref<HTMLElement | { $el?: HTMLElement } | null>(null)
 
   /**
@@ -46,8 +55,14 @@ export const useChipTrail = (count: MaybeRefOrGetter<number>) => {
     // is still riding its `chain` enter transform, and a rect would measure it
     // where the animation currently holds it rather than where it will rest.
     const startOf = (chip: HTMLElement) => chip.offsetLeft - first.offsetLeft
+    const anchor = restOn ? chips.findLast(chip => chip.matches(restOn)) : undefined
     const flush = startOf(newest) + newest.offsetWidth - element.clientWidth
-    const target = startOf(chips.find(chip => startOf(chip) >= flush) ?? newest)
+    // With an anchor, the newest cell may run off the end, but the rail still
+    // rests on a boundary no later than the anchor's own start.
+    const limit = anchor ? startOf(anchor) : Infinity
+    const target = startOf(
+      chips.find(chip => startOf(chip) >= flush && startOf(chip) <= limit) ?? anchor ?? newest
+    )
     element.style.paddingInlineEnd = `${Math.max(0, target - overflow)}px`
     return target
   }
@@ -64,7 +79,10 @@ export const useChipTrail = (count: MaybeRefOrGetter<number>) => {
         left: railRestingPoint(element),
         behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       })
-    }
+    },
+    // A trail that mounts mid-round (a rejoin, a chain already walked) must
+    // open on its head, not its first chip.
+    { immediate: true }
   )
 
   return { trail }

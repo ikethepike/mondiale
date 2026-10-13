@@ -41,6 +41,7 @@ import { getCountry } from '~~/lib/country'
 import { standingPlayers } from '~~/lib/chain'
 import { playerDisplayName, seatLabel } from '~~/lib/player'
 import type { ChainTurnState } from '~~/types/challenges/group-modes.type'
+import type { ISOCountryCode } from '~~/types/geography.types'
 import type { Player } from '~~/types/player.type'
 
 const MAX_DOORS_SHOWN = 6
@@ -68,6 +69,9 @@ const props = defineProps<{
   fates?: { [playerId: string]: string }
   /** Small facts strip under the headline — links walked, longest run… */
   stats?: { label: string; value: string }[]
+  /** The teaching hand to show from the missed outs, best first — defaults to
+   *  the first few. */
+  outs?: ISOCountryCode[]
 }>()
 
 const outsLine = computed(
@@ -117,7 +121,7 @@ const rows = computed(() => {
 
 /** The teaching beat: the doors that were open at your fatal miss. */
 const myOuts = computed(() => props.state.missedOuts[props.playerId] ?? [])
-const shownOuts = computed(() => myOuts.value.slice(0, MAX_DOORS_SHOWN))
+const shownOuts = computed(() => (props.outs ?? myOuts.value).slice(0, MAX_DOORS_SHOWN))
 const overflowCount = computed(() => Math.max(0, myOuts.value.length - MAX_DOORS_SHOWN))
 </script>
 <style lang="scss" scoped>

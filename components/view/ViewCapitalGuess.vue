@@ -65,7 +65,7 @@
           ref="guessInput"
           :disabled="submitted || !started"
           placeholder="Name the country…"
-          @guess="onGuess"
+          @guess="country => onGuess(country)"
           @miss="announce({ hint: 'No country by that name' })"
         />
       </ChallengeConsole>

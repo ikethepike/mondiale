@@ -153,14 +153,17 @@ import { REGION_LABELS } from '~~/lib/variant'
 import { wireGame } from '~~/lib/wire-view'
 import { resolveSeatView } from '~/components/view/dispatch'
 import {
+  atlasBuildTrap,
   atlasContinuations,
   atlasLiveMoves,
-  atlasTrapProof,
+  atlasRecordSpelling,
   atlasTurnSeconds,
   atlasWalked,
+  pickAtlasMove,
   pickAtlasReseed,
 } from '~~/lib/atlas-chain'
-import { chainHead, closedDoors, liveChain, openMoves, pickChainSeed } from '~~/lib/chain'
+import { DIFFICULTY_SHARE } from '~~/lib/bots'
+import { chainHead, closedDoors, openMoves, pickChainSeed } from '~~/lib/chain'
 import { createChainSimulator } from '~~/lib/harness/chain-simulator'
 import { normalizeAnswer } from '~~/lib/strings'
 import { listScrollTop } from '~~/lib/use-viewport'
@@ -327,15 +330,16 @@ const atlasSim = createChainSimulator<AtlasChallenge>({
   current: atlasOf,
   turnSeconds: atlasTurnSeconds,
   openMoves: challenge => atlasLiveMoves(challenge.state, gameRules()),
-  buildTrap: (challenge, trappedId, byPlayerId) => {
-    const head = liveChain(challenge.state).at(-1)!
-    return {
-      playerId: trappedId,
-      head,
-      byPlayerId,
-      ...atlasTrapProof(head, atlasWalked(challenge.state), atlasPool()),
-    }
-  },
+  buildTrap: (challenge, trappedId, byPlayerId) =>
+    atlasBuildTrap(challenge.state, gameRules(), trappedId, byPlayerId),
+  admitMove: (challenge, isoCode, typed) => atlasRecordSpelling(challenge.state, isoCode, typed),
+  rivalMove: challenge =>
+    pickAtlasMove(
+      atlasLiveMoves(challenge.state, gameRules()),
+      atlasWalked(challenge.state),
+      atlasPool(),
+      DIFFICULTY_SHARE[gameRules().difficulty]
+    ),
   reseed: challenge => pickAtlasReseed(gameStore.game!, atlasWalked(challenge.state)),
 })
 

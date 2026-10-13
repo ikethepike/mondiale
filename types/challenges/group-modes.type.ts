@@ -747,6 +747,10 @@ export interface ChainTurnState<Trap = unknown> {
   /** How each retired chain ended, index-aligned with `chains`: the reveal's
    *  stanza breaks. The live chain has no entry until it retires. */
   breaks?: ChainBreak[]
+  /** Atlas: countries played under one of their other names (Myanmar for the
+   *  data's Burma) — the chain judges each name as played. Absent = the
+   *  data's own name. */
+  spellings?: Partial<Record<ISOCountryCode, string>>
   /** The dead-end pause: the whole table holds on the trap before the fresh
    *  chain is dealt. Transient — set when the trap springs, cleared when the
    *  hold elapses. The durable record stays in `outcomes`/`trappedBy`. The

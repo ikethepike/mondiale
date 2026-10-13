@@ -33,7 +33,7 @@ export const submitIndividualChallengeAnswersHandler = defineGameHandler(
 
     const { challenge } = gate
     const correct = isStepGraded(challenge)
-      ? await gradeGateSteps(challenge, eventData.steps)
+      ? await gradeGateSteps(challenge, eventData.steps, game)
       : isCorrectIndividualAnswer(challenge, eventData.isoCode)
     // The clock and the hints bought are both the server's own record, so the
     // leap is priced here — the view shows the same fraction off the same deadline.

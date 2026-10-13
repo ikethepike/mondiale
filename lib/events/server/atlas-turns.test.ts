@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyAtlasMove, currentAtlasChain, scheduleAtlasTimeout } from './atlas-turns'
 import { chainReadyHandler } from './chain-ready.handler'
 import { pullRipCordHandler } from './pull-rip-cord.handler'
+import { submitChainMoveHandler } from './submit-chain-move.handler'
 import { atlasTurnSeconds } from '~~/lib/atlas-chain'
 import {
   ATLAS_TUTORIAL_CAP_MS,
@@ -199,5 +200,40 @@ describe('the tutorial', () => {
     await vi.advanceTimersByTimeAsync(ATLAS_TUTORIAL_CAP_MS - BRIEFING_CAP_MS)
     await vi.runAllTicks()
     expect(atlasOf(game.id).state.briefing).toBe(false)
+  })
+})
+
+const move = (game: Game, playerId: string, isoCode: string, turn: number, typed?: string) =>
+  submitChainMoveHandler({
+    ...context(game),
+    eventKey: 'submit-chain-move',
+    eventData: {
+      event: 'submit-chain-move',
+      isoCode,
+      turn,
+      ...(typed ? { typed } : {}),
+    },
+    eventTarget: { gameId: game.id, playerId },
+  } as never)
+
+describe('typed spellings', () => {
+  it('judges and records a country by the name the player typed', async () => {
+    // Vietnam's M opens Myanmar; the data files the country as Burma.
+    const game = buildGame({ chains: [['VN']] })
+    await move(game, 'a', 'MM', 1, 'Myanmar')
+
+    const { state } = atlasOf(game.id)
+    expect(state.chains[0]).toEqual(['VN', 'MM'])
+    expect(state.spellings).toEqual({ MM: 'Myanmar' })
+    expect(state.eliminated).toEqual([])
+  })
+
+  it("ignores a spelling that is not the country's own", async () => {
+    const game = buildGame({ chains: [['EG']] })
+    await move(game, 'a', 'TR', 1, 'Myanmar')
+
+    const { state } = atlasOf(game.id)
+    expect(state.chains[0]).toEqual(['EG', 'TR'])
+    expect(state.spellings).toBeUndefined()
   })
 })

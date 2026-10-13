@@ -3,6 +3,7 @@
        noise, so the one console home hides itself and every view follows. -->
   <div v-if="!gameStore.watching" class="challenge-console" :class="{ low }">
     <div class="console-input"><slot /></div>
+    <slot name="aside" />
     <ChallengeTimerRadial class="console-clock" :value="value" :total="total" />
   </div>
 </template>

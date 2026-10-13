@@ -8,6 +8,11 @@ import {
   chainBeats,
   chainHead,
   chainNarration,
+  chainParachute,
+  chargeMiss,
+  passTurn,
+  pullRipCord,
+  recordLink,
   closedDoors,
   connectionsOf,
   isStraitHop,
@@ -271,5 +276,71 @@ describe('chainNarration (the beat-diff both turn-chain views toast from)', () =
     expect(chainNarration(out, before, chainBeats(out), copy)).toBe('C is out — the clock ran dry')
     const trapped = state({ eliminated: ['c'], outcomes: { c: 'trapped' }, trap: {} as never })
     expect(chainNarration(trapped, before, chainBeats(trapped), copy)).toBeUndefined()
+  })
+})
+
+describe('the shared state moves', () => {
+  const table = (): BorderChainState =>
+    ({
+      chains: [['FR']],
+      order: ['a', 'b', 'c'],
+      activeIndex: 0,
+      turn: 1,
+      named: {},
+      strikesLeft: { a: 1, b: 0, c: 0 },
+      eliminated: ['b'],
+      outcomes: {},
+      missedOuts: {},
+      ripCords: { a: 1, b: 0, c: 0 },
+      breaks: [],
+    }) as unknown as BorderChainState
+
+  it('passes the clock over a seat that is out', () => {
+    const state = table()
+    passTurn(state)
+    expect(state.order[state.activeIndex]).toBe('c')
+  })
+
+  it('records a link to the seat on the clock', () => {
+    const state = table()
+    recordLink(state, 'ES')
+    expect(state.chains[0]).toEqual(['FR', 'ES'])
+    expect(state.named).toEqual({ a: ['ES'] })
+    expect(state.lastMoverId).toBe('a')
+  })
+
+  it('burns a strike before it knocks a seat out, and says when the round is over', () => {
+    const state = table()
+    expect(chargeMiss(state, 'timeout', () => ['ES'])).toBe(false)
+    expect(state.strikesLeft.a).toBe(0)
+    expect(chargeMiss(state, 'timeout', () => ['ES'])).toBe(true)
+    expect(state.eliminated).toEqual(['b', 'a'])
+    expect(state.missedOuts.a).toEqual(['ES'])
+  })
+})
+
+describe('chainParachute', () => {
+  it('fires on the fresh chain a cord deals, and only then', () => {
+    const state = {
+      chains: [['FR', 'ES']],
+      order: ['a', 'b'],
+      activeIndex: 0,
+      named: {},
+      strikesLeft: {},
+      eliminated: [],
+      ripCords: { a: 1 },
+      breaks: [],
+    } as unknown as BorderChainState
+    const before = chainBeats(state)
+    pullRipCord(state, 'a', 'PT')
+    expect(chainParachute(state, before, chainBeats(state))).toEqual({
+      playerId: 'a',
+      retired: ['FR', 'ES'],
+      seed: 'PT',
+    })
+
+    const quiet = chainBeats(state)
+    recordLink(state, 'ES')
+    expect(chainParachute(state, quiet, chainBeats(state))).toBeUndefined()
   })
 })

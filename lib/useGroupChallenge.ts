@@ -191,6 +191,17 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   const hintTone = ref<HintTone>('neutral')
   let hintTimer: ReturnType<typeof setTimeout> | undefined
 
+  const showHint = (text: string, tone?: HintTone) => {
+    hint.value = text
+    hintTone.value = tone ?? 'neutral'
+    if (hintTimer) clearTimeout(hintTimer)
+    hintTimer = setTimeout(() => (hint.value = ''), DWELL.hint)
+  }
+
+  /** A table beat read off the snapshot — shown to everyone, the booth
+   *  included, and never sent anywhere. */
+  const narrate = (text: string) => showHint(text)
+
   const announce = ({
     hint: text,
     tone,
@@ -214,12 +225,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
   }) => {
     // A watcher fabricates no guess chips and sends nothing to the room
     if (gameStore.watching) return
-    if (text !== undefined) {
-      hint.value = text
-      hintTone.value = tone ?? 'neutral'
-      if (hintTimer) clearTimeout(hintTimer)
-      hintTimer = setTimeout(() => (hint.value = ''), DWELL.hint)
-    }
+    if (text !== undefined) showHint(text, tone)
 
     if (!kind) return
     const roundChallenge = currentRound.value?.round.groupChallenge
@@ -347,6 +353,7 @@ export const useGroupChallenge = <T extends TypedRoundChallenge['_type']>(
     hint,
     hintTone,
     announce,
+    narrate,
     entries,
     submitOnce,
     stopCountdown,

@@ -2,16 +2,17 @@
   <template v-if="challenge.atlas">
     <h1 class="map-caption">Atlas</h1>
     <span class="map-caption sub">
-      Bank {{ challenge.atlas.target }} links — each name begins where the last one ended{{
-        challenge.atlas.overlaps ? ', and a shared ending pays its length' : ''
-      }}
+      Bank {{ challenge.atlas.target }} links — each name begins where the last one ended, or shares
+      its ending{{ challenge.atlas.overlaps ? ' (a shared ending pays its length)' : '' }}
     </span>
     <ChallengeTimerRadial class="gate-clock" :value="secondsLeft" :total="ATLAS_SECONDS" />
 
     <AtlasChainRail
       :chain="atlasChain"
+      :spellings="atlasSpellings"
       :pays-overlaps="challenge.atlas.overlaps"
       :next-openers="openers"
+      live
     />
 
     <span class="map-caption tally">{{ banked }} / {{ challenge.atlas.target }}</span>
@@ -19,6 +20,7 @@
     <Transition name="hint">
       <span v-if="note" class="map-caption hint">{{ note }}</span>
     </Transition>
+    <span class="visually-hidden" aria-live="polite">{{ note }}</span>
 
     <div class="hint-row">
       <Transition name="caption">
@@ -45,7 +47,7 @@
           :suggest="isEasy"
           :suggest-from="ATLAS_EASY_SUGGEST_FROM"
           :excluded="atlasChain"
-          :placeholder="`Starts with ${letter}…`"
+          :placeholder="`${openersLabel}, or an ending…`"
           @guess="onGuess"
           @miss="bounce('No country by that name')"
         />
@@ -61,12 +63,16 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import {
   ATLAS_EASY_SUGGEST_FROM,
   atlasChainCredit,
+  atlasFollowSpelling,
+  atlasNeedsLabel,
   atlasOpeners,
   atlasOpenersLabel,
-  isAtlasLink,
+  atlasPlayedName,
+  atlasStep,
   pickAtlasHint,
 } from '~~/lib/atlas-chain'
 import { countryName } from '~~/lib/country'
+import { writeMapList } from '~~/lib/map-paint'
 import { useClientEvents } from '~~/lib/events/client-side'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { DWELL } from '~~/lib/motion'
@@ -78,7 +84,7 @@ import type { Country } from '~~/types/geography.types'
 
 const props = defineProps<{ challenge: IndividualChallenge }>()
 
-const { status, missNote, atlasChain, isEasy, submitAnswer, recordHint, giveUp } =
+const { status, missNote, atlasChain, atlasSpellings, isEasy, submitAnswer, recordHint, giveUp } =
   useGateChallenge()
 const { gameStore } = useClientEvents()
 
@@ -88,9 +94,17 @@ const pool = computed(() =>
 )
 
 const head = computed(() => atlasChain.value.at(-1) ?? props.challenge.atlas?.seed)
-const openers = computed(() => (head.value ? atlasOpeners(head.value) : []))
-const letter = computed(() => (head.value ? atlasOpenersLabel(head.value) : ''))
-const banked = computed(() => atlasChainCredit(atlasChain.value, credit.value))
+const openers = computed(() => (head.value ? atlasOpeners(head.value, atlasSpellings.value) : []))
+const openersLabel = computed(() =>
+  head.value ? atlasOpenersLabel(head.value, atlasSpellings.value) : ''
+)
+const needs = computed(() => (head.value ? atlasNeedsLabel(head.value, atlasSpellings.value) : ''))
+const headName = computed(() =>
+  head.value ? atlasPlayedName(head.value, atlasSpellings.value) : ''
+)
+const banked = computed(() =>
+  atlasChainCredit(atlasChain.value, credit.value, atlasSpellings.value)
+)
 
 const footerReady = ref(false)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -108,7 +122,8 @@ onBeforeUnmount(() => noteTimer && clearTimeout(noteTimer))
 
 const { secondsLeft, elapsedFraction, stop } = useGateClock({
   onExpire: () => {
-    missNote.value = `Time ran out on “${letter.value}”`
+    missNote.value = `Time ran out at ${headName.value}`
+    gameStore.map.pulsing = []
     giveUp()
   },
 })
@@ -120,7 +135,13 @@ const hintName = ref<string>()
 const hintSpent = ref(false)
 const buyHint = () => {
   if (hintSpent.value || status.value || !head.value) return
-  const pick = pickAtlasHint(head.value, atlasChain.value, pool.value, credit.value)
+  const pick = pickAtlasHint(
+    head.value,
+    atlasChain.value,
+    pool.value,
+    credit.value,
+    atlasSpellings.value
+  )
   if (!pick) return bounce('No help left on this letter')
   hintSpent.value = true
   hintName.value = countryName(pick)
@@ -134,24 +155,28 @@ onMounted(() => {
   footerReady.value = true
 })
 
-// The chain paints itself: green fills, directed arcs junction to junction,
-// a widening camera and the ember pulse on the head. The shell's clearBoard
-// resets all of it for the next gate; the paint survives the result beat on
-// purpose — it is the reveal's backdrop.
+// The chain paints itself: green fills, dotted hops junction to junction,
+// the camera on the head and the name before it, and the ember pulse on the
+// head. The shell's clearBoard resets all of it for the next gate; the paint
+// survives the result beat on purpose — it is the reveal's backdrop.
 watch(
   atlasChain,
   chain => {
     if (!chain.length) return
     gameStore.map.highlighted = new Set(chain)
     gameStore.map.tints = Object.fromEntries(chain.map(isoCode => [isoCode, 'optimal' as const]))
-    gameStore.map.landRoutes = chain.slice(1).map((isoCode, index) => `${chain[index]}>${isoCode}`)
-    gameStore.map.focus = [...chain]
-    gameStore.map.pulsing = status.value ? [] : [chain[chain.length - 1]]
+    writeMapList(
+      gameStore.map,
+      'hopLinks',
+      chain.slice(1).map((isoCode, index) => `${chain[index]}>${isoCode}`)
+    )
+    writeMapList(gameStore.map, 'focus', chain.slice(-2))
+    writeMapList(gameStore.map, 'pulsing', status.value ? [] : [chain[chain.length - 1]])
   },
   { immediate: true }
 )
 
-const onGuess = (country: Country) => {
+const onGuess = (country: Country, typed: string) => {
   if (status.value || !props.challenge.atlas) return
   const chain = atlasChain.value
   const anchor = head.value
@@ -160,10 +185,16 @@ const onGuess = (country: Country) => {
   if (chain.includes(country.isoCode)) {
     return bounce(`${countryName(country)} is already in the chain`)
   }
-  if (!isAtlasLink(anchor, country.isoCode)) {
-    return bounce(`${countryName(country)} doesn't chain from ${countryName(anchor)}`)
+  const follows = atlasFollowSpelling(anchor, country.isoCode, atlasSpellings.value, typed)
+  if (!follows) {
+    return bounce(
+      `${typed.trim() || countryName(country)} doesn't chain from ${headName.value} — try ${needs.value}`
+    )
   }
 
+  if (follows.spelling) {
+    atlasSpellings.value = { ...atlasSpellings.value, [country.isoCode]: follows.spelling }
+  }
   atlasChain.value = [...chain, country.isoCode]
   hintName.value = undefined
   note.value = undefined
@@ -171,7 +202,8 @@ const onGuess = (country: Country) => {
   if (banked.value >= props.challenge.atlas.target) {
     stop()
     gameStore.map.pulsing = []
-    return submitAnswer(props.challenge.country, atlasChain.value.slice(1))
+    const steps = atlasChain.value.slice(1).map(isoCode => atlasStep(isoCode, atlasSpellings.value))
+    return submitAnswer(props.challenge.country, steps)
   }
   // Mid-round refocus — the keyboard is already up, keep the rally going.
   guessInput.value?.focus()

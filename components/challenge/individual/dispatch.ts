@@ -34,6 +34,7 @@ import GateTrendDuel from './GateTrendDuel.vue'
 import GateZoomOut from './GateZoomOut.vue'
 import { PAIR_COLORS } from './pair-colors'
 import { PLACES } from '~~/data/places.gen'
+import type { AtlasSpellings } from '~~/lib/atlas-chain'
 import { accessorTopicLabel } from '~~/lib/challenges'
 import type {
   DuelOutcome,
@@ -50,6 +51,7 @@ export interface GateRevealContext {
   duelOutcomes: DuelOutcome[]
   trendDuelOutcomes: TrendDuelOutcome[]
   atlasChain: ISOCountryCode[]
+  atlasSpellings: AtlasSpellings
   /** The chronicle gate's locked-in order (event slugs). */
   chronicleOrder: string[]
 }
@@ -198,8 +200,8 @@ export const GATE_VIEWS: Record<IndividualChallengeVariant, GateView> = {
     easySuggestions: true,
     reveal: AtlasReveal,
     wideReveal: true,
-    revealProps: ({ challenge, atlasChain }) =>
-      challenge.atlas ? { challenge, chain: atlasChain } : {},
+    revealProps: ({ challenge, atlasChain, atlasSpellings }) =>
+      challenge.atlas ? { challenge, chain: atlasChain, spellings: atlasSpellings } : {},
   },
   scriptorium: {
     component: GateScriptorium,

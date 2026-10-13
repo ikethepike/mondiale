@@ -1,9 +1,11 @@
-import { atlasChainCredit, findAtlasChain, isAtlasLink } from './atlas-chain'
+import { atlasChainCredit, findAtlasChain, isAtlasLink, parseAtlasSteps } from './atlas-chain'
 import { chronicleSolution, isChronicleOrdered } from './chronicle'
+import { playableWorldCountries } from './game-rules'
 import { readTrend, type TrendMapping } from './trends'
 import { getValueByAccessorID } from './values'
 import type { GroupChallengeAccessorId } from '~~/types/challenges/group-challenge.type'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
+import type { GameRules } from '~~/types/game.types'
 import { isValidISOCode, type ISOCountryCode } from '~~/types/geography.types'
 
 /**
@@ -58,17 +60,24 @@ export const logoPoliticsWon = (
     ? (step === LOGO_RULING_STEPS.governs) === !!partyLogo.rules
     : partyLogo.ask === 'spectrum' && step === partyLogo.band
 
-/** Whether the links named after the seed bank the atlas gate's target. */
+/** Whether the links named after the seed bank the atlas gate's target —
+ *  every name on the board, each junction chaining as played. */
 export const atlasStepsBank = (
   atlas: NonNullable<IndividualChallenge['atlas']>,
-  steps: string[]
+  steps: string[],
+  pool: readonly ISOCountryCode[]
 ): boolean => {
-  if (!isCountrySteps(steps)) return false
-  const chain = [atlas.seed, ...steps]
+  const parsed = parseAtlasSteps(steps, isValidISOCode)
+  if (!parsed) return false
+  const chain = [atlas.seed, ...parsed.links]
   if (new Set(chain).size !== chain.length) return false
+  const onBoard = new Set(pool)
   return (
-    chain.every((isoCode, index) => !index || isAtlasLink(chain[index - 1], isoCode)) &&
-    atlasChainCredit(chain, { payOverlaps: atlas.overlaps }) >= atlas.target
+    parsed.links.every(isoCode => onBoard.has(isoCode)) &&
+    chain.every(
+      (isoCode, index) => !index || isAtlasLink(chain[index - 1], isoCode, parsed.spellings)
+    ) &&
+    atlasChainCredit(chain, { payOverlaps: atlas.overlaps }, parsed.spellings) >= atlas.target
   )
 }
 
@@ -86,7 +95,8 @@ const isCountrySteps = (steps: string[]): steps is ISOCountryCode[] => steps.eve
 /** THE verdict on a step-graded gate's submitted steps. */
 export const gradeGateSteps = async (
   challenge: IndividualChallenge,
-  steps: unknown
+  steps: unknown,
+  rules: GameRules
 ): Promise<boolean> => {
   if (!isSteps(steps)) return false
   switch (challenge.variant) {
@@ -106,7 +116,9 @@ export const gradeGateSteps = async (
       return duels.every((duel, index) => trendDuelWon(duel, steps[index], TRENDS))
     }
     case 'atlas':
-      return !!challenge.atlas && atlasStepsBank(challenge.atlas, steps)
+      return (
+        !!challenge.atlas && atlasStepsBank(challenge.atlas, steps, playableWorldCountries(rules))
+      )
     case 'chronicle':
       return !!challenge.chronicle && chronicleStepsOrdered(challenge.chronicle.events, steps)
     case 'logo-politics':

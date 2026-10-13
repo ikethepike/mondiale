@@ -204,6 +204,9 @@ interface GameStoreState {
     ringed: ISOCountryCode[]
     /** Directed 'FROM>TO' overland route legs (manhunt's escape trail). */
     landRoutes: string[]
+    /** Directed 'FROM>TO' hops that are not travel at all — Atlas's letter
+     *  links, dotted, drawn even when they span the antimeridian. */
+    hopLinks: string[]
     /** Coastlines humming sea-blue — "you can sail from here". */
     seaGlow: ISOCountryCode[]
     /** Opponents' live guesses during a group round, fed by the ephemeral
@@ -338,6 +341,7 @@ export const useGameStore = defineStore('game', {
       inset: undefined,
       ringed: [],
       landRoutes: [],
+      hopLinks: [],
       seaGlow: [],
       liveGuesses: [],
     },

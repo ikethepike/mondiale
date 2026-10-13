@@ -91,7 +91,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits<{ guess: [country: Country]; miss: [input: string] }>()
+const emit = defineEmits<{ guess: [country: Country, typed: string]; miss: [input: string] }>()
 
 const query = ref('')
 const input = ref<HTMLInputElement>()
@@ -160,8 +160,9 @@ watch(highlightedIndex, index =>
 )
 
 const pick = (country: Country) => {
+  const typed = query.value
   query.value = ''
-  emit('guess', country)
+  emit('guess', country, typed)
 }
 
 const submitTyped = () => {

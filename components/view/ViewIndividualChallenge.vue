@@ -126,6 +126,7 @@ const {
   duelOutcomes,
   trendDuelOutcomes,
   atlasChain,
+  atlasSpellings,
   chronicleOrder,
   browseReveal,
   holdUntil,
@@ -318,6 +319,7 @@ const reveal = computed(() => {
     duelOutcomes: duelOutcomes.value,
     trendDuelOutcomes: trendDuelOutcomes.value,
     atlasChain: atlasChain.value,
+    atlasSpellings: atlasSpellings.value,
     chronicleOrder: chronicleOrder.value,
   })
 })

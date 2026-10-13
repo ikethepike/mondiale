@@ -14,6 +14,7 @@ import {
   BOT_SHEET_CERTAINTY,
   BOT_SHEET_WRONG,
   botShare,
+  chainRecall,
   isBrainSeat,
   jitteredShare,
   GATE_REMAINING,
@@ -22,6 +23,7 @@ import {
   PIN_SCATTER_BAND,
   SWEEP_ACCURACY,
 } from '~~/lib/bots'
+import { atlasWalked, pickAtlasMove } from '~~/lib/atlas-chain'
 import { empirePots } from '~~/lib/empires'
 import { replayPlacements, type CompositionBoard } from '~~/lib/composition'
 import { isCorrectIndividualAnswer } from '~~/lib/challenges'
@@ -895,20 +897,31 @@ const dispatchChainReady = (ctx: EngineContext, playerId: string) => {
 const dispatchChainMove = (ctx: EngineContext, playerId: string, turn: number) => {
   scheduleEngineTask(ctx, 0, async fresh => {
     if (!brainSeat(fresh, playerId)) return
-    const knows = Math.random() < jitteredShare(botShare(fresh, playerId))
+    const share = jitteredShare(botShare(fresh, playerId))
     const border = currentBorderChain(fresh)
     if (border) {
+      const knows = Math.random() < share
       const isoCode = pickChainIso(borderChainOpenMoves(border, fresh), fresh, knows)
       if (!isoCode) return
       return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })
     }
     const atlas = currentAtlasChain(fresh)
     if (atlas) {
-      // A bot that blanks pulls its cord before it gives a wrong name.
-      if (!knows && canPullRipCord(atlas.state, playerId)) {
-        return botAct(ctx, { event: 'pull-rip-cord', turn })
+      const open = atlasOpenMoves(atlas, fresh)
+      if (Math.random() >= chainRecall(share, open.length)) {
+        // Blank: the cord if it is still held, else the clock runs dry — a
+        // wrong name never leaves a human's console either.
+        if (canPullRipCord(atlas.state, playerId)) {
+          return botAct(ctx, { event: 'pull-rip-cord', turn })
+        }
+        return
       }
-      const isoCode = pickChainIso(atlasOpenMoves(atlas, fresh), fresh, knows)
+      const isoCode = pickAtlasMove(
+        open,
+        atlasWalked(atlas.state),
+        playableWorldCountries(fresh),
+        share
+      )
       if (!isoCode) return
       return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })
     }

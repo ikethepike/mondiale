@@ -154,6 +154,9 @@ export type ClientEventData =
       event: 'submit-chain-move'
       isoCode: ISOCountryCode
       turn: number
+      /** Atlas: the name as typed, so the chain judges the spelling the player
+       *  wrote (lib/atlas-chain `atlasFollowSpelling` re-derives it). */
+      typed?: string
     }
   | {
       /** Atlas: the active player pulls their rip cord — the live chain is

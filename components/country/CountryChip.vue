@@ -1,7 +1,7 @@
 <template>
   <component :is="tag" class="country-chip" :class="{ compact }">
     <CountryFlag class="chip-flag" :country="country" mode="background" />
-    <span class="chip-name">{{ countryName(country) }}</span>
+    <span class="chip-name">{{ name ?? countryName(country) }}</span>
     <slot />
   </component>
 </template>
@@ -32,6 +32,11 @@ defineProps({
   compact: {
     type: Boolean,
     default: false,
+  },
+  // The name as played when it differs from the data's (Atlas's Myanmar).
+  name: {
+    type: String,
+    default: undefined,
   },
 })
 </script>
