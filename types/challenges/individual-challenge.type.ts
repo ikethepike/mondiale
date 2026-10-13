@@ -201,9 +201,9 @@ export interface IndividualChallenge {
     seed: ISOCountryCode
     /** Links to bank. With `overlaps`, each junction pays its overlap length. */
     target: number
-    /** Hard's rule: any shared ending chains (Nepal → Palestine), not just the
-     *  tail letter. Rides the deal so the view and the reveal grade the same
-     *  rule by construction. */
+    /** Hard's credit: a shared ending (Nepal → Palestine) pays its length.
+     *  The link rule itself is the same on every difficulty. Rides the deal
+     *  so the view and the reveal pay the same credit by construction. */
     overlaps: boolean
   }
   /** scriptorium: the mystery language. The written sample resolves at view

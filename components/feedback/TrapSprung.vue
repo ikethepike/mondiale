@@ -48,11 +48,14 @@ import type { Player } from '~~/types/player.type'
  */
 const props = defineProps<{
   /** Either turn-chain mode's dead-end proof: Border Chain's closed doors, or
-   *  Atlas's sealed letter (`letter` is the discriminant). */
+   *  Atlas's sealed letters (`openers` is the discriminant). */
   trap: BorderChainTrap | AtlasTrap
   players: { [playerId: string]: Player | undefined }
   /** The local player, so the victim reads "You" and not their own name. */
   playerId: string
+  /** The victim's rip cord cushioned the dead end: they stay in and play the
+   *  fresh chain. */
+  rescued?: boolean
 }>()
 
 const emit = defineEmits<{ done: [] }>()
@@ -63,9 +66,12 @@ const gameStore = useGameStore()
 const watching = computed(() => gameStore.watching)
 if (watching.value) onMounted(() => emit('done'))
 
-/** The letter-trap's discriminant; its spent list renders as walked doors. */
+/** The letter-trap's discriminant ("A or N"); its spent list renders as
+ *  walked doors. */
 const sealedLetter = computed(() =>
-  'letter' in props.trap ? props.trap.letter.toUpperCase() : undefined
+  'openers' in props.trap
+    ? props.trap.openers.map(letter => `“${letter.toUpperCase()}”`).join(' and ')
+    : undefined
 )
 const doors = computed<ClosedDoor[]>(() =>
   'doors' in props.trap
@@ -85,27 +91,31 @@ const blame = computed(() => {
   const letter = sealedLetter.value
   if (!props.trap.byPlayerId) {
     return letter
-      ? `The chain dead-ends at ${head} — “${letter}” is spent.`
+      ? `The chain dead-ends at ${head} — ${letter} ${'openers' in props.trap && props.trap.openers.length > 1 ? 'are' : 'is'} spent.`
       : `The chain dead-ends at ${head}.`
   }
   const closer = props.trap.byPlayerId === props.playerId ? 'You' : nameOf(props.trap.byPlayerId)
   return letter
-    ? `${closer} sealed “${letter}” at ${head}.`
+    ? `${closer} sealed ${letter} at ${head}.`
     : `${closer} closed the chain at ${head}.`
 })
 
 const verdict = computed(() => {
   const count = doors.value.length
-  const who = mine.value ? 'you go' : 'they go'
-  if (!count) return `Nowhere to go — ${mine.value ? 'you are' : 'they are'} out.`
   const letter = sealedLetter.value
   const doorWord = letter
     ? count === 1
-      ? `The one country starting with “${letter}” was already walked`
-      : `All ${count} countries starting with “${letter}” were already walked`
+      ? 'The one country that chained was already walked'
+      : `All ${count} countries that chained were already walked`
     : count === 1
       ? 'The only way out was shut'
       : `All ${count} ways out were shut`
+  if (props.rescued) {
+    const who = mine.value ? 'you pull' : `${nameOf(props.trap.playerId)} pulls`
+    return `${count ? doorWord : 'Nowhere to go'} — ${who} the rip cord. Fresh ground.`
+  }
+  const who = mine.value ? 'you go' : 'they go'
+  if (!count) return `Nowhere to go — ${mine.value ? 'you are' : 'they are'} out.`
   return `${doorWord} — ${who} out without a move.`
 })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EVENTS } from '~~/data/events.gen'
-import { atlasHeadLetter, atlasTailLetter } from '~~/lib/atlas-chain'
+import { isAtlasLink } from '~~/lib/atlas-chain'
 import { gradeGateSteps, LOGO_RULING_STEPS, solveGateSteps } from '~~/lib/gate-steps'
 import { readTrend } from '~~/lib/trends'
 import { TRENDS } from '~~/lib/trends-data'
@@ -60,10 +60,7 @@ describe('step-graded gates are graded from their steps, never the token', () =>
     expect(await gradeGateSteps(challenge, [...solved.slice(0, 2), solved[1]!])).toBe(false)
     const last = solved.at(-1) as ISOCountryCode
     const broken = pool.find(
-      isoCode =>
-        atlasHeadLetter(isoCode) !== atlasTailLetter(last) &&
-        isoCode !== 'SE' &&
-        !solved.includes(isoCode)
+      isoCode => !isAtlasLink(last, isoCode) && isoCode !== 'SE' && !solved.includes(isoCode)
     )!
     expect(await gradeGateSteps(challenge, [...solved, broken])).toBe(false)
   })

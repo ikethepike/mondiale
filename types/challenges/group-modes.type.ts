@@ -732,6 +732,13 @@ export interface ChainTurnState<Trap = unknown> {
   lastMoverId?: string
   /** trapped player → the opponent whose move dead-ended them. */
   trappedBy?: { [playerId: string]: string }
+  /** Rip cords left, by player — absent when the mode deals none. A cord
+   *  swaps the live chain for a fresh random seed, and a dead end draws one
+   *  automatically instead of eliminating its holder. */
+  ripCords?: { [playerId: string]: number }
+  /** How each retired chain ended, index-aligned with `chains`: the reveal's
+   *  stanza breaks. The live chain has no entry until it retires. */
+  breaks?: ChainBreak[]
   /** The dead-end pause: the whole table holds on the trap before the fresh
    *  chain is dealt. Transient — set when the trap springs, cleared when the
    *  hold elapses. The durable record stays in `outcomes`/`trappedBy`. The
@@ -741,22 +748,30 @@ export interface ChainTurnState<Trap = unknown> {
   finished?: boolean
 }
 
+/** Why a chain stopped: a dead end (its holder out, or saved by their rip
+ *  cord) or a cord pulled on the clock. */
+export type ChainBreak =
+  | { kind: 'trap'; playerId: string; byPlayerId?: string; rescued: boolean }
+  | { kind: 'rip-cord'; playerId: string }
+
 export type BorderChainState = ChainTurnState<BorderChainTrap>
 
 /**
  * Atlas — Border Chain's letter-rule sibling (lib/atlas-chain): name a
  * country whose name starts where the head's ended. Same engine, same state,
- * different link rule; on hard any shared ending chains (`overlaps`) and
- * scoring is placement-only.
+ * different link rule, plus a rip cord per seat.
  */
 export interface AtlasChallenge {
   _type: 'atlas-challenge'
+  /** The opening shot clock; `atlasTurnSeconds` tightens it with every few
+   *  links walked, down to `turnFloorSeconds`. */
   turnSeconds: number
+  turnFloorSeconds?: number
   maximumPoints: number
   /** Misses a player survives before elimination. 0 = sudden death. */
   strikes: number
-  /** Hard's rule: any k-letter shared ending chains, not just the tail. */
-  overlaps: boolean
+  /** Hard: placement is everything, no link consolation. */
+  placementOnly?: boolean
   state: ChainTurnState<AtlasTrap>
 }
 
@@ -764,12 +779,12 @@ export interface AtlasChallenge {
 export interface AtlasTrap {
   /** The player who never got a move. */
   playerId: string
-  /** The head whose ending nothing could chain from. */
+  /** The head nothing could chain from. */
   head: ISOCountryCode
   /** Who closed it — absent when they walked into their own dead end. */
   byPlayerId?: string
-  /** The head's required opening letter. */
-  letter: string
+  /** The single letters the head offered (`atlasOpeners`). */
+  openers: string[]
   /** Countries that would have chained, all already walked. */
   spent: ISOCountryCode[]
 }

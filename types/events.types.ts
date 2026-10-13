@@ -149,6 +149,13 @@ export type ClientEventData =
       turn: number
     }
   | {
+      /** Atlas: the active player pulls their rip cord — the live chain is
+       *  swapped for a fresh seed and they keep the clock. `turn` is the same
+       *  idempotency token as a move's. */
+      event: 'pull-rip-cord'
+      turn: number
+    }
+  | {
       /** Heritage Hunt: a pin for the live beat. `beat` echoes the state's
        *  beat index so a retried send can't land on a later photo. */
       event: 'submit-heritage-pin'
@@ -428,6 +435,7 @@ export const CRITICAL_CLIENT_EVENTS = [
   'submit-final-challenge-answer',
   'final-light',
   'submit-chain-move',
+  'pull-rip-cord',
   'submit-heritage-pin',
   'submit-timeline-placement',
   'submit-manhunt-move',

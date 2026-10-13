@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { ISOCountryCodes } from '~~/data/iso-codes.gen'
 import {
+  ATLAS_CLOCK_TIGHTEN_EVERY,
   ATLAS_TABLE_SEED_OPTIONS,
   ATLAS_TARGET_LINKS,
+  ATLAS_TRAP_BOUNTY_LINKS,
   atlasChainCredit,
   atlasContinuations,
   atlasHeadLetter,
   atlasKey,
   atlasLinkOverlap,
+  atlasLinkTie,
+  atlasOpeners,
+  atlasOpenersLabel,
   atlasTailLetter,
+  atlasTrapBounty,
+  atlasTrapProof,
+  atlasTurnSeconds,
   hasAtlasChain,
+  isAtlasLink,
   pickAtlasHint,
   pickAtlasSeed,
 } from '~~/lib/atlas-chain'
@@ -49,19 +58,46 @@ describe('atlasLinkOverlap', () => {
   })
 })
 
-describe('atlasContinuations', () => {
-  it('applies letter, dupe and pool filters', () => {
-    const moves = atlasContinuations('NP', ['NP', 'LA'], WORLD)
-    expect(moves).not.toContain('LA')
-    expect(moves.every(isoCode => atlasHeadLetter(isoCode) === 'l')).toBe(true)
-    expect(moves.length).toBeGreaterThan(3)
+describe('openers', () => {
+  it('offers the consonant under a trailing vowel run, Y included', () => {
+    expect(atlasOpeners('AL')).toEqual(['a', 'n']) // Albania
+    expect(atlasOpeners('DE')).toEqual(['y', 'n']) // Germany
+    expect(atlasOpeners('KE')).toEqual(['a', 'n']) // Kenya: "ya" is one run
+    expect(atlasOpeners('NP')).toEqual(['l']) // Nepal ends on a consonant
+    expect(atlasOpenersLabel('AL')).toBe('A or N')
   })
 
-  it('is a superset under the overlap rule', () => {
-    const plain = atlasContinuations('NP', ['NP'], WORLD)
-    const wide = atlasContinuations('NP', ['NP'], WORLD, { overlaps: true })
-    for (const isoCode of plain) expect(wide).toContain(isoCode)
-    expect(wide).toContain('PS') // the overlap-only extra
+  it('gives every name ending in A a way out of the A-spiral', () => {
+    const aEnders = WORLD.filter(isoCode => atlasTailLetter(isoCode) === 'a')
+    expect(aEnders.length).toBeGreaterThan(50)
+    for (const isoCode of aEnders) expect(atlasOpeners(isoCode), isoCode).toHaveLength(2)
+  })
+})
+
+describe('atlasLinkTie', () => {
+  it('names the kind of tie, longest first', () => {
+    expect(atlasLinkTie('NP', 'LA')).toEqual({ kind: 'letter', fragment: 'l', overlap: 1 })
+    expect(atlasLinkTie('PL', 'AD')).toEqual({ kind: 'overlap', fragment: 'and', overlap: 3 })
+    expect(atlasLinkTie('AL', 'NG')).toEqual({ kind: 'consonant', fragment: 'n', overlap: 0 })
+    expect(atlasLinkTie('DE', 'NO')?.kind).toBe('consonant') // Germany → Norway
+    expect(atlasLinkTie('NP', 'SE')).toBeUndefined()
+    expect(isAtlasLink('AL', 'IN')).toBe(false) // a vowel inside the run is no opener
+  })
+})
+
+describe('atlasContinuations', () => {
+  it('applies the tie, dupe and pool filters', () => {
+    const moves = atlasContinuations('NP', ['NP', 'LA'], WORLD)
+    expect(moves).not.toContain('LA')
+    expect(moves).toContain('PS') // Nepal → Palestine, the shared ending
+    expect(moves.every(isoCode => isAtlasLink('NP', isoCode))).toBe(true)
+    expect(moves.filter(isoCode => atlasHeadLetter(isoCode) === 'l').length).toBeGreaterThan(3)
+  })
+
+  it('opens the consonant door on an A-ender', () => {
+    const moves = atlasContinuations('AL', ['AL'], WORLD)
+    expect(moves).toContain('AO') // Angola, off the A
+    expect(moves).toContain('NG') // Nigeria, off the N
   })
 
   it('knows the forced edges', () => {
@@ -83,9 +119,10 @@ describe('atlasChainCredit', () => {
     expect(atlasChainCredit(['NP', 'LA', 'SE'])).toBe(2)
   })
 
-  it('pays overlap length under the hard rule', () => {
-    expect(atlasChainCredit(['NP', 'PS'], { overlaps: true })).toBe(3)
-    expect(atlasChainCredit(['NP', 'PS', 'ET'], { overlaps: true })).toBe(4)
+  it('pays overlap length when overlaps pay', () => {
+    expect(atlasChainCredit(['NP', 'PS'], { payOverlaps: true })).toBe(3)
+    expect(atlasChainCredit(['NP', 'PS', 'ET'], { payOverlaps: true })).toBe(4)
+    expect(atlasChainCredit(['AL', 'NG'], { payOverlaps: true })).toBe(1) // a consonant tie
   })
 })
 
@@ -129,7 +166,58 @@ describe('pickAtlasHint', () => {
   })
 
   it('prefers the deepest overlap on hard', () => {
-    const hint = pickAtlasHint('NE', ['NE'], WORLD, { overlaps: true })
+    const hint = pickAtlasHint('NE', ['NE'], WORLD, { payOverlaps: true })
     expect(hint).toBe('NG') // Niger → Nigeria, overlap 5
+  })
+})
+
+describe('atlasTrapProof', () => {
+  it('lists the openers and every walked name that would have chained', () => {
+    const proof = atlasTrapProof('IQ', ['IQ', 'QA', 'SE'], WORLD)
+    expect(proof).toEqual({ openers: ['q'], spent: ['QA'] })
+  })
+})
+
+describe('atlasTurnSeconds', () => {
+  const challenge = (links: number) => ({
+    turnSeconds: 18,
+    turnFloorSeconds: 11,
+    state: { named: { a: Array<ISOCountryCode>(links).fill('SE') } },
+  })
+
+  it('tightens a second every few links, down to the floor', () => {
+    expect(atlasTurnSeconds(challenge(0))).toBe(18)
+    expect(atlasTurnSeconds(challenge(ATLAS_CLOCK_TIGHTEN_EVERY - 1))).toBe(18)
+    expect(atlasTurnSeconds(challenge(ATLAS_CLOCK_TIGHTEN_EVERY))).toBe(17)
+    expect(atlasTurnSeconds(challenge(ATLAS_CLOCK_TIGHTEN_EVERY * 100))).toBe(11)
+  })
+
+  it('stays flat without a floor', () => {
+    expect(atlasTurnSeconds({ turnSeconds: 14, state: { named: { a: ['SE', 'NO'] } } })).toBe(14)
+  })
+})
+
+describe('atlasTrapBounty', () => {
+  it('pays the sealer of every dead end, cushioned or not', () => {
+    const bounty = atlasTrapBounty({
+      ready: [],
+      chains: [],
+      order: [],
+      activeIndex: 0,
+      turn: 0,
+      deadline: 0,
+      named: {},
+      strikesLeft: {},
+      eliminated: [],
+      outcomes: {},
+      missedOuts: {},
+      breaks: [
+        { kind: 'trap', playerId: 'b', byPlayerId: 'a', rescued: true },
+        { kind: 'rip-cord', playerId: 'c' },
+        { kind: 'trap', playerId: 'c', byPlayerId: 'a', rescued: false },
+        { kind: 'trap', playerId: 'b', rescued: false },
+      ],
+    })
+    expect(bounty).toEqual({ a: 2 * ATLAS_TRAP_BOUNTY_LINKS })
   })
 })

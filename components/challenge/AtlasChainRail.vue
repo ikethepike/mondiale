@@ -18,12 +18,12 @@
       <span
         v-if="hiddenCount + index > 0"
         class="letter-tie"
-        :class="{ deep: tieOverlap(hiddenCount + index) > 1 }"
+        :class="tieOf(hiddenCount + index)?.kind"
         aria-hidden="true"
       >
-        {{ tieFragment(hiddenCount + index) }}
-        <sup v-if="tieOverlap(hiddenCount + index) > 1" class="bonus">
-          +{{ tieOverlap(hiddenCount + index) }}
+        {{ tieOf(hiddenCount + index)?.fragment.toUpperCase() }}
+        <sup v-if="paysOverlaps && (tieOf(hiddenCount + index)?.overlap ?? 0) > 1" class="bonus">
+          +{{ tieOf(hiddenCount + index)?.overlap }}
         </sup>
       </span>
       <CountryChip
@@ -35,40 +35,45 @@
         :compact="compact"
       />
     </li>
-    <li v-if="nextLetter && !finished" key="ghost" class="rail-cell">
+    <li v-if="nextOpeners?.length && !finished" key="ghost" class="rail-cell">
       <span class="ghost-chip map-caption">
-        <span v-if="overlaps && ghostLead" class="lead">{{ ghostLead }}</span>
-        <span class="letter">{{ nextLetter.toUpperCase() }}</span>
+        <span v-if="ghostLead" class="lead">{{ ghostLead }}</span>
+        <template v-for="(letter, letterIndex) in nextOpeners" :key="letter">
+          <span v-if="letterIndex" class="or">/</span>
+          <span class="letter">{{ letter.toUpperCase() }}</span>
+        </template>
         <span class="rest">…</span>
+        <span v-if="optionsLeft !== undefined" class="left" :class="{ scarce: scarce }">
+          {{ optionsLeft }} left
+        </span>
       </span>
     </li>
   </TransitionGroup>
 </template>
 <script lang="ts" setup>
 import CountryChip from '~/components/country/CountryChip.vue'
-import { atlasKey, atlasLinkOverlap } from '~~/lib/atlas-chain'
+import { ATLAS_SCARCE_OPTIONS, atlasKey, atlasLinkTie } from '~~/lib/atlas-chain'
 import { walkColor } from '~~/lib/chain'
 import { getCountry } from '~~/lib/country'
 import { useScrollEdges } from '~~/lib/use-scroll-edges'
 import type { ISOCountryCode } from '~~/types/geography.types'
 
 /**
- * The atlas chain as chips — seed first, joined by their shared letters. One
- * rail for the gate, the group round and both reveals, so a junction never
- * computes its fragment two ways: everything reads lib/atlas-chain.
- *
- * The tie badge carries the whole overlap ("PAL") when the hard rule paid for
- * more than one letter — landing a long overlap should read like a trick shot.
- * The trailing ghost chip is the live question: the next required letter, and
- * under the overlap rule the head's tail fades in behind it to signal that any
- * ending chains.
+ * The atlas chain as chips — seed first, joined by their ties. One rail for
+ * the gate, the group round and both reveals, so a junction never computes
+ * its fragment two ways: everything reads lib/atlas-chain. A shared ending
+ * ("PAL") burns ember like a trick shot; a consonant tie wears a dashed ring.
  */
 const props = defineProps<{
   chain: ISOCountryCode[]
-  /** Hard's rule — ties show their full shared fragment and pay their length. */
-  overlaps?: boolean
-  /** The required opening letter; renders the ghost chip while playing. */
-  nextLetter?: string
+  /** Hard gate credit: a shared ending's tie carries its paid length. */
+  paysOverlaps?: boolean
+  /** The single letters the next name may open with; renders the ghost chip
+   *  while playing. */
+  nextOpeners?: string[]
+  /** How many legal names are still unwalked — the ghost chip counts down,
+   *  and warns when the letter is nearly spent. Unset hides the count. */
+  optionsLeft?: number
   /** A settled rail (reveals): no live head, no ghost chip. */
   finished?: boolean
   /** Card-sized: compact chips and quieter ties, for reveal ledgers. */
@@ -89,15 +94,11 @@ const hiddenCount = computed(() =>
 )
 const shownChain = computed(() => props.chain.slice(hiddenCount.value))
 
-const tieOverlap = (index: number): number => {
-  const overlap = atlasLinkOverlap(props.chain[index - 1], props.chain[index])
-  return props.overlaps ? overlap : Math.min(overlap, 1)
-}
+const tieOf = (index: number) => atlasLinkTie(props.chain[index - 1], props.chain[index])
 
-const tieFragment = (index: number): string =>
-  atlasKey(props.chain[index])
-    .slice(0, Math.max(1, tieOverlap(index)))
-    .toUpperCase()
+const scarce = computed(
+  () => props.optionsLeft !== undefined && props.optionsLeft <= ATLAS_SCARCE_OPTIONS
+)
 
 /** The two letters before the head's tail, faded into the ghost chip. */
 const ghostLead = computed(() => {
@@ -133,7 +134,7 @@ const ghostLead = computed(() => {
     min-width: 1.9rem;
     font-size: 1.05rem;
 
-    &.deep {
+    &.overlap {
       font-size: 1.2rem;
     }
   }
@@ -167,11 +168,14 @@ const ghostLead = computed(() => {
   background: milk(0.85);
   border: 0.1rem solid ink(0.25);
 
-  // A multi-letter overlap is the trick shot — it burns ember.
-  &.deep {
+  &.overlap {
     color: #{ember()};
     border-color: #{ember(0.6)};
     font-size: 1.5rem;
+  }
+
+  &.consonant {
+    border-style: dashed;
   }
 }
 
@@ -211,8 +215,27 @@ const ghostLead = computed(() => {
   .letter {
     font-weight: 700;
   }
+  .or {
+    opacity: 0.45;
+    margin: 0 0.2rem;
+  }
   .rest {
     opacity: 0.55;
+  }
+  .left {
+    margin-left: 0.8rem;
+    padding-left: 0.8rem;
+    font-size: 0.65em;
+    align-self: center;
+    white-space: nowrap;
+    word-spacing: 0.2em;
+    opacity: 0.75;
+    border-left: 0.1rem solid ink(0.2);
+  }
+  .scarce {
+    opacity: 1;
+    font-weight: 700;
+    color: var(--hior-ange);
   }
 }
 </style>

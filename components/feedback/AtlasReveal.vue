@@ -1,6 +1,6 @@
 <template>
   <div v-if="challenge.atlas && chain.length" class="atlas-reveal">
-    <AtlasChainRail :chain="chain" :overlaps="challenge.atlas.overlaps" finished />
+    <AtlasChainRail :chain="chain" :pays-overlaps="challenge.atlas.overlaps" finished />
 
     <p v-if="won" class="tally">
       {{ banked }} links banked{{ banked > chain.length - 1 ? ' — overlaps paid extra' : '' }}
@@ -9,8 +9,8 @@
       <p class="teach">
         {{
           continuations.length
-            ? `You needed a country starting with “${letter}” —`
-            : `Every country starting with “${letter}” was already spent.`
+            ? `You needed a country starting with ${letter} —`
+            : `Every country chaining from ${headName} was already spent.`
         }}
       </p>
       <ul v-if="continuations.length" class="country-chip-list">
@@ -27,8 +27,8 @@
 <script lang="ts" setup>
 import AtlasChainRail from '~/components/challenge/AtlasChainRail.vue'
 import CountryChip from '~/components/country/CountryChip.vue'
-import { atlasChainCredit, atlasContinuations, atlasTailLetter } from '~~/lib/atlas-chain'
-import { getCountry } from '~~/lib/country'
+import { atlasChainCredit, atlasContinuations, atlasOpenersLabel } from '~~/lib/atlas-chain'
+import { countryName, getCountry } from '~~/lib/country'
 import { playableWorldCountries } from '~~/lib/game-rules'
 import { useGameStore } from '~~/store/game.store'
 import type { IndividualChallenge } from '~~/types/challenges/individual-challenge.type'
@@ -46,20 +46,25 @@ const props = defineProps<{
 }>()
 
 const gameStore = useGameStore()
-const rule = computed(() => ({ overlaps: !!props.challenge.atlas?.overlaps }))
-const banked = computed(() => atlasChainCredit(props.chain, rule.value))
+const banked = computed(() =>
+  atlasChainCredit(props.chain, { payOverlaps: !!props.challenge.atlas?.overlaps })
+)
 const won = computed(() => banked.value >= (props.challenge.atlas?.target ?? Infinity))
 
 const letter = computed(() => {
   const head = props.chain.at(-1)
-  return head ? atlasTailLetter(head).toUpperCase() : ''
+  return head ? atlasOpenersLabel(head) : ''
+})
+const headName = computed(() => {
+  const head = props.chain.at(-1)
+  return head ? countryName(head) : ''
 })
 
 const continuations = computed(() => {
   const head = props.chain.at(-1)
   if (!head || won.value) return []
   const pool = playableWorldCountries(gameStore.game ?? { regions: [], difficulty: 'normal' })
-  return atlasContinuations(head, props.chain, pool, rule.value).slice(0, 3)
+  return atlasContinuations(head, props.chain, pool).slice(0, 3)
 })
 </script>
 <style lang="scss" scoped>

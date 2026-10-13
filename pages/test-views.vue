@@ -155,7 +155,10 @@ import { resolveSeatView } from '~/components/view/dispatch'
 import {
   ATLAS_TABLE_SEED_OPTIONS,
   atlasContinuations,
-  atlasTailLetter,
+  atlasLiveMoves,
+  atlasTrapProof,
+  atlasTurnSeconds,
+  atlasWalked,
   pickAtlasSeed,
 } from '~~/lib/atlas-chain'
 import { chainHead, closedDoors, liveChain, openMoves, pickChainSeed } from '~~/lib/chain'
@@ -320,30 +323,18 @@ const atlasOf = () => {
 
 const atlasPool = () => playableWorldCountries(gameRules())
 
-const atlasOpenMoves = (challenge: AtlasChallenge) => {
-  const head = liveChain(challenge.state).at(-1)
-  if (!head) return []
-  return atlasContinuations(head, challenge.state.chains.flat(), atlasPool(), {
-    overlaps: challenge.overlaps,
-  })
-}
-
 const atlasSim = createChainSimulator<AtlasChallenge>({
   meId: ME,
   current: atlasOf,
-  turnSeconds: challenge => challenge.turnSeconds,
-  openMoves: atlasOpenMoves,
+  turnSeconds: atlasTurnSeconds,
+  openMoves: challenge => atlasLiveMoves(challenge.state, gameRules()),
   buildTrap: (challenge, trappedId, byPlayerId) => {
     const head = liveChain(challenge.state).at(-1)!
-    const used = new Set(challenge.state.chains.flat())
     return {
       playerId: trappedId,
       head,
       byPlayerId,
-      letter: atlasTailLetter(head),
-      spent: atlasContinuations(head, [], atlasPool(), { overlaps: challenge.overlaps }).filter(
-        isoCode => used.has(isoCode)
-      ),
+      ...atlasTrapProof(head, atlasWalked(challenge.state), atlasPool()),
     }
   },
   reseed: challenge =>
@@ -701,6 +692,7 @@ const installStubSocket = () => {
     // preview beat, which is exactly the cap path the button exists to beat.
     if (event === 'submit-chain-move') chainSim().move(eventData ?? {})
     if (event === 'chain-ready') chainSim().ready()
+    if (event === 'pull-rip-cord') atlasSim.ripCord(eventData ?? {})
     if (event === 'terra-ready') simulateTerraReady()
     if (event === 'government-ready') simulateGovernmentReady()
     if (event === 'submit-government-pick') simulateGovernmentPick(eventData ?? {})
@@ -1463,7 +1455,6 @@ const longAtlasGame = (finished: boolean): Game => {
       turnSeconds: 14,
       maximumPoints: MAXIMUM_POINTS,
       strikes: 0,
-      overlaps: false,
       state: {
         ready: order,
         chains,
@@ -4196,7 +4187,6 @@ const scenarios: Scenario[] = [
               turnSeconds: 14,
               maximumPoints: MAXIMUM_POINTS,
               strikes: 0,
-              overlaps: false,
               state: {
                 ready: [RIVAL, ME, THIRD],
                 chains: [['NP', 'LA', 'SE', 'NO']],
@@ -4206,6 +4196,8 @@ const scenarios: Scenario[] = [
                 deadline: Date.now() + 14000,
                 named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'] },
                 strikesLeft: {},
+                ripCords: { [RIVAL]: 1, [ME]: 1, [THIRD]: 0 },
+                breaks: [],
                 eliminated: [],
                 outcomes: {},
                 missedOuts: {},
@@ -4223,7 +4215,6 @@ const scenarios: Scenario[] = [
               turnSeconds: 20,
               maximumPoints: MAXIMUM_POINTS,
               strikes: 1,
-              overlaps: false,
               state: {
                 ready: [RIVAL, ME, THIRD],
                 chains: [['NP', 'LA', 'SE']],
@@ -4245,30 +4236,36 @@ const scenarios: Scenario[] = [
       },
       {
         id: 'hard',
-        label: 'Hard — overlap rule, deep tie badge',
-        build: () =>
-          mockGame('round', [
+        label: 'Hard — placement only, deep tie badge',
+        build: () => {
+          const game = mockGame('round', [
             groupRound({
               _type: 'atlas-challenge',
-              turnSeconds: 10,
+              turnSeconds: 14,
+              turnFloorSeconds: 9,
               maximumPoints: MAXIMUM_POINTS,
               strikes: 0,
-              overlaps: true,
+              placementOnly: true,
               state: {
                 ready: [RIVAL, ME, THIRD],
                 chains: [['NP', 'PS', 'ET']],
                 order: [RIVAL, ME, THIRD],
                 activeIndex: 1,
                 turn: 2,
-                deadline: Date.now() + 10000,
+                deadline: Date.now() + 14000,
                 named: { [RIVAL]: ['PS'], [THIRD]: ['ET'] },
                 strikesLeft: {},
+                ripCords: { [RIVAL]: 1, [ME]: 1, [THIRD]: 1 },
+                breaks: [],
                 eliminated: [],
                 outcomes: {},
                 missedOuts: {},
               },
             }),
-          ]),
+          ])
+          game.difficulty = 'hard'
+          return game
+        },
       },
       {
         id: 'briefing',
@@ -4280,7 +4277,6 @@ const scenarios: Scenario[] = [
               turnSeconds: 14,
               maximumPoints: MAXIMUM_POINTS,
               strikes: 1,
-              overlaps: false,
               state: {
                 briefing: true,
                 ready: [RIVAL],
@@ -4300,7 +4296,7 @@ const scenarios: Scenario[] = [
       },
       {
         id: 'trap',
-        label: 'Trap — the letter Q is spent',
+        label: 'Trap — every Q is spent',
         build: () =>
           mockGame('round', [
             groupRound({
@@ -4308,7 +4304,6 @@ const scenarios: Scenario[] = [
               turnSeconds: 14,
               maximumPoints: MAXIMUM_POINTS,
               strikes: 0,
-              overlaps: false,
               state: {
                 ready: [RIVAL, ME, THIRD],
                 chains: [['QA', 'RU', 'AZ', 'NP', 'LU', 'GW', 'GB', 'ML', 'IQ']],
@@ -4331,7 +4326,48 @@ const scenarios: Scenario[] = [
                   playerId: THIRD,
                   head: 'IQ',
                   byPlayerId: RIVAL,
-                  letter: 'q',
+                  openers: ['q'],
+                  spent: ['QA'],
+                },
+              },
+            }),
+          ]),
+      },
+      {
+        id: 'rescue',
+        label: 'Trap — a rip cord saves the victim',
+        build: () =>
+          mockGame('round', [
+            groupRound({
+              _type: 'atlas-challenge',
+              turnSeconds: 18,
+              turnFloorSeconds: 11,
+              maximumPoints: MAXIMUM_POINTS,
+              strikes: 0,
+              state: {
+                ready: [RIVAL, ME, THIRD],
+                chains: [['QA', 'RU', 'AZ', 'NP', 'LU', 'GW', 'GB', 'ML', 'IQ']],
+                order: [RIVAL, ME, THIRD],
+                activeIndex: 1,
+                turn: 8,
+                deadline: 0,
+                named: {
+                  [RIVAL]: ['RU', 'NP', 'GB', 'IQ'],
+                  [ME]: ['AZ', 'GW'],
+                  [THIRD]: ['LU', 'ML'],
+                },
+                strikesLeft: {},
+                ripCords: { [RIVAL]: 1, [ME]: 0, [THIRD]: 1 },
+                breaks: [{ kind: 'trap', playerId: ME, byPlayerId: RIVAL, rescued: true }],
+                eliminated: [],
+                outcomes: {},
+                missedOuts: {},
+                lastMoverId: RIVAL,
+                trap: {
+                  playerId: ME,
+                  head: 'IQ',
+                  byPlayerId: RIVAL,
+                  openers: ['q'],
                   spent: ['QA'],
                 },
               },
@@ -4348,16 +4384,20 @@ const scenarios: Scenario[] = [
               turnSeconds: 14,
               maximumPoints: MAXIMUM_POINTS,
               strikes: 0,
-              overlaps: false,
               state: {
                 ready: [RIVAL, ME, THIRD],
-                chains: [['NP', 'LA', 'SE', 'NO', 'YE']],
+                chains: [
+                  ['PL', 'AD'],
+                  ['NP', 'LA', 'SE', 'NO', 'YE'],
+                ],
                 order: [RIVAL, ME, THIRD],
                 activeIndex: 0,
                 turn: 6,
                 deadline: 0,
-                named: { [RIVAL]: ['LA', 'NO'], [ME]: ['SE'], [THIRD]: ['YE'] },
+                named: { [RIVAL]: ['LA', 'NO'], [ME]: ['AD', 'SE'], [THIRD]: ['YE'] },
                 strikesLeft: {},
+                ripCords: { [RIVAL]: 1, [ME]: 1, [THIRD]: 0 },
+                breaks: [{ kind: 'rip-cord', playerId: THIRD }],
                 eliminated: [ME, THIRD],
                 outcomes: { [RIVAL]: 'won', [ME]: 'wrong', [THIRD]: 'timeout' },
                 missedOuts: { [ME]: ['NA', 'NG', 'NL'], [THIRD]: ['EE', 'EG', 'ES'] },

@@ -1,4 +1,12 @@
-import { activePlayerId, liveChain, standingPlayers } from '~~/lib/chain'
+import {
+  activePlayerId,
+  canPullRipCord,
+  deadEndRescued,
+  liveChain,
+  pullRipCord,
+  sealDeadEnd,
+  standingPlayers,
+} from '~~/lib/chain'
 import { latestRound } from '~~/lib/rounds'
 import type { ChainTurnChallenge, ChainTurnOutcome } from '~~/types/challenges/group-modes.type'
 import type { Game } from '~~/types/game.types'
@@ -49,6 +57,8 @@ export interface ChainEngineSpec<C extends ChainTurnChallenge<unknown>> {
   reseed(challenge: C, game: Game): ISOCountryCode | undefined
   /** The settled table's payout. */
   scores(challenge: C): { [playerId: string]: { scored: number; maximum: number } }
+  /** The live turn's length when it is not the flat `turnSeconds`. */
+  turnSeconds?(challenge: C): number
 }
 
 export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
@@ -68,6 +78,14 @@ export interface ChainEngine<C extends ChainTurnChallenge<unknown>> {
   ): Promise<void>
   /** The chain-ready wire event — a dismissed briefing card. */
   handleReady(ctx: ChainContext, game: Game, playerId: string): Promise<void>
+  /** The pull-rip-cord wire event: the player on the clock trades the live
+   *  chain for a fresh seed and keeps the clock. Only seats dealt a cord act. */
+  handleRipCord(
+    ctx: ChainContext,
+    game: Game,
+    eventData: { turn: number },
+    playerId: string
+  ): Promise<void>
   /** A validated legal move — exported for the engine tests; the wire path
    *  goes through `handleMove`, which guards and validates first. */
   applyMove(ctx: ChainContext, game: Game, challenge: C, isoCode: ISOCountryCode): Promise<void>
@@ -81,7 +99,15 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
   spec: ChainEngineSpec<C>
 ): ChainEngine<C> => {
   const stampDeadline = (challenge: C) => {
-    challenge.state.deadline = Date.now() + challenge.turnSeconds * 1000
+    const seconds = spec.turnSeconds?.(challenge) ?? challenge.turnSeconds
+    challenge.state.deadline = Date.now() + seconds * 1000
+  }
+
+  /** The same seat keeps the clock on a fresh turn — a rip cord, or a dead
+   *  end its cord cushioned. */
+  const holdTurn = (challenge: C) => {
+    challenge.state.turn++
+    stampDeadline(challenge)
   }
 
   /** Pass the clock to the next standing player. */
@@ -196,16 +222,18 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
    * their screen could explain the elimination — the whole table holds on the
    * mode's proof instead, and the fresh chain waits for the hold to elapse.
    * Capturing the proof here is the point: once a new chain is pushed, the
-   * dead head is no longer live and the proof is unrecoverable.
+   * dead head is no longer live and the proof is unrecoverable. A seat still
+   * holding a rip cord spends it here and survives to play the fresh chain.
    */
   const springTrap = async (ctx: ChainContext, game: Game, challenge: C) => {
     const { state } = challenge
     const trappedId = activePlayerId(state)
 
-    eliminate(challenge, trappedId, 'trapped', [])
     const byPlayerId =
       state.lastMoverId && state.lastMoverId !== trappedId ? state.lastMoverId : undefined
-    if (byPlayerId) (state.trappedBy ??= {})[trappedId] = byPlayerId
+    if (!sealDeadEnd(state, trappedId, byPlayerId)) {
+      eliminate(challenge, trappedId, 'trapped', [])
+    }
 
     state.trap = spec.buildTrap(challenge, game, trappedId, byPlayerId)
     // The hold is not a shot clock; no one is on the clock during it.
@@ -246,7 +274,8 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     const seed = spec.reseed(challenge, game)
     if (!seed) return finishRound(ctx, game, challenge)
     state.chains.push([seed])
-    advanceTurn(challenge)
+    if (deadEndRescued(state)) holdTurn(challenge)
+    else advanceTurn(challenge)
 
     if (spec.openMoves(challenge, game).length === 0) {
       return springTrap(ctx, game, challenge)
@@ -363,6 +392,18 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     }
   }
 
+  const handleRipCord: ChainEngine<C>['handleRipCord'] = async (ctx, game, eventData, playerId) => {
+    const challenge = spec.current(game)
+    if (!challenge || !canPullRipCord(challenge.state, playerId)) return
+    if (eventData.turn !== challenge.state.turn) return
+
+    const seed = spec.reseed(challenge, game)
+    if (!seed) return
+    pullRipCord(challenge.state, playerId, seed)
+    holdTurn(challenge)
+    await commitTurn(ctx, game, challenge)
+  }
+
   const handleReady: ChainEngine<C>['handleReady'] = async (ctx, game, playerId) => {
     const challenge = spec.current(game)
     if (!challenge || challenge.state.finished) return
@@ -399,6 +440,7 @@ export const createChainEngine = <C extends ChainTurnChallenge<unknown>>(
     scheduleTimeout,
     handleMove,
     handleReady,
+    handleRipCord,
     applyMove,
     resolveMiss,
     rearm,

@@ -60,7 +60,7 @@ import {
 import { expectChallengeType, latestRound } from '~~/lib/rounds'
 import { gateClockFor } from '~~/lib/gate-timing'
 import { isTerminalStep, RETIREMENT_STEPS } from '~~/lib/seat-transitions'
-import { activePlayerId } from '~~/lib/chain'
+import { activePlayerId, canPullRipCord } from '~~/lib/chain'
 import { speaksLanguage } from '~~/lib/language-rounds'
 import { sweepUnclaimed } from '~~/lib/clean-sweep'
 import { governmentKey, type GovernmentAnswer } from '~~/lib/government'
@@ -882,6 +882,10 @@ const dispatchChainMove = (ctx: EngineContext, playerId: string, turn: number) =
     }
     const atlas = currentAtlasChain(fresh)
     if (atlas) {
+      // A bot that blanks pulls its cord before it gives a wrong name.
+      if (Math.random() >= share && canPullRipCord(atlas.state, playerId)) {
+        return botAct(ctx, { event: 'pull-rip-cord', turn })
+      }
       const isoCode = pickChainIso(atlasOpenMoves(atlas, fresh), fresh, share)
       if (!isoCode) return
       return botAct(ctx, { event: 'submit-chain-move', isoCode, turn })

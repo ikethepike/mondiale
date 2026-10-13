@@ -3,15 +3,15 @@
     <h1 class="map-caption">Atlas</h1>
     <span class="map-caption sub">
       Bank {{ challenge.atlas.target }} links — each name begins where the last one ended{{
-        challenge.atlas.overlaps ? ', and any shared ending counts' : ''
+        challenge.atlas.overlaps ? ', and a shared ending pays its length' : ''
       }}
     </span>
     <ChallengeTimerRadial class="gate-clock" :value="secondsLeft" :total="ATLAS_SECONDS" />
 
     <AtlasChainRail
       :chain="atlasChain"
-      :overlaps="challenge.atlas.overlaps"
-      :next-letter="letter"
+      :pays-overlaps="challenge.atlas.overlaps"
+      :next-openers="openers"
     />
 
     <span class="map-caption tally">{{ banked }} / {{ challenge.atlas.target }}</span>
@@ -61,7 +61,8 @@ import CountryGuessInput from '~/components/country/CountryGuessInput.vue'
 import {
   ATLAS_EASY_SUGGEST_FROM,
   atlasChainCredit,
-  atlasTailLetter,
+  atlasOpeners,
+  atlasOpenersLabel,
   isAtlasLink,
   pickAtlasHint,
 } from '~~/lib/atlas-chain'
@@ -81,14 +82,15 @@ const { status, missNote, atlasChain, isEasy, submitAnswer, recordHint, giveUp }
   useGateChallenge()
 const { gameStore } = useClientEvents()
 
-const rule = computed(() => ({ overlaps: !!props.challenge.atlas?.overlaps }))
+const credit = computed(() => ({ payOverlaps: !!props.challenge.atlas?.overlaps }))
 const pool = computed(() =>
   playableWorldCountries(gameStore.game ?? { regions: [], difficulty: 'normal' })
 )
 
 const head = computed(() => atlasChain.value.at(-1) ?? props.challenge.atlas?.seed)
-const letter = computed(() => (head.value ? atlasTailLetter(head.value).toUpperCase() : ''))
-const banked = computed(() => atlasChainCredit(atlasChain.value, rule.value))
+const openers = computed(() => (head.value ? atlasOpeners(head.value) : []))
+const letter = computed(() => (head.value ? atlasOpenersLabel(head.value) : ''))
+const banked = computed(() => atlasChainCredit(atlasChain.value, credit.value))
 
 const footerReady = ref(false)
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
@@ -118,7 +120,7 @@ const hintName = ref<string>()
 const hintSpent = ref(false)
 const buyHint = () => {
   if (hintSpent.value || status.value || !head.value) return
-  const pick = pickAtlasHint(head.value, atlasChain.value, pool.value, rule.value)
+  const pick = pickAtlasHint(head.value, atlasChain.value, pool.value, credit.value)
   if (!pick) return bounce('No help left on this letter')
   hintSpent.value = true
   hintName.value = countryName(pick)
@@ -158,12 +160,8 @@ const onGuess = (country: Country) => {
   if (chain.includes(country.isoCode)) {
     return bounce(`${countryName(country)} is already in the chain`)
   }
-  if (!isAtlasLink(anchor, country.isoCode, rule.value)) {
-    return bounce(
-      rule.value.overlaps
-        ? `${countryName(country)} doesn't chain from ${countryName(anchor)}`
-        : `${countryName(country)} doesn't start with ${letter.value}`
-    )
+  if (!isAtlasLink(anchor, country.isoCode)) {
+    return bounce(`${countryName(country)} doesn't chain from ${countryName(anchor)}`)
   }
 
   atlasChain.value = [...chain, country.isoCode]

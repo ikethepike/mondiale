@@ -66,10 +66,9 @@ export const atlasStepsBank = (
   if (!isCountrySteps(steps)) return false
   const chain = [atlas.seed, ...steps]
   if (new Set(chain).size !== chain.length) return false
-  const rule = { overlaps: atlas.overlaps }
   return (
-    chain.every((isoCode, index) => !index || isAtlasLink(chain[index - 1], isoCode, rule)) &&
-    atlasChainCredit(chain, rule) >= atlas.target
+    chain.every((isoCode, index) => !index || isAtlasLink(chain[index - 1], isoCode)) &&
+    atlasChainCredit(chain, { payOverlaps: atlas.overlaps }) >= atlas.target
   )
 }
 
@@ -142,7 +141,9 @@ export const solveGateSteps = async (
     case 'atlas': {
       const atlas = challenge.atlas
       if (!atlas) return undefined
-      return findAtlasChain(atlas.seed, atlas.target, pool, { overlaps: atlas.overlaps })?.slice(1)
+      return findAtlasChain(atlas.seed, atlas.target, pool, { payOverlaps: atlas.overlaps })?.slice(
+        1
+      )
     }
     case 'chronicle':
       return challenge.chronicle ? chronicleSolution(challenge.chronicle.events) : undefined
