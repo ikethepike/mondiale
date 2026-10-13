@@ -9,10 +9,18 @@
       @done="begin"
     />
 
-    <ChallengePrompt ref="prompt" :hint="hint" :hint-tone="hintTone" :attributions="sources">
+    <ChallengePrompt
+      ref="prompt"
+      compact
+      :hint="hint"
+      :hint-tone="hintTone"
+      :attributions="sources"
+    >
       <template v-if="!verdictShown">
         <h1 class="map-caption">Who is behind the file?</h1>
-        <span class="map-caption sub">{{ promptLine }}</span>
+        <span v-if="!isPhone || accusedAt !== undefined" class="map-caption sub">
+          {{ promptLine }}
+        </span>
       </template>
       <ChallengeResult
         v-else
@@ -105,6 +113,7 @@ import { buzzScore } from '~~/lib/scoring'
 import { seatVerdictOn } from '~~/lib/seat-view'
 import { UNMASK_NAMED_FIELD, unmaskRemainingFraction, unmaskRungsShown } from '~~/lib/unmask-pace'
 import { useFooterBerth } from '~~/lib/use-footer-berth'
+import { usePromptBerth } from '~~/lib/use-prompt-berth'
 import { useServerWindow } from '~~/lib/use-server-window'
 import { useUnmaskDossier } from '~~/lib/use-unmask-dossier'
 import { useIsPhone } from '~~/lib/use-viewport'
@@ -134,6 +143,8 @@ const sources = datasetAttribution('leaders')
 const isPhone = useIsPhone()
 const footer = ref<HTMLElement>()
 useFooterBerth(footer)
+const prompt = ref<InstanceType<typeof ChallengePrompt>>()
+usePromptBerth(computed(() => prompt.value?.$el as HTMLElement | undefined))
 const guessInput = ref<InstanceType<typeof CountryGuessInput>>()
 
 const roundIndex = computed(() => (gameStore.game ? gameStore.game.rounds.length - 1 : undefined))
@@ -226,6 +237,7 @@ watch(
   (next, previous) => {
     if (answer.value) return
     gameStore.map.spotlight = [...next]
+    gameStore.map.focus = [...next]
     gameStore.map.countryGroupings = [{ color: UNMASK_SUSPECT_FILL, countries: [...next] }]
     gameStore.map.countryLabels =
       next.length <= UNMASK_NAMED_FIELD
