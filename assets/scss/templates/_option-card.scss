@@ -24,9 +24,6 @@
   }
 }
 
-// The house multiple-choice recipe: a grid of tappable cream cards (photo
-// options, flag tables, empire names). Five surfaces carried this verbatim;
-// views declare only their own grid-template-columns on `.card-options`.
 @mixin compact-deal {
   gap: 0.8rem;
 
@@ -41,6 +38,9 @@
   }
 }
 
+// The house multiple-choice recipe: a grid of tappable cream cards (photo
+// options, flag tables, empire names). Five surfaces carried this verbatim;
+// views declare only their own grid-template-columns on `.card-options`.
 .card-options {
   gap: 1.4rem;
   display: grid;
