@@ -494,12 +494,16 @@ const gateLesson = computed(() => {
       return `${countryName(answer)} — ${facts.join(' · ')}`
     }
     case 'find': {
+      // A shared currency takes any spender, so a right answer is described as
+      // given — the dealt subject is only one of the countries that counted.
+      const subject =
+        status.value === 'correct' && submittedCountry.value ? submittedCountry.value : answer
       const facts = [
-        answer.geography.capital.name ? `capital ${answer.geography.capital.name}` : undefined,
-        REGION_LABELS[answer.region],
-        answer.people.population ? formatAmount(answer.people.population) : undefined,
+        subject.geography.capital.name ? `capital ${subject.geography.capital.name}` : undefined,
+        REGION_LABELS[subject.region],
+        subject.people.population ? formatAmount(subject.people.population) : undefined,
       ].filter(Boolean)
-      return facts.length ? `${countryName(answer)} — ${facts.join(' · ')}` : undefined
+      return facts.length ? `${countryName(subject)} — ${facts.join(' · ')}` : undefined
     }
     default:
       return undefined

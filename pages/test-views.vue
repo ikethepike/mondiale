@@ -3689,6 +3689,11 @@ const scenarios: Scenario[] = [
     build: () => individualGame({ variant: 'find', id: 'flag', country: 'SY' }),
   },
   {
+    id: 'individual-find-currency',
+    label: 'Individual: find a euro spender (map tap, shared currency)',
+    build: () => individualGame({ variant: 'find', id: 'currency', country: 'FI' }),
+  },
+  {
     id: 'individual-flag-pick',
     label: 'Individual: flag pick',
     build: () => individualGame({ variant: 'flag-pick', options: ['NL', 'LU', 'FR', 'RU'] }),
