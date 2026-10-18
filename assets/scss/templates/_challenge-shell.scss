@@ -110,8 +110,9 @@
   // the footer's own box — UPWARD over the stage on every touch device (and
   // whenever the keyboard is up), into the reserved berth otherwise. A scroll
   // container clips it away entirely, so the list never appears and the
-  // console reads as broken. These footers are an input pill tall and have
-  // nothing to scroll; they shrink without clipping instead.
+  // console reads as broken. With nothing to scroll the cap goes too: a capped
+  // box that can't scroll only walks its content down, and the console it
+  // walked off the bottom edge first (Atlas's rail on a phone held sideways).
   //
   // Keyed on the console itself, not on `.suggest-berth`: the modes that flip
   // the list upward by default (empire, stat detective, sunset blitz) carry no
@@ -123,6 +124,7 @@
   > footer:has(.guess-form),
   .shell-footer:has(.guess-form) {
     overflow: visible;
+    max-height: none;
   }
 
   // …and except a footer that already holds a scroller of its own. Two nested
@@ -179,13 +181,15 @@
 
   // The reserve IS the list's room: the list's own cap (35dvh) outran a 24vh
   // berth at every desktop height, so its tail hung off the bottom edge.
-  // Only while it opens downward — flipped upward (keyboard up, touch) the
-  // berth collapses and the list keeps its own cap. 1.2rem is the console's
-  // padding plus the list's top margin.
+  // Only while it opens downward — flipped upward (keyboard up, touch, a short
+  // window) the berth collapses and the list keeps its own cap. 1.2rem is the
+  // console's padding plus the list's top margin.
   @media not all and (pointer: coarse) {
-    :root:not(.keyboard-up) & > footer.suggest-berth .guess-form .suggestions,
-    :root:not(.keyboard-up) & .shell-footer.suggest-berth .guess-form .suggestions {
-      max-height: calc(var(--suggest-berth) - 1.2rem);
+    @media (min-height: above($short)) {
+      :root:not(.keyboard-up) & > footer.suggest-berth .guess-form .suggestions,
+      :root:not(.keyboard-up) & .shell-footer.suggest-berth .guess-form .suggestions {
+        max-height: calc(var(--suggest-berth) - 1.2rem);
+      }
     }
   }
 
@@ -204,6 +208,14 @@
   > footer > .guess-ticker,
   .shell-footer > .guess-ticker {
     margin-bottom: 2rem;
+  }
+
+  // An empty ticker holds its line so the first chip doesn't jolt the column;
+  // a short window can't spare that line (and its margin) from the console.
+  @media (max-height: $short) {
+    .guess-ticker:empty {
+      display: none;
+    }
   }
 
   // The typing consoles' column: input pill over its helpers. Interactive by
@@ -259,9 +271,13 @@
   // (safe-bottom clears the home indicator; the keyboard inset rides the
   // padding formula) and open the list upward always, which also covers the
   // soft-keyboard-less typers (iPad hardware keyboards, Android's resized
-  // layout) that never set keyboard-up. Stays AFTER the width-keyed berth
-  // rules above — same specificity, source order decides.
-  @media (pointer: coarse) {
+  // layout) that never set keyboard-up. A window too short for a stage AND a
+  // reserve under the console takes the same deal: the reserve's floor grows
+  // with the reader's text, and under the footer's cap it shoved the console
+  // itself off the bottom (a phone on its side, large text in a laptop
+  // window). Stays AFTER the width-keyed berth rules above — same
+  // specificity, source order decides.
+  @media (pointer: coarse), (max-height: $short) {
     .guess-form .suggestions {
       top: auto;
       bottom: 100%;

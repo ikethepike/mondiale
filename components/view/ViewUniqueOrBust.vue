@@ -368,12 +368,16 @@ const verdictLine = computed(() => {
   // Centred in the space under the prompt: the suggestion list opens downward
   // from the console and needs the room below.
   margin: auto 0;
+  // The shell clips a stage by default, which hid the last blank under the
+  // console on a short window; the blanks scroll instead.
+  overflow-y: auto;
 }
 
 .slot-list {
-  margin: 0;
+  margin: auto 0;
   padding: 0;
   gap: 0.6rem;
+  flex: none;
   display: flex;
   list-style: none;
   flex-flow: column nowrap;
@@ -493,12 +497,14 @@ const verdictLine = computed(() => {
   max-width: min(76rem, calc(100% - 2.4rem));
 }
 
-@media screen and (max-width: $tablet) {
+@media screen and (max-width: $tablet), (max-height: $short) {
   .slot-face {
     font-size: 1.35rem;
     padding: 0.55rem 1rem;
   }
+}
 
+@media screen and (max-width: $tablet) {
   .reveal {
     max-height: calc(var(--viewport-height) - 14rem);
   }

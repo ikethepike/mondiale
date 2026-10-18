@@ -22,7 +22,7 @@
     width var(--motion-base) var(--ease-out-expressive),
     height var(--motion-base) var(--ease-out-expressive);
 
-  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+  @media (hover: hover) and (min-width: #{above($tablet-wide)}) {
     &:hover {
       z-index: 3;
     }
@@ -39,7 +39,7 @@
   width: clamp(18rem, 24vw, 24rem);
   height: clamp(13rem, 22vh, 18rem);
 
-  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+  @media (hover: hover) and (min-width: #{above($tablet-wide)}) {
     &:hover {
       width: clamp(28rem, 44vw, 52rem);
       height: clamp(20rem, 44vh, 38rem);

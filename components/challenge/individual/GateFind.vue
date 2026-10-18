@@ -150,7 +150,7 @@ onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
 
   // The stage swells under the cursor for studying the emblem, then shrinks
   // out of the map's way on leave — width, not scale, so the SVG stays sharp.
-  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+  @media (hover: hover) and (min-width: #{above($tablet-wide)}) {
     &:hover .flag {
       width: clamp(28rem, 36vw, 44rem);
     }

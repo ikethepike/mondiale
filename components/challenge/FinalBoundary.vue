@@ -195,6 +195,10 @@ $blob-land: color.mix(ink(), milk(), 8%);
 .easel-frame {
   width: min(64rem, 88vw);
   height: min(40rem, 52vh);
+  // Gives way before the tools do: a short window or large text ran the
+  // buttons off the bottom.
+  flex: 0 1 auto;
+  min-height: min(12rem, 30dvh);
   border-radius: 1.2rem;
   pointer-events: auto;
   backdrop-filter: blur(0.5rem);
@@ -268,7 +272,7 @@ $blob-land: color.mix(ink(), milk(), 8%);
   // Wider, shorter easel for finger drawing; full-width tools clear of the
   // home indicator — the sketch easel's recipe.
   .boundary-stage {
-    padding: 0 1.6rem calc(1.6rem + var(--safe-bottom));
+    padding: 0 1.6rem calc(1.6rem + var(--bottom-clearance));
   }
   .easel-frame {
     width: min(94vw, 64rem);

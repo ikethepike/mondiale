@@ -157,6 +157,10 @@ const submitSketch = () => {
 .canvas-frame {
   width: min(64rem, 88vw);
   height: min(40rem, 52vh);
+  // Gives way before the tools do: a short window or large text ran the
+  // buttons off the bottom. The canvas sizes its buffer at mount, after this.
+  flex: 0 1 auto;
+  min-height: min(12rem, 30dvh);
   border-radius: 1.2rem;
   pointer-events: auto;
   backdrop-filter: blur(0.5rem);
@@ -182,7 +186,7 @@ const submitSketch = () => {
   // A wider, slightly shorter easel for finger drawing, with full-width
   // tool buttons clear of the home indicator.
   .easel {
-    padding: 0 1.6rem calc(1.6rem + var(--safe-bottom));
+    padding: 0 1.6rem calc(1.6rem + var(--bottom-clearance));
   }
   .canvas-frame {
     width: min(94vw, 64rem);

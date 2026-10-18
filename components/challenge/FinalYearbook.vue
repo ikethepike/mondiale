@@ -141,12 +141,15 @@ watch(expired, ran => {
 .final-yearbook {
   gap: 1rem;
   left: 50%;
-  bottom: 2.4rem;
+  bottom: calc(2.4rem + var(--bottom-clearance));
   display: flex;
   position: absolute;
   align-items: stretch;
   pointer-events: auto;
   flex-flow: column nowrap;
+  // Packed from the foot: once the cap is shorter than the dial (a short
+  // window, large text) the overflow rises over the prompt, not off the screen.
+  justify-content: flex-end;
   transform: translateX(-50%);
   width: min(58rem, calc(100vw - 2.4rem));
   max-height: calc(100% - 16rem);
@@ -343,7 +346,7 @@ watch(expired, ran => {
 
 @media screen and (max-width: $tablet) {
   .final-yearbook {
-    bottom: 1.2rem;
+    bottom: calc(1.2rem + var(--bottom-clearance));
     max-height: calc(100% - 16rem);
 
     &.committed {

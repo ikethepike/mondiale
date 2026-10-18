@@ -929,7 +929,7 @@ footer {
 
   // Desktop: the line parts around the slot under consideration — pointer or
   // keyboard cursor — so the user sees exactly where the card would press in.
-  @media (min-width: ($tablet + 1)) {
+  @media (min-width: above($tablet)) {
     &:has(.slot.selected) {
       padding: 0 1.1rem;
     }

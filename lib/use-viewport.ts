@@ -15,24 +15,28 @@ const useMediaMatch = (query: string) => {
   return matches
 }
 
+// In em, as `bp()` in _breakpoints.scss writes every rung: a px query ignores
+// the reader's default font size and would disagree with the stylesheet.
+const mediaEm = (px: number) => `${px / 16}em`
+
 // Keep in sync with $tablet in assets/scss/rules/_breakpoints.scss.
 export const PHONE_MAX_PX = 640
 
 /** Phone-width viewport — the same boundary the SCSS mobile blocks use. */
-export const useIsPhone = () => useMediaMatch(`(max-width: ${PHONE_MAX_PX}px)`)
+export const useIsPhone = () => useMediaMatch(`(max-width: ${mediaEm(PHONE_MAX_PX)})`)
 
 // Keep in sync with $tablet-wide in assets/scss/rules/_breakpoints.scss.
 export const SIDE_RAIL_MAX_PX = 900
 
 /** No side rail to spare — where `.side-stage` reparks (templates/_side-stage.scss). */
-export const useIsRailless = () => useMediaMatch(`(max-width: ${SIDE_RAIL_MAX_PX}px)`)
+export const useIsRailless = () => useMediaMatch(`(max-width: ${mediaEm(SIDE_RAIL_MAX_PX)})`)
 
 // Keep in sync with $short in assets/scss/rules/_breakpoints.scss.
 export const SHORT_MAX_PX = 480
 
 /** Too short to give a stage its natural height — a phone on its side, a
  *  window dragged down to a strip. Independent of width: landscape is wide. */
-export const useIsShortViewport = () => useMediaMatch(`(max-height: ${SHORT_MAX_PX}px)`)
+export const useIsShortViewport = () => useMediaMatch(`(max-height: ${mediaEm(SHORT_MAX_PX)})`)
 
 /** Taller than it is wide. A stage sized for a landscape frame has to fit
  *  rather than fill here, or it crops into its own subject. */
