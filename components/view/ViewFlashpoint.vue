@@ -87,7 +87,7 @@
               :value="secondsLeft"
               :total="challenge.durationSeconds"
             />
-            <div class="options card-options">
+            <div class="options card-options two-up">
               <button
                 v-for="option in challenge.options"
                 :key="option"
@@ -412,17 +412,6 @@ footer {
   // The section is click-through for the map; only the controls catch input.
   > * {
     pointer-events: auto;
-  }
-}
-
-.card-options {
-  grid-template-columns: repeat(2, minmax(14rem, 20rem));
-}
-
-@media (max-width: $tablet) {
-  .card-options {
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

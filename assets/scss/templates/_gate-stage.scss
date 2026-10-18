@@ -15,7 +15,8 @@
   display: grid;
   margin-top: 1.4rem;
   pointer-events: auto;
-  grid-template-columns: repeat(2, minmax(16rem, 24rem));
+  --option-min: 16rem;
+  --option-max: 24rem;
 
   // Gate cards run larger than the house default — these are the whole stage,
   // not a strip under a photo.
@@ -149,6 +150,5 @@
   }
   .gate-options {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

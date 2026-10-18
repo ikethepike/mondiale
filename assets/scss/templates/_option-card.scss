@@ -1,4 +1,42 @@
 @use '../rules/ink' as *;
+@use '../rules/breakpoints' as *;
+
+// The two-column deal (four flags, four cities, a pair of duellists). On a
+// laptop window it lays out ACROSS: two stacked rows under a photo ran the
+// bottom pair off a 1366×768 screen. Views tune the card width through
+// --option-min/--option-max, never the template.
+.two-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(var(--option-min, 14rem), var(--option-max, 20rem)));
+
+  @media (max-width: $tablet) {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  // Shrinkable: the row is chosen for its height, and a narrow window still
+  // has to hold every card. After the phone rule — a phone on its side is
+  // phone-narrow and short at once, and the row is the shape it has room for.
+  @media #{$laptop-window}, #{$short-landscape} {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: minmax(0, var(--option-max, 20rem));
+  }
+}
+
+@mixin compact-deal {
+  gap: 0.8rem;
+
+  .card-option {
+    gap: 0.3rem;
+    padding: 0.5rem;
+    font-size: 1.3rem;
+  }
+
+  .option-flag {
+    height: 2.6rem;
+  }
+}
 
 // The house multiple-choice recipe: a grid of tappable cream cards (photo
 // options, flag tables, empire names). Five surfaces carried this verbatim;
@@ -9,16 +47,14 @@
   pointer-events: auto;
 
   &.compact {
-    gap: 0.8rem;
+    @include compact-deal;
+  }
 
-    .card-option {
-      gap: 0.3rem;
-      padding: 0.5rem;
-      font-size: 1.3rem;
-    }
-
-    .option-flag {
-      height: 2.6rem;
+  // Too short to stand full cards under the prompt (a phone on its side, a
+  // phone reading large text): the deal compacts itself.
+  @media (max-height: $short) {
+    &.two-up {
+      @include compact-deal;
     }
   }
 }

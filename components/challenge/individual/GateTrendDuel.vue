@@ -2,7 +2,7 @@
   <template v-if="currentDuel">
     <h1 class="map-caption">Whose {{ metricLabel }} is {{ currentDuel.seek }}?</h1>
     <span class="map-caption sub">Duel {{ index + 1 }} of {{ total }} — win them all</span>
-    <div class="gate-options card-options">
+    <div class="gate-options card-options two-up">
       <button
         v-for="option in [currentDuel.a, currentDuel.b]"
         :key="`${currentDuel.metric}-${option}`"

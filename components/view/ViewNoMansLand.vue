@@ -252,7 +252,7 @@ header .sub {
 footer {
   gap: 1rem;
   display: flex;
-  padding: 0 2rem 2rem;
+  padding: 0 2rem calc(2rem + var(--bottom-clearance));
   align-items: center;
   flex-flow: column nowrap;
 
@@ -283,7 +283,7 @@ footer {
 
 @media (max-width: $tablet) {
   footer {
-    padding: 0 1.6rem calc(1.2rem + var(--safe-bottom));
+    padding: 0 1.6rem calc(1.2rem + var(--bottom-clearance));
   }
 
   // Finger-sized picked-country chips, and a full-width lock row.

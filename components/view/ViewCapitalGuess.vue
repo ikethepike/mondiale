@@ -40,7 +40,7 @@
           :value="secondsLeft"
           :total="challenge.durationSeconds"
         />
-        <div class="options card-options">
+        <div class="options card-options two-up">
           <button
             v-for="option in challenge.options"
             :key="option"
@@ -196,15 +196,5 @@ footer {
   flex-direction: column;
   align-items: center;
   gap: 1.4rem;
-}
-
-.card-options {
-  grid-template-columns: repeat(2, minmax(14rem, 20rem));
-}
-@media (max-width: $tablet) {
-  .card-options {
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 </style>

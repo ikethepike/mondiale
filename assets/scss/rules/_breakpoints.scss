@@ -1,23 +1,46 @@
+@use 'sass:math';
+
 // The viewport ladder — every SCSS media query builds from these tokens.
 // (Script-side gates live in lib/use-viewport.ts — PHONE_MAX_PX mirrors $tablet,
 // SIDE_RAIL_MAX_PX mirrors $tablet-wide and SHORT_MAX_PX mirrors $short.)
-$phone: 480px; // sub-phone squeeze: single-column reveals, tighter type
-$tablet: 640px;
-$tablet-wide: 900px; // where pin-drop stages trade the photo rail for a dock
-$laptop: 1024px;
-$desktop: 1920px;
+//
+// In em, never px: a media-query em is the browser's default font size, so a
+// reader who sets their text larger gets the layout for the room their text
+// actually has. In px a 1280px window at a 24px default kept the desk layout
+// while every rem inside it was half as big again, and the console ran off.
+@function bp($px) {
+  @return math.div($px, 16px) * 1em;
+}
+
+$phone: bp(480px); // sub-phone squeeze: single-column reveals, tighter type
+$tablet: bp(640px);
+$tablet-wide: bp(900px); // where pin-drop stages trade the photo rail for a dock
+$laptop: bp(1024px);
+$desktop: bp(1920px);
+
+// The first width past a rung. `$rung + 1` on an em token adds a whole em.
+@function above($rung) {
+  @return $rung + bp(1px);
+}
 
 // The one HEIGHT rung: a viewport with no room to give a stage its natural
 // height. A phone on its side is short and wide at once, so a stage that only
 // squeezes by width keeps its desk layout in the 390px it has left.
-$short: 480px;
+$short: bp(480px);
 
 // Big screens: px-authored chrome reads small at arm's length on a 1440p
 // panel, so a stage-first view may scale its controls up from here. Both
 // rungs together, so a wide but short window never zooms its controls off it.
-$wall: 2400px;
-$tall: 1000px;
+$wall: bp(2400px);
+$tall: bp(1000px);
 
 // A phone on its side: the column a view hands its controls is phone-narrow
 // even though the viewport is not.
 $short-landscape: '(orientation: landscape) and (max-height: #{$short})';
+
+// A laptop's browser window: 1280×800, 1366×768 and 1440×900 screens leave
+// 600-800px once the browser takes its chrome. Past the phone column, too
+// short to stack — a 2×2 grid of flags under a photo ran its bottom row off
+// the screen. Where a view has the width, it lays out ACROSS.
+$low: bp(800px);
+$laptop-window: '(min-width: #{above($tablet)}) and (max-height: #{$low})';

@@ -2,7 +2,7 @@
   <template v-if="challenge.oddOneOut">
     <h1 class="map-caption">{{ challenge.oddOneOut.propertyLabel }}</h1>
     <span class="map-caption sub">Pick the one that doesn't belong</span>
-    <div class="gate-options card-options">
+    <div class="gate-options card-options two-up">
       <button
         v-for="option in challenge.oddOneOut.countries"
         :key="option"

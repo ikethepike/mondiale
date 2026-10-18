@@ -106,7 +106,7 @@ header {
 // scale is the token's job (templates/_map-caption.scss), and the same shallow
 // slope keeps it fluid through the intermediate widths instead of slamming into
 // the cap at 700px.
-.challenge-prompt.compact {
+@mixin compact-prompt {
   padding-block: 1rem;
   --caption-display: clamp(1.5rem, 0.9rem + 1.1vw, 2.2rem);
 
@@ -124,6 +124,20 @@ header {
   :deep(.map-caption.sub) {
     font-size: 1.3rem;
     padding: 0.3rem 1.2rem;
+  }
+}
+
+.challenge-prompt.compact {
+  @include compact-prompt;
+}
+
+// A window too short for a full-height prompt AND a console (a phone on its
+// side, large text in a laptop window) takes the compact cut whatever the
+// mode asked for: the header has no scroller, so it was the footer that left.
+@media (max-height: $short) {
+  .challenge-prompt {
+    @include compact-prompt;
+    padding-block: 0.6rem;
   }
 }
 

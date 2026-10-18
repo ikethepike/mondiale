@@ -1,11 +1,15 @@
 <template>
-  <section
-    class="briefing briefing-card pane tr decorator-bottom"
-    :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
-  >
-    <div ref="scroller" class="briefing-scroll" @scroll.passive="syncScrollEdges">
-      <slot />
+  <section class="briefing briefing-card pane tr decorator-bottom">
+    <div
+      class="briefing-rules"
+      :class="{ 'fade-top': scrollableUp, 'fade-bottom': scrollableDown }"
+    >
+      <div ref="scroller" class="briefing-scroll" @scroll.passive="syncScrollEdges">
+        <slot />
+      </div>
+    </div>
 
+    <div class="briefing-actions">
       <div class="ready-row">
         <div
           v-for="playerId in participants"

@@ -162,7 +162,7 @@ onBeforeUnmount(() => document.removeEventListener('mapClick', onMapClick))
   width: clamp(16rem, 20vw, 22rem);
   height: clamp(16rem, 20vw, 22rem);
 
-  @media (hover: hover) and (min-width: #{$tablet-wide + 1}) {
+  @media (hover: hover) and (min-width: #{above($tablet-wide)}) {
     &:hover {
       width: clamp(26rem, 38vw, 40rem);
       height: clamp(26rem, 38vw, 40rem);

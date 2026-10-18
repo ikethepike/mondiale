@@ -587,6 +587,23 @@ header .verdict-banner {
   }
 }
 
+// On a short window the verdict replaces the instruction rather than stacking
+// on it — with both, the header alone outgrew a phone held sideways.
+@media (max-height: $short) {
+  header .verdict-banner ~ .sub {
+    display: none;
+  }
+
+  header .verdict-banner {
+    padding-block: 0.4rem;
+
+    .verdict-flag {
+      width: 4.8rem;
+      height: 3.2rem;
+    }
+  }
+}
+
 .stage {
   z-index: 2;
   display: flex;

@@ -775,7 +775,7 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
 
 // --- The line --------------------------------------------------------------------
 footer {
-  padding: 1.4rem 2rem 2rem;
+  padding: 1.4rem 2rem calc(2rem + var(--bottom-clearance));
 }
 
 .line-frame {
@@ -929,7 +929,7 @@ footer {
 
   // Desktop: the line parts around the slot under consideration — pointer or
   // keyboard cursor — so the user sees exactly where the card would press in.
-  @media (min-width: ($tablet + 1)) {
+  @media (min-width: above($tablet)) {
     &:has(.slot.selected) {
       padding: 0 1.1rem;
     }
