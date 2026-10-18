@@ -13,7 +13,7 @@
         :item-credit="itemCredit"
       />
     </div>
-    <div class="options card-options">
+    <div class="options card-options two-up">
       <button
         v-for="option in options"
         :key="option"
@@ -82,6 +82,12 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
   position: absolute;
 }
 
+@media #{$laptop-window} {
+  .photo-stage {
+    height: clamp(16rem, 30dvh, 32rem);
+  }
+}
+
 @media (max-width: $tablet) {
   .photo-stage {
     width: min(94vw, 46rem);
@@ -90,8 +96,9 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 }
 
 .card-options {
+  --option-min: 16rem;
+  --option-max: 24rem;
   margin-top: 1.4rem;
-  grid-template-columns: repeat(2, minmax(16rem, 24rem));
 }
 
 .card-option {
@@ -101,9 +108,7 @@ const emit = defineEmits<{ pick: [iso: ISOCountryCode] }>()
 
 @media (max-width: $tablet) {
   .card-options {
-    width: 100%;
     padding: 0 1.6rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

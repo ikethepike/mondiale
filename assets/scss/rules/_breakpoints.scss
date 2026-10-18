@@ -21,3 +21,10 @@ $tall: 1000px;
 // A phone on its side: the column a view hands its controls is phone-narrow
 // even though the viewport is not.
 $short-landscape: '(orientation: landscape) and (max-height: #{$short})';
+
+// A laptop's browser window: 1280×800, 1366×768 and 1440×900 screens leave
+// 600-800px once the browser takes its chrome. Wide enough for the desk
+// layout, too short to stack it — a 2×2 grid of flags under a photo ran its
+// bottom row off the screen. Where a view has the width, it lays out ACROSS.
+$low: 800px;
+$laptop-window: '(min-width: #{$tablet-wide + 1}) and (max-height: #{$low})';

@@ -30,9 +30,29 @@
   pointer-events: auto;
   max-width: min(34rem, calc(100% - 2.4rem));
 
-  // The frame stands still and the halftone pins to its edges; the rules
-  // scroll inside it.
-  @include scroll-halftone;
+  // The rules scroll; the ready row and the ack stand below them, outside
+  // the scroller — on a laptop-height window the button scrolled away with
+  // the rules and the card read as having no way out.
+  .briefing-rules {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    position: relative;
+
+    // The frame stands still and the halftone pins to its edges.
+    @include scroll-halftone;
+  }
+
+  .briefing-actions {
+    display: flex;
+    flex: none;
+    flex-flow: column nowrap;
+    align-items: center;
+    gap: var(--briefing-gap);
+    padding: var(--briefing-pad);
+    padding-top: var(--briefing-gap);
+    text-align: center;
+  }
 
   .briefing-scroll {
     display: flex;
@@ -42,6 +62,7 @@
     gap: var(--briefing-gap);
     min-height: 0;
     padding: var(--briefing-pad);
+    padding-bottom: 0;
     overflow-y: auto;
     // A scroll that hits the card's end must not chain into the map behind it.
     overscroll-behavior: contain;

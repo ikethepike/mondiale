@@ -10,7 +10,7 @@
     }}
   </h1>
   <span v-if="twins" class="map-caption sub">They all share the same colours — look closely.</span>
-  <div class="gate-options" :class="twins ? 'twin-options' : 'flag-options'">
+  <div class="gate-options two-up" :class="twins ? 'twin-options' : 'flag-options'">
     <button
       v-for="option in challenge.options"
       :key="option"
@@ -58,7 +58,8 @@ const twins = computed(() => variant.value === 'flag-twins')
 // Palette twins: large inline flags so the subtle differences (stripe order, a
 // crescent, an emblem) are what the eye resolves.
 .twin-options {
-  grid-template-columns: repeat(2, minmax(18rem, 26rem));
+  --option-min: 18rem;
+  --option-max: 26rem;
 }
 
 .twin-option {
@@ -73,9 +74,6 @@ const twins = computed(() => variant.value === 'flag-twins')
 }
 
 @media (max-width: $tablet) {
-  .twin-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .flag-option .option-flag {
     height: 9rem;
   }

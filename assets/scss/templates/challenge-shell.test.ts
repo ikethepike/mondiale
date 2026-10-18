@@ -109,6 +109,17 @@ describe('challenge shell', () => {
     expect(header?.body).toMatch(/flex:\s*none/)
   })
 
+  it('sizes a downward suggestion list from the berth reserved for it', () => {
+    // Two caps for one gap (the list's 35dvh, the berth's 24vh) left the
+    // list's tail hanging off the bottom edge at every desktop height.
+    const capped = rules(css).filter(
+      rule =>
+        /\.suggest-berth\b.*\.suggestions/.test(rule.selector) &&
+        /max-height:[^;]*var\(--suggest-berth\)/.test(rule.body)
+    )
+    expect(capped.length).toBeGreaterThan(0)
+  })
+
   it('keeps every stage clipped by default', () => {
     // The permissive selector is only about who WINS; unclaimed stages must
     // still not grow the document.

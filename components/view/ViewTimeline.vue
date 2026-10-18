@@ -775,7 +775,7 @@ watch(selectedSlot, slot => slot !== undefined && scrollLineTo(`[data-slot="${sl
 
 // --- The line --------------------------------------------------------------------
 footer {
-  padding: 1.4rem 2rem 2rem;
+  padding: 1.4rem 2rem calc(2rem + var(--bottom-clearance));
 }
 
 .line-frame {

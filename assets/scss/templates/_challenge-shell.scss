@@ -177,6 +177,18 @@
     padding-bottom: calc(var(--suggest-berth) + var(--keyboard-inset, 0px));
   }
 
+  // The reserve IS the list's room: the list's own cap (35dvh) outran a 24vh
+  // berth at every desktop height, so its tail hung off the bottom edge.
+  // Only while it opens downward — flipped upward (keyboard up, touch) the
+  // berth collapses and the list keeps its own cap. 1.2rem is the console's
+  // padding plus the list's top margin.
+  @media not all and (pointer: coarse) {
+    :root:not(.keyboard-up) & > footer.suggest-berth .guess-form .suggestions,
+    :root:not(.keyboard-up) & .shell-footer.suggest-berth .guess-form .suggestions {
+      max-height: calc(var(--suggest-berth) - 1.2rem);
+    }
+  }
+
   // The keyboard has eaten the bottom: the downward reserve would starve the
   // stage (Silhouette's outline, the detective's clues), so it collapses and
   // the dropdown opens UPWARD instead (rule below) — the stage gets the room

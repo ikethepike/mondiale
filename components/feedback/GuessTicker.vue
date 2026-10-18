@@ -1,7 +1,7 @@
 <template>
   <TransitionGroup tag="ul" name="guess" class="guess-ticker">
     <li
-      v-for="entry in entries"
+      v-for="entry in shown"
       :key="entry.entryId"
       class="chip guess-chip"
       :class="`kind-${entry.kind}`"
@@ -17,16 +17,23 @@
   </TransitionGroup>
 </template>
 <script lang="ts" setup>
+import { computed } from 'vue'
 import PlayerPawn from '~/components/player/PlayerPawn.vue'
 import { countryName } from '~~/lib/country'
 import { formatKm } from '~~/lib/number'
 import type { GuessTickerEntry } from '~~/store/game.store'
 import type { Player } from '~~/types/player.type'
 
-defineProps<{
+const props = defineProps<{
   entries: GuessTickerEntry[]
   players: Record<string, Player>
 }>()
+
+// The ticker stands over the console in the footer, which never scrolls: in a
+// busy room every extra row of chips pushed the input further off the bottom.
+const TICKER_CHIPS = 6
+
+const shown = computed(() => props.entries.slice(-TICKER_CHIPS))
 
 /**
  * Presence-only rounds carry no country, so the chip says what happened rather

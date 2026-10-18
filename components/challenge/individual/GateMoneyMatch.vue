@@ -6,7 +6,7 @@
   <div v-else-if="glyph" class="money-hero" aria-hidden="true">
     <span class="money-symbol">{{ glyph }}</span>
   </div>
-  <div class="gate-options card-options">
+  <div class="gate-options card-options two-up">
     <button
       v-for="option in challenge.options"
       :key="option"
@@ -72,6 +72,14 @@ const { submitAnswer } = useGateChallenge()
     object-fit: contain;
     border-radius: 0.6rem;
     box-shadow: 0 0.6rem 1.8rem ink(0.28);
+  }
+}
+
+// Laid out across in a laptop window, the cards take one row — the note
+// gives back the rest so the row still lands on screen.
+@media #{$laptop-window} {
+  .money-hero-photo .money-note {
+    max-height: 30dvh;
   }
 }
 

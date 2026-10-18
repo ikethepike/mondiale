@@ -69,7 +69,7 @@
           :value="secondsLeft"
           :total="challenge.durationSeconds"
         />
-        <div class="options card-options">
+        <div class="options card-options two-up">
           <button
             v-for="option in challenge.options"
             :key="option"
@@ -288,7 +288,6 @@ const commit = () => {
 }
 </script>
 <style lang="scss" scoped>
-@use '~/assets/scss/rules/breakpoints' as *;
 @use '~/assets/scss/rules/ink' as *;
 
 // The plan is the ground the round is played on, so it sits under everything
@@ -337,7 +336,7 @@ footer {
   z-index: 2;
   display: flex;
   gap: 1.4rem;
-  padding-bottom: 0.6rem;
+  padding-bottom: calc(0.6rem + var(--bottom-clearance));
   align-items: center;
   flex-direction: column;
 }
@@ -412,17 +411,9 @@ footer {
 // translucent by default, which reads as noise on top of street work.
 .card-options {
   pointer-events: auto;
-  grid-template-columns: repeat(2, minmax(14rem, 20rem));
 
   :deep(.card-option) {
     backdrop-filter: blur(0.6rem);
-  }
-}
-
-@media (max-width: $tablet) {
-  .card-options {
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

@@ -1,4 +1,25 @@
 @use '../rules/ink' as *;
+@use '../rules/breakpoints' as *;
+
+// The two-column deal (four flags, four cities, a pair of duellists). On a
+// laptop window it lays out ACROSS: two stacked rows under a photo ran the
+// bottom pair off a 1366×768 screen. Views tune the card width through
+// --option-min/--option-max, never the template.
+.two-up {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(var(--option-min, 14rem), var(--option-max, 20rem)));
+
+  @media #{$laptop-window} {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: minmax(var(--option-min, 14rem), var(--option-max, 20rem));
+  }
+
+  @media (max-width: $tablet) {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 
 // The house multiple-choice recipe: a grid of tappable cream cards (photo
 // options, flag tables, empire names). Five surfaces carried this verbatim;
